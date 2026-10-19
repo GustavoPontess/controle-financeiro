@@ -1,23 +1,31 @@
 import { api } from "../api/cliente"
-import type { Meta, CriarMetaDto, ContribuirMetaDto } from "../types/Meta"
+import type { ContaLivre, CriarMetaDto, Meta } from "../types/Meta"
 
-// axiosClient já provê baseURL `/api/v1` — path relativo evita duplicar `/api`.
+// Metas no modelo de reserva: guardar/tirar marcam parte do saldo de uma conta (o dinheiro não sai dela).
+// Guardar e tirar exigem Idempotency-Key: a tela gera uma ao abrir e reusa nas tentativas.
 const BASE = "metas"
 
-export const getMetas = (): Promise<{ data: Meta[] }> =>
-  api.get(BASE)
+/** Metas ativas; `soPessoais` tira as de família (essas moram no espaço da família). */
+export const getMetas = (soPessoais = true): Promise<Meta[]> =>
+  api.get<Meta[]>(BASE, { params: { pessoais: soPessoais } }).then((r) => r.data)
 
-export const getMeta = (id: string): Promise<{ data: Meta }> =>
-  api.get(`${BASE}/${id}`)
+export const getMeta = (id: string): Promise<Meta> => api.get<Meta>(`${BASE}/${id}`).then((r) => r.data)
 
-export const criarMeta = (dto: CriarMetaDto): Promise<{ data: Meta }> =>
-  api.post(BASE, dto)
+export const criarMeta = (dto: CriarMetaDto): Promise<Meta> =>
+  api.post<Meta>(BASE, dto, { skipErrorToast: true }).then((r) => r.data)
 
-export const atualizarMeta = (id: string, dto: CriarMetaDto): Promise<{ data: Meta }> =>
-  api.put(`${BASE}/${id}`, dto)
-
-export const contribuirMeta = (id: string, dto: ContribuirMetaDto): Promise<{ data: Meta }> =>
-  api.post(`${BASE}/${id}/contribuir`, dto)
+export const atualizarMeta = (id: string, dto: CriarMetaDto): Promise<Meta> =>
+  api.put<Meta>(`${BASE}/${id}`, dto, { skipErrorToast: true }).then((r) => r.data)
 
 export const excluirMeta = (id: string): Promise<void> =>
-  api.delete(`${BASE}/${id}`)
+  api.delete(`${BASE}/${id}`, { skipErrorToast: true }).then(() => undefined)
+
+/** Contas abertas com saldo, reservado em metas e livre (pra escolher de onde guardar). */
+export const getContasLivres = (): Promise<ContaLivre[]> =>
+  api.get<ContaLivre[]>(`${BASE}/contas`).then((r) => r.data)
+
+export const guardarNaMeta = (id: string, contaId: string, valor: number, chave: string): Promise<Meta> =>
+  api.post<Meta>(`${BASE}/${id}/guardar`, { contaId, valor }, { headers: { "Idempotency-Key": chave }, skipErrorToast: true }).then((r) => r.data)
+
+export const tirarDaMeta = (id: string, contaId: string, valor: number, chave: string): Promise<Meta> =>
+  api.post<Meta>(`${BASE}/${id}/tirar`, { contaId, valor }, { headers: { "Idempotency-Key": chave }, skipErrorToast: true }).then((r) => r.data)

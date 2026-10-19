@@ -38,6 +38,7 @@ public class AppDbContext : DbContext
     public DbSet<ModeloImportacao> ModelosImportacao => Set<ModeloImportacao>();
     public DbSet<RendaPrevista> RendasPrevistas => Set<RendaPrevista>();
     public DbSet<FotoPerfil> FotosPerfil => Set<FotoPerfil>();
+    public DbSet<MetaReserva> MetasReservas => Set<MetaReserva>();
     public DbSet<ReconciliacaoSaldo> ReconciliacoesSaldo => Set<ReconciliacaoSaldo>();
 
     // ── Issue #5 Autenticação Robusta ──
@@ -262,6 +263,15 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(m => m.UsuarioId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // MetaReserva: parte do saldo de uma conta reservada pra uma meta. Uma linha por (meta, conta).
+        // Some com a meta e com a conta (conta só sai sem lançamento; encerrar com reserva é recusado no serviço).
+        modelBuilder.Entity<MetaReserva>().HasIndex(r => new { r.MetaId, r.ContaId }).IsUnique();
+        modelBuilder.Entity<MetaReserva>().Property(r => r.Valor).HasPrecision(18, 2);
+        modelBuilder.Entity<MetaReserva>()
+            .HasOne(r => r.Meta).WithMany(m => m.Reservas).HasForeignKey(r => r.MetaId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<MetaReserva>()
+            .HasOne(r => r.Conta).WithMany().HasForeignKey(r => r.ContaId).OnDelete(DeleteBehavior.Cascade);
 
         // FotoPerfil → Usuario (1:1, chave = UsuarioId, Cascade: dado pessoal, some com a pessoa).
         modelBuilder.Entity<FotoPerfil>().HasKey(f => f.UsuarioId);

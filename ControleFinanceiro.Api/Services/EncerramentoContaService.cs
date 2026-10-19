@@ -75,6 +75,10 @@ public class EncerramentoContaService
             throw new InvalidOperationException(
                 "Esta conta tem lançamentos previstos. Efetive ou exclua as previsões antes de encerrar.");
 
+        if (await _context.MetasReservas.AnyAsync(r => r.ContaId == contaId && r.Meta!.Ativo))
+            throw new InvalidOperationException(
+                "Esta conta tem dinheiro guardado em metas. Tire das metas (ou guarde em outra conta) antes de encerrar.");
+
         var saldos = await RegrasFinanceiras.SaldosDasContasAsync(_context, new[] { contaId }, usuarioId);
         var saldo = saldos.TryGetValue(contaId, out var mov) ? mov.Saldo : 0m;
         if (saldo != 0m && !dto.ContaDestinoId.HasValue && !dto.Ajustar)

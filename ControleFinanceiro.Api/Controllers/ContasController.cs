@@ -15,11 +15,13 @@ namespace ControleFinanceiro.Api.Controllers
     {
         private readonly ContaService _service;
         private readonly EncerramentoContaService _encerramento;
+        private readonly MetaService _metas;
 
-        public ContasController(ContaService service, EncerramentoContaService encerramento)
+        public ContasController(ContaService service, EncerramentoContaService encerramento, MetaService metas)
         {
             _service = service;
             _encerramento = encerramento;
+            _metas = metas;
         }
 
         private Guid GetUserId()
@@ -86,7 +88,13 @@ namespace ControleFinanceiro.Api.Controllers
             var lista = await _service.ListarAsync(usuarioId, incluirEncerradas);
             var saldos = await _service.ObterSaldosAsync(lista.Select(c => c.Id), usuarioId);
             var iniciais = await _service.ObterSaldosIniciaisAsync(lista.Select(c => c.Id), usuarioId);
-            return Ok(lista.Select(c => ToDto(c, saldos[c.Id].Saldo, iniciais.TryGetValue(c.Id, out var si) ? si : null)));
+            var reservado = await _metas.ReservadoPorContaAsync(lista.Select(c => c.Id));
+            return Ok(lista.Select(c =>
+            {
+                var dto = ToDto(c, saldos[c.Id].Saldo, iniciais.TryGetValue(c.Id, out var si) ? si : null);
+                dto.ReservadoEmMetas = reservado.GetValueOrDefault(c.Id);
+                return dto;
+            }));
         }
 
         [HttpGet("{id}")]

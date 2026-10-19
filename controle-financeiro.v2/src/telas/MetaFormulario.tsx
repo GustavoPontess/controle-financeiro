@@ -1,0 +1,120 @@
+// Nova meta (/metas/nova) e editar (/metas/:id/editar): nome, quanto quer juntar e o prazo (mês e ano, opcional).
+// O prazo é um MÊS; o servidor guarda o dia 1. Mês que já passou não vale (na edição, o prazo antigo pode ficar).
+// Guardar dinheiro é outra tela (/metas/:id/guardar): aqui é só a meta.
+import { useEffect, useState } from "react"
+import { useLocation, useNavigate, useParams } from "react-router-dom"
+import { atualizarMeta, criarMeta, getMeta } from "../services/metaService"
+import { mensagemDeErro } from "../api/cliente"
+import Botao from "../componentes/Botao"
+import Campo from "../componentes/Campo"
+import Entrada from "../componentes/Entrada"
+import EntradaValor from "../componentes/EntradaValor"
+import Formulario, { Campos, LinhaCampos, PaginaFormulario, RodapeFormulario } from "../componentes/Formulario"
+import Interruptor from "../componentes/Interruptor"
+import Selecao from "../componentes/Selecao"
+import { MAX_NOME_META, MESES, prazoIso } from "../dominio/meta"
+import { moneyParaCampo, parseMoney } from "../utils/money"
+import styles from "./MetaFormulario.module.css"
+
+type Erros = Partial<Record<"nome" | "valor" | "prazo", string>>
+
+export default function MetaFormulario() {
+  const { id } = useParams<{ id?: string }>()
+  const navigate = useNavigate()
+  const voltarPara = (useLocation().state as { voltarPara?: string } | null)?.voltarPara ?? "/metas"
+  const hoje = new Date()
+  const anoAtual = hoje.getFullYear(), mesAtual = hoje.getMonth() + 1
+  const [carregando, setCarregando] = useState(!!id)
+  const [erroCarga, setErroCarga] = useState<string | null>(null)
+  const [nome, setNome] = useState("")
+  const [valor, setValor] = useState("")
+  const [comPrazo, setComPrazo] = useState(true)
+  const [mes, setMes] = useState("")
+  const [ano, setAno] = useState("")
+  const [prazoOriginal, setPrazoOriginal] = useState<string | null>(null)
+  const [erros, setErros] = useState<Erros>({})
+  const [erro, setErro] = useState<string | null>(null)
+  const [salvando, setSalvando] = useState(false)
+  const limpa = (k: keyof Erros) => setErros((e) => ({ ...e, [k]: undefined }))
+
+  useEffect(() => {
+    if (!id) return
+    let vivo = true
+    getMeta(id).then((m) => {
+      if (!vivo) return
+      setNome(m.nome)
+      setValor(moneyParaCampo(m.valorAlvo))
+      setComPrazo(!!m.dataLimite)
+      if (m.dataLimite) {
+        setAno(m.dataLimite.slice(0, 4)); setMes(String(Number(m.dataLimite.slice(5, 7))))
+        setPrazoOriginal(m.dataLimite.slice(0, 7))
+      }
+      setCarregando(false)
+    }).catch(() => { if (vivo) { setErroCarga("Não deu pra carregar a meta."); setCarregando(false) } })
+    return () => { vivo = false }
+  }, [id])
+
+  const anos = Array.from({ length: 31 }, (_, i) => anoAtual + i)
+  if (ano && !anos.includes(Number(ano))) anos.unshift(Number(ano))
+
+  const enviar = async () => {
+    setErro(null)
+    const e: Erros = {}
+    if (!nome.trim()) e.nome = "Dê um nome pra meta."
+    const v = parseMoney(valor)
+    if (!(v > 0)) e.valor = "Diga quanto quer juntar."
+    let dataLimite: string | null = null
+    if (comPrazo) {
+      if (!mes || !ano) e.prazo = "Escolha o mês e o ano."
+      else {
+        dataLimite = prazoIso(Number(ano), Number(mes))
+        const passou = Number(ano) * 12 + Number(mes) < anoAtual * 12 + mesAtual
+        if (passou && dataLimite.slice(0, 7) !== prazoOriginal) e.prazo = "Esse mês já passou."
+      }
+    }
+    setErros(e)
+    if (Object.keys(e).length > 0) return
+    setSalvando(true)
+    try {
+      const dto = { nome: nome.trim(), valorAlvo: v, dataLimite }
+      const m = id ? await atualizarMeta(id, dto) : await criarMeta(dto)
+      navigate("/metas", { replace: true, state: { abrir: m.id } })
+    } catch (err) { setErro(mensagemDeErro(err)); setSalvando(false) }
+  }
+
+  return (
+    <PaginaFormulario titulo={id ? "Editar meta" : "Nova meta"} carregando={carregando} erroCarga={erroCarga}>
+      <Formulario onSubmit={() => { void enviar() }}>
+        <Campos>
+          {erro && <p className={styles.alerta} role="alert">{erro}</p>}
+          <LinhaCampos colunas="minmax(0, 2fr) minmax(0, 1fr)">
+            <Campo rotulo="Nome" erro={erros.nome}>
+              <Entrada value={nome} maxLength={MAX_NOME_META} placeholder="Entrada do apê, viagem, reserva de emergência" autoFocus
+                onChange={(ev) => { setNome(ev.target.value); limpa("nome") }} />
+            </Campo>
+            <Campo rotulo="Quanto quer juntar" erro={erros.valor}>
+              <EntradaValor compacto valor={valor} onChange={(x) => { setValor(x); limpa("valor") }} />
+            </Campo>
+          </LinhaCampos>
+          <Interruptor ligado={comPrazo} onChange={(on) => { setComPrazo(on); limpa("prazo") }}>Tem prazo</Interruptor>
+          {comPrazo && (
+            <Campo rotulo="Até quando" erro={erros.prazo}>
+              <LinhaCampos>
+                <Selecao valor={mes} placeholder="Mês" ariaLabel="Mês do prazo" invalido={!!erros.prazo}
+                  opcoes={MESES.map((m, i) => ({ valor: String(i + 1), rotulo: m.charAt(0).toUpperCase() + m.slice(1) }))}
+                  onChange={(x) => { setMes(x); limpa("prazo") }} />
+                <Selecao valor={ano} placeholder="Ano" ariaLabel="Ano do prazo" invalido={!!erros.prazo}
+                  opcoes={anos.map((a) => ({ valor: String(a), rotulo: String(a) }))}
+                  onChange={(x) => { setAno(x); limpa("prazo") }} />
+              </LinhaCampos>
+            </Campo>
+          )}
+        </Campos>
+        <RodapeFormulario>
+          <Botao onClick={() => navigate(voltarPara, { replace: true })} disabled={salvando}>Cancelar</Botao>
+          <Botao variante="primario" type="submit" disabled={salvando}>{salvando ? "Salvando…" : id ? "Salvar" : "Criar meta"}</Botao>
+        </RodapeFormulario>
+      </Formulario>
+    </PaginaFormulario>
+  )
+}

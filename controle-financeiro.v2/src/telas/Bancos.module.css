@@ -38,3 +38,5 @@
   .numeroValor { font-size: var(--v2-fs-lg); }
   .toolbar { padding: 14px 16px 4px; }
 }
+.linkFicha { color: inherit; text-decoration: underline; text-decoration-color: var(--v2-linha-forte); text-underline-offset: 3px; }
+.linkFicha:hover { text-decoration-color: currentColor; }

@@ -1021,9 +1021,6 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<decimal>("ValorAlvo")
                         .HasColumnType("numeric");
 
-                    b.Property<decimal>("ValorAtual")
-                        .HasColumnType("numeric");
-
                     b.HasKey("Id");
 
                     b.HasIndex("CategoriaId");
@@ -1033,6 +1030,41 @@ namespace ControleFinanceiro.Api.Migrations
                     b.HasIndex("UsuarioId");
 
                     b.ToTable("Metas");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.MetaReserva", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AtualizadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid>("ContaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid>("MetaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Valor")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContaId");
+
+                    b.HasIndex("MetaId", "ContaId")
+                        .IsUnique();
+
+                    b.ToTable("MetasReservas");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.MfaBackupCode", b =>
@@ -2464,6 +2496,25 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Navigation("Usuario");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.MetaReserva", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Conta", "Conta")
+                        .WithMany()
+                        .HasForeignKey("ContaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Meta", "Meta")
+                        .WithMany("Reservas")
+                        .HasForeignKey("MetaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Conta");
+
+                    b.Navigation("Meta");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.MfaBackupCode", b =>
                 {
                     b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "Usuario")
@@ -2846,6 +2897,11 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Navigation("ParcelasTransacao");
 
                     b.Navigation("Transacoes");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Meta", b =>
+                {
+                    b.Navigation("Reservas");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Parcelamento", b =>

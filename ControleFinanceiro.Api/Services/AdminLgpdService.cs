@@ -123,7 +123,7 @@ public class AdminLgpdService
                 .ToList(),
             Metas = await _context.Metas
                 .Where(m => m.UsuarioId == usuarioId)
-                .Select(m => new MetaExportadaDto { Id = m.Id, Nome = m.Nome, ValorAlvo = m.ValorAlvo })
+                .Select(m => new MetaExportadaDto { Id = m.Id, Nome = m.Nome, ValorAlvo = m.ValorAlvo, DataLimite = m.DataLimite, Guardado = m.Reservas.Sum(r => r.Valor) })
                 .ToListAsync(),
             Orcamentos = await _context.Orcamentos
                 .Where(o => o.UsuarioId == usuarioId)

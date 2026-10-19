@@ -2,7 +2,8 @@ namespace ControleFinanceiro.Api.Domain.Entities;
 
 /// <summary>
 /// Meta financeira individual ou conjunta (ex.: viagem, reserva de emergência, casa).
-/// ValorAtual é acumulado manualmente via contribuições.
+/// O progresso é a soma das <see cref="MetaReserva"/>: parte do saldo de contas reais reservada pra meta
+/// (o dinheiro não sai da conta). O antigo contador <c>ValorAtual</c> saiu (migration <c>AddMetaReserva</c>).
 /// </summary>
 public class Meta
 {
@@ -17,10 +18,7 @@ public class Meta
     /// <summary>Valor a ser atingido.</summary>
     public decimal ValorAlvo { get; set; }
 
-    /// <summary>Valor acumulado até o momento.</summary>
-    public decimal ValorAtual { get; set; }
-
-    /// <summary>Data limite opcional para atingir a meta.</summary>
+    /// <summary>Mês do prazo (dia 1), opcional.</summary>
     public DateTime? DataLimite { get; set; }
 
     /// <summary>Criador da meta.</summary>
@@ -42,4 +40,5 @@ public class Meta
     public Usuario Usuario { get; set; } = null!;
     public Familia? Familia { get; set; }
     public Categoria? Categoria { get; set; }
+    public ICollection<MetaReserva> Reservas { get; set; } = new List<MetaReserva>();
 }

@@ -37,6 +37,9 @@ import FamiliaEntreVoces from "./telas/FamiliaEntreVoces"
 import FamiliaMembros from "./telas/FamiliaMembros"
 import FamiliaDependentes from "./telas/FamiliaDependentes"
 import FamiliaRegras from "./telas/FamiliaRegras"
+import Metas from "./telas/Metas"
+import MetaFormulario from "./telas/MetaFormulario"
+import MovimentoMeta from "./telas/MovimentoMeta"
 import ConvidarMembro from "./telas/ConvidarMembro"
 import Dependente from "./telas/Dependente"
 import NovoAcerto from "./telas/NovoAcerto"
@@ -53,7 +56,6 @@ import EmConstrucao from "./telas/EmConstrucao"
 const PENDENTES: [string, string, string][] = [
   ["/relatorios", "Relatórios", "/reports"],
   ["/emprestimos", "Empréstimos", "/emprestimos"],
-  ["/metas", "Metas", "/metas"],
   ["/limites", "Limites", "/limites"],
 ]
 
@@ -84,6 +86,11 @@ export default function App() {
         <Route path="/importar" element={<ImportarExtrato />} />
         <Route path="/reconciliacao" element={<Reconciliacao />} />
         <Route path="/renda" element={<Renda />} />
+        <Route path="/metas" element={<Metas />} />
+        <Route path="/metas/nova" element={<MetaFormulario />} />
+        <Route path="/metas/:id/editar" element={<MetaFormulario />} />
+        <Route path="/metas/:id/guardar" element={<MovimentoMeta modo="guardar" />} />
+        <Route path="/metas/:id/tirar" element={<MovimentoMeta modo="tirar" />} />
         <Route path="/familias" element={<Familias />} />
         <Route path="/familias/nova" element={<NovaFamilia />} />
         {/* Espaço da família: cada item do menu é uma página (modelo Notion/Slack, 2026-10-18). */}

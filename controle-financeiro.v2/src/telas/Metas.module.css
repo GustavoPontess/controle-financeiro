@@ -1,0 +1,44 @@
+.pagina { display: flex; flex-direction: column; gap: 20px; }
+
+/* Faixa de números (mesma anatomia de Bancos) */
+.resumo { padding: 20px 24px; }
+.numeros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.numero { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.rotulo { font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-texto-2); }
+.numeroValor { font-size: var(--v2-fs-2xl); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.numeroEsqueleto { display: block; width: 140px; height: 28px; border-radius: 8px; background: var(--v2-superficie-2); }
+
+.respiro { padding: 8px 24px 20px; }
+.vazio { margin: 0; padding: 20px 24px 28px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
+.vazioAcao { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-right: 24px; }
+.vazioAcao > .vazio { padding-top: 20px; padding-bottom: 20px; }
+.vazioGrupo { padding: 12px 16px 16px 64px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); list-style: none; }
+.alerta { margin: 0 0 10px; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
+.linkGrupo { padding: 0; border: 0; background: none; font: inherit; font-size: var(--v2-fs-xs); font-weight: 600; color: var(--v2-acento); cursor: pointer; text-transform: none; letter-spacing: 0; }
+.linkGrupo:hover { text-decoration: underline; }
+.dica { color: var(--v2-texto-3); font-weight: 400; }
+
+/* Linha: ícone da meta · nome e "R$ x de R$ y · até mês" · situação, por mês e a barra */
+.icone { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; background: var(--v2-acento-suave); color: var(--v2-acento); }
+.icone[data-concluida="true"] { background: var(--v2-positivo-suave); color: var(--v2-positivo); }
+.direita { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; width: 220px; }
+.direitaTopo { display: inline-flex; align-items: center; gap: 10px; }
+.valor { font-size: var(--v2-fs-md); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pct { font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-texto-2); font-variant-numeric: tabular-nums; }
+.barra { width: 100%; }
+
+/* Ficha: onde o dinheiro está guardado (conta · valor) e os dados da meta */
+.guardado { display: flex; flex-direction: column; gap: 6px; padding: 10px 14px; margin-bottom: 8px; border-radius: var(--v2-r-sm); background: var(--v2-superficie-2); }
+.guardadoTitulo { font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-texto-2); }
+.reservas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.reservas li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; font-size: var(--v2-fs-md); font-variant-numeric: tabular-nums; border-top: 1px solid var(--v2-linha); }
+.reservas li:first-child { border-top: 0; }
+
+@media (max-width: 900px) {
+  .numeros { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .numero { flex-direction: row; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .numeroValor { font-size: var(--v2-fs-lg); }
+  .direita { width: 120px; }
+  .respiro { padding: 8px 16px 16px; }
+  .vazio { padding: 16px 16px 24px; }
+}

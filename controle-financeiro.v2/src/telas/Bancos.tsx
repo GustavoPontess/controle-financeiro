@@ -192,6 +192,12 @@ function Linha({ c, cartoes, aberta, aoAbrir, aoMudar }: {
               </>
             )}
             {encerrada && <div><dt>Encerrada em</dt><dd>{dataBR(c.encerradaEm!)}</dd></div>}
+            {(c.reservadoEmMetas ?? 0) > 0 && (
+              <>
+                <div><dt>Guardado em metas</dt><dd><Link to="/metas" className={styles.linkFicha}><Dinheiro valor={c.reservadoEmMetas!} /></Link></dd></div>
+                <div><dt>Livre</dt><dd><Dinheiro valor={c.saldoAtual - c.reservadoEmMetas!} /></dd></div>
+              </>
+            )}
           </DadosFicha>
           {cartoes.length > 0 && (
             <div className={styles.cartoes}>

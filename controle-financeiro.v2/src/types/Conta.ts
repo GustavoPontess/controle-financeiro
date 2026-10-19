@@ -19,4 +19,6 @@ export interface Conta {
   bancoCor?: string | null
   /** Encerrada (fechada no banco): fora das listas, sem lançamento novo. Null/ausente = aberta. */
   encerradaEm?: string | null
+  /** Parte do saldo reservada em metas (o dinheiro continua na conta). Livre = saldoAtual − isto. */
+  reservadoEmMetas?: number
 }

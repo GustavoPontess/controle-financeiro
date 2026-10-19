@@ -65,6 +65,9 @@ public class MetaExportadaDto
     public Guid Id { get; set; }
     public string Nome { get; set; } = string.Empty;
     public decimal ValorAlvo { get; set; }
+    public DateTime? DataLimite { get; set; }
+    /// <summary>Soma do que está reservado nas contas pra esta meta.</summary>
+    public decimal Guardado { get; set; }
 }
 
 public class OrcamentoExportadoDto
