@@ -63,6 +63,7 @@ public class MetaService
     public async Task<MetaDto> AtualizarAsync(Guid metaId, CriarMetaDto dto, Guid usuarioId)
     {
         var meta = await BuscarPropriaAsync(metaId, usuarioId);
+        ExigirNaoConcluida(meta);
         if (dto.CategoriaId.HasValue)
             await DonoRecursos.ExigirCategoriaAsync(_context, dto.CategoriaId.Value, usuarioId);
         var prazo = NormalizarPrazo(dto.DataLimite, permitirPassado: true);
@@ -86,6 +87,7 @@ public class MetaService
     public async Task ExcluirAsync(Guid metaId, Guid usuarioId)
     {
         var meta = await BuscarPropriaAsync(metaId, usuarioId);
+        ExigirNaoConcluida(meta);
         if (meta.ContaId.HasValue)
         {
             var saldo = (await RegrasFinanceiras.SaldoDaContaAsync(_context, meta.ContaId.Value, usuarioId)).Saldo;
@@ -208,7 +210,8 @@ public class MetaService
     /// <summary>
     /// "Concluir e usar o dinheiro": a meta que chegou lá (guardado ≥ alvo) manda o guardado TODO pra uma conta
     /// da pessoa (uma transferência), grava quando concluiu e quanto juntou e encerra a caixinha, tudo numa
-    /// transação. A meta fica em Concluídas com o histórico. Idempotency-Key obrigatória (repetir devolve a meta).
+    /// transação. A meta vai pra Concluídas como REGISTRO (com o histórico; não muda mais). Pra juntar de novo,
+    /// a pessoa cria outra meta. Idempotency-Key obrigatória (repetir devolve a meta).
     /// </summary>
     public async Task<MetaDto> ConcluirAsync(Guid metaId, ConcluirMetaDto dto, Guid usuarioId, string? idempotencyKey)
     {
@@ -254,21 +257,6 @@ public class MetaService
         return await ObterAsync(metaId, usuarioId);
     }
 
-    /// <summary>Desfaz a conclusão: a meta volta pra Em andamento com a caixinha (vazia) aberta de novo.</summary>
-    public async Task<MetaDto> ReabrirAsync(Guid metaId, Guid usuarioId)
-    {
-        var meta = await BuscarPropriaAsync(metaId, usuarioId);
-        if (meta.ConcluidaEm is null)
-            throw new InvalidOperationException("Essa meta não está concluída.");
-        meta.ConcluidaEm = null;
-        meta.ValorJuntado = null;
-        meta.AtualizadoEm = DateTime.UtcNow;
-        if (meta.ContaId.HasValue && await _context.Contas.FindAsync(meta.ContaId.Value) is { } caixinha)
-            caixinha.EncerradaEm = null;
-        await _context.SaveChangesAsync();
-        return await ObterAsync(metaId, usuarioId);
-    }
-
     // ── Cálculo (estático: testável sem banco) ──────────────────────────────
 
     /// <summary>Meses até o prazo contando o mês atual (set/2026 → dez/2027 = 16). Null sem prazo.</summary>
@@ -277,7 +265,7 @@ public class MetaService
 
     public static (string Situacao, int? Meses, decimal? PorMes) Situacao(decimal alvo, decimal guardado, DateTime? prazo, DateTime criadaEm, DateTime hoje)
     {
-        if (guardado >= alvo) return ("concluida", null, null);
+        if (guardado >= alvo) return ("chegou-la", null, null);
         if (prazo is null) return ("sem-prazo", null, null);
         var meses = MesesAte(prazo, hoje)!.Value;
         if (meses < 1) return ("prazo-passou", 0, null);
@@ -302,7 +290,7 @@ public class MetaService
         return new MetaDto(
             m.Id, m.Nome, m.Descricao, m.Icone ?? "alvo", m.ValorAlvo, guardado,
             concluidaDeVez ? 0m : Math.Max(0m, m.ValorAlvo - guardado), pct,
-            concluidaDeVez || guardado >= m.ValorAlvo, m.DataLimite, meses, porMes, situacao, m.ContaId,
+            concluidaDeVez, m.DataLimite, meses, porMes, situacao, m.ContaId,
             m.UsuarioId, m.FamiliaId, m.CategoriaId, m.Ativo, m.CriadoEm, m.AtualizadoEm, m.ConcluidaEm, m.ValorJuntado);
     }
 
@@ -344,10 +332,11 @@ public class MetaService
         Descricao = descricao,
     };
 
+    /// <summary>Concluída é registro: não guarda, resgata, edita nem exclui. Pra juntar de novo, outra meta.</summary>
     private static void ExigirNaoConcluida(Meta meta)
     {
         if (meta.ConcluidaEm is not null)
-            throw new InvalidOperationException("Essa meta já foi concluída. Reabra pra mexer nela de novo.");
+            throw new InvalidOperationException("Essa meta já foi concluída e fica como registro. Pra juntar de novo, crie outra meta.");
     }
 
     /// <summary>

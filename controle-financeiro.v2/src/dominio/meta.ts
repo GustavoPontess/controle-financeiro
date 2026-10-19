@@ -38,22 +38,32 @@ export const TEMAS_META: { nome: string; icone: string }[] = [
 
 /** Etiqueta da situação; "sem-prazo" não ganha etiqueta (o cartão já mostra a porcentagem). */
 export const SITUACAO_META: Record<SituacaoMeta, { rotulo: string; tom?: "positivo" | "negativo" | "alerta" } | null> = {
-  "concluida": { rotulo: "Chegou lá", tom: "positivo" },
+  "concluida": { rotulo: "Concluída", tom: "positivo" },
+  "chegou-la": { rotulo: "Chegou lá", tom: "positivo" },
   "no-ritmo": { rotulo: "No ritmo", tom: "positivo" },
   "atras": { rotulo: "Atrás do ritmo", tom: "alerta" },
   "prazo-passou": { rotulo: "Prazo passou", tom: "negativo" },
   "sem-prazo": null,
 }
-/** Etiqueta da meta: "Concluída" quando o dinheiro já foi usado; senão, a da situação. */
-export const etiquetaDaMeta = (m: Pick<Meta, "situacao" | "concluidaEm">) =>
-  m.concluidaEm ? { rotulo: "Concluída", tom: "positivo" as const } : SITUACAO_META[m.situacao]
 /** O que a barra e o número grande mostram: o que juntou (concluída) ou o que está guardado. */
 export const progressoDaMeta = (m: Pick<Meta, "guardado" | "concluidaEm" | "valorJuntado">) =>
   m.concluidaEm ? m.valorJuntado ?? 0 : m.guardado
 
 /** Cor da barra de progresso pela situação. */
 export const tomDaBarra = (s: SituacaoMeta): "positivo" | "alerta" | undefined =>
-  s === "concluida" ? "positivo" : s === "atras" || s === "prazo-passou" ? "alerta" : undefined
+  s === "concluida" || s === "chegou-la" ? "positivo" : s === "atras" || s === "prazo-passou" ? "alerta" : undefined
+/** Ícone em verde: chegou lá ou concluída. */
+export const metaNoVerde = (s: SituacaoMeta) => s === "concluida" || s === "chegou-la"
+
+/** "Criar outra igual": nome, ícone, quanto e a mesma DURAÇÃO do prazo, contada a partir de agora (a original
+ *  pode ter prazo no passado). `meses` = quantos meses o prazo tinha contando o mês em que foi criada. */
+export type ModeloMeta = { nome: string; icone: string; valorAlvo: number; meses: number | null }
+export function modeloDaMeta(m: Pick<Meta, "nome" | "icone" | "valorAlvo" | "dataLimite" | "criadoEm">): ModeloMeta {
+  const meses = m.dataLimite
+    ? Math.max(1, (Number(m.dataLimite.slice(0, 4)) - Number(m.criadoEm.slice(0, 4))) * 12 + (Number(m.dataLimite.slice(5, 7)) - Number(m.criadoEm.slice(5, 7))) + 1)
+    : null
+  return { nome: m.nome, icone: m.icone, valorAlvo: m.valorAlvo, meses }
+}
 
 export const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"]
 const MESES_CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]

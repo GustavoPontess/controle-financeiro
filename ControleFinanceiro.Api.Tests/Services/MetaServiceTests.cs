@@ -317,7 +317,7 @@ public class MetaServiceTests
     }
 
     [Fact]
-    public async Task Guardar_AtingeAlvo_MarcaConcluida_PercentualCapado()
+    public async Task Guardar_AtingeAlvo_ChegouLa_SemIrPraConcluidas_PercentualCapado()
     {
         var ctx = CreateContext();
         var user = SeedUsuario(ctx, "u@test.com");
@@ -328,8 +328,8 @@ public class MetaServiceTests
         var result = await svc.GuardarAsync(meta.Id, new MovimentoMetaDto(conta, 150m), user, Chave());
 
         Assert.Equal(100m, result.PercentualConcluido);
-        Assert.True(result.Concluida);
-        Assert.Equal("concluida", result.Situacao);
+        Assert.False(result.Concluida); // chegou lá, mas só vai pra Concluídas quando a pessoa marcar
+        Assert.Equal("chegou-la", result.Situacao);
         Assert.Equal(0m, result.Falta);
     }
 
@@ -448,7 +448,7 @@ public class MetaServiceTests
     }
 
     [Fact]
-    public async Task Concluida_NaoGuardaNemResgata_ReabrirVoltaPraEmAndamento()
+    public async Task Concluida_EhRegistro_NaoGuardaResgataEditaNemExclui()
     {
         var ctx = CreateContext();
         var user = SeedUsuario(ctx, "u@test.com");
@@ -459,16 +459,15 @@ public class MetaServiceTests
         await svc.ConcluirAsync(meta.Id, new ConcluirMetaDto(conta), user, Chave());
 
         var erro = await Assert.ThrowsAsync<InvalidOperationException>(() => svc.GuardarAsync(meta.Id, new MovimentoMetaDto(conta, 10m), user, Chave()));
-        Assert.Contains("Reabra", erro.Message);
+        Assert.Contains("registro", erro.Message);
         await Assert.ThrowsAsync<InvalidOperationException>(() => svc.ResgatarAsync(meta.Id, new MovimentoMetaDto(conta, 10m), user, Chave()));
 
-        var reaberta = await svc.ReabrirAsync(meta.Id, user);
-        Assert.Null(reaberta.ConcluidaEm);
-        Assert.Null(reaberta.ValorJuntado);
-        Assert.False(reaberta.Concluida);
-        Assert.Null((await ctx.Contas.FindAsync(meta.ContaId))!.EncerradaEm);
-        await svc.GuardarAsync(meta.Id, new MovimentoMetaDto(conta, 50m), user, Chave());
-        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.ReabrirAsync(meta.Id, user)); // não está concluída
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.AtualizarAsync(meta.Id, MetaDto("Outro nome", 300m), user));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.ExcluirAsync(meta.Id, user));
+        var registro = await svc.ObterAsync(meta.Id, user);
+        Assert.Equal("Notebook", registro.Nome);
+        Assert.True(registro.Ativo);
+        Assert.Equal(300m, registro.ValorJuntado);
     }
 
     [Fact]
@@ -595,7 +594,7 @@ public class MetaServiceTests
 
         Assert.Equal("prazo-passou", MetaService.Situacao(1000m, 10m, new DateTime(2026, 8, 1), new DateTime(2026, 1, 1), hoje).Situacao);
         Assert.Equal("sem-prazo", MetaService.Situacao(1000m, 10m, null, new DateTime(2026, 1, 1), hoje).Situacao);
-        Assert.Equal("concluida", MetaService.Situacao(1000m, 1000m, new DateTime(2026, 8, 1), new DateTime(2026, 1, 1), hoje).Situacao);
+        Assert.Equal("chegou-la", MetaService.Situacao(1000m, 1000m, new DateTime(2026, 8, 1), new DateTime(2026, 1, 1), hoje).Situacao);
         // Arredonda o por mês pra cima no centavo (nunca fica faltando um centavo no fim).
         Assert.Equal(333.34m, MetaService.Situacao(1000m, 0m, new DateTime(2026, 11, 1), new DateTime(2026, 9, 1), hoje).PorMes);
     }

@@ -1,7 +1,8 @@
 // Metas (/metas), no modelo de caixinha (como o Nubank; decisão do Gustavo em 2026-10-19): cada meta tem a
 // própria caixinha e guardar TIRA o dinheiro da conta e põe nela (transferência de verdade). No topo: quanto
 // está guardado nas metas, quanto falta e quanto guardar por mês pra chegar nos prazos. Barra da lista no padrão
-// de Bancos: Em andamento | Concluídas à esquerda, "Nova meta" à direita. Cada meta é um cartão (ícone, nome,
+// de Bancos: Em andamento | Concluídas à esquerda, "Nova meta" à direita. "Chegou lá" continua Em andamento:
+// só vai pra Concluídas quando a pessoa marca "Concluir e usar o dinheiro". Cada meta é um cartão (ícone, nome,
 // guardado, de quanto, barra, prazo e situação) que abre a página dela (/metas/:id), onde moram guardar,
 // resgatar, o histórico e editar/excluir. Metas da família moram no espaço da família.
 import { useEffect, useMemo, useState } from "react"
@@ -15,7 +16,7 @@ import Botao from "../componentes/Botao"
 import { Dinheiro } from "../componentes/Dinheiro"
 import Etiqueta from "../componentes/Etiqueta"
 import Segmentos from "../componentes/Segmentos"
-import { etiquetaDaMeta, iconeDaMeta, mesAnoCurto, progressoDaMeta, tomDaBarra } from "../dominio/meta"
+import { SITUACAO_META, iconeDaMeta, mesAnoCurto, metaNoVerde, progressoDaMeta, tomDaBarra } from "../dominio/meta"
 import styles from "./Metas.module.css"
 
 type Aba = "andamento" | "concluidas"
@@ -87,11 +88,11 @@ function Numero({ rotulo, valor }: { rotulo: string; valor?: number }) {
 /** A caixinha da meta: ícone e situação em cima, nome, quanto tem, de quanto, a barra e o prazo. */
 function Cartao({ m }: { m: Meta }) {
   const Icone = iconeDaMeta(m.icone)
-  const situacao = etiquetaDaMeta(m)
+  const situacao = SITUACAO_META[m.situacao]
   const pct = Math.round(m.percentualConcluido)
   const progresso = progressoDaMeta(m)
   return (
-    <Link to={`/metas/${m.id}`} className={styles.cartao} data-concluida={m.concluida || undefined}>
+    <Link to={`/metas/${m.id}`} className={styles.cartao} data-concluida={metaNoVerde(m.situacao) || undefined}>
       <span className={styles.cartaoTopo}>
         <span className={styles.icone} aria-hidden="true"><Icone size={18} strokeWidth={2.25} /></span>
         {situacao && <Etiqueta tom={situacao.tom}>{situacao.rotulo}</Etiqueta>}

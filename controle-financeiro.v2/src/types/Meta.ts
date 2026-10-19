@@ -1,5 +1,6 @@
-/** "concluida" · "sem-prazo" · "prazo-passou" · "no-ritmo" · "atras" (calculado no servidor). */
-export type SituacaoMeta = "concluida" | "sem-prazo" | "prazo-passou" | "no-ritmo" | "atras"
+/** "concluida" (marcada: registro) · "chegou-la" (guardado ≥ alvo, ainda em andamento) · "sem-prazo" ·
+ *  "prazo-passou" · "no-ritmo" · "atras" (calculado no servidor). */
+export type SituacaoMeta = "concluida" | "chegou-la" | "sem-prazo" | "prazo-passou" | "no-ritmo" | "atras"
 
 /**
  * Meta no modelo de caixinha (como o Nubank): cada meta tem a própria conta (`contaId`, tipo Caixinha) e guardar
@@ -15,6 +16,7 @@ export interface Meta {
   guardado: number
   falta: number
   percentualConcluido: number
+  /** A pessoa marcou "Concluir e usar o dinheiro": está em Concluídas e é só registro. */
   concluida: boolean
   /** Mês do prazo (dia 1, ISO) ou null. */
   dataLimite: string | null

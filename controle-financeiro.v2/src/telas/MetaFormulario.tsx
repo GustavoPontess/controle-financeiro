@@ -1,5 +1,7 @@
 // Nova meta (/metas/nova) e editar (/metas/:id/editar): nome, quanto quer juntar, o ícone e o prazo (mês e ano,
 // opcional). Na meta nova, as sugestões (reserva de emergência, viagem, casa…) preenchem nome e ícone num toque.
+// "Criar outra igual" (de uma meta concluída) chega com `state.modelo`: nome, ícone, quanto e a mesma duração do
+// prazo a partir deste mês, tudo editável; nada do dinheiro nem do histórico vem junto.
 // O prazo é um MÊS; o servidor guarda o dia 1. Mês que já passou não vale (na edição, o prazo antigo pode ficar).
 // Guardar e resgatar são outras telas (a partir da página da meta): aqui é só a meta.
 import { useEffect, useRef, useState, type KeyboardEvent } from "react"
@@ -13,7 +15,7 @@ import EntradaValor from "../componentes/EntradaValor"
 import Formulario, { Campos, LinhaCampos, PaginaFormulario, RodapeFormulario } from "../componentes/Formulario"
 import Interruptor from "../componentes/Interruptor"
 import Selecao from "../componentes/Selecao"
-import { ICONES_META, MAX_NOME_META, MESES, TEMAS_META, prazoIso } from "../dominio/meta"
+import { ICONES_META, MAX_NOME_META, MESES, TEMAS_META, prazoIso, type ModeloMeta } from "../dominio/meta"
 import { moneyParaCampo, parseMoney } from "../utils/money"
 import styles from "./MetaFormulario.module.css"
 
@@ -22,17 +24,21 @@ type Erros = Partial<Record<"nome" | "valor" | "prazo", string>>
 export default function MetaFormulario() {
   const { id } = useParams<{ id?: string }>()
   const navigate = useNavigate()
-  const voltarPara = (useLocation().state as { voltarPara?: string } | null)?.voltarPara ?? (id ? `/metas/${id}` : "/metas")
+  const estado = useLocation().state as { voltarPara?: string; modelo?: ModeloMeta } | null
+  const voltarPara = estado?.voltarPara ?? (id ? `/metas/${id}` : "/metas")
+  const modelo = id ? undefined : estado?.modelo
   const hoje = new Date()
   const anoAtual = hoje.getFullYear(), mesAtual = hoje.getMonth() + 1
+  // Prazo do modelo: a mesma duração, contando este mês (3 meses em out → dez).
+  const fimModelo = modelo?.meses ? new Date(anoAtual, mesAtual - 1 + modelo.meses - 1, 1) : null
   const [carregando, setCarregando] = useState(!!id)
   const [erroCarga, setErroCarga] = useState<string | null>(null)
-  const [nome, setNome] = useState("")
-  const [valor, setValor] = useState("")
-  const [icone, setIcone] = useState("alvo")
-  const [comPrazo, setComPrazo] = useState(true)
-  const [mes, setMes] = useState("")
-  const [ano, setAno] = useState("")
+  const [nome, setNome] = useState(modelo?.nome ?? "")
+  const [valor, setValor] = useState(modelo ? moneyParaCampo(modelo.valorAlvo) : "")
+  const [icone, setIcone] = useState(modelo?.icone ?? "alvo")
+  const [comPrazo, setComPrazo] = useState(modelo ? !!modelo.meses : true)
+  const [mes, setMes] = useState(fimModelo ? String(fimModelo.getMonth() + 1) : "")
+  const [ano, setAno] = useState(fimModelo ? String(fimModelo.getFullYear()) : "")
   const [prazoOriginal, setPrazoOriginal] = useState<string | null>(null)
   const [erros, setErros] = useState<Erros>({})
   const [erro, setErro] = useState<string | null>(null)

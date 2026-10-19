@@ -25,10 +25,9 @@ vi.mock("../../services/metaService", () => ({
   guardarNaMeta: vi.fn(async () => meta({})),
   resgatarDaMeta: vi.fn(async () => meta({})),
   concluirMeta: vi.fn(async () => meta({})),
-  reabrirMeta: vi.fn(async () => meta({ id: "m4", nome: "Notebook novo", guardado: 0, concluida: false, situacao: "prazo-passou" })),
 }))
 vi.mock("../../services/contaService", () => ({ getContas: vi.fn(async () => contas) }))
-import { concluirMeta, criarMeta, excluirMeta, getMetas, guardarNaMeta, reabrirMeta, resgatarDaMeta } from "../../services/metaService"
+import { concluirMeta, criarMeta, excluirMeta, getMetas, guardarNaMeta, resgatarDaMeta } from "../../services/metaService"
 import Metas from "../../telas/Metas"
 import MetaFormulario from "../../telas/MetaFormulario"
 import MetaPagina from "../../telas/MetaPagina"
@@ -55,7 +54,7 @@ describe("Metas (caixinhas)", () => {
     metas = [
       meta({}),
       meta({ id: "m2", nome: "Reserva de emergência", icone: "emergencia", valorAlvo: 10000, guardado: 2300, falta: 7700, percentualConcluido: 23, dataLimite: null, mesesRestantes: null, porMes: null, situacao: "sem-prazo" }),
-      meta({ id: "m3", nome: "Viagem de férias", icone: "viagem", valorAlvo: 6000, guardado: 6000, falta: 0, percentualConcluido: 100, concluida: true, porMes: null, situacao: "concluida" }),
+      meta({ id: "m3", nome: "Viagem de férias", icone: "viagem", valorAlvo: 6000, guardado: 6000, falta: 0, percentualConcluido: 100, dataLimite: "2027-03-01T00:00:00", porMes: null, situacao: "chegou-la" }),
       meta({ id: "m4", nome: "Notebook novo", icone: "celular", valorAlvo: 3500, guardado: 0, falta: 0, percentualConcluido: 100, concluida: true, porMes: null, situacao: "concluida", concluidaEm: "2026-10-19T02:00:00", valorJuntado: 3500 }),
     ]
     contas = [conta("c1", "Conta Corrente", 3000), conta("c2", "Poupança", 300)]
@@ -65,7 +64,7 @@ describe("Metas (caixinhas)", () => {
     ]
   })
 
-  it("lista: só as pessoais; faixa soma guardado, falta e o por mês; cartões com situação e prazo levam pra página da meta", async () => {
+  it("lista: só as pessoais; faixa soma guardado, falta e o por mês; Chegou lá fica em andamento; Concluídas só as marcadas", async () => {
     const user = userEvent.setup()
     renderizar("/metas", { lista: true })
     const grade = await screen.findByRole("list", { name: "Metas" })
@@ -74,20 +73,21 @@ describe("Metas (caixinhas)", () => {
     expect(screen.getByText("R$ 13.300,00")).toBeInTheDocument() // guardado: 5000 + 2300 + 6000 (a concluída já usou o dela)
     expect(screen.getByText("R$ 62.700,00")).toBeInTheDocument() // falta: só das em andamento
     const cartoes = within(grade).getAllByRole("link")
-    expect(cartoes).toHaveLength(2) // em andamento: com prazo primeiro, depois sem prazo
-    expect(cartoes[0]).toHaveTextContent("Entrada do apê")
-    expect(cartoes[0]).toHaveTextContent("Atrás do ritmo")
-    expect(cartoes[0]).toHaveTextContent("Até dez/2027")
-    expect(cartoes[0]).toHaveAttribute("href", "/metas/m1")
-    expect(cartoes[1]).toHaveTextContent("Sem prazo")
+    expect(cartoes).toHaveLength(3) // em andamento: o prazo mais perto primeiro, depois sem prazo
+    expect(cartoes[0]).toHaveTextContent("Viagem de férias")
+    expect(cartoes[0]).toHaveTextContent("Chegou lá") // bateu o valor, mas só vai pra Concluídas quando marcar
+    expect(cartoes[1]).toHaveTextContent("Entrada do apê")
+    expect(cartoes[1]).toHaveTextContent("Atrás do ritmo")
+    expect(cartoes[1]).toHaveTextContent("Até dez/2027")
+    expect(cartoes[1]).toHaveAttribute("href", "/metas/m1")
+    expect(cartoes[2]).toHaveTextContent("Sem prazo")
     expect(screen.getByRole("button", { name: /Nova meta/ })).toBeInTheDocument()
 
-    await user.click(screen.getByRole("radio", { name: "Concluídas (2)" }))
-    const concluidas = within(screen.getByRole("list", { name: "Metas" })).getAllByRole("link")
-    expect(concluidas[0]).toHaveTextContent("Chegou lá") // tem o dinheiro ainda
-    expect(concluidas[1]).toHaveTextContent("Concluída") // usou: mostra o que juntou e quando
-    expect(concluidas[1]).toHaveTextContent("R$ 3.500,00")
-    expect(concluidas[1]).toHaveTextContent("Concluída em out/2026")
+    await user.click(screen.getByRole("radio", { name: "Concluídas (1)" }))
+    const concluida = within(screen.getByRole("list", { name: "Metas" })).getByRole("link")
+    expect(concluida).toHaveTextContent("Notebook novo") // marcada: mostra o que juntou e quando
+    expect(concluida).toHaveTextContent("R$ 3.500,00")
+    expect(concluida).toHaveTextContent("Concluída em out/2026")
   })
 
   it("chegou lá: Concluir e usar o dinheiro leva o guardado todo pra conta escolhida", async () => {
@@ -107,16 +107,19 @@ describe("Metas (caixinhas)", () => {
     expect(await screen.findByRole("heading", { name: "Viagem de férias" })).toBeInTheDocument() // volta pra página da meta
   })
 
-  it("concluída: mostra o que juntou, sem Guardar nem Resgatar; Reabrir desfaz", async () => {
+  it("concluída é registro: só o que juntou e o histórico; o único botão cria outra igual, zerada", async () => {
     const user = userEvent.setup()
     renderizar("/metas/m4", { pagina: true })
     expect(await screen.findByText("Juntou")).toBeInTheDocument()
     expect(screen.getAllByText("R$ 3.500,00").length).toBeGreaterThan(0)
-    expect(screen.queryByRole("button", { name: "Guardar" })).not.toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: "Resgatar" })).not.toBeInTheDocument()
-    await user.click(screen.getByRole("button", { name: "Reabrir" }))
-    expect(reabrirMeta).toHaveBeenCalledWith("m4")
-    expect(await screen.findByRole("button", { name: "Guardar" })).toBeInTheDocument()
+    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual(["Criar outra igual"])
+
+    await user.click(screen.getByRole("button", { name: "Criar outra igual" }))
+    expect(await screen.findByRole("heading", { name: "Nova meta" })).toBeInTheDocument()
+    expect(screen.getByLabelText("Nome")).toHaveValue("Notebook novo")
+    expect(screen.getByLabelText("Quanto quer juntar")).toHaveValue("3.500,00")
+    expect(screen.getByRole("radio", { name: "Celular" })).toHaveAttribute("aria-checked", "true")
+    expect(screen.getByRole("switch")).toBeChecked() // a original tinha prazo: a nova também (mesma duração)
   })
 
   it("página da meta: guardado, histórico de guardar e resgatar, e Guardar/Resgatar levam pras telas", async () => {

@@ -5,10 +5,11 @@ namespace ControleFinanceiro.Api.DTOs.Meta;
 /// <summary>
 /// Meta no modelo de CAIXINHA (como o Nubank; decisão do Gustavo em 2026-10-19): cada meta tem a própria conta
 /// (<c>ContaId</c>, tipo Caixinha) e guardar é transferência de verdade da conta da pessoa pra ela.
-/// <c>Guardado</c> = saldo da caixinha. <c>Situacao</c>: "concluida" · "sem-prazo" · "prazo-passou" · "no-ritmo"
-/// · "atras". <c>PorMes</c> = quanto falta dividido pelos meses até o prazo (contando o atual).
-/// <c>ConcluidaEm</c>/<c>ValorJuntado</c>: a pessoa concluiu e levou o dinheiro (aí <c>Guardado</c> é 0 e a meta
-/// continua "concluida"). <c>ValorAtual</c> = <c>Guardado</c> (compatibilidade com o app antigo).
+/// <c>Guardado</c> = saldo da caixinha. <c>Situacao</c>: "concluida" (a pessoa marcou e levou o dinheiro) ·
+/// "chegou-la" (guardado ≥ alvo, ainda em andamento) · "sem-prazo" · "prazo-passou" · "no-ritmo" · "atras".
+/// <c>Concluida</c> = marcada (<c>ConcluidaEm</c>): só aí a meta vai pra Concluídas e vira REGISTRO (não guarda,
+/// resgata, edita nem exclui). <c>PorMes</c> = quanto falta dividido pelos meses até o prazo (contando o atual).
+/// <c>ValorAtual</c> = <c>Guardado</c> (compatibilidade com o app antigo).
 /// </summary>
 public record MetaDto(
     Guid Id,

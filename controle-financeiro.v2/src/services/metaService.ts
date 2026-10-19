@@ -33,9 +33,5 @@ export const guardarNaMeta = (id: string, contaId: string, valor: number, data: 
 export const concluirMeta = (id: string, contaId: string, data: string, chave: string): Promise<Meta> =>
   api.post<Meta>(`${BASE}/${id}/concluir`, { contaId, data }, { headers: { "Idempotency-Key": chave }, skipErrorToast: true }).then((r) => r.data)
 
-/** Desfaz a conclusão: volta pra Em andamento (caixinha vazia, aberta de novo). */
-export const reabrirMeta = (id: string): Promise<Meta> =>
-  api.post<Meta>(`${BASE}/${id}/reabrir`, null, { skipErrorToast: true }).then((r) => r.data)
-
 export const resgatarDaMeta = (id: string, contaId: string, valor: number, data: string, chave: string): Promise<Meta> =>
   api.post<Meta>(`${BASE}/${id}/resgatar`, { contaId, valor, data }, { headers: { "Idempotency-Key": chave }, skipErrorToast: true }).then((r) => r.data)

@@ -105,8 +105,8 @@ public class MetasController : ControllerBase
         Ok(await _service.ResgatarAsync(id, dto, GetUserId(), idempotencyKey));
 
     /// <summary>
-    /// Conclui a meta que chegou lá e leva o guardado todo pra uma conta (uma transferência). A meta fica em
-    /// Concluídas com o histórico; a caixinha é encerrada. Exige o header Idempotency-Key.
+    /// Conclui a meta que chegou lá e leva o guardado todo pra uma conta (uma transferência). A meta vai pra
+    /// Concluídas como registro (não muda mais); a caixinha é encerrada. Exige o header Idempotency-Key.
     /// </summary>
     [HttpPost("{id:guid}/concluir")]
     [ProducesResponseType(typeof(MetaDto), StatusCodes.Status200OK)]
@@ -114,12 +114,6 @@ public class MetasController : ControllerBase
     public async Task<IActionResult> Concluir(Guid id, [FromBody] ConcluirMetaDto dto,
         [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey) =>
         Ok(await _service.ConcluirAsync(id, dto, GetUserId(), idempotencyKey));
-
-    /// <summary>Desfaz a conclusão: a meta volta pra Em andamento (a caixinha reabre, vazia).</summary>
-    [HttpPost("{id:guid}/reabrir")]
-    [ProducesResponseType(typeof(MetaDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> Reabrir(Guid id) => Ok(await _service.ReabrirAsync(id, GetUserId()));
 
     /// <summary>
     /// Inativa (soft delete) uma meta (somente o criador).
