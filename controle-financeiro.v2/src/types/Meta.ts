@@ -64,6 +64,15 @@ export interface ViabilidadeMeta {
   resposta: { tom: "positivo" | "alerta" | "negativo" | "neutro"; texto: string; acoes: { rotulo: string; para: string }[] }
 }
 
+/** "As metas juntas cabem?" (lista de Metas): o que as em andamento pedem por mês × a folga do mês, com a frase. */
+export interface ViabilidadeDasMetas {
+  pedemPorMes: number
+  /** Renda esperada − gasto normal − parcelas já compradas; null quando falta renda ou gasto pra saber. */
+  folga: number | null
+  /** null quando nenhuma meta pede nada por mês. */
+  resposta: ViabilidadeMeta["resposta"] | null
+}
+
 /** Uma linha do histórico: guardou (de uma conta pra caixinha) ou resgatou (da caixinha pra uma conta). */
 export interface MovimentoMeta {
   transferenciaId: string

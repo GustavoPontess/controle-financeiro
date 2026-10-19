@@ -2,10 +2,15 @@
 // a fixa (salário, aposentadoria, benefício) e a variável (comissão, bico, diária). Vale até ela mudar. Nada a ver
 // com "contas fixas", que são contas a pagar (o Gustavo, 2026-10-18). O que a família vê disso se escolhe NA
 // família (ficha do próprio membro), não aqui. Spec: docs/features/familia/renda-e-visibilidade.md.
+// Embaixo, "pra onde vai a renda" do mês escolhido: o mesmo cartão do Início (UsoDaRenda), que se refaz quando a
+// pessoa muda o que espera receber.
 import { useEffect, useState } from "react"
 import { definirRendaPrevista, getRendaMes, limparRendaPrevista } from "../services/rendaService"
+import { getDinheiroDoMes } from "../services/dinheiroDoMesService"
 import { mensagemDeErro } from "../api/cliente"
 import type { RendaMes } from "../types/Renda"
+import type { DinheiroDoMes } from "../types/DinheiroDoMes"
+import UsoDaRenda from "../componentes/UsoDaRenda"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import Botao from "../componentes/Botao"
 import Campo from "../componentes/Campo"
@@ -24,6 +29,9 @@ export default function Renda() {
   const [fixa, setFixa] = useState("")
   const [variavel, setVariavel] = useState("")
   const [salvando, setSalvando] = useState(false)
+  const [mesDinheiro, setMesDinheiro] = useState<DinheiroDoMes | null>(null)
+  const [erroMes, setErroMes] = useState(false)
+  const [versao, setVersao] = useState(0) // muda quando o esperado muda: o cartão da renda se refaz
 
   const aplicar = (r: RendaMes) => {
     setRenda(r)
@@ -40,9 +48,18 @@ export default function Renda() {
     return () => { vivo = false }
   }, [periodo])
 
+  useEffect(() => {
+    let vivo = true
+    setMesDinheiro(null); setErroMes(false)
+    getDinheiroDoMes(periodo.ano, periodo.mes)
+      .then((m) => { if (vivo) setMesDinheiro(m) })
+      .catch(() => { if (vivo) setErroMes(true) })
+    return () => { vivo = false }
+  }, [periodo, versao])
+
   const rodar = async (acao: () => Promise<RendaMes>) => {
     setSalvando(true); setErro(null)
-    try { aplicar(await acao()) } catch (e) { setErro(mensagemDeErro(e)) }
+    try { aplicar(await acao()); setVersao((v) => v + 1) } catch (e) { setErro(mensagemDeErro(e)) }
     setSalvando(false)
   }
   const salvar = () => rodar(() => definirRendaPrevista(periodo.ano, periodo.mes, parseMoney(fixa), parseMoney(variavel)))
@@ -102,6 +119,11 @@ export default function Renda() {
             )}
           </div>
         )}
+      </Bloco>
+
+      <Bloco titulo="Pra onde vai a renda">
+        {erroMes ? <p className={styles.alerta} role="alert">Não deu pra carregar o mês.</p>
+          : !mesDinheiro ? <Esqueleto linhas={4} altura={18} /> : <UsoDaRenda dados={mesDinheiro} />}
       </Bloco>
     </div>
   )

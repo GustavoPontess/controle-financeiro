@@ -4,17 +4,19 @@
 // de Bancos: Em andamento | Concluídas à esquerda, "Nova meta" à direita. "Chegou lá" continua Em andamento:
 // só vai pra Concluídas quando a pessoa marca "Concluir e usar o dinheiro". Cada meta é um cartão (ícone, nome,
 // guardado, de quanto, barra, prazo e situação) que abre a página dela (/metas/:id), onde moram guardar,
-// resgatar, o histórico e editar/excluir. Metas da família moram no espaço da família.
+// resgatar, o histórico e editar/excluir. Metas da família moram no espaço da família. Embaixo dos números, a
+// resposta "as metas juntas cabem?" (o que pedem por mês × a folga; não cabendo, qual prazo esticar).
 import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Plus } from "lucide-react"
-import { getMetas } from "../services/metaService"
-import type { Meta } from "../types/Meta"
+import { getMetas, getViabilidadeDasMetas } from "../services/metaService"
+import type { Meta, ViabilidadeDasMetas } from "../types/Meta"
 import BarraProgresso from "../componentes/BarraProgresso"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import Botao from "../componentes/Botao"
 import { Dinheiro } from "../componentes/Dinheiro"
 import Etiqueta from "../componentes/Etiqueta"
+import Resposta from "../componentes/Resposta"
 import Segmentos from "../componentes/Segmentos"
 import { SITUACAO_META, iconeDaMeta, mesAnoCurto, metaNoVerde, progressoDaMeta, tomDaBarra } from "../dominio/meta"
 import styles from "./Metas.module.css"
@@ -26,9 +28,12 @@ export default function Metas() {
   const [metas, setMetas] = useState<Meta[] | null>(null)
   const [erro, setErro] = useState(false)
   const [aba, setAba] = useState<Aba>("andamento")
+  const [cabem, setCabem] = useState<ViabilidadeDasMetas | null>(null)
   useEffect(() => {
     let vivo = true
     getMetas(true).then((m) => { if (vivo) setMetas(m) }).catch(() => { if (vivo) setErro(true) })
+    // A resposta é ajuda: sem ela, a tela segue igual.
+    getViabilidadeDasMetas().then((v) => { if (vivo) setCabem(v) }).catch(() => { /* sem resposta */ })
     return () => { vivo = false }
   }, [])
 
@@ -51,6 +56,11 @@ export default function Metas() {
           <Numero rotulo="Falta" valor={totais?.falta} />
           <Numero rotulo="Por mês pra chegar no prazo" valor={totais?.porMes} />
         </div>
+        {cabem?.resposta && (
+          <div className={styles.resposta}>
+            <Resposta tom={cabem.resposta.tom} texto={cabem.resposta.texto} acoes={cabem.resposta.acoes} />
+          </div>
+        )}
       </Bloco>
 
       <Bloco semRespiro>

@@ -191,4 +191,61 @@ public class ViabilidadeMetaServiceTests
         Assert.Equal(1000m, v.Folga);
         await Assert.ThrowsAsync<ArgumentException>(() => Servico(ctx).CalcularAsync(u, 0m, null, null, Hoje));
     }
+
+    // ── "As metas juntas cabem?" (lista de Metas) ──────────────────────────
+
+    [Fact]
+    public async Task MetasJuntas_Cabem_DizQuantoAindaFicaLivre()
+    {
+        var ctx = CreateContext();
+        var u = Pessoa(ctx);
+        await OutraMeta(ctx, u); // R$ 800 por mês
+
+        var v = await Servico(ctx).DasMetasAsync(u, Hoje);
+
+        Assert.Equal((800m, 1000m), (v.PedemPorMes, v.Folga!.Value));
+        Assert.Equal("positivo", v.Resposta!.Tom);
+        Assert.Equal("As metas pedem R$ 800,00 por mês e cabem: depois dos gastos sobram uns R$ 1.000,00, e ainda ficam uns R$ 200,00 livres.",
+            v.Resposta.Texto);
+    }
+
+    [Fact]
+    public async Task MetasJuntas_NaoCabem_SugereEsticarOPrazoDaQueMaisPede()
+    {
+        var ctx = CreateContext();
+        var u = Pessoa(ctx);
+        await OutraMeta(ctx, u); // R$ 800 por mês
+        var carro = await Metas(ctx).CriarAsync(new CriarMetaDto("Carro", null, 6000m, new DateTime(2026, 12, 1), null, null), u); // R$ 2.000 por mês
+
+        var v = await Servico(ctx).DasMetasAsync(u, Hoje);
+
+        // Sobra R$ 1.000; a Reserva leva 800, pro Carro ficam 200: R$ 6.000 em 30 meses, de outubro/2026 a março/2029.
+        Assert.Equal("alerta", v.Resposta!.Tom);
+        Assert.Equal("As metas pedem R$ 2.800,00 por mês, mas sobram uns R$ 1.000,00. Pra caber, estique o prazo de Carro pra março de 2029.",
+            v.Resposta.Texto);
+        var acao = Assert.Single(v.Resposta.Acoes);
+        Assert.Equal(("Ajustar Carro", $"/metas/{carro.Id}/editar"), (acao.Rotulo, acao.Para));
+    }
+
+    [Fact]
+    public async Task MetasJuntas_SemFolga_SemRenda_OuSemMetaPedindo()
+    {
+        var ctx = CreateContext();
+
+        var semFolga = Pessoa(ctx, renda: 2000m);
+        await OutraMeta(ctx, semFolga);
+        var r = (await Servico(ctx).DasMetasAsync(semFolga, Hoje)).Resposta!;
+        Assert.Equal(("negativo", "As metas pedem R$ 800,00 por mês, e hoje não sobra nada: o seu gasto normal (R$ 2.000,00 por mês) " +
+                                  "já leva toda a renda (R$ 2.000,00)."), (r.Tom, r.Texto));
+        Assert.Equal("/limites", Assert.Single(r.Acoes).Para);
+
+        var semRenda = Pessoa(ctx, renda: 0m);
+        await OutraMeta(ctx, semRenda);
+        var n = (await Servico(ctx).DasMetasAsync(semRenda, Hoje)).Resposta!;
+        Assert.Equal(("neutro", "/renda"), (n.Tom, Assert.Single(n.Acoes).Para));
+
+        var nada = await Servico(ctx).DasMetasAsync(Pessoa(ctx), Hoje); // nenhuma meta pedindo nada por mês
+        Assert.Equal((0m, (decimal?)null), (nada.PedemPorMes, nada.Folga));
+        Assert.Null(nada.Resposta);
+    }
 }
