@@ -25,9 +25,13 @@ vi.mock("../../services/metaService", () => ({
   guardarNaMeta: vi.fn(async () => meta({})),
   resgatarDaMeta: vi.fn(async () => meta({})),
   concluirMeta: vi.fn(async () => meta({})),
+  getViabilidadeMeta: vi.fn(async () => ({
+    porMes: 1666.67, meses: 3, folga: 200, rendaEsperada: 3000, gastoTipico: 2000, outrasMetasPorMes: 800, prazoQueCabe: "2028-10-01",
+    resposta: { tom: "alerta", texto: "Precisa guardar R$ 1.666,67 por mês, mas sobram uns R$ 200,00.", acoes: [] },
+  })),
 }))
 vi.mock("../../services/contaService", () => ({ getContas: vi.fn(async () => contas) }))
-import { concluirMeta, criarMeta, excluirMeta, getMetas, guardarNaMeta, resgatarDaMeta } from "../../services/metaService"
+import { concluirMeta, criarMeta, excluirMeta, getMetas, getViabilidadeMeta, guardarNaMeta, resgatarDaMeta } from "../../services/metaService"
 import Metas from "../../telas/Metas"
 import MetaFormulario from "../../telas/MetaFormulario"
 import MetaPagina from "../../telas/MetaPagina"
@@ -173,6 +177,24 @@ describe("Metas (caixinhas)", () => {
     await user.click(screen.getByRole("button", { name: "Criar meta" }))
     expect(criarMeta).toHaveBeenCalledWith({ nome: "Viagem", valorAlvo: 5000, dataLimite: null, icone: "viagem" })
     expect(await screen.findByText("em /metas/m9")).toBeInTheDocument()
+  })
+
+  it("nova meta: responde se cabe enquanto preenche e oferece o mês em que dá pra chegar como prazo", async () => {
+    const user = userEvent.setup()
+    renderizar("/metas/nova")
+    await user.type(await screen.findByLabelText("Quanto quer juntar"), "500000")
+    const [mes, ano] = screen.getAllByRole("combobox")
+    await user.click(mes)
+    await user.click(screen.getByRole("option", { name: "Dezembro" }))
+    await user.click(ano)
+    await user.click(screen.getByRole("option", { name: String(new Date().getFullYear()) }))
+
+    expect(await screen.findByText("Precisa guardar R$ 1.666,67 por mês, mas sobram uns R$ 200,00.")).toBeInTheDocument()
+    expect(getViabilidadeMeta).toHaveBeenLastCalledWith(5000, `${new Date().getFullYear()}-12-01`, undefined)
+    await user.click(screen.getByRole("button", { name: "Usar outubro de 2028 como prazo" }))
+    const [mesDepois, anoDepois] = screen.getAllByRole("combobox")
+    expect(mesDepois).toHaveTextContent("Outubro")
+    expect(anoDepois).toHaveTextContent("2028")
   })
 
   it("guardar: não passa do saldo da conta; guarda com a mesma chave e volta pra página da meta", async () => {

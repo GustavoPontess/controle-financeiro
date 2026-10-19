@@ -1,5 +1,6 @@
 using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
+using ControleFinanceiro.Api.DTOs.DinheiroDoMes;
 using ControleFinanceiro.Api.DTOs.Orcamento;
 using ControleFinanceiro.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -31,9 +32,11 @@ public class OrcamentoService
         ValidarMes(ano, mes);
         var vigentes = await VigentesAsync(usuarioId, ano, mes);
         var gastos = await RegrasFinanceiras.GastosPorCategoriaDoMesAsync(_context, usuarioId, ano, mes);
+        var previstos = await RegrasFinanceiras.PrevistosDoMesAsync(_context, usuarioId, ano, mes);
 
         var ids = vigentes.Where(o => o.CategoriaId.HasValue).Select(o => o.CategoriaId!.Value)
-            .Concat(gastos.Keys.Where(k => k != RegrasFinanceiras.SemCategoria)).Distinct().ToList();
+            .Concat(gastos.Keys.Where(k => k != RegrasFinanceiras.SemCategoria))
+            .Concat(previstos.Where(p => p.CategoriaId.HasValue).Select(p => p.CategoriaId!.Value)).Distinct().ToList();
         var nomes = await _context.Categorias.AsNoTracking().Where(c => ids.Contains(c.Id))
             .ToDictionaryAsync(c => c.Id, c => c.Descricao);
         string Nome(Guid? id) => id is null ? "Todos os gastos"
@@ -43,13 +46,18 @@ public class OrcamentoService
         {
             var g = o.CategoriaId is { } c ? gastos.GetValueOrDefault(c)
                 : new RegrasFinanceiras.GastoCategoria(gastos.Values.Sum(x => x.Gasto), gastos.Values.Sum(x => x.Previsto));
+            var vem = previstos.Where(p => o.CategoriaId is null || p.CategoriaId == o.CategoriaId)
+                .Select(p => new AindaVemDto(p.TransacaoId, p.ContaFixaId, p.Descricao, p.Data, p.CategoriaId,
+                    p.CategoriaId is null ? "Sem categoria" : Nome(p.CategoriaId), p.Valor))
+                .ToList();
             var pct = Math.Round(g.Gasto * 100m / o.ValorLimite, 1);
-            var situacao = g.Gasto > o.ValorLimite ? "passou" : pct >= o.PercentualAlerta ? "perto" : "ok";
+            var situacao = Situacao(o.ValorLimite, g.Gasto, vem.Sum(v => v.Valor), pct, o.PercentualAlerta);
             return new LimiteDoMesDto(o.CategoriaId, Nome(o.CategoriaId), o.ValorLimite, g.Gasto, g.Previsto,
-                o.ValorLimite - g.Gasto, pct, situacao, o.Ano, o.Mes);
+                o.ValorLimite - g.Gasto, pct, situacao, o.Ano, o.Mes, o.PercentualAlerta, vem,
+                Responder(situacao, o.ValorLimite, g.Gasto, vem));
         })
-            // O que precisa de atenção primeiro: quem passou, depois quem está mais perto.
-            .OrderByDescending(l => l.Percentual).ThenBy(l => l.Categoria, StringComparer.CurrentCulture)
+            // O que precisa de atenção primeiro: quem passou, quem vai passar, quem está perto; depois pelo quanto gastou.
+            .OrderBy(l => Prioridade(l.Situacao)).ThenByDescending(l => l.Percentual).ThenBy(l => l.Categoria, StringComparer.CurrentCulture)
             .ToList();
 
         var comLimite = vigentes.Where(o => o.CategoriaId.HasValue).Select(o => o.CategoriaId!.Value).ToHashSet();
@@ -140,6 +148,37 @@ public class OrcamentoService
             });
         await _context.SaveChangesAsync();
         return await DoMesAsync(usuarioId, ano, mes, agora);
+    }
+
+    /// <summary>Passou (o que já aconteceu) › vai passar (com o que ainda vem) › perto (do alerta) › ok.</summary>
+    public static string Situacao(decimal limite, decimal gasto, decimal aindaVem, decimal percentual, decimal alerta) =>
+        gasto > limite ? "passou" : gasto + aindaVem > limite ? "vai-passar" : percentual >= alerta ? "perto" : "ok";
+
+    private static int Prioridade(string situacao) => situacao switch { "passou" => 0, "vai-passar" => 1, "perto" => 2, _ => 3 };
+
+    /// <summary>
+    /// A resposta do limite ("e agora?"), contando o que ainda vem na categoria. O que passou é só o que já
+    /// aconteceu; o que vem entra na conta da frase, nunca no número da sobra.
+    /// </summary>
+    public static string? Responder(string situacao, decimal limite, decimal gasto, IReadOnlyList<AindaVemDto> vem)
+    {
+        var totalVem = vem.Sum(v => v.Valor);
+        var vemFrase = vem.Count switch
+        {
+            0 => null,
+            1 => $"Ainda vem {vem[0].Descricao} (dia {vem[0].Data.Day}, {Reais.Formatar(vem[0].Valor)}).",
+            _ => $"Ainda vêm {vem.Count} contas ({Reais.Formatar(totalVem)}).",
+        };
+        return situacao switch
+        {
+            "passou" when vemFrase is not null =>
+                $"Passou {Reais.Formatar(gasto - limite)}. {vemFrase} Pausar ou cancelar uma dessas contas alivia o mês.",
+            "passou" => $"Passou {Reais.Formatar(gasto - limite)} do limite.",
+            "vai-passar" => $"{vemFrase} Contando isso, passa {Reais.Formatar(gasto + totalVem - limite)} do limite.",
+            _ when vemFrase is not null => $"{vemFrase} Contando isso, dá pra gastar mais {Reais.Formatar(limite - gasto - totalVem)} sem passar.",
+            "perto" => $"Dá pra gastar mais {Reais.Formatar(limite - gasto)} sem passar.",
+            _ => null,
+        };
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

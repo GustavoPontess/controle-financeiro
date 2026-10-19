@@ -39,6 +39,14 @@
   --v2-sombra-palco: 0 20px 48px -24px rgba(20, 20, 20, 0.45);
   --v2-rolagem: #CFCFCA;
   --v2-rolagem-hover: #A8A8A2;
+  /* Séries de gráfico (uma por categoria, na ordem); cinza = sem categoria / outras */
+  --v2-serie-1: #6C63D9;
+  --v2-serie-2: #1D9E75;
+  --v2-serie-3: #D85A30;
+  --v2-serie-4: #D4537E;
+  --v2-serie-5: #BA7517;
+  --v2-serie-cinza: #8C8B85;
+  --v2-serie-cinza-2: #B9B8B1;
   color-scheme: light;
 }
 
@@ -71,6 +79,13 @@
   --v2-sombra-palco: 0 20px 48px -24px rgba(0, 0, 0, 0.8);
   --v2-rolagem: #30343C;
   --v2-rolagem-hover: #464B55;
+  --v2-serie-1: #A39DF0;
+  --v2-serie-2: #5DCAA5;
+  --v2-serie-3: #F0997B;
+  --v2-serie-4: #ED93B1;
+  --v2-serie-5: #EFB054;
+  --v2-serie-cinza: #8E8D87;
+  --v2-serie-cinza-2: #5E5D59;
   color-scheme: dark;
 }
 

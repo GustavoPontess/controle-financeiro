@@ -536,4 +536,24 @@ public static class RegrasFinanceiras
             Soma(p.CategoriaId, p.Total, 0m);
         return resultado;
     }
+
+    /// <summary>Uma despesa prevista no mês que ainda não aconteceu (a ocorrência de uma conta fixa, quase sempre).</summary>
+    public sealed record PrevistoDoMes(Guid TransacaoId, Guid? ContaFixaId, string Descricao, DateOnly Data, Guid? CategoriaId, decimal Valor);
+
+    /// <summary>
+    /// O que ainda vai sair no mês: as despesas PREVISTAS (mesmo recorte do "previsto" de
+    /// <see cref="GastosPorCategoriaDoMesAsync"/>), da data mais perto pra mais longe.
+    /// </summary>
+    public static async Task<List<PrevistoDoMes>> PrevistosDoMesAsync(AppDbContext context, Guid usuarioId, int ano, int mes)
+    {
+        var inicio = new DateOnly(ano, mes, 1);
+        var fim = inicio.AddMonths(1);
+        return await context.Transacoes.AsNoTracking()
+            .Where(t => t.CriadoPor == usuarioId && t.Tipo == TipoTransacao.Despesa && t.Ativo
+                        && t.StatusTransacao == StatusTransacao.Previsao && t.Data >= inicio && t.Data < fim)
+            .Where(EntraNoResultado)
+            .OrderBy(t => t.Data).ThenBy(t => t.Descricao)
+            .Select(t => new PrevistoDoMes(t.Id, t.RecorrenteOrigemId, t.Descricao, t.Data, t.CategoriaId, t.Valor))
+            .ToListAsync();
+    }
 }
