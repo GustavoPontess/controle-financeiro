@@ -3,7 +3,8 @@
 // mês passado fica como estava (só mostra). No topo, o mês (NavegadorMes) e os três números das categorias com
 // limite: limite, gasto e quanto sobra (ou passou). A lista vem com quem precisa de atenção primeiro (passou,
 // perto do limite) e, embaixo, as categorias que gastaram sem limite, com "Pôr limite". O gasto inclui a parcela do
-// mês das compras parceladas (regra única no servidor) e mostra à parte o previsto (conta fixa que ainda vai cair).
+// mês das compras parceladas (regra única no servidor). O que ainda vem (conta fixa prevista) entra na resposta e na
+// situação ("Vai passar"), listrado na barra, e na ficha com link pra conta fixa; nunca no número da sobra.
 import { useEffect, useMemo, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { Pencil, Plus, Trash2 } from "lucide-react"
@@ -17,6 +18,8 @@ import Confirmar from "../componentes/Confirmar"
 import { Dinheiro } from "../componentes/Dinheiro"
 import Etiqueta from "../componentes/Etiqueta"
 import { AcoesFicha, DadosFicha, GrupoFicha, InicialFicha, ItemFicha, ListaFicha } from "../componentes/ListaFicha"
+import ListaAindaVem from "../componentes/ListaAindaVem"
+import Resposta from "../componentes/Resposta"
 import NavegadorMes, { nomeDoPeriodo, periodoDeHoje, type Periodo } from "../componentes/NavegadorMes"
 import styles from "./Limites.module.css"
 
@@ -106,8 +109,12 @@ function Numero({ rotulo, valor, tom }: { rotulo: string; valor?: number; tom?: 
 
 const ETIQUETA: Record<LimiteDoMes["situacao"], { rotulo: string; tom: "negativo" | "alerta" } | null> = {
   passou: { rotulo: "Passou", tom: "negativo" },
+  "vai-passar": { rotulo: "Vai passar", tom: "alerta" },
   perto: { rotulo: "Perto do limite", tom: "alerta" },
   ok: null,
+}
+const TOM_RESPOSTA: Record<LimiteDoMes["situacao"], "negativo" | "alerta" | "neutro"> = {
+  passou: "negativo", "vai-passar": "alerta", perto: "alerta", ok: "neutro",
 }
 
 /** Um limite: a linha (categoria, gasto de limite, situação, sobra e a barra) e a ficha com os números e as ações. */
@@ -136,7 +143,7 @@ function Linha({ l, periodo, editavel, aberta, aoAbrir, aoMudar }: {
     <ItemFicha id={chaveDe(l.categoriaId)} aberto={aberta} aoAbrir={aoAbrir}
       marca={<InicialFicha texto={l.categoria} />}
       titulo={l.categoria}
-      detalhe={<><Dinheiro valor={l.gasto} /> de <Dinheiro valor={l.limite} />{l.previsto > 0 && <> · mais <Dinheiro valor={l.previsto} /> previsto</>}</>}
+      detalhe={<><Dinheiro valor={l.gasto} /> de <Dinheiro valor={l.limite} />{l.previsto > 0 && <> · <Dinheiro valor={l.previsto} /> ainda vem</>}</>}
       direita={
         <span className={styles.direita}>
           <span className={styles.direitaTopo}>
@@ -145,7 +152,8 @@ function Linha({ l, periodo, editavel, aberta, aoAbrir, aoMudar }: {
             <span className={styles.sobra} data-passou={passou || undefined}>{passou ? <><Dinheiro valor={Math.abs(l.sobra)} /> a mais</> : <>sobra <Dinheiro valor={l.sobra} /></>}</span>
           </span>
           <span className={styles.barra}>
-            <BarraProgresso fracao={l.limite > 0 ? l.gasto / l.limite : 0} tom={l.situacao === "perto" ? "alerta" : undefined}
+            <BarraProgresso fracao={l.limite > 0 ? l.gasto / l.limite : 0} fracaoAVir={l.limite > 0 ? l.previsto / l.limite : 0}
+              tom={l.situacao === "perto" || l.situacao === "vai-passar" ? "alerta" : undefined}
               rotulo={`${Math.round(l.percentual)}% do limite gasto`} />
           </span>
         </span>
@@ -154,10 +162,16 @@ function Linha({ l, periodo, editavel, aberta, aoAbrir, aoMudar }: {
       <DadosFicha>
         <div><dt>Limite por mês</dt><dd><Dinheiro valor={l.limite} /></dd></div>
         <div><dt>Gasto</dt><dd><Dinheiro valor={l.gasto} /></dd></div>
-        {l.previsto > 0 && <div><dt>Ainda vai cair</dt><dd><Dinheiro valor={l.previsto} /></dd></div>}
         <div><dt>{passou ? "Passou" : "Sobra"}</dt><dd><Dinheiro valor={Math.abs(l.sobra)} tom={passou ? "negativo" : undefined} /></dd></div>
         <div><dt>Vale desde</dt><dd>{nomeDoPeriodo({ ano: l.desdeAno, mes: l.desdeMes }).toLowerCase()}</dd></div>
       </DadosFicha>
+      {l.aindaVem.length > 0 && (
+        <div className={styles.vem}>
+          <span className={styles.vemTitulo}>Ainda vem este mês</span>
+          <ListaAindaVem itens={l.aindaVem} semCategoria={l.categoriaId !== null} />
+        </div>
+      )}
+      {l.resposta && <div className={styles.resposta}><Resposta tom={TOM_RESPOSTA[l.situacao]} texto={l.resposta} /></div>}
       {editavel && (
         <AcoesFicha>
           <Botao perigo disabled={ocupado} onClick={() => setTirando(true)} icone={<Trash2 size={15} strokeWidth={2.25} aria-hidden="true" />}>Tirar limite</Botao>

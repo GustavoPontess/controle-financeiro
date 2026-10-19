@@ -200,6 +200,61 @@ public class OrcamentoServiceTests
         Assert.True((await svc.DoMesAsync(u, 2026, 4, new DateTime(2026, 5, 1, 1, 0, 0))).Editavel);
     }
 
+    // ── O que ainda vem: "vai passar" e a resposta ───────────────────────────
+
+    [Fact]
+    public async Task AindaVem_EntraNaResposta_ENaSituacao_NuncaNaSobra()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var moradia = SeedCategoria(ctx, "Moradia");
+        var svc = new OrcamentoService(ctx);
+        await Definir(svc, u, moradia, 1900m, 2026, 5);
+        Gasto(ctx, u, moradia, 1765m, new DateOnly(2026, 5, 3));
+        var internet = Guid.NewGuid();
+        Gasto(ctx, u, moradia, 99.90m, new DateOnly(2026, 5, 20), StatusTransacao.Previsao, t => { t.Descricao = "Internet"; t.RecorrenteOrigemId = internet; });
+
+        var l = Assert.Single((await svc.DoMesAsync(u, 2026, 5, Agora)).Limites);
+        Assert.Equal("perto", l.Situacao);
+        Assert.Equal(135m, l.Sobra); // a sobra é só o que já aconteceu
+        Assert.Equal(("Internet", (Guid?)internet), (Assert.Single(l.AindaVem).Descricao, l.AindaVem[0].ContaFixaId));
+        Assert.Equal("Ainda vem Internet (dia 20, R$ 99,90). Contando isso, dá pra gastar mais R$ 35,10 sem passar.", l.Resposta);
+
+        Gasto(ctx, u, moradia, 50m, new DateOnly(2026, 5, 25), StatusTransacao.Previsao, t => t.Descricao = "Gás");
+        l = Assert.Single((await svc.DoMesAsync(u, 2026, 5, Agora)).Limites);
+        Assert.Equal("vai-passar", l.Situacao);
+        Assert.Equal("Ainda vêm 2 contas (R$ 149,90). Contando isso, passa R$ 14,90 do limite.", l.Resposta);
+
+        Gasto(ctx, u, moradia, 200m, new DateOnly(2026, 5, 9));
+        l = Assert.Single((await svc.DoMesAsync(u, 2026, 5, Agora)).Limites);
+        Assert.Equal("passou", l.Situacao);
+        Assert.Equal("Passou R$ 65,00. Ainda vêm 2 contas (R$ 149,90). Pausar ou cancelar uma dessas contas alivia o mês.", l.Resposta);
+    }
+
+    [Fact]
+    public async Task VaiPassar_VemAntesDePerto_EOkSemNadaPraDizer()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var a = SeedCategoria(ctx, "A");
+        var b = SeedCategoria(ctx, "B");
+        var c = SeedCategoria(ctx, "C");
+        var svc = new OrcamentoService(ctx);
+        await Definir(svc, u, a, 100m, 2026, 5);
+        await Definir(svc, u, b, 100m, 2026, 5);
+        await Definir(svc, u, c, 100m, 2026, 5);
+        Gasto(ctx, u, a, 90m, new DateOnly(2026, 5, 3));                           // perto (90%)
+        Gasto(ctx, u, b, 50m, new DateOnly(2026, 5, 3));
+        Gasto(ctx, u, b, 60m, new DateOnly(2026, 5, 28), StatusTransacao.Previsao); // vai passar
+        Gasto(ctx, u, c, 10m, new DateOnly(2026, 5, 3));                           // ok
+
+        var limites = (await svc.DoMesAsync(u, 2026, 5, Agora)).Limites;
+
+        Assert.Equal([("B", "vai-passar"), ("A", "perto"), ("C", "ok")], limites.Select(l => (l.Categoria, l.Situacao)));
+        Assert.Null(limites[2].Resposta);
+        Assert.Equal("Dá pra gastar mais R$ 10,00 sem passar.", limites[1].Resposta);
+    }
+
     // ── Sem limite, sugestão, validação ─────────────────────────────────────
 
     [Fact]

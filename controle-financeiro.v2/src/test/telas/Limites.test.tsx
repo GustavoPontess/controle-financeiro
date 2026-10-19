@@ -6,7 +6,7 @@ import type { LimiteDoMes, LimitesDoMes } from "../../types/Limite"
 
 const limite = (extra: Partial<LimiteDoMes>): LimiteDoMes => ({
   categoriaId: "mercado", categoria: "Mercado", limite: 1200, gasto: 870, previsto: 0, sobra: 330, percentual: 72.5,
-  situacao: "ok", desdeAno: 2026, desdeMes: 8, ...extra,
+  situacao: "ok", desdeAno: 2026, desdeMes: 8, percentualAlerta: 80, aindaVem: [], resposta: null, ...extra,
 })
 let mes: LimitesDoMes
 vi.mock("../../services/limiteService", () => ({
@@ -47,7 +47,11 @@ describe("Limites", () => {
       ano: 2026, mes: 10, editavel: true, totalLimite: 1900, totalGasto: 1400, totalPrevisto: 90,
       limites: [
         limite({ categoriaId: "restaurante", categoria: "Restaurante", limite: 300, gasto: 410, sobra: -110, percentual: 136.7, situacao: "passou" }),
-        limite({ categoriaId: "lazer", categoria: "Lazer", limite: 400, gasto: 340, sobra: 60, percentual: 85, situacao: "perto", previsto: 90 }),
+        limite({
+          categoriaId: "lazer", categoria: "Lazer", limite: 400, gasto: 340, sobra: 60, percentual: 85, situacao: "vai-passar", previsto: 90,
+          aindaVem: [{ transacaoId: "t1", contaFixaId: "cf-streaming", descricao: "Streaming", data: "2026-10-22", categoriaId: "lazer", categoria: "Lazer", valor: 90 }],
+          resposta: "Ainda vem Streaming (dia 22, R$ 90,00). Contando isso, passa R$ 30,00 do limite.",
+        }),
         limite({}),
       ],
       semLimite: [{ categoriaId: "farmacia", categoria: "Farmácia", gasto: 250 }],
@@ -64,11 +68,22 @@ describe("Limites", () => {
 
     const lista = screen.getByRole("list", { name: "Limites" })
     expect(within(lista).getByText("Passou")).toBeInTheDocument()
-    expect(within(lista).getByText("Perto do limite")).toBeInTheDocument()
+    expect(within(lista).getByText("Vai passar")).toBeInTheDocument()
     expect(within(lista).getByText(/a mais/)).toHaveTextContent("R$ 110,00 a mais")
-    expect(within(lista).getByText(/previsto/)).toHaveTextContent("mais R$ 90,00 previsto")
+    expect(within(lista).getByText(/ainda vem/)).toHaveTextContent("R$ 90,00 ainda vem")
     expect(within(lista).getByText("Sem limite")).toBeInTheDocument()
     expect(within(lista).getByText("Farmácia")).toBeInTheDocument()
+  })
+
+  it("a ficha do que vai passar lista o que ainda vem (com a conta fixa) e responde", async () => {
+    const user = userEvent.setup()
+    renderizar(outubro)
+    await user.click(await screen.findByText("Lazer"))
+    const vem = screen.getByRole("list", { name: "Ainda vem este mês" })
+    expect(within(vem).getByRole("link")).toHaveAttribute("href", "/contas-fixas/cf-streaming")
+    expect(within(vem).getByRole("link")).toHaveTextContent("Streaming · dia 22")
+    expect(screen.getByText("Ainda vem Streaming (dia 22, R$ 90,00). Contando isso, passa R$ 30,00 do limite.")).toBeInTheDocument()
+    expect(screen.queryByText("Ainda vai cair")).not.toBeInTheDocument()
   })
 
   it("Novo limite e Pôr limite levam pro formulário no mesmo mês", async () => {

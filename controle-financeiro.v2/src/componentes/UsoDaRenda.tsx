@@ -3,10 +3,10 @@
 // fixa prevista) fica listrado; o vazio no fim é o que sobra. Passou da renda: a barra cresce além da marca "sua
 // renda". Embaixo, a legenda (já saiu · ainda vem · livre ou passou) e a resposta do mês com as ações. Só mostra:
 // a conta toda vem pronta do servidor (DinheiroDoMesService). Usado no Início, na Renda e em Relatórios.
-import { Link, useNavigate } from "react-router-dom"
 import type { DinheiroDoMes, ParteDoMes } from "../types/DinheiroDoMes"
-import Botao from "./Botao"
 import { Dinheiro } from "./Dinheiro"
+import ListaAindaVem from "./ListaAindaVem"
+import Resposta from "./Resposta"
 import styles from "./UsoDaRenda.module.css"
 
 const pct = (v: number) => `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(v)}%`
@@ -18,7 +18,6 @@ function series(partes: ParteDoMes[]): string[] {
 }
 
 export default function UsoDaRenda({ dados }: { dados: DinheiroDoMes }) {
-  const navigate = useNavigate()
   const usado = dados.jaSaiu + dados.aindaVemTotal
   const temRenda = dados.rendaBase > 0
   const escala = Math.max(dados.rendaBase, usado) || 1
@@ -70,18 +69,7 @@ export default function UsoDaRenda({ dados }: { dados: DinheiroDoMes }) {
       {dados.aindaVem.length > 0 && (
         <>
           <span className={styles.grupo}>Ainda vem este mês</span>
-          <ul className={styles.legenda} data-vem="true" aria-label="Ainda vem este mês">
-            {dados.aindaVem.map((a) => (
-              <li key={a.transacaoId}>
-                <span className={styles.ponto} data-vem="true" aria-hidden="true" />
-                <Link className={styles.nome} to={a.contaFixaId ? `/contas-fixas/${a.contaFixaId}` : `/transacoes/${a.transacaoId}`}>
-                  {a.descricao}<span className={styles.mudo}> · dia {Number(a.data.slice(8, 10))} · {a.categoria}</span>
-                </Link>
-                <Dinheiro valor={a.valor} className={styles.valor} />
-                {temRenda && <span className={styles.pct}>{pct(Math.round((a.valor * 1000) / dados.rendaBase) / 10)}</span>}
-              </li>
-            ))}
-          </ul>
+          <ListaAindaVem itens={dados.aindaVem} base={temRenda ? dados.rendaBase : undefined} />
         </>
       )}
 
@@ -93,13 +81,8 @@ export default function UsoDaRenda({ dados }: { dados: DinheiroDoMes }) {
         </div>
       )}
 
-      <div className={styles.resposta} data-tom={dados.resposta.tom}>
-        <p className={styles.respostaTexto}>{dados.resposta.texto}</p>
-        {dados.resposta.acoes.length > 0 && (
-          <div className={styles.acoes}>
-            {dados.resposta.acoes.map((a) => <Botao key={a.para} onClick={() => navigate(a.para)}>{a.rotulo}</Botao>)}
-          </div>
-        )}
+      <div className={styles.respostaLugar}>
+        <Resposta tom={dados.resposta.tom} texto={dados.resposta.texto} acoes={dados.resposta.acoes} />
       </div>
     </div>
   )

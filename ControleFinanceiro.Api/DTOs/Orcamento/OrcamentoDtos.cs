@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ControleFinanceiro.Api.DTOs.DinheiroDoMes;
 
 namespace ControleFinanceiro.Api.DTOs.Orcamento;
 
@@ -13,8 +14,10 @@ public record DefinirLimiteDto(
     [Range(0.01, 999_999_999.99, ErrorMessage = "Diga o limite.")] decimal Valor);
 
 /// <summary>
-/// Um limite no mês. <c>Situacao</c>: "ok" · "perto" (passou do alerta, 80% por padrão) · "passou" (gastou mais que o
-/// limite). <c>Sobra</c> negativa = quanto passou. <c>DesdeAno</c>/<c>DesdeMes</c>: de quando vale este valor.
+/// Um limite no mês. <c>Situacao</c>: "passou" (gastou mais que o limite) · "vai-passar" (ainda não, mas com o que
+/// ainda vem passa) · "perto" (passou do alerta, 80% por padrão) · "ok". <c>Sobra</c> negativa = quanto passou (só o
+/// que já aconteceu). <c>AindaVem</c>: as contas previstas da categoria no mês. <c>Resposta</c>: a frase que responde
+/// "e agora?" (null quando não há o que dizer). <c>DesdeAno</c>/<c>DesdeMes</c>: de quando vale este valor.
 /// </summary>
 public record LimiteDoMesDto(
     Guid? CategoriaId,
@@ -26,7 +29,10 @@ public record LimiteDoMesDto(
     decimal Percentual,
     string Situacao,
     int DesdeAno,
-    int DesdeMes);
+    int DesdeMes,
+    decimal PercentualAlerta,
+    List<AindaVemDto> AindaVem,
+    string? Resposta);
 
 /// <summary>Categoria com gasto no mês e sem limite (a tela oferece "Pôr limite").</summary>
 public record GastoSemLimiteDto(Guid? CategoriaId, string Categoria, decimal Gasto);

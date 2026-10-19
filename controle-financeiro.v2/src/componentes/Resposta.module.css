@@ -1,0 +1,11 @@
+.resposta { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 14px; border-radius: var(--v2-r-md); background: var(--v2-superficie-2); }
+.resposta[data-tom="positivo"] { background: var(--v2-positivo-suave); }
+.resposta[data-tom="alerta"] { background: var(--v2-alerta-suave); }
+.resposta[data-tom="negativo"] { background: var(--v2-negativo-suave); }
+.texto { margin: 0; flex: 1 1 280px; font-size: var(--v2-fs-sm); font-weight: 500; line-height: 1.5; color: var(--v2-texto); }
+.acoes { display: flex; gap: 8px; }
+
+@media (max-width: 900px) {
+  .acoes { width: 100%; }
+  .acoes > * { flex: 1; }
+}

@@ -22,6 +22,11 @@
 .sobra { font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-texto-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .sobra[data-passou="true"] { color: var(--v2-negativo); }
 .barra { width: 100%; }
+
+/* Ficha: o que ainda vem na categoria e a resposta */
+.vem { display: flex; flex-direction: column; gap: 2px; margin-top: 10px; }
+.vemTitulo { font-size: var(--v2-fs-xs); font-weight: 600; color: var(--v2-texto-3); }
+.resposta { margin-top: 10px; }
 .valor { font-size: var(--v2-fs-md); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 @media (max-width: 900px) {

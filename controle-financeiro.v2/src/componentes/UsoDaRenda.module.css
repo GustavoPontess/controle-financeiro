@@ -17,18 +17,14 @@
 [data-serie="5"] { background: var(--v2-serie-5); }
 [data-serie="cinza"] { background: var(--v2-serie-cinza); }
 [data-serie="cinza-2"] { background: var(--v2-serie-cinza-2); }
-[data-vem="true"].pedaco, .ponto[data-vem="true"] { background: repeating-linear-gradient(45deg, var(--v2-serie-cinza) 0 2px, transparent 2px 5px); }
+[data-vem="true"].pedaco { background: repeating-linear-gradient(45deg, var(--v2-serie-cinza) 0 2px, transparent 2px 5px); }
 
 /* Legenda: ponto · nome · valor · % da renda */
 .grupo { margin-top: 4px; font-size: var(--v2-fs-xs); font-weight: 600; color: var(--v2-texto-3); }
 .legenda { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .legenda li, .livre { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto 56px; align-items: center; gap: 10px; padding: 5px 0; font-size: var(--v2-fs-sm); }
-.legenda[data-vem="true"] li { color: var(--v2-texto-2); }
 .ponto { width: 10px; height: 10px; border-radius: 3px; }
-.ponto[data-vem="true"] { box-shadow: inset 0 0 0 1px var(--v2-serie-cinza); }
 .nome { grid-column: 2; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: inherit; text-decoration: none; }
-a.nome:hover { text-decoration: underline; text-decoration-color: var(--v2-linha-forte); text-underline-offset: 3px; }
-.mudo { color: var(--v2-texto-3); }
 .valor { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
 .pct { color: var(--v2-texto-3); font-variant-numeric: tabular-nums; text-align: right; }
 .livre { margin-top: 2px; border-top: 1px solid var(--v2-linha); padding-top: 9px; }
@@ -36,16 +32,9 @@ a.nome:hover { text-decoration: underline; text-decoration-color: var(--v2-linha
 .livre .valor { color: var(--v2-positivo); }
 .livre[data-passou="true"] .nome, .livre[data-passou="true"] .valor { color: var(--v2-negativo); }
 
-/* A resposta do mês em uma frase, com as ações */
-.resposta { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 6px; padding: 12px 14px; border-radius: var(--v2-r-md); background: var(--v2-superficie-2); }
-.resposta[data-tom="positivo"] { background: var(--v2-positivo-suave); }
-.resposta[data-tom="alerta"] { background: var(--v2-alerta-suave); }
-.resposta[data-tom="negativo"] { background: var(--v2-negativo-suave); }
-.respostaTexto { margin: 0; flex: 1 1 280px; font-size: var(--v2-fs-sm); font-weight: 500; line-height: 1.5; color: var(--v2-texto); }
-.acoes { display: flex; gap: 8px; }
+/* A resposta do mês (componentes/Resposta) */
+.respostaLugar { margin-top: 6px; }
 
 @media (max-width: 900px) {
   .legenda li, .livre { grid-template-columns: 12px minmax(0, 1fr) auto 48px; gap: 8px; }
-  .acoes { width: 100%; }
-  .acoes > * { flex: 1; }
 }
