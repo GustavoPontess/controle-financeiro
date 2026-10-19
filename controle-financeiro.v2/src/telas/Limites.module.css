@@ -11,8 +11,9 @@
 
 .respiro { padding: 8px 24px 20px; }
 .vazio { margin: 0; padding: 20px 24px 28px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
-/* Barra da lista: "Novo limite" à direita (mesma anatomia das outras listas) */
+/* "Novo limite" na linha do rótulo do primeiro grupo; sem grupo, numa barra só dele, à direita */
 .toolbar { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 16px 24px 4px; }
+.acaoGrupo { display: inline-flex; letter-spacing: normal; }
 .alerta { margin: 0 0 10px; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
 
 /* Linha: situação e quanto sobra (ou passou) em cima, a barra embaixo */

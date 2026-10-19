@@ -43,6 +43,12 @@ export default function Limites() {
   const novo = (categoriaId?: string | null) => navigate(
     `/limites/novo?ano=${periodo.ano}&mes=${periodo.mes}${categoriaId ? `&categoria=${categoriaId}` : ""}`)
   const vazio = useMemo(() => !!dados && dados.limites.length === 0 && dados.semLimite.length === 0, [dados])
+  // "Novo limite" vai na linha do cabeçalho do primeiro grupo (pedido do Gustavo); sem grupo nenhum, numa barra só dele.
+  const botaoNovo = dados?.editavel ? (
+    <span className={styles.acaoGrupo}>
+      <Botao compactoNoCelular onClick={() => novo()} icone={<Plus size={15} strokeWidth={2.5} aria-hidden="true" />}>Novo limite</Botao>
+    </span>
+  ) : undefined
 
   return (
     <div className={styles.pagina}>
@@ -57,18 +63,14 @@ export default function Limites() {
       </Bloco>
 
       <Bloco semRespiro>
-        {dados?.editavel && (
-          <div className={styles.toolbar}>
-            <Botao compactoNoCelular onClick={() => novo()} icone={<Plus size={15} strokeWidth={2.5} aria-hidden="true" />}>Novo limite</Botao>
-          </div>
-        )}
+        {vazio && botaoNovo && <div className={styles.toolbar}>{botaoNovo}</div>}
         {dados === null && !erro ? <div className={styles.respiro}><Esqueleto linhas={3} altura={18} /></div>
           : erro ? <p className={styles.vazio} role="alert">Não deu pra carregar os limites.</p>
           : vazio ? <p className={styles.vazio}>Nenhum limite nem gasto em {nomeDoPeriodo(periodo).toLowerCase()}.</p>
           : (
             <ListaFicha rotulo="Limites">
               {dados!.limites.length > 0 && (
-                <GrupoFicha rotulo="Com limite">
+                <GrupoFicha rotulo="Com limite" extra={botaoNovo}>
                   {dados!.limites.map((l) => (
                     <Linha key={chaveDe(l.categoriaId)} l={l} periodo={periodo} editavel={dados!.editavel}
                       aberta={aberta === chaveDe(l.categoriaId)} aoAbrir={() => setAberta((a) => a === chaveDe(l.categoriaId) ? null : chaveDe(l.categoriaId))}
@@ -77,7 +79,7 @@ export default function Limites() {
                 </GrupoFicha>
               )}
               {dados!.semLimite.length > 0 && (
-                <GrupoFicha rotulo="Sem limite">
+                <GrupoFicha rotulo="Sem limite" extra={dados!.limites.length === 0 ? botaoNovo : undefined}>
                   {dados!.semLimite.map((s) => (
                     <SemLimite key={chaveDe(s.categoriaId, true)} s={s} editavel={dados!.editavel}
                       aberta={aberta === chaveDe(s.categoriaId, true)}
