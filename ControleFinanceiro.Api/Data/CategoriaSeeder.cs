@@ -23,6 +23,8 @@ public static class CategoriaSeeder
             new() { Id = Guid.NewGuid(), Descricao = "Moradia",                Finalidade = Finalidade.Despesa },
             new() { Id = Guid.NewGuid(), Descricao = "Lazer e entretenimento", Finalidade = Finalidade.Despesa },
             new() { Id = Guid.NewGuid(), Descricao = "Renda",                  Finalidade = Finalidade.Receita },
+            // Cashback, reembolso, estorno: dinheiro que VOLTA, não renda (não entra no "Renda do mês").
+            new() { Id = Guid.NewGuid(), Descricao = "Dinheiro que volta",     Finalidade = Finalidade.Receita },
             new() { Id = Guid.NewGuid(), Descricao = "Educação",               Finalidade = Finalidade.Despesa },
             new() { Id = Guid.NewGuid(), Descricao = "Impostos e taxas",       Finalidade = Finalidade.Despesa },
             new() { Id = Guid.NewGuid(), Descricao = "Seguros",                Finalidade = Finalidade.Despesa },

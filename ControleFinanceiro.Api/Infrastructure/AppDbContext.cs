@@ -8,6 +8,87 @@ public class AppDbContext : DbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options){}
 
+    // ── Trava da caixinha de meta ────────────────────────────────────────────
+    // Caixinha (TipoConta.Caixinha) é a conta de uma meta: o saldo dela É o guardado. Só o guardar/resgatar do
+    // MetaService põe ou tira lançamento dela; qualquer outro caminho (lançamento avulso, transferência,
+    // importação, pagamento, reconciliação, editar/excluir a perna pela tela de transações) e conta fixa ou
+    // cartão ligados a ela são recusados AQUI, num lugar só, venha de que endpoint vier.
+    private int _caixinhaLiberada;
+
+    /// <summary>Libera lançamento em caixinha enquanto o retorno não for descartado (só o MetaService usa).</summary>
+    public IDisposable LiberarCaixinha()
+    {
+        _caixinhaLiberada++;
+        return new Liberacao(this);
+    }
+
+    private sealed class Liberacao(AppDbContext ctx) : IDisposable
+    {
+        private bool _feito;
+        public void Dispose()
+        {
+            if (_feito) return;
+            _feito = true;
+            ctx._caixinhaLiberada--;
+        }
+    }
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        BarrarEscritaEmCaixinha(ids => Contas.AsNoTracking().Any(c => ids.Contains(c.Id) && c.Tipo == TipoConta.Caixinha));
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        var ids = ContasTocadasPorEscrita();
+        if (ids.Count > 0 && await Contas.AsNoTracking().AnyAsync(c => ids.Contains(c.Id) && c.Tipo == TipoConta.Caixinha, cancellationToken))
+            throw new InvalidOperationException(Conta.MensagemCaixinha);
+        BarrarCaixinhaNova(ids);
+        return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    private void BarrarEscritaEmCaixinha(Func<List<Guid>, bool> haCaixinhaNoBanco)
+    {
+        var ids = ContasTocadasPorEscrita();
+        if (ids.Count > 0 && haCaixinhaNoBanco(ids))
+            throw new InvalidOperationException(Conta.MensagemCaixinha);
+        BarrarCaixinhaNova(ids);
+    }
+
+    /// <summary>Caixinha criada no mesmo SaveChanges (ainda não está no banco) também conta.</summary>
+    private void BarrarCaixinhaNova(List<Guid> ids)
+    {
+        if (ids.Count == 0) return;
+        if (ChangeTracker.Entries<Conta>().Any(e => e.State == EntityState.Added && e.Entity.Tipo == TipoConta.Caixinha && ids.Contains(e.Entity.Id)))
+            throw new InvalidOperationException(Conta.MensagemCaixinha);
+    }
+
+    /// <summary>
+    /// Contas referenciadas por escrita nova ou alterada que a caixinha não aceita: lançamento (salvo liberado
+    /// pelo MetaService), conta fixa e cartão (nunca).
+    /// </summary>
+    private List<Guid> ContasTocadasPorEscrita()
+    {
+        var ids = new HashSet<Guid>();
+        if (_caixinhaLiberada == 0)
+            foreach (var e in ChangeTracker.Entries<Transacao>())
+                if (e.State is EntityState.Added or EntityState.Modified && e.Entity.ContaId is { } id)
+                {
+                    ids.Add(id);
+                    // Mudou de conta: a de antes (a caixinha) também perde o lançamento.
+                    if (e.State == EntityState.Modified && e.Property(t => t.ContaId).OriginalValue is { } antes)
+                        ids.Add(antes);
+                }
+        foreach (var e in ChangeTracker.Entries<Recorrente>())
+            if (e.State is EntityState.Added or EntityState.Modified && e.Entity.ContaId is { } id)
+                ids.Add(id);
+        foreach (var e in ChangeTracker.Entries<CartaoCredito>())
+            if (e.State is EntityState.Added or EntityState.Modified && e.Entity.ContaId is { } id)
+                ids.Add(id);
+        return ids.ToList();
+    }
+
     public DbSet<Categoria> Categorias => Set<Categoria>();
     public DbSet<Subcategoria> Subcategorias => Set<Subcategoria>();
     public DbSet<Transacao> Transacoes => Set<Transacao>();
@@ -36,6 +117,8 @@ public class AppDbContext : DbContext
     public DbSet<FinancialEventLog> FinancialEventLogs => Set<FinancialEventLog>();
     public DbSet<RegistroIdempotencia> RegistrosIdempotencia => Set<RegistroIdempotencia>();
     public DbSet<ModeloImportacao> ModelosImportacao => Set<ModeloImportacao>();
+    public DbSet<RendaPrevista> RendasPrevistas => Set<RendaPrevista>();
+    public DbSet<FotoPerfil> FotosPerfil => Set<FotoPerfil>();
     public DbSet<ReconciliacaoSaldo> ReconciliacoesSaldo => Set<ReconciliacaoSaldo>();
 
     // ── Issue #5 Autenticação Robusta ──
@@ -259,6 +342,37 @@ public class AppDbContext : DbContext
             .HasOne<Usuario>()
             .WithMany()
             .HasForeignKey(m => m.UsuarioId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Meta → Conta-caixinha (1:1). Restrict: a caixinha tem lançamentos (as transferências); a meta se exclui
+        // por soft delete e a caixinha é encerrada, nunca apagada.
+        modelBuilder.Entity<Meta>()
+            .HasOne(m => m.Conta).WithMany().HasForeignKey(m => m.ContaId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Meta>().HasIndex(m => m.ContaId).IsUnique().HasFilter("\"ContaId\" IS NOT NULL");
+        modelBuilder.Entity<Meta>().Property(m => m.Icone).HasMaxLength(30);
+
+        // FotoPerfil → Usuario (1:1, chave = UsuarioId, Cascade: dado pessoal, some com a pessoa).
+        modelBuilder.Entity<FotoPerfil>().HasKey(f => f.UsuarioId);
+        modelBuilder.Entity<FotoPerfil>()
+            .HasOne(f => f.Usuario)
+            .WithOne()
+            .HasForeignKey<FotoPerfil>(f => f.UsuarioId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // RendaPrevista → Usuario (Cascade: dado pessoal, some com a pessoa). Uma linha por mês.
+        modelBuilder.Entity<RendaPrevista>()
+            .HasIndex(r => new { r.UsuarioId, r.Ano, r.Mes })
+            .IsUnique();
+        modelBuilder.Entity<RendaPrevista>()
+            .Property(r => r.VariavelEsperada)
+            .HasPrecision(18, 2);
+        modelBuilder.Entity<RendaPrevista>()
+            .Property(r => r.FixaEsperada)
+            .HasPrecision(18, 2);
+        modelBuilder.Entity<RendaPrevista>()
+            .HasOne<Usuario>()
+            .WithMany()
+            .HasForeignKey(r => r.UsuarioId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // RegistroIdempotencia → Usuario (Cascade: chaves somem com o usuário na purga LGPD).
@@ -752,6 +866,12 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Notificacao>()
             .HasIndex(n => new { n.UsuarioId, n.Lida });
+
+        // Aviso de uma vez só (alerta de limite): a segunda tentativa estoura o índice e é ignorada.
+        modelBuilder.Entity<Notificacao>()
+            .HasIndex(n => new { n.UsuarioId, n.Chave })
+            .IsUnique()
+            .HasFilter("\"Chave\" IS NOT NULL");
 
         // ── Issue #83 Subcategorias ──
 

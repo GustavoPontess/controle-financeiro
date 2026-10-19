@@ -100,7 +100,7 @@ public class AcertoService
                 acerto.ParaUsuarioId,
                 Domain.Enums.TipoNotificacao.AcertoContas,
                 "Acerto de contas recebido",
-                $"{resultado.DeNome} registrou um acerto de {resultado.Valor:C} com você.",
+                $"{resultado.DeNome} registrou um acerto de {Reais.Formatar(resultado.Valor)} com você.",
                 "/familias");
         }
 

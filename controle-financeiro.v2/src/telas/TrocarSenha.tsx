@@ -8,6 +8,7 @@ import Bloco from "../componentes/Bloco"
 import Botao from "../componentes/Botao"
 import Campo from "../componentes/Campo"
 import Entrada from "../componentes/Entrada"
+import { LinhaCampos } from "../componentes/Formulario"
 import { ehErroDaSenha, requisitosSenha, SENHA_MAX, senhaValida } from "../dominio/senha"
 import styles from "./TrocarSenha.module.css"
 
@@ -72,14 +73,20 @@ export default function TrocarSenha({ aoTrocar }: {
       ) : (
         <form className={styles.form} noValidate onSubmit={(e) => { void enviar(e) }}>
           {erro && <p className={styles.alerta} role="alert">{erro}</p>}
-          <Campo rotulo="Senha atual" erro={erros.atual}>
-            <Entrada type={mostrar ? "text" : "password"} autoComplete="current-password" maxLength={SENHA_MAX} value={atual} autoFocus
-              onChange={(e) => { setAtual(e.target.value); limpa("atual") }} sufixo={olho} />
-          </Campo>
-          <Campo rotulo="Senha nova" erro={erros.nova}>
-            <Entrada type={mostrar ? "text" : "password"} autoComplete="new-password" maxLength={SENHA_MAX} value={nova}
-              onChange={(e) => { setNova(e.target.value); limpa("nova") }} />
-          </Campo>
+          <LinhaCampos>
+            <Campo rotulo="Senha atual" erro={erros.atual}>
+              <Entrada type={mostrar ? "text" : "password"} autoComplete="current-password" maxLength={SENHA_MAX} value={atual} autoFocus
+                onChange={(e) => { setAtual(e.target.value); limpa("atual") }} sufixo={olho} />
+            </Campo>
+            <Campo rotulo="Senha nova" erro={erros.nova}>
+              <Entrada type={mostrar ? "text" : "password"} autoComplete="new-password" maxLength={SENHA_MAX} value={nova}
+                onChange={(e) => { setNova(e.target.value); limpa("nova") }} />
+            </Campo>
+            <Campo rotulo="Confirmar senha nova" erro={erros.confirmar}>
+              <Entrada type={mostrar ? "text" : "password"} autoComplete="new-password" maxLength={SENHA_MAX} value={confirmar}
+                onChange={(e) => { setConfirmar(e.target.value); limpa("confirmar") }} />
+            </Campo>
+          </LinhaCampos>
           {!erros.nova && (
             <ul className={styles.requisitos} aria-label="Requisitos da senha">
               {requisitosSenha(nova).map((r) => (
@@ -87,16 +94,14 @@ export default function TrocarSenha({ aoTrocar }: {
               ))}
             </ul>
           )}
-          <Campo rotulo="Confirmar senha nova" erro={erros.confirmar}>
-            <Entrada type={mostrar ? "text" : "password"} autoComplete="new-password" maxLength={SENHA_MAX} value={confirmar}
-              onChange={(e) => { setConfirmar(e.target.value); limpa("confirmar") }} />
-          </Campo>
-          <label className={styles.marcar}>
-            <input type="checkbox" checked={sairDosOutros} onChange={(e) => setSairDosOutros(e.target.checked)} /> Sair dos outros aparelhos
-          </label>
-          <div className={styles.acoes}>
-            <Botao onClick={fechar} disabled={enviando}>Cancelar</Botao>
-            <Botao variante="primario" type="submit" disabled={enviando}>{enviando ? "Salvando…" : "Trocar senha"}</Botao>
+          <div className={styles.rodape}>
+            <label className={styles.marcar}>
+              <input type="checkbox" checked={sairDosOutros} onChange={(e) => setSairDosOutros(e.target.checked)} /> Sair dos outros aparelhos
+            </label>
+            <div className={styles.acoes}>
+              <Botao onClick={fechar} disabled={enviando}>Cancelar</Botao>
+              <Botao variante="primario" type="submit" disabled={enviando}>{enviando ? "Salvando…" : "Trocar senha"}</Botao>
+            </div>
           </div>
         </form>
       )}

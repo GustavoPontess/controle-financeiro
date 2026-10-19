@@ -130,6 +130,8 @@ builder.Services.AddScoped<ReconciliacaoService>();
 builder.Services.AddScoped<CartaoCreditoService>();
 builder.Services.AddScoped<FaturaService>();
 builder.Services.AddScoped<OrcamentoService>();
+builder.Services.AddScoped<DinheiroDoMesService>();
+builder.Services.AddScoped<ViabilidadeMetaService>();
 builder.Services.AddScoped<MetaService>();
 
 // Issue #22 — Família + Membros
@@ -147,6 +149,10 @@ builder.Services.AddScoped<RateioService>();
 
 // Issue #26 — Acerto de contas
 builder.Services.AddScoped<AcertoService>();
+
+// Renda de cada um (previsto × recebido) e o que a família vê dela
+builder.Services.AddScoped<RendaService>();
+builder.Services.AddScoped<FotoPerfilService>();
 
 // Issue #27 — Importação de extrato OFX/CSV
 builder.Services.AddScoped<ExtratoImportService>();
@@ -170,6 +176,7 @@ builder.Services.AddScoped<FaturaAtrasoJob>();
 builder.Services.AddScoped<ExpandirRecorrentesJob>();
 builder.Services.AddScoped<ExecutarRecorrentesJob>();
 builder.Services.AddScoped<RecalcularLimitesJob>();
+builder.Services.AddScoped<AlertaLimitesJob>();
 builder.Services.AddScoped<PurgaExclusaoExpiradaJob>();
 builder.Services.AddScoped<PurgaRegistroAcessoExpiradoJob>();
 
@@ -244,6 +251,17 @@ builder.Services.AddRateLimiter(options =>
             {
                 PermitLimit = isDev ? 100 : 5,
                 Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0,
+            }));
+
+    // Foto de perfil: reprocessar imagem custa CPU; por pessoa (cai pro IP sem login).
+    options.AddPolicy("foto-perfil", ctx =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? PartitionByIp(ctx), _ =>
+            new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = isDev ? 100 : 10,
+                Window = TimeSpan.FromMinutes(10),
                 QueueLimit = 0,
             }));
 
@@ -571,6 +589,7 @@ if (!isTesting)
         recManager.AddOrUpdate<ExpandirRecorrentesJob>("expandir-recorrentes", job => job.ExecuteAsync(), "0 3 * * *", utc);
         recManager.AddOrUpdate<ExecutarRecorrentesJob>("executar-recorrentes", job => job.ExecuteAsync(), "30 3 * * *", utc);
         recManager.AddOrUpdate<RecalcularLimitesJob>("recalcular-limites", job => job.ExecuteAsync(), "0 * * * *", utc);
+        recManager.AddOrUpdate<AlertaLimitesJob>("alerta-limites", job => job.ExecuteAsync(null), "15 * * * *", utc);
         // Purga LGPD (Módulo C): 4h UTC, purga contas com carência de exclusão vencida.
         recManager.AddOrUpdate<PurgaExclusaoExpiradaJob>("purga-exclusao-lgpd", job => job.ExecuteAsync(), "0 4 * * *", utc);
         // Retenção Marco Civil (Art. 15): 4h30 UTC, purga registros de acesso com guarda de 6 meses vencida.

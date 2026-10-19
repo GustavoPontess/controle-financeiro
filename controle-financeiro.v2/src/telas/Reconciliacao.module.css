@@ -1,0 +1,46 @@
+.pagina { display: flex; flex-direction: column; gap: 20px; }
+.alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
+.mudo { font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
+
+/* Topo: a conta, o saldo no app e a última conferência (mesma anatomia da faixa de números de Bancos) */
+.resumo { padding: 20px 24px; }
+.topo { display: grid; grid-template-columns: minmax(220px, 1.2fr) 1fr 1fr; gap: 16px 24px; align-items: end; }
+.conta { min-width: 0; }
+.numero { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding-bottom: 8px; }
+.rotulo { font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-texto-2); }
+.numeroValor { font-size: var(--v2-fs-2xl); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.numeroValor[data-tom="negativo"] { color: var(--v2-negativo); }
+.numeroEsqueleto { display: block; width: 140px; height: 28px; border-radius: 8px; background: var(--v2-superficie-2); }
+.semMarco { font-size: var(--v2-fs-md); color: var(--v2-texto-3); line-height: 28px; }
+.ultima { display: flex; align-items: center; gap: 10px; min-height: 28px; }
+.ultimaDia { font-size: var(--v2-fs-xl); font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.resumo .alerta { margin-top: 14px; }
+
+/* Conferir: dia + saldo, e a comparação logo embaixo (no app · diferença em destaque) */
+.conferir { display: flex; flex-direction: column; gap: 18px; }
+.comparacao { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0; }
+.comparacao > div { display: flex; flex-direction: column; gap: 4px; padding: 12px 16px; border-radius: var(--v2-r-md); background: var(--v2-superficie-2); }
+.comparacao dt { font-size: var(--v2-fs-xs); font-weight: 500; color: var(--v2-texto-2); }
+.comparacao dd { margin: 0; font-size: var(--v2-fs-lg); font-weight: 600; font-variant-numeric: tabular-nums; }
+.bateu, .difere { display: inline-flex; align-items: center; gap: 6px; }
+.bateu { color: var(--v2-positivo); }
+.difere { color: var(--v2-alerta); }
+.diferenca[data-tom="positivo"] { color: var(--v2-positivo); }
+.diferenca[data-tom="negativo"] { color: var(--v2-negativo); }
+.dica { margin: -6px 0 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-2); }
+
+/* Lista de conferências (componentes/ListaFicha): aqui só a marca por situação */
+.respiro { padding: 8px 24px 20px; }
+.vazio { margin: 0; padding: 20px 24px 28px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
+.marca { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; background: var(--v2-superficie-2); color: var(--v2-texto-2); }
+.marca[data-situacao="bateu"], .marca[data-situacao="ajustado"] { background: var(--v2-positivo-suave); color: var(--v2-positivo); }
+.marca[data-situacao="diferenca"] { background: var(--v2-alerta-suave); color: var(--v2-alerta); }
+
+@media (max-width: 900px) {
+  .resumo { padding: 16px; }
+  .topo { grid-template-columns: 1fr 1fr; }
+  .conta { grid-column: 1 / -1; }
+  .comparacao { grid-template-columns: 1fr; }
+  .respiro { padding: 8px 16px 16px; }
+  .vazio { padding: 16px 16px 24px; }
+}

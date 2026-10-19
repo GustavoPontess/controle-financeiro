@@ -257,19 +257,41 @@ namespace ControleFinanceiro.Api.Services
             foreach (var m in await _context.Metas.IgnoreQueryFilters().Where(m => m.CategoriaId == de).ToListAsync())
                 m.CategoriaId = para;
 
-            // Limite (orçamento) é um por categoria por mês: se o destino já tem naquele mês, os valores somam.
-            var limitesOrigem = await _context.Orcamentos.Where(o => o.CategoriaId == de).ToListAsync();
-            var limitesDestino = await _context.Orcamentos.Where(o => o.CategoriaId == para).ToListAsync();
-            foreach (var o in limitesOrigem)
+            // Limite vale todo mês até mudar (cada linha = "deste mês em diante"): juntar as duas categorias é somar
+            // o que valia em cada mês, de cada pessoa. Só somar as linhas do mesmo mês dava errado no mês seguinte.
+            var limites = await _context.Orcamentos.Where(o => o.CategoriaId == de || o.CategoriaId == para).ToListAsync();
+            static int Chave(Orcamento o) => o.Ano * 12 + o.Mes;
+            static decimal Vale(List<Orcamento> linhas, int chave) =>
+                linhas.Where(o => Chave(o) <= chave).MaxBy(Chave)?.ValorLimite ?? 0m;
+            foreach (var daPessoa in limites.GroupBy(o => o.UsuarioId))
             {
-                var mesmoMes = limitesDestino.FirstOrDefault(d => d.UsuarioId == o.UsuarioId && d.Mes == o.Mes && d.Ano == o.Ano);
-                if (mesmoMes != null)
+                var limOrigem = daPessoa.Where(o => o.CategoriaId == de).ToList();
+                if (limOrigem.Count == 0) continue;
+                var limDestino = daPessoa.Where(o => o.CategoriaId == para).ToList();
+                // Primeiro a linha do tempo somada (lendo os valores de antes), depois grava.
+                var somada = new List<(int Chave, decimal Valor)>();
+                foreach (var chave in daPessoa.Select(Chave).Distinct().Order())
                 {
-                    mesmoMes.ValorLimite += o.ValorLimite;
-                    mesmoMes.AtualizadoEm = DateTime.UtcNow;
-                    _context.Orcamentos.Remove(o);
+                    var v = Vale(limOrigem, chave) + Vale(limDestino, chave);
+                    if (somada.Count == 0 ? v == 0m : somada[^1].Valor == v) continue;
+                    somada.Add((chave, v));
                 }
-                else o.CategoriaId = para;
+                var mantidas = new HashSet<Orcamento>();
+                foreach (var (chave, valor) in somada)
+                {
+                    // Reaproveita a linha do limDestino daquele mês (o índice único é por categoria + mês).
+                    var linha = limDestino.FirstOrDefault(o => Chave(o) == chave);
+                    if (linha is null)
+                    {
+                        linha = new Orcamento { Id = Guid.NewGuid(), UsuarioId = daPessoa.Key, CategoriaId = para, Ano = (chave - 1) / 12, Mes = (chave - 1) % 12 + 1 };
+                        _context.Orcamentos.Add(linha);
+                    }
+                    linha.ValorLimite = valor;
+                    linha.AtualizadoEm = DateTime.UtcNow;
+                    mantidas.Add(linha);
+                }
+                _context.Orcamentos.RemoveRange(limOrigem);
+                _context.Orcamentos.RemoveRange(limDestino.Where(o => !mantidas.Contains(o)));
             }
 
             await _context.SaveChangesAsync();

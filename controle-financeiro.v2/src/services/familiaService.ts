@@ -1,6 +1,6 @@
 import { api } from "../api/cliente"
 import type {
-  Familia, FamiliaDetalhe, ConviteFamilia, MembroFamilia,
+  Familia, FamiliaDetalhe, ConviteFamilia, MembroFamilia, PapelFamilia,
   DespesaCompartilhada, BalancoFamilia,
   Dependente, GastoDependente, TipoDependente,
   ModoRateio, RateioItem, RateioTransacao,
@@ -45,9 +45,17 @@ export const removerMembro = async (familiaId: string, membroId: string): Promis
 }
 
 export const convidarMembro = async (
-  familiaId: string, email: string, papel: string,
+  familiaId: string, email: string, papel: string, papelPermissao: PapelFamilia = 2,
 ): Promise<ConviteFamilia> => {
-  const res = await api.post(`/familias/${familiaId}/convites`, { email, papel })
+  const res = await api.post(`/familias/${familiaId}/convites`, { email, papel, papelPermissao })
+  return res.data
+}
+
+/** Admin promove/rebaixa a permissão de um membro (o criador não muda). */
+export const editarPermissao = async (
+  familiaId: string, membroId: string, papelPermissao: PapelFamilia,
+): Promise<MembroFamilia> => {
+  const res = await api.put(`/familias/${familiaId}/membros/${membroId}/permissao`, { papelPermissao })
   return res.data
 }
 
@@ -150,12 +158,6 @@ export const definirModoRateio = async (
   familiaId: string, modo: ModoRateio,
 ): Promise<void> => {
   await api.put(`/familias/${familiaId}/modo-rateio`, { modo })
-}
-
-export const definirRendaMembro = async (
-  familiaId: string, membroId: string, rendaMensal: number | null,
-): Promise<void> => {
-  await api.put(`/familias/${familiaId}/membros/${membroId}/renda`, { rendaMensal })
 }
 
 export const getRateioTransacao = async (

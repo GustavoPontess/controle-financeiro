@@ -23,15 +23,18 @@ public static class DonoRecursos
 
     /// <summary>
     /// Conta do usuário E aberta — pra quem vai pôr dinheiro novo nela (lançamento, transferência, pagamento,
-    /// conta fixa). Encerrada → 409 com o nome da conta. Ler/editar o histórico dela não passa por aqui.
+    /// conta fixa). Encerrada → 409 com o nome da conta. Caixinha de meta → 409 (só Metas mexe nela; a trava
+    /// final mora no <c>AppDbContext.SaveChanges</c>). Ler/editar o histórico dela não passa por aqui.
     /// </summary>
     public static async Task ExigirContaAbertaAsync(AppDbContext context, Guid contaId, Guid usuarioId)
     {
         var conta = await context.Contas.AsNoTracking()
             .Where(c => c.Id == contaId && c.UsuarioIdProprietario == usuarioId)
-            .Select(c => new { c.Nome, c.EncerradaEm })
+            .Select(c => new { c.Nome, c.EncerradaEm, c.Tipo })
             .FirstOrDefaultAsync()
             ?? throw new KeyNotFoundException("Conta não encontrada ou você não tem permissão.");
+        if (conta.Tipo == Domain.Enums.TipoConta.Caixinha)
+            throw new InvalidOperationException(Domain.Entities.Conta.MensagemCaixinha);
         if (conta.EncerradaEm != null)
             throw new InvalidOperationException(MensagemContaEncerrada(conta.Nome));
     }

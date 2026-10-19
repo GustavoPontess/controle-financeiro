@@ -72,7 +72,7 @@ export function Privacidade() {
     <PaginaLegal titulo="Política de Privacidade" atualizado="18 de agosto de 2026"
       beta="Você foi convidado pessoalmente pra testar o produto. Dados podem ser resetados ou perdidos durante essa fase. Por enquanto, evite depender do app como único registro do seu histórico financeiro.">
       <Secao titulo="O que coletamos">
-        <p className={styles.p}>Pra funcionar, o Pontes guarda os dados que você mesmo digita: nome, e-mail, transações (valor, data, descrição, categoria), contas e cartões que você cadastra (só um nome e uma cor; não conectamos a nenhum banco de verdade) e, na função de empréstimos, o nome e valor de pessoas com quem você tem uma dívida ou crédito, mesmo que essa pessoa não tenha conta no Pontes.</p>
+        <p className={styles.p}>Pra funcionar, o Pontes guarda os dados que você mesmo digita: nome, e-mail, foto de perfil (se você puser uma; só quem está nas suas famílias vê), transações (valor, data, descrição, categoria), contas e cartões que você cadastra (só um nome e uma cor; não conectamos a nenhum banco de verdade) e, na função de empréstimos, o nome e valor de pessoas com quem você tem uma dívida ou crédito, mesmo que essa pessoa não tenha conta no Pontes.</p>
         <p className={styles.p}>O Pontes <strong>não</strong> se conecta à sua conta bancária real, não movimenta dinheiro, não processa pagamento e não tem custódia de nenhum valor seu. É um registro manual, mais parecido com uma planilha do que com um banco digital.</p>
       </Secao>
       <Secao titulo="Por que coletamos (base legal)">

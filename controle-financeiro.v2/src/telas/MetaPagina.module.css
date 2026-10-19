@@ -1,0 +1,35 @@
+.pagina { display: flex; flex-direction: column; gap: 16px; }
+.titulo { margin: 0; font-size: var(--v2-fs-xl); font-weight: 600; letter-spacing: -0.015em; line-height: 1.25; overflow-wrap: anywhere; }
+.muted { margin: 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); font-variant-numeric: tabular-nums; }
+.alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
+.respiro { padding: 8px 24px 20px; }
+.vazio { margin: 0; padding: 4px 24px 24px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
+
+/* Cabeçalho: ícone + nome e prazo à esquerda, situação à direita (mesma anatomia da página do cartão) */
+.cabecalho { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; }
+.identidade { display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1 1 320px; }
+.identidadeTexto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.icone { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 999px; background: var(--v2-acento-suave); color: var(--v2-acento); flex-shrink: 0; }
+.icone[data-concluida="true"] { background: var(--v2-positivo-suave); color: var(--v2-positivo); }
+
+/* Principal | lado */
+.grade { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
+.principal { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.lado { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+/* Quanto tem: rótulo, valor grande, de quanto, barra e as duas ações */
+.saldo { display: flex; flex-direction: column; gap: 8px; }
+.rotulo { font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-texto-2); }
+.valorGrande { font-size: var(--v2-fs-4xl); font-weight: 600; letter-spacing: -0.03em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.acoes { display: flex; justify-content: flex-end; gap: 8px; padding-top: 8px; }
+
+@media (max-width: 1100px) {
+  .grade { grid-template-columns: minmax(0, 1fr) 280px; }
+}
+@media (max-width: 900px) {
+  .grade { grid-template-columns: minmax(0, 1fr); }
+  .valorGrande { font-size: var(--v2-fs-3xl); }
+  .acoes > * { flex: 1; }
+  .respiro { padding: 8px 16px 16px; }
+  .vazio { padding: 4px 16px 20px; }
+}
