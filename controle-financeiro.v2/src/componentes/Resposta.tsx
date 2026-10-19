@@ -12,7 +12,8 @@ export default function Resposta({ tom = "neutro", texto, acoes = [] }: {
   const navigate = useNavigate()
   return (
     <div className={styles.resposta} data-tom={tom}>
-      <p className={styles.texto}>{texto}</p>
+      {/* "R$" nunca fica numa linha e o número na outra. */}
+      <p className={styles.texto}>{texto.replace(/R\$ /g, "R$\u00A0")}</p>
       {acoes.length > 0 && (
         <div className={styles.acoes}>
           {acoes.map((a) => <Botao key={a.para} onClick={() => navigate(a.para)}>{a.rotulo}</Botao>)}

@@ -1,5 +1,5 @@
 import { api } from "../api/cliente"
-import type { CriarMetaDto, Meta, MovimentoMeta } from "../types/Meta"
+import type { CriarMetaDto, Meta, MovimentoMeta, ViabilidadeMeta } from "../types/Meta"
 
 // Metas no modelo de caixinha: guardar e resgatar são transferências de verdade entre uma conta da pessoa e a
 // caixinha da meta. Os dois exigem Idempotency-Key: a tela gera uma ao abrir e reusa nas tentativas.
@@ -20,6 +20,11 @@ export const atualizarMeta = (id: string, dto: CriarMetaDto): Promise<Meta> =>
 /** Só sai com a caixinha zerada (o servidor recusa com 409 e diz quanto tem). */
 export const excluirMeta = (id: string): Promise<void> =>
   api.delete(`${BASE}/${id}`, { skipErrorToast: true }).then(() => undefined)
+
+/** "Essa meta cabe?" na hora de criar ou editar (`metaId` = editando aquela). `dataLimite`: "YYYY-MM-01" ou null. */
+export const getViabilidadeMeta = (valorAlvo: number, dataLimite: string | null, metaId?: string): Promise<ViabilidadeMeta> =>
+  api.get<ViabilidadeMeta>(`${BASE}/viabilidade`, { params: { valorAlvo, ...(dataLimite ? { dataLimite } : {}), ...(metaId ? { metaId } : {}) } })
+    .then((r) => r.data)
 
 /** Guardou e resgatou, mais recente em cima. */
 export const getHistoricoMeta = (id: string): Promise<MovimentoMeta[]> =>
