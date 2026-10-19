@@ -1,6 +1,7 @@
 import { api } from "../api/cliente"
 import type { Transaction } from "../types/Transaction"
 import type { PagedResult } from "../types/Paged"
+import type { RespostaDoMes } from "../types/DinheiroDoMes"
 
 export type ListTransactionsFilter = {
   /** ISO date — `Data >= from`. */
@@ -98,6 +99,15 @@ export const listTransactionsPage = async (
 export const getTransactions = async (): Promise<Transaction[]> => {
   const res = await api.get("/transacoes", { params: { page: 1, pageSize: 100 } })
   return res.data.items
+}
+
+/**
+ * Antes de salvar uma compra: ela tira o dinheiro das contas fixas dos próximos 30 dias? No cartão o servidor olha o
+ * limite, na conta o saldo. Devolve a resposta pronta (tom + frase) ou null quando não aperta nada (204). Só avisa.
+ */
+export const avisoDeCompra = async (valor: number, origem: { contaId?: string; cartaoId?: string }): Promise<RespostaDoMes | null> => {
+  const res = await api.get("/transacoes/aviso", { params: { valor, ...origem } })
+  return res.status === 204 || !res.data ? null : res.data
 }
 
 const comChave = (idempotencyKey?: string) => (idempotencyKey ? { headers: { "Idempotency-Key": idempotencyKey } } : undefined)

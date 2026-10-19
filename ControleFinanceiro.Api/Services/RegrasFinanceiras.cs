@@ -483,6 +483,43 @@ public static class RegrasFinanceiras
     public static async Task<decimal> LimiteUsadoDoCartaoAsync(AppDbContext context, Guid cartaoId, Guid usuarioId) =>
         (await LimitesUsadosDosCartoesAsync(context, new[] { cartaoId }, usuarioId))[cartaoId];
 
+    /// <summary>Ocorrência de conta fixa no cartão que não foi cobrada por falta de limite.</summary>
+    public sealed record CobrancaSemLimite(Transacao Cobranca, CartaoCredito Cartao, decimal Disponivel);
+
+    /// <summary>
+    /// Cobra ocorrências de conta fixa que venceram (previsão vira efetivado), a mais antiga primeiro. No cartão, como
+    /// no banco, só passa se o limite disponível cobre (descontando o que já foi cobrado nesta mesma rodada); a que
+    /// não cabe fica prevista e volta na lista, pra quem chama avisar (decisão do Gustavo 2026-10-19). Na conta,
+    /// passa sempre. Não salva. Usado pelo <c>ExecutarRecorrentesJob</c> e pela geração das vencidas
+    /// (<c>RecorrenteService.GerarPendentesAsync</c>).
+    /// </summary>
+    public static async Task<List<CobrancaSemLimite>> CobrarOcorrenciasAsync(AppDbContext context, IEnumerable<Transacao> vencidas)
+    {
+        static bool UsaLimite(Transacao t) => t.CartaoCreditoId.HasValue && !t.ContaId.HasValue && t.Tipo == TipoTransacao.Despesa;
+        var ordem = vencidas.OrderBy(t => t.Data).ThenBy(t => t.CriadoEm).ToList();
+        var idsCartao = ordem.Where(UsaLimite).Select(t => t.CartaoCreditoId!.Value).Distinct().ToList();
+        var cartoes = await context.CartoesCredito.Where(c => idsCartao.Contains(c.Id)).ToDictionaryAsync(c => c.Id);
+        var disponivel = new Dictionary<Guid, decimal>();
+        foreach (var c in cartoes.Values)
+            disponivel[c.Id] = LimiteDisponivel(c.LimiteTotal ?? 0m, await LimiteUsadoDoCartaoAsync(context, c.Id, c.CriadoPor));
+
+        var semLimite = new List<CobrancaSemLimite>();
+        foreach (var t in ordem)
+        {
+            if (UsaLimite(t) && cartoes.TryGetValue(t.CartaoCreditoId!.Value, out var cartao))
+            {
+                if (disponivel[cartao.Id] < t.Valor)
+                {
+                    semLimite.Add(new CobrancaSemLimite(t, cartao, disponivel[cartao.Id]));
+                    continue;
+                }
+                disponivel[cartao.Id] -= t.Valor;
+            }
+            t.StatusTransacao = StatusTransacao.Executado;
+        }
+        return semLimite;
+    }
+
     public static string MensagemLimiteInsuficiente(decimal precisa, decimal disponivel) =>
         $"Limite insuficiente. Precisa de {Reais.Formatar(precisa)}, disponível {Reais.Formatar(disponivel)}.";
 
@@ -490,7 +527,8 @@ public static class RegrasFinanceiras
     /// Trava de limite do cartão (decisão do Gustavo 2026-10-19: o app é registro manual, então a compra só entra
     /// se o limite disponível cobre, à vista ou parcelada). <paramref name="valorNovo"/> = o que a compra passa a
     /// usar do limite (na edição, só o que aumentou). Limite sem valor cadastrado conta como 0, como no parcelamento.
-    /// Fora: conta fixa no cartão (a ocorrência nasce pelo job, não dá pra recusar) e importação de extrato.
+    /// Conta fixa no cartão tem a regra dela na cobrança (<see cref="CobrarOcorrenciasAsync"/>: não cobra e avisa).
+    /// Fora: importação de extrato.
     /// </summary>
     public static async Task ExigirLimiteDisponivelAsync(AppDbContext context, Guid cartaoId, Guid usuarioId, decimal valorNovo)
     {

@@ -390,7 +390,7 @@ public class LimiteCartaoRegraUnicaTests
         await AssertMesmoNumeroEmTodosOsPontosAsync(ctx, c, 0m); // só previsão: ainda não usa limite
         Assert.Equal(240m, (await LimiteAsync(ctx, c)).ExposicaoFuturaPrevisao);
 
-        await new ExecutarRecorrentesJob(ctx).ExecuteAsync();
+        await new ExecutarRecorrentesJob(ctx, new NotificacaoService(ctx, NullLogger<NotificacaoService>.Instance)).ExecuteAsync();
 
         var executada = await ctx.Transacoes.AsNoTracking()
             .SingleAsync(t => t.Descricao == "Streaming" && t.StatusTransacao == StatusTransacao.Executado);
@@ -418,7 +418,7 @@ public class LimiteCartaoRegraUnicaTests
 
         await CriarRecorrenteNoCartaoAsync(ctx, c, hoje.AddMonths(-6)); // previsões de -6 a -4 meses
         await Recorrentes(ctx).GerarPendentesAsync(c.UsuarioId);       // efetivadas de -3 meses a hoje
-        await new ExecutarRecorrentesJob(ctx).ExecuteAsync();           // efetiva as previsões vencidas
+        await new ExecutarRecorrentesJob(ctx, new NotificacaoService(ctx, NullLogger<NotificacaoService>.Instance)).ExecuteAsync();           // efetiva as previsões vencidas
 
         var ocorrencias = await ctx.Transacoes.AsNoTracking().Where(t => t.Descricao == "Streaming").ToListAsync();
         Assert.Equal(7, ocorrencias.Count);

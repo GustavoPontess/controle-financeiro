@@ -15,5 +15,7 @@ public enum TipoNotificacao
     EmprestimoPagamentoAvaliado = 11,
     EmprestimoConsolidacaoProposta = 12,
     EmprestimoConsolidacaoRespondida = 13,
+    /// <summary>Cobrança de conta fixa no cartão que não passou por falta de limite (o app tenta de novo todo dia).</summary>
+    CobrancaSemLimite = 14,
     Outro = 99,
 }

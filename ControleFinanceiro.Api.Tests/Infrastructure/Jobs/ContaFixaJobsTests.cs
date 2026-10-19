@@ -38,7 +38,7 @@ public class ContaFixaJobsTests
     private static ExpandirRecorrentesJob ExpandirJob(AppDbContext ctx) =>
         new(ctx, new FaturaService(ctx), Servico(ctx), NullLogger<ExpandirRecorrentesJob>.Instance);
 
-    private static ExecutarRecorrentesJob ExecutarJob(AppDbContext ctx) => new(ctx);
+    private static ExecutarRecorrentesJob ExecutarJob(AppDbContext ctx) => new(ctx, new NotificacaoService(ctx, NullLogger<NotificacaoService>.Instance));
 
     private static DateOnly Hoje => DateOnly.FromDateTime(DateTime.UtcNow);
 

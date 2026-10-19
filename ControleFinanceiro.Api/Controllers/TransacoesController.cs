@@ -1,6 +1,7 @@
 using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.DTOs.Common;
+using ControleFinanceiro.Api.DTOs.DinheiroDoMes;
 using ControleFinanceiro.Api.DTOs.Familia;
 using ControleFinanceiro.Api.DTOs.Parcelamento;
 using ControleFinanceiro.Api.DTOs.Relatorios;
@@ -23,6 +24,7 @@ namespace ControleFinanceiro.Api.Controllers
         private readonly RateioService _rateioService;
         private readonly LancamentoService _lancamentos;
         private readonly ParcelamentoService _parcelamentos;
+        private readonly AvisoDeCompraService _aviso;
 
         public TransacoesController(
             TransacaoService service,
@@ -30,8 +32,10 @@ namespace ControleFinanceiro.Api.Controllers
             DependenteService dependenteService,
             RateioService rateioService,
             LancamentoService lancamentos,
-            ParcelamentoService parcelamentos)
+            ParcelamentoService parcelamentos,
+            AvisoDeCompraService aviso)
         {
+            _aviso = aviso;
             _service = service;
             _despesaCompartilhada = despesaCompartilhada;
             _dependenteService = dependenteService;
@@ -193,6 +197,21 @@ namespace ControleFinanceiro.Api.Controllers
                 Page = resultado.Page,
                 PageSize = resultado.PageSize,
             });
+        }
+
+        /// <summary>
+        /// Antes de salvar uma compra: ela tira o dinheiro das contas fixas dos próximos 30 dias? No cartão olha o
+        /// limite, na conta o saldo. 200 com a resposta (tom + frase) ou 204 quando não aperta nada. Só avisa.
+        /// </summary>
+        [HttpGet("aviso")]
+        [ProducesResponseType(typeof(RespostaDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<IActionResult> Aviso([FromQuery] decimal valor, [FromQuery] Guid? contaId = null, [FromQuery] Guid? cartaoId = null)
+        {
+            // "Hoje" no Brasil (UTC-3): o dia em que a pessoa está lançando.
+            var hoje = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(-3));
+            var resposta = await _aviso.AvisarAsync(GetUserId(), valor, contaId, cartaoId, hoje);
+            return resposta is null ? NoContent() : Ok(resposta);
         }
 
         /// <summary>
