@@ -59,8 +59,9 @@ public record ConcluirMetaDto(Guid ContaId, DateOnly? Data = null);
 
 /// <summary>
 /// "Essa meta cabe?" (docs/features/respostas/visao.md). <c>PorMes</c>: quanto guardar por mês até o prazo (null sem
-/// prazo). <c>Folga</c>: o que sobra por mês = renda esperada − gasto típico (média dos 3 meses antes) − o que as
-/// outras metas pedem (null quando falta renda ou gasto pra saber). <c>PrazoQueCabe</c>: o mês em que dá pra chegar
+/// prazo). <c>Folga</c>: o que sobra por mês = renda esperada − gasto típico SEM parcelas (média dos 3 meses antes) −
+/// as parcelas já compradas (média por mês até o prazo, ou nos próximos 12) − o que as outras metas pedem (null
+/// quando falta renda ou gasto pra saber). <c>PrazoQueCabe</c>: o mês em que dá pra chegar
 /// guardando a folga (quando o prazo não cabe ou não tem prazo). <c>Resposta</c>: a frase.
 /// </summary>
 public record ViabilidadeMetaDto(
@@ -70,6 +71,7 @@ public record ViabilidadeMetaDto(
     decimal? RendaEsperada,
     decimal? GastoTipico,
     decimal OutrasMetasPorMes,
+    decimal ParcelasPorMes,
     DateTime? PrazoQueCabe,
     ControleFinanceiro.Api.DTOs.DinheiroDoMes.RespostaDto Resposta);
 

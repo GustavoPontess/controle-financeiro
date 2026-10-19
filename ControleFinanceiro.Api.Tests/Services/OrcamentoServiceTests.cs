@@ -255,6 +255,44 @@ public class OrcamentoServiceTests
         Assert.Equal("Dá pra gastar mais R$ 10,00 sem passar.", limites[1].Resposta);
     }
 
+    /// <summary>Compra parcelada: uma parcela por mês informado (ano 2026), cada uma com o status dado.</summary>
+    private static void Parcelado(AppDbContext ctx, Guid u, Guid? categoria, decimal parcela, params (int Mes, StatusParcela Status)[] parcelas)
+    {
+        var pc = new Parcelamento
+        {
+            Id = Guid.NewGuid(), CriadoPor = u, Descricao = "Geladeira", DataCompra = new DateTime(2026, parcelas[0].Mes, 5),
+            ValorTotal = parcela * parcelas.Length, QuantidadeParcelas = parcelas.Length, CartaoCreditoId = Guid.NewGuid(), CategoriaId = categoria,
+        };
+        ctx.Parcelamentos.Add(pc);
+        var n = 1;
+        foreach (var (mes, status) in parcelas)
+            ctx.ParcelasTransacao.Add(new ParcelaTransacao
+            {
+                Id = Guid.NewGuid(), ParcelamentoId = pc.Id, Numero = n++, QuantidadeTotal = parcelas.Length,
+                DataVencimento = mes > 12 ? new DateTime(2027, mes - 12, 5) : new DateTime(2026, mes, 5),
+                Valor = parcela, FaturaId = Guid.NewGuid(), Status = status, CriadoPor = u,
+            });
+        ctx.SaveChanges();
+    }
+
+    [Fact]
+    public async Task Limite_MostraAsParcelasJaCompradasDaCategoriaPraFrente()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var casa = SeedCategoria(ctx, "Casa");
+        var outra = SeedCategoria(ctx, "Outra");
+        var svc = new OrcamentoService(ctx);
+        await Definir(svc, u, casa, 1500m, 2026, 5);
+        Parcelado(ctx, u, casa, 400m, (5, StatusParcela.Pendente), (6, StatusParcela.Pendente), (7, StatusParcela.Pendente));
+        Parcelado(ctx, u, outra, 999m, (6, StatusParcela.Pendente));
+
+        var l = Assert.Single((await svc.DoMesAsync(u, 2026, 5, Agora)).Limites);
+
+        Assert.Equal(400m, l.Gasto); // a de maio conta no mês
+        Assert.Equal((800m, (int?)2026, (int?)7), (l.ParcelasFuturas, l.ParcelasAteAno, l.ParcelasAteMes)); // junho e julho, só da categoria
+    }
+
     // ── Sem limite, sugestão, validação ─────────────────────────────────────
 
     [Fact]

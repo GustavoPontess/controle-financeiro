@@ -24,6 +24,10 @@ export interface LimiteDoMes {
   aindaVem: AindaVem[]
   /** A frase que responde "e agora?", contando o que ainda vem; null quando não há o que dizer. */
   resposta: string | null
+  /** Parcelas já compradas desta categoria que caem nos próximos meses, e até quando. */
+  parcelasFuturas: number
+  parcelasAteAno: number | null
+  parcelasAteMes: number | null
 }
 
 export interface GastoSemLimite {

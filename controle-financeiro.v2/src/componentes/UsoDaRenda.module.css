@@ -41,6 +41,10 @@
 .faturaValor { grid-column: 3; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
 .mudo { color: var(--v2-texto-3); font-weight: 400; }
 
+/* Parcelas já compradas pros próximos meses: mês · valor */
+.parcelas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.parcelas li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-2); }
+
 /* A resposta do mês (componentes/Resposta) */
 .respostaLugar { margin-top: 6px; }
 

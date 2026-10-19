@@ -134,6 +134,50 @@ public class ViabilidadeMetaServiceTests
         Assert.Equal("Precisa guardar R$ 200,00 por mês. Pra saber se cabe, lance os gastos de pelo menos um mês.", c.Resposta.Texto);
     }
 
+    /// <summary>Compra parcelada: uma parcela por mês informado (ano 2026), cada uma com o status dado.</summary>
+    private static void Parcelado(AppDbContext ctx, Guid u, Guid? categoria, decimal parcela, params (int Mes, StatusParcela Status)[] parcelas)
+    {
+        var pc = new Parcelamento
+        {
+            Id = Guid.NewGuid(), CriadoPor = u, Descricao = "Geladeira", DataCompra = new DateTime(2026, parcelas[0].Mes, 5),
+            ValorTotal = parcela * parcelas.Length, QuantidadeParcelas = parcelas.Length, CartaoCreditoId = Guid.NewGuid(), CategoriaId = categoria,
+        };
+        ctx.Parcelamentos.Add(pc);
+        var n = 1;
+        foreach (var (mes, status) in parcelas)
+            ctx.ParcelasTransacao.Add(new ParcelaTransacao
+            {
+                Id = Guid.NewGuid(), ParcelamentoId = pc.Id, Numero = n++, QuantidadeTotal = parcelas.Length,
+                DataVencimento = mes > 12 ? new DateTime(2027, mes - 12, 5) : new DateTime(2026, mes, 5),
+                Valor = parcela, FaturaId = Guid.NewGuid(), Status = status, CriadoPor = u,
+            });
+        ctx.SaveChanges();
+    }
+
+    [Fact]
+    public async Task ParcelasJaCompradas_SaemDaFolga_EOGastoNormalNaoContaParcelaDuasVezes()
+    {
+        var ctx = CreateContext();
+        var u = Pessoa(ctx);
+        // Setembro teve uma parcela de R$ 500 (paga) além dos R$ 2.000 de gasto: o gasto normal continua R$ 2.000.
+        Parcelado(ctx, u, null, 500m, (9, StatusParcela.Paga));
+        // Parcelas de R$ 600 em outubro, novembro e dezembro: até o prazo (dezembro) pesam R$ 600 por mês.
+        Parcelado(ctx, u, null, 600m, (10, StatusParcela.Pendente), (11, StatusParcela.Pendente), (12, StatusParcela.Pendente));
+
+        var v = await Servico(ctx).CalcularAsync(u, 300m, new DateTime(2026, 12, 1), null, Hoje);
+
+        Assert.Equal((2000m, 600m, 400m), (v.GastoTipico!.Value, v.ParcelasPorMes, v.Folga!.Value)); // 3.000 − 2.000 − 600
+        Assert.Equal("Precisa guardar R$ 100,00 por mês. Cabe: sobram uns R$ 400,00 por mês depois dos gastos, das parcelas e das outras metas.",
+            v.Resposta.Texto);
+
+        var apertado = Pessoa(ctx, renda: 2500m);
+        Parcelado(ctx, apertado, null, 600m, (10, StatusParcela.Pendente), (11, StatusParcela.Pendente), (12, StatusParcela.Pendente));
+        var a = await Servico(ctx).CalcularAsync(apertado, 300m, new DateTime(2026, 12, 1), null, Hoje);
+        Assert.Equal("Precisa guardar R$ 100,00 por mês, e hoje não sobra nada: depois do gasto normal sobram uns R$ 500,00, " +
+                     "e as parcelas já compradas levam R$ 600,00 por mês.", a.Resposta.Texto);
+        Assert.Equal("/cartoes", Assert.Single(a.Resposta.Acoes).Para);
+    }
+
     [Fact]
     public async Task Editando_AMetaNaoContaNasOutras()
     {

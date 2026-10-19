@@ -32,7 +32,10 @@ public record LimiteDoMesDto(
     int DesdeMes,
     decimal PercentualAlerta,
     List<AindaVemDto> AindaVem,
-    string? Resposta);
+    string? Resposta,
+    decimal ParcelasFuturas,
+    int? ParcelasAteAno,
+    int? ParcelasAteMes);
 
 /// <summary>Categoria com gasto no mês e sem limite (a tela oferece "Pôr limite").</summary>
 public record GastoSemLimiteDto(Guid? CategoriaId, string Categoria, decimal Gasto);

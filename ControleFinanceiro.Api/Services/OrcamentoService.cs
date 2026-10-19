@@ -33,6 +33,9 @@ public class OrcamentoService
         var vigentes = await VigentesAsync(usuarioId, ano, mes);
         var gastos = await RegrasFinanceiras.GastosPorCategoriaDoMesAsync(_context, usuarioId, ano, mes);
         var previstos = await RegrasFinanceiras.PrevistosDoMesAsync(_context, usuarioId, ano, mes);
+        // Parcelas já compradas que caem nos meses seguintes (comprometem os limites de lá).
+        var parcelasFuturas = await RegrasFinanceiras.ParcelasPorMesAsync(_context, usuarioId, new DateTime(ano, mes, 1).AddMonths(1),
+            DinheiroDoMesService.MesesDeParcelas, soPendentes: true);
 
         var ids = vigentes.Where(o => o.CategoriaId.HasValue).Select(o => o.CategoriaId!.Value)
             .Concat(gastos.Keys.Where(k => k != RegrasFinanceiras.SemCategoria))
@@ -52,9 +55,11 @@ public class OrcamentoService
                 .ToList();
             var pct = Math.Round(g.Gasto * 100m / o.ValorLimite, 1);
             var situacao = Situacao(o.ValorLimite, g.Gasto, vem.Sum(v => v.Valor), pct, o.PercentualAlerta);
+            var futuras = parcelasFuturas.Where(p => o.CategoriaId is null || p.CategoriaId == o.CategoriaId).ToList();
             return new LimiteDoMesDto(o.CategoriaId, Nome(o.CategoriaId), o.ValorLimite, g.Gasto, g.Previsto,
                 o.ValorLimite - g.Gasto, pct, situacao, o.Ano, o.Mes, o.PercentualAlerta, vem,
-                Responder(situacao, o.ValorLimite, g.Gasto, vem));
+                Responder(situacao, o.ValorLimite, g.Gasto, vem),
+                futuras.Sum(p => p.Valor), futuras.LastOrDefault()?.Ano, futuras.LastOrDefault()?.Mes);
         })
             // O que precisa de atenção primeiro: quem passou, quem vai passar, quem está perto; depois pelo quanto gastou.
             .OrderBy(l => Prioridade(l.Situacao)).ThenByDescending(l => l.Percentual).ThenBy(l => l.Categoria, StringComparer.CurrentCulture)

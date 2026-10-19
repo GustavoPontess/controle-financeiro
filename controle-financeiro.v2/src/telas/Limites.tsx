@@ -164,6 +164,10 @@ function Linha({ l, periodo, editavel, aberta, aoAbrir, aoMudar }: {
         <div><dt>Gasto</dt><dd><Dinheiro valor={l.gasto} /></dd></div>
         <div><dt>{passou ? "Passou" : "Sobra"}</dt><dd><Dinheiro valor={Math.abs(l.sobra)} tom={passou ? "negativo" : undefined} /></dd></div>
         <div><dt>Vale desde</dt><dd>{nomeDoPeriodo({ ano: l.desdeAno, mes: l.desdeMes }).toLowerCase()}</dd></div>
+        {l.parcelasFuturas > 0 && l.parcelasAteAno && l.parcelasAteMes && (
+          <div><dt>Parcelas já compradas pros próximos meses</dt>
+            <dd><Dinheiro valor={l.parcelasFuturas} /> até {nomeDoPeriodo({ ano: l.parcelasAteAno, mes: l.parcelasAteMes }).toLowerCase()}</dd></div>
+        )}
       </DadosFicha>
       {l.aindaVem.length > 0 && (
         <div className={styles.vem}>

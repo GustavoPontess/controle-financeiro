@@ -36,6 +36,14 @@ export interface FaturaDoMes {
   atrasada: boolean
 }
 
+/** Parcelas já compradas (ainda não pagas) que caem nos próximos meses. */
+export interface ParcelasFuturas {
+  total: number
+  ateAno: number | null
+  ateMes: number | null
+  porMes: { ano: number; mes: number; valor: number }[]
+}
+
 export interface AcaoResposta {
   rotulo: string
   /** Rota do app. */
@@ -66,4 +74,6 @@ export interface DinheiroDoMes {
   /** Faturas a pagar no mês: fora do gasto e do livre (as compras já contaram quando foram feitas). */
   faturas: FaturaDoMes[]
   faturasAPagar: number
+  /** O que já está comprometido nos próximos meses com compras parceladas (não come a renda deste mês). */
+  parcelasFuturas: ParcelasFuturas
 }

@@ -3,12 +3,14 @@
 // fixa prevista) fica listrado; o vazio no fim é o que sobra. Passou da renda: a barra cresce além da marca "sua
 // renda". Embaixo, a legenda (já saiu · ainda vem · livre ou passou), as faturas de cartão a pagar no mês (à parte:
 // é quando o dinheiro sai da conta, e as compras delas já contaram no mês em que foram feitas; nunca somam no gasto
-// nem no livre) e a resposta do mês com as ações. Só mostra:
+// nem no livre), as parcelas já compradas pros próximos meses (o que já está comprometido lá) e a resposta do mês
+// com as ações. Só mostra:
 // a conta toda vem pronta do servidor (DinheiroDoMesService). Usado no Início, na Renda e em Relatórios.
 import { Link } from "react-router-dom"
 import type { DinheiroDoMes, FaturaDoMes, ParteDoMes } from "../types/DinheiroDoMes"
 import { Dinheiro } from "./Dinheiro"
 import Etiqueta from "./Etiqueta"
+import { nomeDoPeriodo } from "./NavegadorMes"
 import ListaAindaVem from "./ListaAindaVem"
 import Resposta from "./Resposta"
 import styles from "./UsoDaRenda.module.css"
@@ -96,12 +98,37 @@ export default function UsoDaRenda({ dados }: { dados: DinheiroDoMes }) {
         </>
       )}
 
+      {dados.parcelasFuturas.total > 0 && (
+        <>
+          <span className={styles.grupo}>
+            Parcelas já compradas pros próximos meses <Dinheiro valor={dados.parcelasFuturas.total} className={styles.grupoTotal} />
+          </span>
+          <ul className={styles.parcelas} aria-label="Parcelas já compradas pros próximos meses">
+            {dados.parcelasFuturas.porMes.slice(0, MESES_DE_PARCELAS).map((p) => (
+              <li key={`${p.ano}-${p.mes}`}>
+                <span>{nomeDoPeriodo(p).toLowerCase()}</span>
+                <Dinheiro valor={p.valor} className={styles.valor} />
+              </li>
+            ))}
+            {dados.parcelasFuturas.porMes.length > MESES_DE_PARCELAS && (
+              <li>
+                <span>depois, até {nomeDoPeriodo({ ano: dados.parcelasFuturas.ateAno!, mes: dados.parcelasFuturas.ateMes! }).toLowerCase()}</span>
+                <Dinheiro valor={dados.parcelasFuturas.porMes.slice(MESES_DE_PARCELAS).reduce((s, p) => s + p.valor, 0)} className={styles.valor} />
+              </li>
+            )}
+          </ul>
+        </>
+      )}
+
       <div className={styles.respostaLugar}>
         <Resposta tom={dados.resposta.tom} texto={dados.resposta.texto} acoes={dados.resposta.acoes} />
       </div>
     </div>
   )
 }
+
+/** Meses de parcelas com linha própria; o resto vira "depois, até …". */
+const MESES_DE_PARCELAS = 3
 
 /** "3/9" a partir de "2026-09-03..." */
 const diaMes = (iso: string) => `${Number(iso.slice(8, 10))}/${Number(iso.slice(5, 7))}`

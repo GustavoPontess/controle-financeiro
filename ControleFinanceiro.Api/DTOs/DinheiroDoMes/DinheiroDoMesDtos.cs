@@ -13,6 +13,15 @@ public record AindaVemDto(Guid TransacaoId, Guid? ContaFixaId, string Descricao,
 public record FaturaDoMesDto(Guid FaturaId, Guid CartaoId, string Cartao, DateTime DataInicio, DateTime DataFechamento,
     DateTime DataVencimento, decimal Total, decimal Pago, decimal Restante, bool Atrasada);
 
+/// <summary>Parcelas já compradas que caem num mês futuro.</summary>
+public record ParcelaFuturaDto(int Ano, int Mes, decimal Valor);
+
+/// <summary>
+/// O que já está comprometido nos próximos meses com compras parceladas (só as parcelas ainda não pagas):
+/// o total, até quando e o valor de cada mês.
+/// </summary>
+public record ParcelasFuturasDto(decimal Total, int? AteAno, int? AteMes, List<ParcelaFuturaDto> PorMes);
+
 /// <summary>O que dá pra fazer a partir da resposta: rótulo do botão e a rota do app.</summary>
 public record AcaoDto(string Rotulo, string Para);
 
@@ -40,4 +49,5 @@ public record DinheiroDoMesDto(
     List<AindaVemDto> AindaVem,
     RespostaDto Resposta,
     List<FaturaDoMesDto> Faturas,
-    decimal FaturasAPagar);
+    decimal FaturasAPagar,
+    ParcelasFuturasDto ParcelasFuturas);
