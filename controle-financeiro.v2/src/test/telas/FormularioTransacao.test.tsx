@@ -5,6 +5,8 @@ import userEvent from "@testing-library/user-event"
 
 vi.mock("../../services/transactionService", () => ({ createTransaction: vi.fn(), updateTransaction: vi.fn(), avisoDeCompra: vi.fn(async () => null) }))
 vi.mock("../../services/transferenciaService", () => ({ createTransferencia: vi.fn() }))
+vi.mock("../../services/familiaService", () => ({ getFamilias: vi.fn(async () => []), getFamilia: vi.fn() }))
+import { getFamilia, getFamilias } from "../../services/familiaService"
 import { avisoDeCompra, createTransaction } from "../../services/transactionService"
 import { createTransferencia } from "../../services/transferenciaService"
 import FormularioTransacao from "../../telas/FormularioTransacao"
@@ -85,5 +87,39 @@ describe("FormularioTransacao", () => {
     expect(screen.queryByRole("link", { name: /Internet/ })).toBeNull()
     expect(screen.getByText(/^Saldo da conta hoje: R\$\s200,00\.$/)).toBeInTheDocument()
     await waitFor(() => expect(avisoDeCompra).toHaveBeenLastCalledWith(300, { contaId: "k2" }))
+  })
+
+  it("despesa nova divide com a família ao salvar: o interruptor manda a família e diz como divide", async () => {
+    vi.mocked(getFamilias).mockResolvedValue([{ id: "f1", nome: "Casa Pontes", criadoPorUsuarioId: "u1", criadoEm: "2026-01-01", ehAdmin: true, totalMembros: 3 }])
+    vi.mocked(getFamilia).mockResolvedValue({
+      id: "f1", nome: "Casa Pontes", criadoPorUsuarioId: "u1", criadoEm: "2026-01-01", ehAdmin: true, modoRateioPadrao: 1, limiteAprovacao: null, convitesPendentes: [],
+      membros: [
+        { id: "m1", usuarioId: "u1", nomeUsuario: "Gustavo Pontes", emailUsuario: "", papel: "", entrouEm: "", papelPermissao: 1, visibilidadeRenda: 1, rendaVisivelPara: [] },
+        { id: "m2", usuarioId: "u2", nomeUsuario: "Gabriel Dev", emailUsuario: "", papel: "", entrouEm: "", papelPermissao: 2, visibilidadeRenda: 1, rendaVisivelPara: null },
+        { id: "m3", usuarioId: "u3", nomeUsuario: "Marina Dev", emailUsuario: "", papel: "", entrouEm: "", papelPermissao: 3, visibilidadeRenda: 0, rendaVisivelPara: null },
+      ],
+    } as never)
+    vi.mocked(createTransaction).mockResolvedValue({} as never)
+    render(<MemoryRouter><FormularioTransacao contas={contas as never} cartoes={[]} categorias={categorias as never} subcategorias={[]} aoSair={vi.fn()} aoSalvo={vi.fn()} /></MemoryRouter>)
+
+    await userEvent.type(screen.getByPlaceholderText("0,00"), "12000")
+    await userEvent.type(screen.getByPlaceholderText("Mercado"), "Mercado")
+    await userEvent.click(screen.getByRole("combobox", { name: "Conta" }))
+    await userEvent.click(screen.getByRole("option", { name: "Nubank" }))
+    await userEvent.click(screen.getByRole("combobox", { name: "Categoria" }))
+    await userEvent.click(screen.getByRole("option", { name: "Alimentação" }))
+    await userEvent.click(await screen.findByRole("switch", { name: "Dividir com Casa Pontes" }))
+    // Quem só vê (Marina) fica fora da divisão.
+    expect(await screen.findByText("Igual entre Gustavo e Gabriel")).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole("button", { name: "Adicionar" }))
+    await waitFor(() => expect(createTransaction).toHaveBeenCalledWith(expect.objectContaining({ familiaId: "f1", valor: 120 }), expect.any(String)))
+  })
+
+  it("sem família não aparece o interruptor; receita também não divide", async () => {
+    vi.mocked(getFamilias).mockResolvedValue([])
+    renderizar()
+    await waitFor(() => expect(getFamilias).toHaveBeenCalled())
+    expect(screen.queryByRole("switch", { name: /Dividir/ })).not.toBeInTheDocument()
   })
 })

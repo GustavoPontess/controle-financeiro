@@ -18,6 +18,17 @@ public class DespesaCompartilhadaService
         _rateio = rateio;
     }
 
+    /// <summary>Antes de criar uma despesa já dividida: a pessoa pode dividir nessa família (membro que lança) e é uma
+    /// despesa. Mesmas recusas do <see cref="CompartilharAsync"/>, só que antes de gravar qualquer coisa.</summary>
+    public async Task ExigirPodeDividirAsync(Guid familiaId, Guid usuarioId, Domain.Entities.Transacao transacao)
+    {
+        if (transacao.Tipo != TipoTransacao.Despesa)
+            throw new InvalidOperationException("Apenas despesas podem ser compartilhadas.");
+        await ExigirEscritaAsync(familiaId, usuarioId);
+        if (!await _context.Familias.AnyAsync(f => f.Id == familiaId && f.Ativa))
+            throw new KeyNotFoundException("Família não encontrada.");
+    }
+
     /// <summary>Marca uma transação como despesa compartilhada com uma família e GRAVA a parte de cada um pela regra
     /// da família de hoje (<see cref="RateioService.CalcularPartesAsync"/>): daí em diante nada muda sozinho.</summary>
     public async Task CompartilharAsync(Guid transacaoId, Guid familiaId, Guid usuarioId)
@@ -49,7 +60,7 @@ public class DespesaCompartilhadaService
             : StatusAprovacaoDespesa.NaoRequerida;
         transacao.AprovadoPorUsuarioId = null;
         transacao.AprovadoEm = null;
-        await _rateio.AplicarPartesAsync(transacao, familiaId, familia.ModoRateioPadrao, null);
+        await _rateio.AplicarPartesAsync(transacao, familiaId, RateioService.ModoAoDividir(familia.ModoRateioPadrao), null);
         await _context.SaveChangesAsync();
 
         // Issue #30 — notifica os demais membros ativos da família.

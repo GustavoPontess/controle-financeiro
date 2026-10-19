@@ -24,3 +24,21 @@
   .dados { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .valor { font-size: var(--v2-fs-3xl); }
 }
+
+/* Quadro "Família" (despesa): só sua → frase + "Dividir com…"; dividida → como divide, a parte de cada um, pra quem. */
+.familiaTitulo { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.familiaLinha { display: flex; align-items: center; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; }
+.familiaTexto { margin: 0; font-size: var(--v2-fs-md); color: var(--v2-texto-2); }
+.familiaAcoes { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.familiaCampos { margin-top: 14px; }
+.partes { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--v2-linha); }
+.partesTopo { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.partesTitulo { font-size: var(--v2-fs-xs); font-weight: 600; color: var(--v2-texto-3); }
+.partesLista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.partesLista li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: baseline; font-size: var(--v2-fs-md); font-weight: 500; }
+.parteValor { font-variant-numeric: tabular-nums; }
+.mudo { font-size: var(--v2-fs-sm); font-weight: 400; color: var(--v2-texto-3); margin: 0; }
+.meuJeito { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--v2-linha); }
+.meuJeitoCampos { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px 16px; }
+.meuJeitoAcoes { display: flex; justify-content: flex-end; gap: 8px; }
+.familiaRodape { display: flex; justify-content: flex-end; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--v2-linha); }

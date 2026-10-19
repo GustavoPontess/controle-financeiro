@@ -68,6 +68,9 @@ namespace ControleFinanceiro.Api.Controllers
             // Compra parcelada → parcelamento de verdade (nunca N lançamentos soltos)
             if (dto.Parcelas.HasValue && dto.Parcelas.Value > 1)
             {
+                // Parcela dividida com a família ainda não existe: recusar em vez de ignorar o pedido calado.
+                if (dto.FamiliaId is not null)
+                    throw new ArgumentException("Compra parcelada ainda não divide com a família.");
                 var parcelamento = await _parcelamentos.CriarDoLancamentoAsync(dto, usuarioId, idempotencyKey);
                 return StatusCode(StatusCodes.Status201Created, parcelamento);
             }
@@ -91,7 +94,12 @@ namespace ControleFinanceiro.Api.Controllers
                 Hora = dto.Hora
             };
 
+            // "Dividir com a família" na nova despesa: confere antes (família, permissão, tipo) pra não nascer sem dividir.
+            if (dto.FamiliaId is { } familiaId)
+                await _despesaCompartilhada.ExigirPodeDividirAsync(familiaId, usuarioId, transacao);
             var criada = await _service.CriarTransacaoAsync(transacao, usuarioId, idempotencyKey);
+            if (dto.FamiliaId is { } fid && criada.FamiliaId is null)
+                await _despesaCompartilhada.CompartilharAsync(criada.Id, fid, usuarioId);
             return CreatedAtAction(nameof(BuscarPorId), new { id = criada.Id }, ToDto(criada));
         }
 
@@ -117,6 +125,10 @@ namespace ControleFinanceiro.Api.Controllers
             EhPagamentoFatura = t.EhPagamentoFatura,
             EhTransferencia = t.EhTransferencia,
             EhEmprestimo = t.EhEmprestimo,
+            FamiliaId = t.FamiliaId,
+            StatusAprovacao = (int)t.StatusAprovacao,
+            DependenteId = t.DependenteId,
+            ResponsavelUsuarioId = t.ResponsavelUsuarioId,
             StatusTransacao = (int)t.StatusTransacao,
             Data = t.Data,
             Hora = t.Hora,

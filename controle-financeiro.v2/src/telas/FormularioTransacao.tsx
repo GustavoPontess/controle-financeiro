@@ -14,8 +14,10 @@
 import { useEffect, useMemo, useState } from "react"
 import { avisoDeCompra, createTransaction, updateTransaction, type EdicaoLancamentoResultado } from "../services/transactionService"
 import { createTransferencia } from "../services/transferenciaService"
+import { getFamilia, getFamilias } from "../services/familiaService"
 import { mensagemDeErro } from "../api/cliente"
 import type { Transaction } from "../types/Transaction"
+import type { Familia, FamiliaDetalhe } from "../types/Familia"
 import type { Conta } from "../types/Conta"
 import type { CartaoCredito } from "../types/CartaoCredito"
 import type { Category } from "../types/Category"
@@ -35,6 +37,7 @@ import Segmentos from "../componentes/Segmentos"
 import Selecao from "../componentes/Selecao"
 import SeletorData, { formatarData } from "../componentes/SeletorData"
 import { MAX_DESCRICAO, MEIO, MEIOS_PAGAMENTO, MEIOS_RECEBIMENTO, PARCELAS, TIPO, horaValida } from "../dominio/transacao"
+import { PAPEL_PERMISSAO, primeiroNome } from "../dominio/familia"
 import { formatMoney, moneyParaCampo, parseMoney } from "../utils/money"
 import { dataLocalISO, horaLocalHHMM, mascararHora, somaDias } from "../utils/dateTime"
 import { useAtrasado } from "../utils/useAtrasado"
@@ -84,6 +87,11 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
   const [salvando, setSalvando] = useState(false)
   // Idempotency-Key: uma por abertura da tela, reusada em toda tentativa (criar e editar).
   const [chaveEnvio] = useState(() => crypto.randomUUID())
+  // Despesa nova: dividir com a família já ao salvar (a parte de cada um é gravada pela regra da família).
+  const [familias, setFamilias] = useState<Familia[]>([])
+  const [familiaId, setFamiliaId] = useState("")
+  const [familiaDetalhe, setFamiliaDetalhe] = useState<FamiliaDetalhe | null>(null)
+  const [dividir, setDividir] = useState(false)
 
   const transferencia = natureza === "transferencia"
   const receita = natureza === "receita"
@@ -196,6 +204,7 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
           efetivado: credito ? true : efetivado,
           data,
           hora: horaEnvio,
+          familiaId: podeDividir && dividir && familiaId ? familiaId : undefined,
         }, chaveEnvio)
       }
     } catch (e) {
@@ -245,6 +254,30 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
       .catch(() => { if (vivo) setAviso(null) }) // o aviso é ajuda: sem ele, o formulário segue igual
     return () => { vivo = false }
   }, [pedidoAviso])
+
+  useEffect(() => {
+    if (editando) return
+    let vivo = true
+    getFamilias().then((f) => { if (vivo) { setFamilias(f); setFamiliaId((x) => x || f[0]?.id || "") } }).catch(() => { /* sem família, sem o interruptor */ })
+    return () => { vivo = false }
+  }, [editando])
+  useEffect(() => {
+    if (!familiaId) return
+    let vivo = true
+    getFamilia(familiaId).then((d) => { if (vivo) setFamiliaDetalhe(d) }).catch(() => { /* a frase fica sem os nomes */ })
+    return () => { vivo = false }
+  }, [familiaId])
+  // Parcelada ainda não divide (o servidor recusa).
+  const podeDividir = !editando && !transferencia && !receita && !parcelado && familias.length > 0
+  const familiaNome = familias.find((f) => f.id === familiaId)?.nome ?? "a família"
+  const comoDivide = (() => {
+    if (!familiaDetalhe) return null
+    const nomes = familiaDetalhe.membros.filter((m) => m.papelPermissao !== PAPEL_PERMISSAO.dependente).map((m) => primeiroNome(m.nomeUsuario))
+    const entre = nomes.length > 1 ? `${nomes.slice(0, -1).join(", ")} e ${nomes[nomes.length - 1]}` : nomes[0] ?? ""
+    // "Do meu jeito" começa igual; a pessoa ajusta na página da despesa.
+    const modo = familiaDetalhe.modoRateioPadrao === 2 ? "Pela renda" : "Igual"
+    return `${modo} entre ${entre}`
+  })()
 
   const rotuloSalvar = salvando ? "Salvando…" : editando ? "Salvar" : transferencia ? "Transferir" : "Adicionar"
 
@@ -352,9 +385,21 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
           </Resposta>
         )}
 
-        {!transferencia && !credito && (
+        {((!transferencia && !credito) || podeDividir) && (
           <Bloco titulo="Opções" className={styles.opcoes}>
-            <Interruptor ligado={efetivado} onChange={(on) => { setEfetivado(on); limpa("data") }}>{receita ? "Já recebi" : "Já paguei"}</Interruptor>
+            {!transferencia && !credito && (
+              <Interruptor ligado={efetivado} onChange={(on) => { setEfetivado(on); limpa("data") }}>{receita ? "Já recebi" : "Já paguei"}</Interruptor>
+            )}
+            {podeDividir && (
+              <div className={styles.dividir}>
+                <Interruptor ligado={dividir} onChange={setDividir}>Dividir com {familias.length > 1 ? "a família" : familiaNome}</Interruptor>
+                {dividir && familias.length > 1 && (
+                  <Selecao tamanho="sm" ariaLabel="Família" valor={familiaId} onChange={setFamiliaId}
+                    opcoes={familias.map((f) => ({ valor: f.id, rotulo: f.nome }))} />
+                )}
+                {dividir && comoDivide && <p className={styles.dividirNota}>{comoDivide}</p>}
+              </div>
+            )}
           </Bloco>
         )}
 

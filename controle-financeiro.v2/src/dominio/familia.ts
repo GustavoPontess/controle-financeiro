@@ -13,11 +13,11 @@ export const MAX_PAPEL = 30
 export const MAX_NOME_FAMILIA = 100
 
 export const MODOS_RATEIO: { valor: ModoRateio; rotulo: string; detalhe: string }[] = [
-  { valor: 1, rotulo: "Igual pra todos", detalhe: "cada adulto paga a mesma parte" },
-  { valor: 2, rotulo: "Proporcional à renda", detalhe: "quem ganha mais paga mais, pela renda esperada que cada um liberou" },
-  { valor: 3, rotulo: "Por despesa", detalhe: "a divisão é escolhida em cada lançamento" },
+  { valor: 1, rotulo: "Igual", detalhe: "cada um que lança paga a mesma parte" },
+  { valor: 2, rotulo: "Pela renda", detalhe: "quem ganha mais paga mais, pela renda esperada que cada um liberou" },
+  { valor: 3, rotulo: "Do meu jeito", detalhe: "a parte de cada um é escolhida em cada despesa" },
 ]
-export const rotuloModoRateio = (m: ModoRateio) => MODOS_RATEIO.find((x) => x.valor === m)?.rotulo ?? "Igual pra todos"
+export const rotuloModoRateio = (m: ModoRateio) => MODOS_RATEIO.find((x) => x.valor === m)?.rotulo ?? "Igual"
 
 export const TIPOS_DEPENDENTE: { valor: TipoDependente; rotulo: string }[] = [
   { valor: 1, rotulo: "Criança" },
