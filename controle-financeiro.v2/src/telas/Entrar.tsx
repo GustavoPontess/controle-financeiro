@@ -25,9 +25,10 @@ const iniciais = (nome: string) => nome.trim().split(/\s+/).map((p) => p[0]).sli
 const emailValido = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
 
 export default function Entrar() {
-  const { entrar, verificarMfa, reativar, autenticado, carregando } = useAuth()
+  const { entrar, verificarMfa, reativar, adicionarConta, autenticado, carregando } = useAuth()
   const navigate = useNavigate()
   const { state } = useLocation()
+  const contaExcluida = !!(state as { contaExcluida?: boolean } | null)?.contaExcluida
 
   const [email, setEmail] = useState("")
   const [senha, setSenha] = useState("")
@@ -61,9 +62,11 @@ export default function Entrar() {
 
   // `?previa` (só em dev): mostra a tela mesmo logado, pra olhar o visual sem precisar sair da conta.
   const previa = import.meta.env.DEV && new URLSearchParams(window.location.search).has("previa")
+  // `?adicionar` (logado): conecta OUTRA conta sem sair desta (menu da conta → "Adicionar conta").
+  const adicionar = autenticado && new URLSearchParams(window.location.search).has("adicionar")
   // Entrando agora: quem decide pra onde vai é o pós-login (convite de MFA ou Visão geral), não o "já logado".
   const entrando = useRef(false)
-  useEffect(() => { if (!carregando && autenticado && !previa && !entrando.current) navigate("/dashboard", { replace: true }) }, [autenticado, carregando, navigate, previa])
+  useEffect(() => { if (!carregando && autenticado && !previa && !adicionar && !entrando.current) navigate("/dashboard", { replace: true }) }, [autenticado, carregando, navigate, previa, adicionar])
   useEffect(() => { rosterService.listar().then(setRoster).catch(() => setRoster([])) }, [])
   // Painel DEV: se a API ainda está subindo (reinício em dev), o proxy responde erro — tenta de novo a cada
   // 3s por até 1 min, em vez de ficar sem painel até recarregar a página.
@@ -119,6 +122,12 @@ export default function Entrar() {
     setErros(novos)
     if (Object.keys(novos).length) return
     setEnviando(true)
+    if (adicionar) {
+      try { await adicionarConta(email.trim(), senha); navigate("/dashboard", { replace: true }) }
+      catch (err) { setErro(err instanceof Error ? err.message : "Não foi possível conectar a conta.") }
+      finally { setEnviando(false) }
+      return
+    }
     entrando.current = true
     try { await tratarResultado(await entrar(email.trim(), senha, manter)) }
     catch (err) { entrando.current = false; setErro(err instanceof Error ? err.message : "Não foi possível entrar.") }
@@ -157,7 +166,7 @@ export default function Entrar() {
     finally { setEnviando(false) }
   }
 
-  const titulo = passo === "exclusao" ? "Reativar conta" : passo === "mfa" ? "Verificação em duas etapas" : passo === "esqueci" ? "Recuperar senha" : passo === "escolher" ? "Escolha sua conta" : "Bem-vindo de volta"
+  const titulo = passo === "exclusao" ? "Reativar conta" : passo === "mfa" ? "Verificação em duas etapas" : passo === "esqueci" ? "Recuperar senha" : passo === "escolher" ? (adicionar ? "Qual conta conectar?" : "Escolha sua conta") : adicionar ? "Adicionar conta" : "Bem-vindo de volta"
 
   return (
     <div className={`v2 ${styles.raiz}`}>
@@ -178,6 +187,11 @@ export default function Entrar() {
       <main className={styles.painel}>
         <div className={styles.painelMiolo}>
           {/* Um "voltar" só, contextual */}
+          {adicionar && (passo === "escolher" || (passo === "form" && roster.length === 0)) && (
+            <button type="button" className={styles.voltar} onClick={() => navigate("/dashboard")}>
+              <ArrowLeft size={16} strokeWidth={2.25} aria-hidden="true" /> Voltar
+            </button>
+          )}
           {passo === "mfa" ? (
             <button type="button" className={styles.voltar} onClick={() => { setMfaChallenge(null); setMfaCodigo(""); setMfaErro(null); setConfiar(false) }}>
               <ArrowLeft size={16} strokeWidth={2.25} aria-hidden="true" /> Voltar ao login
@@ -208,6 +222,9 @@ export default function Entrar() {
 
           <div className={styles.marcaMovel}><Logo size={26} /></div>
           <h1 className={styles.titulo}>{titulo}</h1>
+          {contaExcluida && (passo === "form" || passo === "escolher") && (
+            <p className={styles.aviso} role="status">Sua conta foi marcada pra exclusão. Pra reativar, é só entrar de novo em até 30 dias.</p>
+          )}
           {passo === "form" && <p className={styles.sub}>Não tem conta? <Link to="/cadastro">Criar conta grátis</Link></p>}
           {passo === "mfa" && <p className={styles.sub}>Digite o código do seu app autenticador (ou um código de recuperação).</p>}
           {passo === "exclusao" && <p className={styles.sub}>Sua conta está marcada para exclusão. Você ainda pode reativá-la.</p>}

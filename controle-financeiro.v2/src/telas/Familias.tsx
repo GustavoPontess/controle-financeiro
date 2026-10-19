@@ -1,5 +1,5 @@
-// Famílias (/familias): os convites que chegaram pra pessoa (aceita ou recusa aqui) e as famílias de que ela
-// faz parte. Cada família é uma linha que abre, ali embaixo, o resumo (quem está nela, o balanço do mês e o que
+// Famílias (/familias, pelo seletor de espaço do menu): os convites que chegaram pra pessoa (aceita ou recusa
+// aqui) e as famílias de que ela faz parte. Cada família é uma linha que abre, ali embaixo, o resumo (quem está nela, o balanço do mês e o que
 // é seu nele) e o botão pra entrar na página dela. Nova família é uma página (/familias/nova).
 import { useEffect, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
@@ -7,6 +7,7 @@ import { Plus, Users } from "lucide-react"
 import { useAuth } from "../auth/useAuth"
 import { aceitarConvite, getBalancoFamilia, getFamilia, getFamilias, getConvitesPendentes, recusarConvite } from "../services/familiaService"
 import { mensagemDeErro } from "../api/cliente"
+import { recarregarEspacos } from "../estado/espaco"
 import type { BalancoFamilia, ConviteFamilia, Familia, FamiliaDetalhe } from "../types/Familia"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import Botao from "../componentes/Botao"
@@ -34,7 +35,7 @@ export default function Familias() {
     getConvitesPendentes().then((c) => { if (vivo) setConvites(c) }).catch(() => { /* sem convites na tela */ })
     return () => { vivo = false }
   }, [versao])
-  const recarregar = () => setVersao((v) => v + 1)
+  const recarregar = () => { setVersao((v) => v + 1); void recarregarEspacos() }
 
   return (
     <div className={styles.pagina}>

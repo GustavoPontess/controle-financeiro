@@ -12,6 +12,7 @@ public static class TipoContaExtensions
         TipoConta.Dinheiro => "Dinheiro",
         TipoConta.Emprestimo => "Empréstimo",
         TipoConta.Investimento => "Investimentos",
+        TipoConta.Caixinha => "Caixinha de meta",
         _ => tipo.ToString()
     };
 }

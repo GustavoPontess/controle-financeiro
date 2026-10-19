@@ -24,8 +24,9 @@ public class MigrationAddModeloImportacaoTests
         using var ctx = ContextoNpgsqlSemBanco();
         var ids = ctx.Database.GetMigrations().ToList();
 
-        Assert.EndsWith("_AddModeloImportacao", ids[^1]); // nada gerado por cima sem querer
-        Assert.EndsWith("_AddSubcategoriaRecorrente", ids[^2]);
+        // Depois de AddSubcategoriaRecorrente (a "mais recente" é a AddRendaPrevistaEVisibilidade, que tem o próprio teste).
+        var i = ids.FindIndex(id => id.EndsWith("_AddModeloImportacao"));
+        Assert.True(i > 0 && ids[i - 1].EndsWith("_AddSubcategoriaRecorrente"));
     }
 
     [Fact]

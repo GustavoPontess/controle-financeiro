@@ -30,12 +30,6 @@
 /* Gráfico */
 
 /* Categorias */
-.categorias { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
-.categoria { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: baseline; font-size: var(--v2-fs-md); }
-.categoriaNome { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.categoriaValor { font-weight: 600; font-variant-numeric: tabular-nums; }
-.categoriaPct { font-size: var(--v2-fs-xs); font-weight: 500; color: var(--v2-texto-3); }
-.trilho { grid-column: 1 / -1; height: 6px; border-radius: 999px; background: var(--v2-superficie-2); overflow: hidden; }
 .trilhoFino { display: block; height: 4px; margin-top: 6px; border-radius: 999px; background: var(--v2-superficie-2); overflow: hidden; }
 .trilhoFill { display: block; height: 100%; border-radius: 999px; background: var(--v2-tinta); }
 
@@ -46,6 +40,7 @@ a.linha:hover { background: var(--v2-hover-linha); }
 .icone { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; background: var(--v2-superficie-2); color: var(--v2-texto-2); font-size: var(--v2-fs-sm); font-weight: 700; flex-shrink: 0; }
 .icone[data-tom="positivo"] { background: var(--v2-positivo-suave); color: var(--v2-positivo); }
 .icone[data-tom="neutro"] { color: var(--v2-texto-3); }
+.icone[data-tom="acento"] { background: var(--v2-acento-suave); color: var(--v2-acento); }
 .texto { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .nome { font-size: var(--v2-fs-md); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sub { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -59,3 +54,6 @@ a.linha:hover { background: var(--v2-hover-linha); }
   .hero { font-size: var(--v2-fs-4xl); }
   .mes > span { min-width: 0; }
 }
+
+/* Renda do mês: o cartão é o componentes/UsoDaRenda; aqui só o erro */
+.erroMes { margin: 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }

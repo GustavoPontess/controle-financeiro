@@ -103,16 +103,11 @@ public class FamiliaServiceTests
             () => svc.ObterDetalheAsync(familia.Id, estranho));
     }
 
-    // Renda é dado pessoal: "o sistema sabe o peso, não o valor — só o próprio vê" (familia/visao.md).
-    // Antes o detalhe devolvia a RendaMensal de todo mundo pra todo mundo (bug P1 2026-09-28).
-    private static void DefinirRenda(AppDbContext ctx, Guid familiaId, Guid usuarioId, decimal? renda)
-    {
-        ctx.MembrosFamilia.First(m => m.FamiliaId == familiaId && m.UsuarioId == usuarioId).RendaMensal = renda;
-        ctx.SaveChanges();
-    }
-
+    // Renda é dado pessoal (renda-e-visibilidade.md): o membro não carrega valor nenhum; a lista de quem vê a
+    // renda é configuração da própria pessoa e só vai pra ela. (Antes o detalhe devolvia a renda de todo mundo
+    // pra todo mundo, bug P1 2026-09-28; depois o valor manual saiu de vez em 2026-10-18.)
     [Fact]
-    public async Task ObterDetalheAsync_RendaDosOutros_NaoVemNemProAdmin_SoSeFoiInformada()
+    public async Task ObterDetalheAsync_QuemVeARenda_SoVaiProProprioMembro()
     {
         var ctx = CreateContext();
         var svc = new FamiliaService(ctx);
@@ -120,59 +115,20 @@ public class FamiliaServiceTests
         var familia = await svc.CriarAsync(new CriarFamiliaDto("Casa"), admin);
         var ana = SeedMembro(ctx, familia.Id, "ana@test.com", PapelFamilia.Membro);
         var bia = SeedMembro(ctx, familia.Id, "bia@test.com", PapelFamilia.Membro);
-        DefinirRenda(ctx, familia.Id, admin, 8000m);
-        DefinirRenda(ctx, familia.Id, ana, 3000m);
-        // bia não informou
+        var membroAna = ctx.MembrosFamilia.First(m => m.FamiliaId == familia.Id && m.UsuarioId == ana);
+        membroAna.VisibilidadeRenda = VisibilidadeRenda.ValorParaAlguns;
+        membroAna.RendaVisivelPara = new List<Guid> { admin };
+        ctx.SaveChanges();
 
         var visaoAdmin = await svc.ObterDetalheAsync(familia.Id, admin);
-
-        var proprio = visaoAdmin.Membros.Single(m => m.UsuarioId == admin);
-        Assert.Equal(8000m, proprio.RendaMensal);                       // a própria: vê o valor
-        Assert.True(proprio.RendaInformada);
-        var daAna = visaoAdmin.Membros.Single(m => m.UsuarioId == ana);
-        Assert.Null(daAna.RendaMensal);                                 // a de outro: nem o admin vê
-        Assert.True(daAna.RendaInformada);                              // só sabe que existe (o peso)
-        var daBia = visaoAdmin.Membros.Single(m => m.UsuarioId == bia);
-        Assert.Null(daBia.RendaMensal);
-        Assert.False(daBia.RendaInformada);
-    }
-
-    [Fact]
-    public async Task ObterDetalheAsync_CadaMembroVeSoAPropriaRenda()
-    {
-        var ctx = CreateContext();
-        var svc = new FamiliaService(ctx);
-        var admin = SeedUsuario(ctx, "admin@test.com");
-        var familia = await svc.CriarAsync(new CriarFamiliaDto("Casa"), admin);
-        var ana = SeedMembro(ctx, familia.Id, "ana@test.com", PapelFamilia.Membro);
-        DefinirRenda(ctx, familia.Id, admin, 8000m);
-        DefinirRenda(ctx, familia.Id, ana, 3000m);
-
         var visaoAna = await svc.ObterDetalheAsync(familia.Id, ana);
 
-        Assert.Equal(3000m, visaoAna.Membros.Single(m => m.UsuarioId == ana).RendaMensal);
-        Assert.Null(visaoAna.Membros.Single(m => m.UsuarioId == admin).RendaMensal);
-        Assert.DoesNotContain(visaoAna.Membros, m => m.UsuarioId != ana && m.RendaMensal != null);
-    }
-
-    [Fact]
-    public async Task EditarPapelEPermissao_AdminEditandoOutro_NaoDevolveARendaDele()
-    {
-        var ctx = CreateContext();
-        var svc = new FamiliaService(ctx);
-        var admin = SeedUsuario(ctx, "admin@test.com");
-        var familia = await svc.CriarAsync(new CriarFamiliaDto("Casa"), admin);
-        var ana = SeedMembro(ctx, familia.Id, "ana@test.com", PapelFamilia.Membro);
-        DefinirRenda(ctx, familia.Id, ana, 3000m);
-        var membroAna = MembroIdDe(ctx, familia.Id, ana);
-
-        var aposPapel = await svc.EditarPapelAsync(familia.Id, membroAna, new EditarPapelDto("Esposa"), admin);
-        var aposPermissao = await svc.EditarPermissaoAsync(familia.Id, membroAna, new EditarPermissaoDto(PapelFamilia.Admin), admin);
-
-        Assert.Null(aposPapel.RendaMensal);
-        Assert.True(aposPapel.RendaInformada);
-        Assert.Null(aposPermissao.RendaMensal);
-        Assert.True(aposPermissao.RendaInformada);
+        var daAna = visaoAdmin.Membros.Single(m => m.UsuarioId == ana);
+        Assert.Equal(VisibilidadeRenda.ValorParaAlguns, daAna.VisibilidadeRenda); // o nível todo mundo vê
+        Assert.Null(daAna.RendaVisivelPara);                                      // a lista, só a própria
+        Assert.Equal(new[] { admin }, visaoAna.Membros.Single(m => m.UsuarioId == ana).RendaVisivelPara);
+        Assert.Equal(VisibilidadeRenda.SoPeso, visaoAdmin.Membros.Single(m => m.UsuarioId == bia).VisibilidadeRenda); // padrão
+        Assert.DoesNotContain(visaoAna.Membros, m => m.UsuarioId != ana && m.RendaVisivelPara != null);
     }
 
     [Fact]

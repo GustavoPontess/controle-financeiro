@@ -15,11 +15,22 @@ namespace ControleFinanceiro.Api.Controllers;
 public class MetasController : ControllerBase
 {
     private readonly MetaService _service;
+    private readonly ViabilidadeMetaService _viabilidade;
 
-    public MetasController(MetaService service)
+    public MetasController(MetaService service, ViabilidadeMetaService viabilidade)
     {
         _service = service;
+        _viabilidade = viabilidade;
     }
+
+    /// <summary>
+    /// "Essa meta cabe?": quanto guardar por mês até o prazo × o que sobra no mês (renda esperada − gasto típico − as
+    /// outras metas), com a resposta em uma frase e o mês em que dá pra chegar. <c>metaId</c> = editando aquela meta.
+    /// </summary>
+    [HttpGet("viabilidade")]
+    [ProducesResponseType(typeof(ViabilidadeMetaDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Viabilidade([FromQuery] decimal valorAlvo, [FromQuery] DateTime? dataLimite, [FromQuery] Guid? metaId) =>
+        Ok(await _viabilidade.CalcularAsync(GetUserId(), valorAlvo, dataLimite, metaId));
 
     private Guid GetUserId()
     {
@@ -34,11 +45,16 @@ public class MetasController : ControllerBase
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(List<MetaDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Listar()
+    public async Task<IActionResult> Listar([FromQuery] bool pessoais = false)
     {
-        var resultado = await _service.ListarAsync(GetUserId());
+        var resultado = await _service.ListarAsync(GetUserId(), pessoais);
         return Ok(resultado);
     }
+
+    /// <summary>Guardou e resgatou (as transferências da caixinha), do mais recente pro mais antigo.</summary>
+    [HttpGet("{id:guid}/historico")]
+    [ProducesResponseType(typeof(List<MetaHistoricoDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Historico(Guid id) => Ok(await _service.HistoricoAsync(id, GetUserId()));
 
     /// <summary>
     /// Obtém uma meta pelo ID.
@@ -78,16 +94,37 @@ public class MetasController : ControllerBase
     }
 
     /// <summary>
-    /// Adiciona uma contribuição ao progresso da meta.
+    /// Guarda: transfere da conta da pessoa pra caixinha da meta (o saldo da conta cai). Não passa do saldo.
+    /// Exige o header Idempotency-Key (o mesmo nas tentativas).
     /// </summary>
-    [HttpPost("{id:guid}/contribuir")]
+    [HttpPost("{id:guid}/guardar")]
     [ProducesResponseType(typeof(MetaDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Contribuir(Guid id, [FromBody] ContribuirMetaDto dto)
-    {
-        var resultado = await _service.ContribuirAsync(id, dto, GetUserId());
-        return Ok(resultado);
-    }
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Guardar(Guid id, [FromBody] MovimentoMetaDto dto,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey) =>
+        Ok(await _service.GuardarAsync(id, dto, GetUserId(), idempotencyKey));
+
+    /// <summary>
+    /// Resgata: transfere da caixinha da meta de volta pra uma conta da pessoa. Não passa do guardado.
+    /// Exige o header Idempotency-Key.
+    /// </summary>
+    [HttpPost("{id:guid}/resgatar")]
+    [ProducesResponseType(typeof(MetaDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Resgatar(Guid id, [FromBody] MovimentoMetaDto dto,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey) =>
+        Ok(await _service.ResgatarAsync(id, dto, GetUserId(), idempotencyKey));
+
+    /// <summary>
+    /// Conclui a meta que chegou lá e leva o guardado todo pra uma conta (uma transferência). A meta vai pra
+    /// Concluídas como registro (não muda mais); a caixinha é encerrada. Exige o header Idempotency-Key.
+    /// </summary>
+    [HttpPost("{id:guid}/concluir")]
+    [ProducesResponseType(typeof(MetaDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Concluir(Guid id, [FromBody] ConcluirMetaDto dto,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey) =>
+        Ok(await _service.ConcluirAsync(id, dto, GetUserId(), idempotencyKey));
 
     /// <summary>
     /// Inativa (soft delete) uma meta (somente o criador).

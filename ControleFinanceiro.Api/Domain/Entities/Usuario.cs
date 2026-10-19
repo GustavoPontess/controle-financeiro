@@ -44,6 +44,11 @@ public class Usuario
     /// volta a null quando a exclusão é cancelada (reversível na janela). Spec §5.</summary>
     public DateTime? MarcadoExclusaoEm { get; set; }
 
+    /// <summary>Quando a foto de perfil foi trocada pela última vez; null = sem foto. Serve de "versão" da
+    /// foto pro front (a URL leva esse valor, o navegador busca de novo só quando muda). Os bytes moram em
+    /// <see cref="FotoPerfil"/>.</summary>
+    public DateTime? FotoPerfilEm { get; set; }
+
     /// <summary>Admin GLOBAL do sistema (painel admin/beta). Default false e — por segurança
     /// (spec `docs/features/admin/spec.md` §0) — NUNCA é setada por endpoint/DTO: só via seed
     /// (env var <c>ADMIN_EMAILS</c>, ver <c>AdminSeeder</c>) ou UPDATE direto no banco. Nenhum fluxo

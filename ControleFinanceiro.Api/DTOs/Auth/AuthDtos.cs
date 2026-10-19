@@ -101,6 +101,9 @@ public class UsuarioDto
     public string Nome { get; set; } = string.Empty;
     public DateTime? DataNascimento { get; set; }
 
+    /// <summary>Versão da foto de perfil (null = sem foto); o front monta <c>/usuarios/{id}/foto?v=</c>.</summary>
+    public DateTime? FotoEm { get; set; }
+
     /// <summary>Situação da conta. Serializado como número (padrão do projeto — enums vão como int
     /// no JSON). Só <c>Ativo</c> (1) tem sessão de verdade; o <c>/auth/me</c> só responde pra quem já
     /// passou pelo login, então na prática vem sempre <c>Ativo</c>.</summary>

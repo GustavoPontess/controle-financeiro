@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -752,6 +753,8 @@ public class AuthController : ControllerBase
 
 public class UpdateProfileDto
 {
+    [Required]
+    [MaxLength(200)]
     public string Nome { get; set; } = string.Empty;
     public DateTime? DataNascimento { get; set; }
 }

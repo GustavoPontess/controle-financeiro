@@ -6,17 +6,6 @@
 
 .opcao { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .rotulo { font-size: var(--v2-fs-md); font-weight: 500; }
-.texto { margin: 0; font-size: var(--v2-fs-sm); line-height: 1.55; color: var(--v2-texto-2); }
-.link { display: inline-flex; align-items: center; gap: 6px; font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-texto-2); text-decoration: none; }
-.link:hover { color: var(--v2-texto); }
-.noAppAtual { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-
-/* Dados do perfil: rótulo à esquerda, valor à direita, uma linha por dado */
-.dados { margin: 0; display: flex; flex-direction: column; }
-.dados > div { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 10px 0; border-top: 1px solid var(--v2-linha); }
-.dados > div:first-child { border-top: 0; padding-top: 0; }
-.dados dt { font-size: var(--v2-fs-sm); color: var(--v2-texto-2); }
-.dados dd { margin: 0; min-width: 0; font-size: var(--v2-fs-md); font-weight: 500; overflow-wrap: anywhere; text-align: right; }
 
 .links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .links li + li { border-top: 1px solid var(--v2-linha); }

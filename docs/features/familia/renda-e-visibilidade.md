@@ -51,8 +51,8 @@ PESSOA (sempre, com ou sem família)                 FAMÍLIA (só reflete)
 │   Bolsa Família, BPC, Seguro-desemp… │  ───────▶  │   só o peso · valor pra [quem] · nada │
 │ Recebido no mês = receitas executadas│            │ Renda da casa = soma de quem liberou  │
 │   com origem de renda                │            │   pra QUEM ESTÁ OLHANDO               │
-│ Previsto = contas fixas de receita   │            │ Rateio proporcional = peso (previsto) │
-│   + variável esperada do mês         │            │   de quem liberou pelo menos o peso   │
+│ Previsto = fixa + variável que a     │            │ Rateio proporcional = peso (previsto) │
+│   pessoa declara (vale até mudar)    │            │   de quem liberou pelo menos o peso   │
 └──────────────────────────────────────┘            └──────────────────────────────────────┘
 ```
 
@@ -68,10 +68,9 @@ Aposentadoria · Auxílio do governo · Aluguel recebido · Dividendos e juros �
 Mudanças:
 - **Entram:** `Comissão / variável`, `Bolsa Família`, `BPC / LOAS`, `Seguro-desemprego`, `Pé-de-Meia e outros
   benefícios` (o "Auxílio do governo" genérico vira esses; migration renomeia e mantém o que já foi lançado nele).
-- **Cada subcategoria padrão de Renda ganha `OrigemRenda`**: `Trabalho` (Salário, 13º, Freelance, Comissão) ·
-  `Governo` (Aposentadoria/INSS, Bolsa Família, BPC, Seguro-desemprego, Pé-de-Meia…) · `Patrimônio` (Aluguel,
-  Dividendos) · `Outra` (Pensão recebida) · **`null` = não é renda** (Cashback, Reembolso: dinheiro que volta,
-  não dinheiro que entra; hoje inflam "Renda"). O "Recebido" (2.2) soma só `OrigemRenda != null`.
+- ~~`OrigemRenda`~~ **caiu (Gustavo, 2026-10-18): se o lançamento está em "Renda", é renda.** Cashback, Reembolso
+  e Estorno saem de "Renda" pra uma categoria padrão nova, **"Dinheiro que volta"** (dinheiro que volta, não
+  dinheiro que entra). O "Recebido" (2.2) soma a categoria Renda inteira (`RendaService.EhRenda`).
 - Relatório pode dizer "R$ X da casa vem de benefício" (Governo) sem expor pessoa.
 - Importação de extrato: `Sinonimos` reconhecem "PAGAMENTO BOLSA FAMILIA", "INSS", "SEGURO DESEMPREGO" e sugerem
   a subcategoria; "PIX RECEBIDO" continua sem categoria (não é renda).
@@ -80,19 +79,27 @@ Mudanças:
 
 - **Recebido no mês** = `Σ receitas Executadas do mês com categoria Renda` (qualquer subcategoria), filtro
   `EntraNoResultado`. É o número forte (lição do YNAB).
-- **Previsto no mês** = `Σ contas fixas de receita do mês` (já existe: salário, aposentadoria, benefício como
-  conta fixa com dia) **+** `RendaVariavelEsperada` (valor que a pessoa digita e muda quando quiser;
-  entidade pequena `RendaPrevista { UsuarioId, Mes, Ano, VariavelEsperada }`, uma linha por mês, copia do mês
-  anterior quando não há). Sem conta fixa nem variável, o app **sugere** a média dos 3 últimos meses recebidos.
+- **Previsto no mês** = `FixaEsperada` (salário, aposentadoria, benefício: o que a pessoa DECLARA receber todo
+  mês) **+** `VariavelEsperada` (comissão, bico, diária): `RendaPrevista { UsuarioId, Mes, Ano, FixaEsperada,
+  VariavelEsperada }`, uma linha por mês, vale a do último mês quando não há. **Conta fixa não entra**: conta
+  fixa é conta a pagar, não receita (Gustavo, 2026-10-18). Sem declaração, o app **sugere** a média dos 3
+  últimos meses recebidos.
 - Tela da pessoa (Visão geral): cartão **"Renda do mês"**: `Previsto R$ 4.200 · Recebido R$ 3.650 · faltam R$ 550`
   e, aberto, a lista de entradas. Mês abaixo do previsto é informação, não alerta.
-- Configurações → **"Minha renda"**: a variável esperada, as contas fixas de receita (link), e **por família**
-  o nível de visibilidade (2.3).
+- Página **Renda** no menu principal (`/renda`; não é configuração, Gustavo 2026-10-18): fixa e variável
+  esperadas e as entradas do mês. O que a família vê se escolhe NA família (2.3), não aqui.
 
 ### 2.3 Família: o que cada um libera (modelo Honeydue aplicado à renda)
 
 `MembroFamilia` ganha `VisibilidadeRenda { Nada = 0, SoPeso = 1 (padrão), ValorParaAlguns = 2, ValorParaTodos = 3 }`
 e `RendaVisivelPara: List<Guid>` (só quando `ValorParaAlguns`). **Só a própria pessoa muda o seu**; admin não.
+Na tela (página da família, aba Pessoas, ficha do próprio membro): **"Quem vê a sua renda"** = uma caixa por
+membro que lança e divide (quem só vê fica fora e nunca vê renda de ninguém). Marcou alguém → `ValorParaAlguns`
+com a lista; ninguém marcado → `SoPeso`; na divisão proporcional, sem ninguém marcado, aparece "Contar a minha
+renda no peso da divisão" (desmarcada → `Nada`). A tela **nunca grava `ValorParaTodos`**: quem entrar depois
+(filho com login) não herda. A ficha dos outros só tem linha de renda quando a pessoa liberou pra quem olha;
+senão nem linha ("não mostra" / "só o peso" expõe a escolha e cutuca). Quem só vê também **não entra na
+divisão das despesas** nem no peso (`DespesaCompartilhadaService`, `RendaService.PesosAsync`).
 `RendaMensal` (manual, hoje) sai: passa a ser derivada da camada pessoa (2.2). Migration de transição: quem tinha
 `RendaMensal` vira `RendaVariavelEsperada` do mês corrente + `SoPeso`.
 
@@ -133,11 +140,11 @@ compartilhamento com a família.
 
 ## 3. Ordem de implementação
 
-1. **Pessoa, sem família (vale sozinho):** subcategorias de Renda + `OrigemRenda` (2.1); `RendaPrevista` +
-   `GET/PUT /renda/mes` (2.2); cartão "Renda do mês" na Visão geral do v2; "Minha renda" em Configurações.
-   DemoSeeder: Gabriel com salário fixo + comissão variável; Marina com Bolsa Família + bico.
-2. **Família reflete:** `VisibilidadeRenda` + endpoint (2.3); "Renda da casa" na aba Mês e a linha na ficha
-   do membro (2.4); migration tirando `RendaMensal`.
-3. **Rateio proporcional** lendo o peso derivado + regra "prevista | recebida" em Regras.
+1. **Pessoa, sem família (vale sozinho)** (feito 2026-10-18, PR #316): subcategorias de Renda + "Dinheiro que
+   volta" (2.1); `RendaPrevista` + `GET/PUT/DELETE /renda/mes` (2.2); cartão "Renda do mês" na Visão geral do
+   v2; página Renda. DemoSeeder: Gabriel com salário fixo + variável; Marina com benefício + bico.
+2. **Família reflete** (feito 2026-10-18, PR #316): `VisibilidadeRenda` + endpoint (2.3); "Renda da casa" na aba
+   Mês, "Quem vê a sua renda" na ficha própria (2.4); migration tirando `RendaMensal`; quem só vê fora da divisão.
+3. **Rateio proporcional** lendo o peso derivado: feito. A regra "prevista | recebida" em Regras fica pra depois.
 
 Fora: conta júnior/mesada (visão §16.6), alerta de apostas (Fase 1), Open Finance puxando salário (Fase 4).

@@ -1,13 +1,10 @@
 // Configurações do v2 — separadas por assunto, como a Conta do Google: menu de seções à esquerda (`?s=`), o
 // conteúdo da seção à direita. Segurança e login (senha, verificação em duas etapas, sessões, dispositivos
-// confiáveis) · Perfil · Aparência · Dados e privacidade. O que ainda não foi transformado (editar perfil,
-// baixar/excluir a conta) leva pro app atual.
+// confiáveis) · Perfil (nome e nascimento) · Aparência · Dados e privacidade (baixar os dados, excluir a conta).
 import { useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { ArrowUpRight, FileLock2, Moon, Palette, ShieldCheck, Sun, UserRound } from "lucide-react"
 import { Link } from "react-router-dom"
-import { APP_ATUAL } from "../config"
-import { useAuth } from "../auth/useAuth"
 import { useTema, type Tema } from "../layout/useTema"
 import Bloco from "../componentes/Bloco"
 import NavSecoes, { type Secao } from "../componentes/NavSecoes"
@@ -15,6 +12,8 @@ import Segmentos from "../componentes/Segmentos"
 import SegurancaMfa from "./SegurancaMfa"
 import SegurancaDispositivos from "./SegurancaDispositivos"
 import TrocarSenha from "./TrocarSenha"
+import Perfil from "./Perfil"
+import DadosConta from "./DadosConta"
 import styles from "./Configuracoes.module.css"
 
 type IdSecao = "seguranca" | "perfil" | "aparencia" | "privacidade"
@@ -58,19 +57,6 @@ function Seguranca() {
   )
 }
 
-function Perfil() {
-  const { usuario } = useAuth()
-  return (
-    <Bloco titulo="Seus dados">
-      <dl className={styles.dados}>
-        <div><dt>Nome</dt><dd>{usuario?.nome ?? "—"}</dd></div>
-        <div><dt>E-mail</dt><dd>{usuario?.email ?? "—"}</dd></div>
-      </dl>
-      <NoAppAtual texto="Editar o nome e a data de nascimento ainda é no app atual." caminho="/settings" />
-    </Bloco>
-  )
-}
-
 function Aparencia() {
   const [tema, definirTema] = useTema()
   return (
@@ -95,18 +81,7 @@ function Privacidade() {
           <li><Link to="/termos-de-uso" target="_blank" rel="noreferrer">Termos de Uso <ArrowUpRight size={14} strokeWidth={2.25} aria-hidden="true" /></Link></li>
         </ul>
       </Bloco>
-      <Bloco titulo="Seus dados">
-        <NoAppAtual texto="Baixar uma cópia dos seus dados e excluir a conta ainda é no app atual." caminho="/settings" />
-      </Bloco>
+      <DadosConta />
     </>
-  )
-}
-
-function NoAppAtual({ texto, caminho }: { texto: string; caminho: string }) {
-  return (
-    <div className={styles.noAppAtual}>
-      <p className={styles.texto}>{texto}</p>
-      <a href={`${APP_ATUAL}${caminho}`} className={styles.link}>Abrir no app atual <ArrowUpRight size={14} strokeWidth={2.25} aria-hidden="true" /></a>
-    </div>
   )
 }
