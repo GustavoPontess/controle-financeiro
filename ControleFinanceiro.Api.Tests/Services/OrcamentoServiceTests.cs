@@ -8,8 +8,15 @@ using Xunit;
 
 namespace ControleFinanceiro.Api.Tests.Services;
 
+/// <summary>
+/// Limites (decisão do Gustavo 2026-10-19): vale todo mês até mudar; mudar/tirar vale do mês em diante e o mês
+/// passado fica como estava. Gasto = regra única <see cref="RegrasFinanceiras.GastosPorCategoriaDoMesAsync"/>.
+/// </summary>
 public class OrcamentoServiceTests
 {
+    // "Hoje" dos testes: maio/2026 é o mês atual (abril já passou).
+    private static readonly DateTime Agora = new(2026, 5, 10);
+
     private static AppDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -28,392 +35,245 @@ public class OrcamentoServiceTests
         return u.Id;
     }
 
-    private static Guid SeedCategoria(AppDbContext ctx, string nome = "Alimentação")
+    private static Guid SeedCategoria(AppDbContext ctx, string nome = "Mercado", Finalidade finalidade = Finalidade.Despesa, Guid? dono = null)
     {
-        var c = new Categoria { Id = Guid.NewGuid(), Descricao = nome, Finalidade = Finalidade.Despesa };
+        var c = new Categoria { Id = Guid.NewGuid(), Descricao = nome, Finalidade = finalidade, UsuarioId = dono };
         ctx.Categorias.Add(c);
         ctx.SaveChanges();
         return c.Id;
     }
 
-    private static CriarOrcamentoDto OrcDto(Guid? categoriaId = null, decimal limite = 1000m,
-        int mes = 5, int ano = 2026, decimal alerta = 80m) =>
-        new() { CategoriaId = categoriaId, ValorLimite = limite, Mes = mes, Ano = ano, PercentualAlerta = alerta };
-
-    // ── Criar ────────────────────────────────────────────────────────────────
-
-    [Fact]
-    public async Task CriarAsync_Valido_PersisteOrcamento()
+    private static void Gasto(AppDbContext ctx, Guid usuario, Guid? categoria, decimal valor, DateOnly data,
+        StatusTransacao status = StatusTransacao.Executado, Action<Transacao>? ajuste = null)
     {
-        var ctx = CreateContext();
-        var userId = SeedUsuario(ctx);
-        var catId = SeedCategoria(ctx);
-        var svc = new OrcamentoService(ctx);
-
-        var result = await svc.CriarAsync(OrcDto(catId), userId);
-
-        Assert.Equal(catId, result.CategoriaId);
-        Assert.Equal(1000m, result.ValorLimite);
-        Assert.Equal(80m, result.PercentualAlerta);
-        Assert.Equal(0m, result.ValorGasto);
-        Assert.False(result.EmAlerta);
-        Assert.False(result.Ultrapassado);
-    }
-
-    [Fact]
-    public async Task CriarAsync_SemCategoria_CriaOrcamentoGeral()
-    {
-        var ctx = CreateContext();
-        var userId = SeedUsuario(ctx);
-        var svc = new OrcamentoService(ctx);
-
-        var result = await svc.CriarAsync(OrcDto(null), userId);
-
-        Assert.Null(result.CategoriaId);
-    }
-
-    [Fact]
-    public async Task CriarAsync_Duplicado_LancaInvalidOperation()
-    {
-        var ctx = CreateContext();
-        var userId = SeedUsuario(ctx);
-        var catId = SeedCategoria(ctx);
-        var svc = new OrcamentoService(ctx);
-
-        await svc.CriarAsync(OrcDto(catId), userId);
-
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => svc.CriarAsync(OrcDto(catId), userId));
-    }
-
-    [Fact]
-    public async Task CriarAsync_ValorLimiteZero_LancaArgumentException()
-    {
-        var ctx = CreateContext();
-        var userId = SeedUsuario(ctx);
-        var svc = new OrcamentoService(ctx);
-
-        await Assert.ThrowsAsync<ArgumentException>(
-            () => svc.CriarAsync(OrcDto(null, limite: 0m), userId));
-    }
-
-    [Fact]
-    public async Task CriarAsync_MesInvalido_LancaArgumentException()
-    {
-        var ctx = CreateContext();
-        var userId = SeedUsuario(ctx);
-        var svc = new OrcamentoService(ctx);
-
-        await Assert.ThrowsAsync<ArgumentException>(
-            () => svc.CriarAsync(OrcDto(null, mes: 13), userId));
-    }
-
-    [Fact]
-    public async Task CriarAsync_PercentualAlertaForaDoRange_LancaArgumentException()
-    {
-        var ctx = CreateContext();
-        var userId = SeedUsuario(ctx);
-        var svc = new OrcamentoService(ctx);
-
-        await Assert.ThrowsAsync<ArgumentException>(
-            () => svc.CriarAsync(OrcDto(null, alerta: 0m), userId));
-    }
-
-    // ── Listar ───────────────────────────────────────────────────────────────
-
-    [Fact]
-    public async Task ListarAsync_SemTransacoes_RetornaGastoZero()
-    {
-        var ctx = CreateContext();
-        var userId = SeedUsuario(ctx);
-        var catId = SeedCategoria(ctx);
-        var svc = new OrcamentoService(ctx);
-
-        await svc.CriarAsync(OrcDto(catId, mes: 5, ano: 2026), userId);
-        var lista = await svc.ListarAsync(userId, 5, 2026);
-
-        Assert.Single(lista);
-        Assert.Equal(0m, lista[0].ValorGasto);
-        Assert.Equal(1000m, lista[0].ValorRestante);
-        Assert.Equal(0m, lista[0].PercentualConsumido);
-        Assert.False(lista[0].EmAlerta);
-    }
-
-    [Fact]
-    public async Task ListarAsync_ComDespesaExecutada_ComputaGastoCorreto()
-    {
-        var ctx = CreateContext();
-        var userId = SeedUsuario(ctx);
-        var catId = SeedCategoria(ctx);
-        var svc = new OrcamentoService(ctx);
-
-        // Cria orçamento
-        await svc.CriarAsync(OrcDto(catId, limite: 1000m, mes: 5, ano: 2026), userId);
-
-        // Adiciona despesa executada na mesma categoria/mês
-        ctx.Transacoes.Add(new Transacao
+        var t = new Transacao
         {
-            Id = Guid.NewGuid(),
-            Descricao = "Almoço",
-            Valor = 300m,
-            Tipo = TipoTransacao.Despesa,
-            CategoriaId = catId,
-            CriadoPor = userId,
-            Data = new DateOnly(2026, 5, 10),
-            StatusTransacao = StatusTransacao.Executado,
-            Ativo = true,
-        });
-        await ctx.SaveChangesAsync();
-
-        var lista = await svc.ListarAsync(userId, 5, 2026);
-
-        Assert.Equal(300m, lista[0].ValorGasto);
-        Assert.Equal(700m, lista[0].ValorRestante);
-        Assert.Equal(30m, lista[0].PercentualConsumido);
-        Assert.False(lista[0].EmAlerta);
-        Assert.False(lista[0].Ultrapassado);
-    }
-
-    [Fact]
-    public async Task ListarAsync_GastoAcimaDo80Pct_EmAlerta()
-    {
-        var ctx = CreateContext();
-        var userId = SeedUsuario(ctx);
-        var catId = SeedCategoria(ctx);
-        var svc = new OrcamentoService(ctx);
-
-        await svc.CriarAsync(OrcDto(catId, limite: 1000m, mes: 5, ano: 2026, alerta: 80m), userId);
-
-        ctx.Transacoes.Add(new Transacao
-        {
-            Id = Guid.NewGuid(),
-            Descricao = "Mercado",
-            Valor = 850m,
-            Tipo = TipoTransacao.Despesa,
-            CategoriaId = catId,
-            CriadoPor = userId,
-            Data = new DateOnly(2026, 5, 15),
-            StatusTransacao = StatusTransacao.Executado,
-            Ativo = true,
-        });
-        await ctx.SaveChangesAsync();
-
-        var lista = await svc.ListarAsync(userId, 5, 2026);
-
-        Assert.Equal(850m, lista[0].ValorGasto);
-        Assert.True(lista[0].EmAlerta);
-        Assert.False(lista[0].Ultrapassado);
-    }
-
-    [Fact]
-    public async Task ListarAsync_GastoAcimaDoLimite_Ultrapassado()
-    {
-        var ctx = CreateContext();
-        var userId = SeedUsuario(ctx);
-        var catId = SeedCategoria(ctx);
-        var svc = new OrcamentoService(ctx);
-
-        await svc.CriarAsync(OrcDto(catId, limite: 500m, mes: 5, ano: 2026), userId);
-
-        ctx.Transacoes.Add(new Transacao
-        {
-            Id = Guid.NewGuid(),
-            Descricao = "Gasto excessivo",
-            Valor = 600m,
-            Tipo = TipoTransacao.Despesa,
-            CategoriaId = catId,
-            CriadoPor = userId,
-            Data = new DateOnly(2026, 5, 20),
-            StatusTransacao = StatusTransacao.Executado,
-            Ativo = true,
-        });
-        await ctx.SaveChangesAsync();
-
-        var lista = await svc.ListarAsync(userId, 5, 2026);
-
-        Assert.True(lista[0].Ultrapassado);
-        Assert.True(lista[0].EmAlerta);
-        Assert.Equal(-100m, lista[0].ValorRestante);
-    }
-
-    [Fact]
-    public async Task ListarAsync_TransferenciaEhExcluida()
-    {
-        var ctx = CreateContext();
-        var userId = SeedUsuario(ctx);
-        var catId = SeedCategoria(ctx);
-        var svc = new OrcamentoService(ctx);
-
-        await svc.CriarAsync(OrcDto(catId, limite: 1000m, mes: 5, ano: 2026), userId);
-
-        ctx.Transacoes.Add(new Transacao
-        {
-            Id = Guid.NewGuid(),
-            Descricao = "Transferência",
-            Valor = 500m,
-            Tipo = TipoTransacao.Despesa,
-            CategoriaId = catId,
-            CriadoPor = userId,
-            Data = new DateOnly(2026, 5, 5),
-            StatusTransacao = StatusTransacao.Executado,
-            Ativo = true,
-            EhTransferencia = true,
-        });
-        await ctx.SaveChangesAsync();
-
-        var lista = await svc.ListarAsync(userId, 5, 2026);
-
-        Assert.Equal(0m, lista[0].ValorGasto); // transferência não conta
-    }
-
-    [Theory]
-    [InlineData("pix")]    // o Pix pago com Pix no Crédito: o gasto é do cartão, não da conta
-    [InlineData("ajuste")] // ajuste de reconciliação corrige o saldo, não é gasto
-    public async Task ListarAsync_PixNoCreditoEAjusteDeReconciliacao_NaoContamComoGasto(string marca)
-    {
-        var ctx = CreateContext();
-        var userId = SeedUsuario(ctx);
-        var catId = SeedCategoria(ctx);
-        var svc = new OrcamentoService(ctx);
-
-        await svc.CriarAsync(OrcDto(catId, limite: 1000m, mes: 5, ano: 2026), userId);
-
-        Transacao Gasto(decimal valor) => new()
-        {
-            Id = Guid.NewGuid(), Descricao = "Conta de luz", Valor = valor, Tipo = TipoTransacao.Despesa,
-            CategoriaId = catId, CriadoPor = userId, Data = new DateOnly(2026, 5, 5),
-            StatusTransacao = StatusTransacao.Executado, Ativo = true,
+            Id = Guid.NewGuid(), Descricao = "Gasto", Valor = valor, Tipo = TipoTransacao.Despesa, CategoriaId = categoria,
+            CriadoPor = usuario, Data = data, StatusTransacao = status, Ativo = true,
         };
-        var marcado = Gasto(539.22m);
-        if (marca == "pix") marcado.EhPixNoCredito = true;
-        else marcado.EhAjusteReconciliacao = true;
-        ctx.Transacoes.AddRange(Gasto(100m), marcado);
-        await ctx.SaveChangesAsync();
+        ajuste?.Invoke(t);
+        ctx.Transacoes.Add(t);
+        ctx.SaveChanges();
+    }
 
-        var lista = await svc.ListarAsync(userId, 5, 2026);
+    private static Task<LimitesDoMesDto> Definir(OrcamentoService svc, Guid usuario, Guid? categoria, decimal valor, int ano, int mes) =>
+        svc.DefinirAsync(new DefinirLimiteDto(categoria, ano, mes, valor), usuario, Agora);
 
-        Assert.Equal(100m, lista[0].ValorGasto);
+    // ── Gasto do mês (regra única) ──────────────────────────────────────────
+
+    [Fact]
+    public async Task Gasto_SoDespesaQueEntraNoResultado_PrevistaSeparada_OutroMesFora()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var cat = SeedCategoria(ctx);
+        Gasto(ctx, u, cat, 300m, new DateOnly(2026, 5, 3));
+        Gasto(ctx, u, cat, 500m, new DateOnly(2026, 5, 4), ajuste: t => t.EhTransferencia = true);
+        Gasto(ctx, u, cat, 539.22m, new DateOnly(2026, 5, 5), ajuste: t => t.EhPixNoCredito = true); // o gasto é do cartão
+        Gasto(ctx, u, cat, 40m, new DateOnly(2026, 5, 6), ajuste: t => t.EhAjusteReconciliacao = true);
+        Gasto(ctx, u, cat, 70m, new DateOnly(2026, 5, 7), ajuste: t => t.Ativo = false);
+        Gasto(ctx, u, cat, 120m, new DateOnly(2026, 5, 20), StatusTransacao.Previsao); // conta fixa que ainda vai cair
+        Gasto(ctx, u, cat, 999m, new DateOnly(2026, 6, 1));
+
+        var g = (await RegrasFinanceiras.GastosPorCategoriaDoMesAsync(ctx, u, 2026, 5))[cat];
+
+        Assert.Equal(300m, g.Gasto);
+        Assert.Equal(120m, g.Previsto);
     }
 
     [Fact]
-    public async Task ListarAsync_TransacaoPrevisao_EhExcluida()
+    public async Task Gasto_CompraParcelada_ContaAParcelaDoMesComJuros_CanceladaNao()
     {
         var ctx = CreateContext();
-        var userId = SeedUsuario(ctx);
-        var catId = SeedCategoria(ctx);
-        var svc = new OrcamentoService(ctx);
-
-        await svc.CriarAsync(OrcDto(catId, limite: 1000m, mes: 5, ano: 2026), userId);
-
-        ctx.Transacoes.Add(new Transacao
+        var u = SeedUsuario(ctx);
+        var cat = SeedCategoria(ctx, "Casa");
+        var parcelamento = new Parcelamento
         {
-            Id = Guid.NewGuid(),
-            Descricao = "Assinatura futura",
-            Valor = 200m,
-            Tipo = TipoTransacao.Despesa,
-            CategoriaId = catId,
-            CriadoPor = userId,
-            Data = new DateOnly(2026, 5, 28),
-            StatusTransacao = StatusTransacao.Previsao,
-            Ativo = true,
-        });
-        await ctx.SaveChangesAsync();
-
-        var lista = await svc.ListarAsync(userId, 5, 2026);
-
-        Assert.Equal(0m, lista[0].ValorGasto);
-    }
-
-    [Fact]
-    public async Task ListarAsync_OutroPeriodo_NaoContaGasto()
-    {
-        var ctx = CreateContext();
-        var userId = SeedUsuario(ctx);
-        var catId = SeedCategoria(ctx);
-        var svc = new OrcamentoService(ctx);
-
-        await svc.CriarAsync(OrcDto(catId, limite: 1000m, mes: 5, ano: 2026), userId);
-
-        // Despesa em ABRIL, não maio
-        ctx.Transacoes.Add(new Transacao
+            Id = Guid.NewGuid(), CriadoPor = u, Descricao = "Geladeira", DataCompra = new DateTime(2026, 4, 20), ValorTotal = 3000m,
+            QuantidadeParcelas = 3, CartaoCreditoId = Guid.NewGuid(), CategoriaId = cat,
+        };
+        ctx.Parcelamentos.Add(parcelamento);
+        ParcelaTransacao Parcela(int n, DateTime venc, decimal? juros = null, StatusParcela status = StatusParcela.Pendente) => new()
         {
-            Id = Guid.NewGuid(),
-            Descricao = "Gasto em abril",
-            Valor = 400m,
-            Tipo = TipoTransacao.Despesa,
-            CategoriaId = catId,
-            CriadoPor = userId,
-            Data = new DateOnly(2026, 4, 20),
-            StatusTransacao = StatusTransacao.Executado,
-            Ativo = true,
-        });
-        await ctx.SaveChangesAsync();
+            Id = Guid.NewGuid(), ParcelamentoId = parcelamento.Id, Numero = n, QuantidadeTotal = 3, DataVencimento = venc,
+            Valor = 1000m, ValorComJuros = juros, FaturaId = Guid.NewGuid(), Status = status, CriadoPor = u,
+        };
+        ctx.ParcelasTransacao.AddRange(
+            Parcela(1, new DateTime(2026, 4, 20)),
+            Parcela(2, new DateTime(2026, 5, 20), juros: 1050m),
+            Parcela(3, new DateTime(2026, 6, 20), status: StatusParcela.Cancelada));
+        ctx.SaveChanges();
 
-        var lista = await svc.ListarAsync(userId, 5, 2026);
+        var maio = await RegrasFinanceiras.GastosPorCategoriaDoMesAsync(ctx, u, 2026, 5);
+        var junho = await RegrasFinanceiras.GastosPorCategoriaDoMesAsync(ctx, u, 2026, 6);
 
-        Assert.Equal(0m, lista[0].ValorGasto);
+        Assert.Equal(1050m, maio[cat].Gasto); // só a parcela de maio, com juros (não os 3.000 da compra)
+        Assert.False(junho.ContainsKey(cat));  // a de junho foi cancelada
     }
 
-    // ── Atualizar ─────────────────────────────────────────────────────────────
+    // ── Vale todo mês até mudar ─────────────────────────────────────────────
 
     [Fact]
-    public async Task AtualizarAsync_Valido_AlteraLimite()
+    public async Task Definir_ValeNosMesesSeguintes_ComGastoESituacao()
     {
         var ctx = CreateContext();
-        var userId = SeedUsuario(ctx);
-        var catId = SeedCategoria(ctx);
+        var u = SeedUsuario(ctx);
+        var mercado = SeedCategoria(ctx, "Mercado");
+        var restaurante = SeedCategoria(ctx, "Restaurante");
+        var transporte = SeedCategoria(ctx, "Transporte");
         var svc = new OrcamentoService(ctx);
+        await Definir(svc, u, mercado, 1000m, 2026, 5);
+        await Definir(svc, u, restaurante, 300m, 2026, 5);
+        await Definir(svc, u, transporte, 400m, 2026, 5);
+        Gasto(ctx, u, mercado, 850m, new DateOnly(2026, 7, 2));
+        Gasto(ctx, u, restaurante, 410m, new DateOnly(2026, 7, 3));
+        Gasto(ctx, u, transporte, 100m, new DateOnly(2026, 7, 4));
 
-        var criado = await svc.CriarAsync(OrcDto(catId, limite: 1000m), userId);
-        var atualizado = await svc.AtualizarAsync(criado.Id, OrcDto(catId, limite: 2000m), userId);
+        var julho = await svc.DoMesAsync(u, 2026, 7, Agora);
 
-        Assert.Equal(2000m, atualizado.ValorLimite);
-    }
-
-    [Fact]
-    public async Task AtualizarAsync_OutroUsuario_LancaKeyNotFound()
-    {
-        var ctx = CreateContext();
-        var userId = SeedUsuario(ctx, "u1@test.com");
-        var outro = SeedUsuario(ctx, "u2@test.com");
-        var catId = SeedCategoria(ctx);
-        var svc = new OrcamentoService(ctx);
-
-        var criado = await svc.CriarAsync(OrcDto(catId), userId);
-
-        await Assert.ThrowsAsync<KeyNotFoundException>(
-            () => svc.AtualizarAsync(criado.Id, OrcDto(catId, limite: 999m), outro));
-    }
-
-    // ── Deletar ──────────────────────────────────────────────────────────────
-
-    [Fact]
-    public async Task DeletarAsync_Valido_RemoveOrcamento()
-    {
-        var ctx = CreateContext();
-        var userId = SeedUsuario(ctx);
-        var catId = SeedCategoria(ctx);
-        var svc = new OrcamentoService(ctx);
-
-        var criado = await svc.CriarAsync(OrcDto(catId), userId);
-        await svc.DeletarAsync(criado.Id, userId);
-
-        var lista = await svc.ListarAsync(userId, 5, 2026);
-        Assert.Empty(lista);
+        Assert.True(julho.Editavel);
+        Assert.Equal(["Restaurante", "Mercado", "Transporte"], julho.Limites.Select(l => l.Categoria)); // atenção primeiro
+        var r = julho.Limites[0];
+        Assert.Equal(("passou", -110m, 2026, 5), (r.Situacao, r.Sobra, r.DesdeAno, r.DesdeMes)); // vale desde maio
+        Assert.Equal("perto", julho.Limites[1].Situacao); // 85% ≥ 80%
+        Assert.Equal("ok", julho.Limites[2].Situacao);
+        Assert.Equal(1700m, julho.TotalLimite);
+        Assert.Equal(1360m, julho.TotalGasto);
     }
 
     [Fact]
-    public async Task DeletarAsync_OutroUsuario_LancaKeyNotFound()
+    public async Task Mudar_ValeDoMesEmDiante_OMesAnteriorGuardaOAntigo_EApagaOQueHaviaDepois()
     {
         var ctx = CreateContext();
-        var userId = SeedUsuario(ctx, "u1@test.com");
-        var outro = SeedUsuario(ctx, "u2@test.com");
-        var catId = SeedCategoria(ctx);
+        var u = SeedUsuario(ctx);
+        var cat = SeedCategoria(ctx);
+        var svc = new OrcamentoService(ctx);
+        await Definir(svc, u, cat, 1000m, 2026, 5);
+        await Definir(svc, u, cat, 1500m, 2026, 8);
+        await Definir(svc, u, cat, 1200m, 2026, 7); // vale de julho pra frente: o de agosto sai
+
+        Assert.Equal(1000m, Assert.Single((await svc.DoMesAsync(u, 2026, 6, Agora)).Limites).Limite);
+        Assert.Equal(1200m, Assert.Single((await svc.DoMesAsync(u, 2026, 7, Agora)).Limites).Limite);
+        Assert.Equal(1200m, Assert.Single((await svc.DoMesAsync(u, 2026, 12, Agora)).Limites).Limite);
+        Assert.Equal(2, ctx.Orcamentos.Count());
+    }
+
+    [Fact]
+    public async Task Tirar_SaiDoMesEmDiante_OsPassadosContinuam_SemLimiteDa404()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var cat = SeedCategoria(ctx);
+        var svc = new OrcamentoService(ctx);
+        await Definir(svc, u, cat, 1000m, 2026, 5);
+        await Definir(svc, u, cat, 900m, 2026, 9);
+
+        var julho = await svc.TirarAsync(cat, 2026, 7, u, Agora);
+
+        Assert.Empty(julho.Limites);
+        Assert.Single((await svc.DoMesAsync(u, 2026, 6, Agora)).Limites); // junho continua com o de maio
+        Assert.Empty((await svc.DoMesAsync(u, 2026, 10, Agora)).Limites); // o de setembro saiu junto
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.TirarAsync(cat, 2026, 8, u, Agora));
+        // Pôr de novo depois de tirar volta a valer.
+        await Definir(svc, u, cat, 500m, 2026, 8);
+        Assert.Equal(500m, Assert.Single((await svc.DoMesAsync(u, 2026, 11, Agora)).Limites).Limite);
+    }
+
+    [Fact]
+    public async Task MesQuePassou_FicaComoEstava()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var cat = SeedCategoria(ctx);
+        var svc = new OrcamentoService(ctx);
+        ctx.Orcamentos.Add(new Orcamento { Id = Guid.NewGuid(), UsuarioId = u, CategoriaId = cat, Ano = 2026, Mes = 3, ValorLimite = 800m });
+        ctx.SaveChanges();
+
+        var abril = await svc.DoMesAsync(u, 2026, 4, Agora);
+
+        Assert.False(abril.Editavel);
+        Assert.Equal(800m, Assert.Single(abril.Limites).Limite);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Definir(svc, u, cat, 100m, 2026, 4));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.TirarAsync(cat, 2026, 4, u, Agora));
+        Assert.True((await svc.DoMesAsync(u, 2026, 5, Agora)).Editavel);
+        // No dia 1º em UTC ainda é o mês anterior em Brasília: um dia de folga.
+        Assert.True((await svc.DoMesAsync(u, 2026, 4, new DateTime(2026, 5, 1, 1, 0, 0))).Editavel);
+    }
+
+    // ── Sem limite, sugestão, validação ─────────────────────────────────────
+
+    [Fact]
+    public async Task SemLimite_ListaQuemGastouSemLimite_EOutroUsuarioNaoAparece()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var outro = SeedUsuario(ctx, "outro@test.com");
+        var mercado = SeedCategoria(ctx, "Mercado");
+        var lazer = SeedCategoria(ctx, "Lazer");
+        var svc = new OrcamentoService(ctx);
+        await Definir(svc, u, mercado, 1000m, 2026, 5);
+        await Definir(svc, outro, lazer, 50m, 2026, 5);
+        Gasto(ctx, u, mercado, 100m, new DateOnly(2026, 5, 2));
+        Gasto(ctx, u, lazer, 250m, new DateOnly(2026, 5, 3));
+        Gasto(ctx, u, null, 30m, new DateOnly(2026, 5, 4));
+        Gasto(ctx, outro, mercado, 9999m, new DateOnly(2026, 5, 4));
+
+        var maio = await svc.DoMesAsync(u, 2026, 5, Agora);
+
+        Assert.Equal(100m, Assert.Single(maio.Limites).Gasto); // o gasto do outro não entra
+        Assert.Equal([("Lazer", 250m), ("Sem categoria", 30m)], maio.SemLimite.Select(s => (s.Categoria, s.Gasto)));
+    }
+
+    [Fact]
+    public async Task Sugestao_MediaDos3MesesAnteriores()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var cat = SeedCategoria(ctx);
+        var svc = new OrcamentoService(ctx);
+        Gasto(ctx, u, cat, 900m, new DateOnly(2026, 2, 10));
+        Gasto(ctx, u, cat, 600m, new DateOnly(2026, 3, 10));
+        Gasto(ctx, u, cat, 300m, new DateOnly(2026, 4, 10));
+        Gasto(ctx, u, cat, 5000m, new DateOnly(2026, 5, 10)); // o próprio mês não entra
+        Gasto(ctx, u, cat, 5000m, new DateOnly(2026, 1, 10)); // nem antes dos 3
+
+        Assert.Equal(600m, (await svc.SugestaoAsync(u, cat, 2026, 5)).MediaUltimos3Meses);
+        Assert.Null((await svc.SugestaoAsync(u, cat, 2026, 1)).MediaUltimos3Meses);
+    }
+
+    [Fact]
+    public async Task Definir_CategoriaDeReceitaOuDeOutro_ValorInvalido_Recusa()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var outro = SeedUsuario(ctx, "outro@test.com");
+        var salario = SeedCategoria(ctx, "Salário", Finalidade.Receita);
+        var deOutro = SeedCategoria(ctx, "Do outro", dono: outro);
+        var cat = SeedCategoria(ctx);
         var svc = new OrcamentoService(ctx);
 
-        var criado = await svc.CriarAsync(OrcDto(catId), userId);
+        await Assert.ThrowsAsync<ArgumentException>(() => Definir(svc, u, salario, 100m, 2026, 5));
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => Definir(svc, u, deOutro, 100m, 2026, 5));
+        await Assert.ThrowsAsync<ArgumentException>(() => Definir(svc, u, cat, 0m, 2026, 5));
+        await Assert.ThrowsAsync<ArgumentException>(() => Definir(svc, u, cat, 10m, 2026, 13));
+        Assert.Empty(ctx.Orcamentos);
+    }
 
-        await Assert.ThrowsAsync<KeyNotFoundException>(
-            () => svc.DeletarAsync(criado.Id, outro));
+    [Fact]
+    public async Task LimiteDeTodosOsGastos_SomaTudo_ENaoEntraNosTotais()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var cat = SeedCategoria(ctx);
+        var svc = new OrcamentoService(ctx);
+        await Definir(svc, u, null, 2000m, 2026, 5);
+        Gasto(ctx, u, cat, 700m, new DateOnly(2026, 5, 2));
+        Gasto(ctx, u, null, 100m, new DateOnly(2026, 5, 3));
+
+        var maio = await svc.DoMesAsync(u, 2026, 5, Agora);
+
+        var geral = Assert.Single(maio.Limites);
+        Assert.Equal(("Todos os gastos", 800m), (geral.Categoria, geral.Gasto));
+        Assert.Equal(0m, maio.TotalLimite); // os totais são das categorias com limite próprio
     }
 }

@@ -1,0 +1,34 @@
+.pagina { display: flex; flex-direction: column; gap: 20px; }
+
+/* Faixa de números (mesma anatomia de Bancos e Metas) */
+.resumo { padding: 20px 24px; }
+.numeros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.numero { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.rotulo { font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-texto-2); }
+.numeroValor { font-size: var(--v2-fs-2xl); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.numeroValor[data-tom="negativo"] { color: var(--v2-negativo); }
+.numeroEsqueleto { display: block; width: 140px; height: 28px; border-radius: 8px; background: var(--v2-superficie-2); }
+
+.respiro { padding: 8px 24px 20px; }
+.vazio { margin: 0; padding: 20px 24px 28px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
+/* Barra da lista: "Novo limite" à direita (mesma anatomia das outras listas) */
+.toolbar { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 16px 24px 4px; }
+.alerta { margin: 0 0 10px; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
+
+/* Linha: situação e quanto sobra (ou passou) em cima, a barra embaixo */
+.direita { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; width: 240px; }
+.direitaTopo { display: inline-flex; align-items: center; gap: 10px; }
+.sobra { font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-texto-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sobra[data-passou="true"] { color: var(--v2-negativo); }
+.barra { width: 100%; }
+.valor { font-size: var(--v2-fs-md); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+@media (max-width: 900px) {
+  .numeros { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .numero { flex-direction: row; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .numeroValor { font-size: var(--v2-fs-lg); }
+  .direita { width: 130px; }
+  .toolbar { padding: 14px 16px 4px; }
+  .respiro { padding: 8px 16px 16px; }
+  .vazio { padding: 16px 16px 24px; }
+}
