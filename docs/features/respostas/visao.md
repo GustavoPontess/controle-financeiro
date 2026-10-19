@@ -36,6 +36,19 @@ Daí saem três números que respondem a maioria das perguntas:
 
 Fato e previsto ficam separados nos números, mas juntos na resposta.
 
+## A cara da resposta: "Renda do mês" (ideia do Gustavo, 2026-10-19)
+
+Inspirada no medidor de contexto do Claude Code: o total da barra é a renda do mês e, embaixo, o que está comendo ela.
+
+- Topo: "Renda de outubro" e quanto recebeu; "169% usado · R$ 6.603,93 / R$ 3.903,23".
+- Barra empilhada: cada categoria um pedaço; o que **ainda vem** (conta fixa prevista, fatura) listrado, como o "deferred" do medidor; o que sobra vazio ("Livre"). Passou da renda: a barra cresce além da marca "sua renda".
+- Legenda em dois grupos: **Já saiu** e **Ainda vem este mês** (nome, dia, valor, % da renda); última linha "Livre" ou "Passou da renda".
+- Embaixo, a resposta em uma frase e a ação: "Saiu mais do que entrou: R$ 2.700,70 acima da renda. O maior peso é Sem categoria (R$ 4.312,13)" → Classificar lançamentos · Ver onde cortar.
+- Mora no Início (é a resposta principal do mês), na Renda e no check-up de Relatórios. Vem do mesmo cálculo do mês.
+- Metas entram como um pedaço ("Guardado nas metas") quando a pessoa guarda no mês.
+
+Números do mockup = a conta do Gustavo em outubro/2026 (banco local).
+
 ## As camadas
 
 1. **Resposta na hora, em cada tela.** Uma linha com o número e a ação, no momento da decisão. Regras fixas (sem IA), testáveis.
