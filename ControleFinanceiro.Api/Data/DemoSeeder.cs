@@ -49,6 +49,47 @@ public static class DemoSeeder
         await FamiliaAsync(sp, context, dev.Id, hoje);
         await RendaAsync(context, dev.Id, hoje);
         await MetasAsync(sp, context, dev.Id, corrente.Id, poupanca.Id, hoje);
+        await LimitesAsync(sp, context, dev.Id, hoje);
+    }
+
+    // ── Limites: em cima do gasto real do mês (o seeder não inventa gasto). A categoria que mais gastou passou do
+    //    limite, a segunda está perto (≈90%), a terceira com folga e um limite que vale desde 3 meses atrás (valor
+    //    mudou neste mês), mais uma categoria com limite e nada gasto. As outras com gasto ficam "sem limite".
+    private static async Task LimitesAsync(IServiceProvider sp, AppDbContext context, Guid dev, DateTime hoje)
+    {
+        if (await context.Orcamentos.AnyAsync(o => o.UsuarioId == dev))
+            return;
+        var svc = sp.GetRequiredService<OrcamentoService>();
+        var gastos = await RegrasFinanceiras.GastosPorCategoriaDoMesAsync(context, dev, hoje.Year, hoje.Month);
+        var top = gastos.Where(kv => kv.Key != RegrasFinanceiras.SemCategoria && kv.Value.Gasto > 0)
+            .OrderByDescending(kv => kv.Value.Gasto).Take(3).ToList();
+        static decimal Redondo(decimal v) => Math.Max(10m, Math.Ceiling(v / 10m) * 10m);
+        async Task Limite(Guid categoria, decimal valor) =>
+            await svc.DefinirAsync(new ControleFinanceiro.Api.DTOs.Orcamento.DefinirLimiteDto(categoria, hoje.Year, hoje.Month, valor), dev);
+
+        if (top.Count > 0) await Limite(top[0].Key, Redondo(top[0].Value.Gasto * 0.8m));       // passou
+        if (top.Count > 1) await Limite(top[1].Key, Redondo(top[1].Value.Gasto / 0.9m));       // perto
+        if (top.Count > 2)
+        {
+            // Vinha valendo há 3 meses com outro valor (o mês passado ainda mostra o antigo) e mudou agora.
+            var inicio = new DateTime(hoje.Year, hoje.Month, 1).AddMonths(-3);
+            context.Orcamentos.Add(new Domain.Entities.Orcamento
+            {
+                Id = Guid.NewGuid(), UsuarioId = dev, CategoriaId = top[2].Key, Ano = inicio.Year, Mes = inicio.Month,
+                ValorLimite = Redondo(top[2].Value.Gasto * 1.5m),
+            });
+            await context.SaveChangesAsync();
+            await Limite(top[2].Key, Redondo(top[2].Value.Gasto * 2m));                         // com folga
+        }
+        var comGasto = gastos.Keys.ToList();
+        // Uma categoria comum que ainda não gastou nada no mês (Lazer, Educação, Transporte…, a primeira livre).
+        var preferidas = new[] { "Lazer", "Educação", "Transporte", "Saúde" };
+        var livres = await context.Categorias
+            .Where(c => c.UsuarioId == null && c.Finalidade != Finalidade.Receita && !comGasto.Contains(c.Id))
+            .Select(c => new { c.Id, c.Descricao }).ToListAsync();
+        var semGasto = preferidas.Select(n => livres.FirstOrDefault(c => c.Descricao.StartsWith(n))?.Id).FirstOrDefault(id => id.HasValue)
+            ?? livres.OrderBy(c => c.Descricao).Select(c => (Guid?)c.Id).FirstOrDefault() ?? Guid.Empty;
+        if (semGasto != Guid.Empty) await Limite(semGasto, 300m);                               // nada gasto ainda
     }
 
     // ── Metas (caixinhas): uma de cada situação. "Entrada do apê" atrás do ritmo (criada há 4 meses, guardada de

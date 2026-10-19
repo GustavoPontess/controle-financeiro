@@ -57,5 +57,21 @@ public record MovimentoMetaDto(
 /// <summary>Concluir a meta que chegou lá: o guardado todo vai pra <c>ContaId</c>. <c>Data</c> omitida = hoje.</summary>
 public record ConcluirMetaDto(Guid ContaId, DateOnly? Data = null);
 
+/// <summary>
+/// "Essa meta cabe?" (docs/features/respostas/visao.md). <c>PorMes</c>: quanto guardar por mês até o prazo (null sem
+/// prazo). <c>Folga</c>: o que sobra por mês = renda esperada − gasto típico (média dos 3 meses antes) − o que as
+/// outras metas pedem (null quando falta renda ou gasto pra saber). <c>PrazoQueCabe</c>: o mês em que dá pra chegar
+/// guardando a folga (quando o prazo não cabe ou não tem prazo). <c>Resposta</c>: a frase.
+/// </summary>
+public record ViabilidadeMetaDto(
+    decimal? PorMes,
+    int? Meses,
+    decimal? Folga,
+    decimal? RendaEsperada,
+    decimal? GastoTipico,
+    decimal OutrasMetasPorMes,
+    DateTime? PrazoQueCabe,
+    ControleFinanceiro.Api.DTOs.DinheiroDoMes.RespostaDto Resposta);
+
 /// <summary>Uma linha do histórico da meta: quando, se guardou ou resgatou, de/pra qual conta e quanto.</summary>
 public record MetaHistoricoDto(Guid TransferenciaId, DateTime Data, string Tipo, Guid ContaId, string ContaNome, decimal Valor);

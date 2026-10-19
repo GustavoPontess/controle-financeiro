@@ -415,7 +415,7 @@ public class CategoriaServiceTests
     }
 
     [Fact]
-    public async Task DeletarAsync_MoverPara_LevaTudo_ESomaLimiteDoMesmoMes()
+    public async Task DeletarAsync_MoverPara_LevaTudo_ESomaOQueCadaLimiteValiaEmCadaMes()
     {
         var ctx = CreateContext();
         var svc = new CategoriaService(ctx);
@@ -454,8 +454,10 @@ public class CategoriaServiceTests
         Assert.Equal(compras.Id, (await ctx.Metas.AsNoTracking().SingleAsync()).CategoriaId);
         var limites = await ctx.Orcamentos.AsNoTracking().ToListAsync();
         Assert.Equal(2, limites.Count);
-        Assert.Equal(500, limites.Single(o => o.Mes == 10).ValorLimite); // 200 + 300 no mesmo mês
-        Assert.Equal(compras.Id, limites.Single(o => o.Mes == 11).CategoriaId);
+        Assert.All(limites, o => Assert.Equal(compras.Id, o.CategoriaId));
+        Assert.Equal(500, limites.Single(o => o.Mes == 10).ValorLimite); // 200 + 300 em outubro
+        // Limite vale todo mês até mudar: em novembro Pets passou a 150 e Compras continuou 300.
+        Assert.Equal(450, limites.Single(o => o.Mes == 11).ValorLimite);
     }
 
     [Fact]

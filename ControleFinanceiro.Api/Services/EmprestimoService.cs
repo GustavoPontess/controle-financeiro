@@ -359,7 +359,7 @@ public class EmprestimoService(
                 sol.SolicitadoPor,
                 TipoNotificacao.EmprestimoPagamentoAvaliado,
                 "Pagamento rejeitado",
-                $"\"{e.Descricao}\" foi quitado diretamente — sua solicitação de {sol.Valor:C} não foi aprovada.",
+                $"\"{e.Descricao}\" foi quitado diretamente: sua solicitação de {Reais.Formatar(sol.Valor)} não foi aprovada.",
                 "/emprestimos");
         }
 
@@ -826,7 +826,7 @@ public class EmprestimoService(
                     DevedorUsuarioId(emprestimo),
                     TipoNotificacao.EmprestimoPagamentoAvaliado,
                     "Pagamento registrado",
-                    $"{solicitante?.Nome ?? "Alguém"} confirmou o recebimento de {valorTotalAplicado:C}{sufixoParcelas} em \"{emprestimo.Descricao}\".",
+                    $"{solicitante?.Nome ?? "Alguém"} confirmou o recebimento de {Reais.Formatar(valorTotalAplicado)}{sufixoParcelas} em \"{emprestimo.Descricao}\".",
                     "/emprestimos");
             }
         }
@@ -836,7 +836,7 @@ public class EmprestimoService(
                 CredorUsuarioId(emprestimo),
                 TipoNotificacao.EmprestimoPagamentoSolicitado,
                 "Pagamento aguardando aprovação",
-                $"{solicitante?.Nome ?? "Alguém"} marcou {valorTotalAplicado:C}{sufixoParcelas} como pago em \"{emprestimo.Descricao}\" — confirme o recebimento.",
+                $"{solicitante?.Nome ?? "Alguém"} marcou {Reais.Formatar(valorTotalAplicado)}{sufixoParcelas} como pago em \"{emprestimo.Descricao}\". Confirme o recebimento.",
                 "/emprestimos");
         }
 
@@ -996,7 +996,7 @@ public class EmprestimoService(
             solicitacao.SolicitadoPor,
             TipoNotificacao.EmprestimoPagamentoAvaliado,
             "Pagamento aprovado",
-            $"Seu pagamento de {solicitacao.Valor:C} em \"{emprestimo.Descricao}\" foi confirmado.",
+            $"Seu pagamento de {Reais.Formatar(solicitacao.Valor)} em \"{emprestimo.Descricao}\" foi confirmado.",
             "/emprestimos");
 
         return true;
@@ -1027,7 +1027,7 @@ public class EmprestimoService(
 
         await _context.SaveChangesAsync();
 
-        var mensagem = $"Seu pagamento de {solicitacao.Valor:C} em \"{solicitacao.Emprestimo.Descricao}\" foi rejeitado."
+        var mensagem = $"Seu pagamento de {Reais.Formatar(solicitacao.Valor)} em \"{solicitacao.Emprestimo.Descricao}\" foi rejeitado."
             + (motivo != null ? $" Motivo: {motivo}" : "");
         await _notificacaoService.CriarAsync(
             solicitacao.SolicitadoPor,
@@ -1070,7 +1070,7 @@ public class EmprestimoService(
             CredorUsuarioId(emprestimo),
             TipoNotificacao.EmprestimoPagamentoSolicitado,
             "Pagamento reenviado pra aprovação",
-            $"{solicitante?.Nome ?? "Alguém"} reenviou {solicitacao.Valor:C} em \"{emprestimo.Descricao}\" — reavalie.",
+            $"{solicitante?.Nome ?? "Alguém"} reenviou {Reais.Formatar(solicitacao.Valor)} em \"{emprestimo.Descricao}\". Reavalie.",
             "/emprestimos");
 
         return true;
@@ -1202,7 +1202,7 @@ public class EmprestimoService(
             devedorUsuarioId,
             TipoNotificacao.EmprestimoConsolidacaoProposta,
             "Proposta de consolidação de empréstimos",
-            $"{credor?.Nome ?? "Alguém"} quer juntar {emprestimos.Count} empréstimos num plano novo de {proposta.ValorTotalProposto:C} — revise e responda.",
+            $"{credor?.Nome ?? "Alguém"} quer juntar {emprestimos.Count} empréstimos num plano novo de {Reais.Formatar(proposta.ValorTotalProposto)}. Revise e responda.",
             "/emprestimos");
 
         return await ToConsolidacaoDtoAsync(proposta, usuarioId);
@@ -1337,7 +1337,7 @@ public class EmprestimoService(
             proposta.CredorUsuarioId,
             TipoNotificacao.EmprestimoConsolidacaoRespondida,
             "Consolidação aceita",
-            $"{devedor?.Nome ?? "Alguém"} aceitou a consolidação — \"{novo.Descricao}\" agora é um empréstimo só, {novo.ValorTotal:C}.",
+            $"{devedor?.Nome ?? "Alguém"} aceitou a consolidação: \"{novo.Descricao}\" agora é um empréstimo só, {Reais.Formatar(novo.ValorTotal)}.",
             "/emprestimos");
 
         return await ToDtoAsync(novo, usuarioId);

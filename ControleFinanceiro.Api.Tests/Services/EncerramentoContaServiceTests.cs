@@ -89,6 +89,25 @@ public class EncerramentoContaServiceTests
     }
 
     [Fact]
+    public async Task ComSaldo_Recusa_ComOValorEmReais_MesmoComCulturaInvariante()
+    {
+        // Como na imagem de produção (alpine): sem dados de cultura, {valor:C} saía "¤300.00".
+        var antes = System.Globalization.CultureInfo.CurrentCulture;
+        System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
+        try
+        {
+            var ctx = CreateContext();
+            var u = Guid.NewGuid();
+            var conta = NovaConta(ctx, u, "Inter", 1300m);
+            await ctx.SaveChangesAsync();
+
+            var ex = await Assert.ThrowsAsync<ArgumentException>(() => Servico(ctx).EncerrarAsync(conta.Id, new EncerrarContaDto(), u, Chave()));
+            Assert.Contains("saldo de R$ 1.300,00.", ex.Message);
+        }
+        finally { System.Globalization.CultureInfo.CurrentCulture = antes; }
+    }
+
+    [Fact]
     public async Task ComSaldo_Transferir_LevaOSaldoPraOutraConta()
     {
         var ctx = CreateContext();

@@ -60,7 +60,7 @@ public class DespesaCompartilhadaService
                 requerAprovacao ? TipoNotificacao.DespesaAprovacaoPendente : TipoNotificacao.DespesaCompartilhada,
                 requerAprovacao ? "Despesa aguardando aprovação" : "Nova despesa compartilhada",
                 requerAprovacao
-                    ? $"\"{transacao.Descricao}\" ({transacao.Valor:C}) precisa da sua aprovação."
+                    ? $"\"{transacao.Descricao}\" ({Reais.Formatar(transacao.Valor)}) precisa da sua aprovação."
                     : $"\"{transacao.Descricao}\" foi compartilhada na família.",
                 "/familias");
         }

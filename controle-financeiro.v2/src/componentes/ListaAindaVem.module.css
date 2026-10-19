@@ -1,0 +1,13 @@
+.lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.lista li { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 5px 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-2); }
+.lista[data-com-pct="true"] li { grid-template-columns: 12px minmax(0, 1fr) auto 56px; }
+.ponto { width: 10px; height: 10px; border-radius: 3px; background: repeating-linear-gradient(45deg, var(--v2-serie-cinza) 0 2px, transparent 2px 5px); box-shadow: inset 0 0 0 1px var(--v2-serie-cinza); }
+.nome { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: inherit; text-decoration: none; }
+.nome:hover { text-decoration: underline; text-decoration-color: var(--v2-linha-forte); text-underline-offset: 3px; }
+.mudo { color: var(--v2-texto-3); }
+.valor { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+.pct { color: var(--v2-texto-3); font-variant-numeric: tabular-nums; text-align: right; }
+
+@media (max-width: 900px) {
+  .lista[data-com-pct="true"] li { grid-template-columns: 12px minmax(0, 1fr) auto 48px; gap: 8px; }
+}

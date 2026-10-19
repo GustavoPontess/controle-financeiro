@@ -6,6 +6,10 @@ using System.Security.Claims;
 
 namespace ControleFinanceiro.Api.Controllers;
 
+/// <summary>
+/// Limites de gasto por categoria (tela Limites). Um limite vale todo mês até a pessoa mudar; mudar ou tirar vale
+/// do mês em diante (mês passado fica como estava).
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
@@ -27,60 +31,33 @@ public class OrcamentosController : ControllerBase
     }
 
     /// <summary>
-    /// Lista orçamentos do mês/ano com situação atual de consumo e alertas.
+    /// Limites que valem no mês, com o gasto (inclui a parcela do mês das compras parceladas) e o previsto, mais as
+    /// categorias que gastaram sem limite.
     /// </summary>
-    /// <param name="mes">Mês de referência (1–12). Padrão: mês atual.</param>
-    /// <param name="ano">Ano de referência. Padrão: ano atual.</param>
     [HttpGet]
-    [ProducesResponseType(typeof(List<OrcamentoDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Listar(
-        [FromQuery] int? mes = null,
-        [FromQuery] int? ano = null)
-    {
-        var usuarioId = GetUserId();
-        var agora = DateTime.Now;
-        var resultado = await _service.ListarAsync(usuarioId, mes ?? agora.Month, ano ?? agora.Year);
-        return Ok(resultado);
-    }
+    [ProducesResponseType(typeof(LimitesDoMesDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> DoMes([FromQuery] int ano, [FromQuery] int mes) =>
+        Ok(await _service.DoMesAsync(GetUserId(), ano, mes));
 
-    /// <summary>
-    /// Cria um novo orçamento mensal por categoria.
-    /// Apenas 1 orçamento por (categoria + mês + ano) por usuário.
-    /// </summary>
-    [HttpPost]
-    [ProducesResponseType(typeof(OrcamentoDto), StatusCodes.Status201Created)]
+    /// <summary>Média do gasto da categoria nos 3 meses antes do mês (pra sugerir o limite).</summary>
+    [HttpGet("sugestao")]
+    [ProducesResponseType(typeof(SugestaoLimiteDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Sugestao([FromQuery] Guid? categoriaId, [FromQuery] int ano, [FromQuery] int mes) =>
+        Ok(await _service.SugestaoAsync(GetUserId(), categoriaId, ano, mes));
+
+    /// <summary>Põe ou muda o limite da categoria do mês em diante. Devolve o mês atualizado.</summary>
+    [HttpPut]
+    [ProducesResponseType(typeof(LimitesDoMesDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> Criar([FromBody] CriarOrcamentoDto dto)
-    {
-        var usuarioId = GetUserId();
-        var resultado = await _service.CriarAsync(dto, usuarioId);
-        return CreatedAtAction(nameof(Listar), new { mes = dto.Mes, ano = dto.Ano }, resultado);
-    }
+    public async Task<IActionResult> Definir([FromBody] DefinirLimiteDto dto) =>
+        Ok(await _service.DefinirAsync(dto, GetUserId()));
 
-    /// <summary>
-    /// Atualiza limite e percentual de alerta de um orçamento existente.
-    /// </summary>
-    [HttpPut("{id:guid}")]
-    [ProducesResponseType(typeof(OrcamentoDto), StatusCodes.Status200OK)]
+    /// <summary>Tira o limite da categoria do mês em diante (sem <c>categoriaId</c> = o de todos os gastos).</summary>
+    [HttpDelete]
+    [ProducesResponseType(typeof(LimitesDoMesDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Atualizar(Guid id, [FromBody] CriarOrcamentoDto dto)
-    {
-        var usuarioId = GetUserId();
-        var resultado = await _service.AtualizarAsync(id, dto, usuarioId);
-        return Ok(resultado);
-    }
-
-    /// <summary>
-    /// Remove um orçamento.
-    /// </summary>
-    [HttpDelete("{id:guid}")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Deletar(Guid id)
-    {
-        var usuarioId = GetUserId();
-        await _service.DeletarAsync(id, usuarioId);
-        return NoContent();
-    }
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Tirar([FromQuery] Guid? categoriaId, [FromQuery] int ano, [FromQuery] int mes) =>
+        Ok(await _service.TirarAsync(categoriaId, ano, mes, GetUserId()));
 }

@@ -1,0 +1,6 @@
+.alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
+/* Sugestão pela média (mesma anatomia da Renda) */
+.dica { font-size: var(--v2-fs-sm); color: var(--v2-texto-3); font-variant-numeric: tabular-nums; }
+.linkBotao { padding: 0; border: 0; background: none; font: inherit; color: var(--v2-acento); cursor: pointer; }
+.linkBotao:hover { text-decoration: underline; }
+.linkBotao:focus-visible { outline: none; text-decoration: underline; }

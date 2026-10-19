@@ -81,7 +81,7 @@ public class EncerramentoContaService
         var saldo = saldos.TryGetValue(contaId, out var mov) ? mov.Saldo : 0m;
         if (saldo != 0m && !dto.ContaDestinoId.HasValue && !dto.Ajustar)
             throw new ArgumentException(
-                $"A conta ainda tem saldo de {saldo:C}. Diga pra onde foi o dinheiro (transferir) ou que no banco já está zerado (ajustar).");
+                $"A conta ainda tem saldo de {Reais.Formatar(saldo)}. Diga pra onde foi o dinheiro (transferir) ou que no banco já está zerado (ajustar).");
 
         var resolucao = saldo == 0m ? ResolucaoZerada : dto.ContaDestinoId.HasValue ? ResolucaoTransferencia : ResolucaoAjuste;
         var correlationId = Guid.NewGuid();

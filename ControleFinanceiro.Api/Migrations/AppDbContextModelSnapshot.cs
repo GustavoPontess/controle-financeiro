@@ -1164,6 +1164,10 @@ namespace ControleFinanceiro.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Chave")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("timestamp without time zone");
 
@@ -1191,6 +1195,10 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId", "Chave")
+                        .IsUnique()
+                        .HasFilter("\"Chave\" IS NOT NULL");
 
                     b.HasIndex("UsuarioId", "Lida");
 
