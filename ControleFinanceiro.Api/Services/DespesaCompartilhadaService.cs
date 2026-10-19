@@ -9,17 +9,21 @@ public class DespesaCompartilhadaService
 {
     private readonly AppDbContext _context;
     private readonly NotificacaoService _notificacaoService;
+    private readonly RateioService _rateio;
 
-    public DespesaCompartilhadaService(AppDbContext context, NotificacaoService notificacaoService)
+    public DespesaCompartilhadaService(AppDbContext context, NotificacaoService notificacaoService, RateioService rateio)
     {
         _context = context;
         _notificacaoService = notificacaoService;
+        _rateio = rateio;
     }
 
-    /// <summary>Marca uma transação como despesa compartilhada com uma família.</summary>
+    /// <summary>Marca uma transação como despesa compartilhada com uma família e GRAVA a parte de cada um pela regra
+    /// da família de hoje (<see cref="RateioService.CalcularPartesAsync"/>): daí em diante nada muda sozinho.</summary>
     public async Task CompartilharAsync(Guid transacaoId, Guid familiaId, Guid usuarioId)
     {
         var transacao = await _context.Transacoes
+            .Include(t => t.Rateios)
             .FirstOrDefaultAsync(t => t.Id == transacaoId && t.Ativo)
             ?? throw new KeyNotFoundException("Transação não encontrada.");
 
@@ -45,6 +49,7 @@ public class DespesaCompartilhadaService
             : StatusAprovacaoDespesa.NaoRequerida;
         transacao.AprovadoPorUsuarioId = null;
         transacao.AprovadoEm = null;
+        await _rateio.AplicarPartesAsync(transacao, familiaId, familia.ModoRateioPadrao, null);
         await _context.SaveChangesAsync();
 
         // Issue #30 — notifica os demais membros ativos da família.
@@ -117,6 +122,9 @@ public class DespesaCompartilhadaService
             throw new ForbiddenAccessException("Você só pode alterar suas próprias transações.");
 
         transacao.FamiliaId = null;
+        transacao.ModoRateio = null;
+        transacao.StatusAprovacao = StatusAprovacaoDespesa.NaoRequerida;
+        _context.RateiosTransacao.RemoveRange(_context.RateiosTransacao.Where(r => r.TransacaoId == transacao.Id));
         await _context.SaveChangesAsync();
     }
 
@@ -137,6 +145,7 @@ public class DespesaCompartilhadaService
                 t.Id, t.Descricao, t.Valor, t.Data, t.Hora,
                 CategoriaNome = t.Categoria != null ? t.Categoria.Descricao : null,
                 t.CriadoPor, t.StatusAprovacao, t.AprovadoPorUsuarioId, t.ResponsavelUsuarioId,
+                MinhaParte = t.Rateios.Where(r => r.UsuarioId == usuarioId).Select(r => (decimal?)r.Valor).FirstOrDefault(),
             })
             .ToListAsync();
 
@@ -156,7 +165,8 @@ public class DespesaCompartilhadaService
                 d.StatusAprovacao,
                 d.AprovadoPorUsuarioId is { } aid ? nomes.GetValueOrDefault(aid) : null,
                 d.ResponsavelUsuarioId,
-                d.ResponsavelUsuarioId is { } rid2 ? nomes.GetValueOrDefault(rid2) : null))
+                d.ResponsavelUsuarioId is { } rid2 ? nomes.GetValueOrDefault(rid2) : null,
+                d.MinhaParte))
             .ToList();
     }
 
@@ -183,9 +193,10 @@ public class DespesaCompartilhadaService
         await _context.SaveChangesAsync();
     }
 
-    /// <summary>Balanço mensal: quem pagou quanto vs a cota devida. A cota de cada
-    /// membro respeita o modo de rateio efetivo de cada despesa (Issue #25). Quem "só vê"
-    /// (permissão Dependente) não paga: fica fora da divisão (visão §7.2, decisão 2026-10-18).</summary>
+    /// <summary>Equilíbrio do mês: quem pagou quanto × a parte de cada um, pelas PARTES GRAVADAS em cada despesa
+    /// (<see cref="RateioTransacao"/>): mudar a regra da família depois não mexe aqui, e quem saiu da família continua
+    /// nos meses em que dividiu (com <c>SaiuEm</c>). Quem "só vê" não entra. Despesa gravada antes das partes (sem
+    /// item) divide igual entre os ativos, como era. Pendente/Rejeitada ficam fora.</summary>
     public async Task<BalancoFamiliaDto> ObterBalancoAsync(
         Guid familiaId, Guid usuarioId, int mes, int ano)
     {
@@ -195,59 +206,54 @@ public class DespesaCompartilhadaService
             .FirstOrDefaultAsync(f => f.Id == familiaId && f.Ativa)
             ?? throw new KeyNotFoundException("Família não encontrada.");
 
-        var membros = await _context.MembrosFamilia
-            .Where(m => m.FamiliaId == familiaId && m.Ativo && m.PapelPermissao != PapelFamilia.Dependente)
-            .Select(m => new { m.UsuarioId, m.Usuario!.Nome })
+        var membrosFamilia = await _context.MembrosFamilia
+            .Where(m => m.FamiliaId == familiaId)
+            .Select(m => new { m.UsuarioId, m.Usuario!.Nome, m.Ativo, m.SaiuEm, m.PapelPermissao })
             .ToListAsync();
-        // Peso do rateio proporcional = renda prevista do mês de quem não escondeu tudo (renda-e-visibilidade.md).
-        var pesos = await new RendaService(_context).PesosAsync(familiaId, ano, mes);
+        var ativos = membrosFamilia.Where(m => m.Ativo && m.PapelPermissao != PapelFamilia.Dependente).ToList();
 
         // Feature 2.4 — só despesas contabilizáveis entram no rateio (Pendente/Rejeitada fora).
         var despesas = await QueryDespesasDoMes(familiaId, mes, ano)
             .Where(t => t.StatusAprovacao == StatusAprovacaoDespesa.NaoRequerida
                      || t.StatusAprovacao == StatusAprovacaoDespesa.Aprovada)
-            .Select(t => new { t.Id, t.Valor, t.CriadoPor, t.ModoRateio })
+            .Select(t => new { t.Id, t.Valor, t.CriadoPor })
             .ToListAsync();
-
         var despesaIds = despesas.Select(d => d.Id).ToList();
-        var rateios = await _context.RateiosTransacao
+        var partes = await _context.RateiosTransacao
             .Where(r => despesaIds.Contains(r.TransacaoId))
+            .Select(r => new { r.TransacaoId, r.UsuarioId, r.Valor })
             .ToListAsync();
+        var comPartes = partes.Select(p => p.TransacaoId).ToHashSet();
 
-        // TransacaoId → (UsuarioId → Percentual).
-        var rateioPorDespesa = rateios
-            .GroupBy(r => r.TransacaoId)
-            .ToDictionary(
-                g => g.Key,
-                g => g.ToDictionary(r => r.UsuarioId, r => r.Percentual));
-
-        var total = despesas.Sum(d => d.Valor);
-        var membroIds = membros.Select(m => m.UsuarioId).ToList();
-        var cotaIgualitaria = membros.Count > 0 ? total / membros.Count : 0m;
-        var somaRenda = membros.Sum(m => pesos.GetValueOrDefault(m.UsuarioId));
-
-        // Cota devida acumulada por membro.
-        var cotaDevida = membroIds.ToDictionary(id => id, _ => 0m);
-
-        foreach (var despesa in despesas)
+        // Quem entra no equilíbrio: os ativos + quem tem parte gravada ou pagou no mês (quem saiu continua).
+        var pessoas = ativos.Select(m => m.UsuarioId)
+            .Concat(partes.Select(p => p.UsuarioId))
+            .Concat(despesas.Select(d => d.CriadoPor))
+            .Distinct().ToList();
+        var cota = pessoas.ToDictionary(id => id, _ => 0m);
+        foreach (var p in partes)
+            cota[p.UsuarioId] += p.Valor;
+        // Despesa gravada antes das partes (sem item): a regra de antes, ao vivo (modo da despesa ou o padrão da
+        // família de hoje; pela renda = renda prevista do mês). Depois da migration isso não existe mais.
+        var semPartes = despesas.Where(d => !comPartes.Contains(d.Id)).ToList();
+        if (semPartes.Count > 0 && ativos.Count > 0)
         {
-            if (membros.Count == 0) break;
-            var modo = despesa.ModoRateio ?? familia.ModoRateioPadrao;
-            rateioPorDespesa.TryGetValue(despesa.Id, out var itens);
-
-            foreach (var m in membros)
+            var modos = await _context.Transacoes.Where(t => semPartes.Select(d => d.Id).Contains(t.Id))
+                .Select(t => new { t.Id, t.ModoRateio }).ToDictionaryAsync(t => t.Id, t => t.ModoRateio);
+            var pesos = await new RendaService(_context).PesosAsync(familiaId, ano, mes);
+            var somaRenda = ativos.Sum(m => pesos.GetValueOrDefault(m.UsuarioId));
+            foreach (var d in semPartes)
             {
-                cotaDevida[m.UsuarioId] += modo switch
-                {
-                    ModoRateio.Proporcional when somaRenda > 0 =>
-                        despesa.Valor * (pesos.GetValueOrDefault(m.UsuarioId) / somaRenda),
-                    ModoRateio.Personalizado when itens is { Count: > 0 } =>
-                        despesa.Valor * (itens.GetValueOrDefault(m.UsuarioId, 0m) / 100m),
-                    // Igualitário, ou fallback quando não há renda/itens definidos.
-                    _ => despesa.Valor / membros.Count,
-                };
+                var modo = modos.GetValueOrDefault(d.Id) ?? familia.ModoRateioPadrao;
+                foreach (var m in ativos)
+                    cota[m.UsuarioId] += modo == ModoRateio.Proporcional && somaRenda > 0
+                        ? d.Valor * (pesos.GetValueOrDefault(m.UsuarioId) / somaRenda)
+                        : d.Valor / ativos.Count;
             }
         }
+
+        var total = despesas.Sum(d => d.Valor);
+        var cotaIgualitaria = ativos.Count > 0 ? total / ativos.Count : 0m;
 
         // Acertos ativos do mês (Issue #26): o acerto entra no saldo de quem passou (soma) e de quem
         // recebeu (subtrai); as contas de cada um não mudam.
@@ -256,15 +262,23 @@ public class DespesaCompartilhadaService
             .Select(a => new { a.DeUsuarioId, a.ParaUsuarioId, a.Valor })
             .ToListAsync();
 
-        var saldos = membros
-            .Select(m =>
+        var membroPorId = membrosFamilia.GroupBy(m => m.UsuarioId).ToDictionary(g => g.Key, g => g.OrderByDescending(m => m.Ativo).First());
+        var faltamNome = pessoas.Where(id => !membroPorId.ContainsKey(id)).ToList();
+        var nomesSoltos = faltamNome.Count == 0 ? new Dictionary<Guid, string>()
+            : await _context.Usuarios.Where(u => faltamNome.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.Nome);
+
+        var saldos = pessoas
+            .OrderBy(id => membroPorId.TryGetValue(id, out var m) && m.Ativo ? 0 : 1)
+            .ThenBy(id => membroPorId.TryGetValue(id, out var m) ? m.Nome : nomesSoltos.GetValueOrDefault(id, ""))
+            .Select(id =>
             {
-                var pagou = despesas.Where(d => d.CriadoPor == m.UsuarioId).Sum(d => d.Valor);
-                var cota = cotaDevida[m.UsuarioId];
-                var acertosPagos = acertos.Where(a => a.DeUsuarioId == m.UsuarioId).Sum(a => a.Valor);
-                var acertosRecebidos = acertos.Where(a => a.ParaUsuarioId == m.UsuarioId).Sum(a => a.Valor);
-                var saldo = pagou - cota + acertosPagos - acertosRecebidos;
-                return new SaldoMembroDto(m.UsuarioId, m.Nome, pagou, cota, saldo);
+                membroPorId.TryGetValue(id, out var m);
+                var nome = m?.Nome ?? nomesSoltos.GetValueOrDefault(id, "Membro que saiu");
+                var pagou = despesas.Where(d => d.CriadoPor == id).Sum(d => d.Valor);
+                var acertosPagos = acertos.Where(a => a.DeUsuarioId == id).Sum(a => a.Valor);
+                var acertosRecebidos = acertos.Where(a => a.ParaUsuarioId == id).Sum(a => a.Valor);
+                var saldo = pagou - cota[id] + acertosPagos - acertosRecebidos;
+                return new SaldoMembroDto(id, nome, pagou, cota[id], saldo, m is { Ativo: false } ? m.SaiuEm ?? DateTime.MinValue : null);
             })
             .ToList();
 

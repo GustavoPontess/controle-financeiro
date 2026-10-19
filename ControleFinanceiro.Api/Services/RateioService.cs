@@ -15,7 +15,8 @@ public class RateioService
         _context = context;
     }
 
-    /// <summary>Define o modo de rateio padrão da família.</summary>
+    /// <summary>Define o modo de rateio padrão da família. Vale pras PRÓXIMAS despesas: as já divididas ficam com as
+    /// partes gravadas (<see cref="RateioTransacao"/>).</summary>
     public async Task DefinirModoFamiliaAsync(Guid familiaId, Guid usuarioId, ModoRateio modo)
     {
         // 2.3 — modo de rateio é config da família: só Admin.
@@ -29,7 +30,63 @@ public class RateioService
         await _context.SaveChangesAsync();
     }
 
-    /// <summary>Define o modo de rateio (e os itens, se Personalizado) de uma despesa.</summary>
+    /// <summary>
+    /// A parte de cada um numa despesa, calculada AGORA e devolvida pra gravar (regra única: dividir, mudar o jeito de
+    /// uma despesa, voltar ao padrão). Quem entra: os membros ativos que não são "só vê". Igual: partes iguais. Pela
+    /// renda: peso = renda prevista de cada um no MÊS DA DESPESA (<see cref="RendaService.PesosAsync"/>); sem peso
+    /// nenhum, igual. Do meu jeito: as partes informadas. Em reais, com o resto dos centavos em quem pagou.
+    /// </summary>
+    public async Task<List<RateioTransacao>> CalcularPartesAsync(Guid familiaId, Transacao transacao, ModoRateio modo, List<RateioItemDto>? itens)
+    {
+        List<(Guid UsuarioId, decimal Percentual)> partes;
+        if (modo == ModoRateio.Personalizado)
+        {
+            var lista = itens ?? throw new ArgumentException("O modo Do meu jeito exige a parte de cada um.");
+            await ValidarItensAsync(familiaId, lista);
+            partes = lista.Select(i => (i.UsuarioId, i.Percentual)).ToList();
+        }
+        else
+        {
+            var membros = await _context.MembrosFamilia
+                .Where(m => m.FamiliaId == familiaId && m.Ativo && m.PapelPermissao != PapelFamilia.Dependente)
+                .Select(m => m.UsuarioId)
+                .OrderBy(id => id)
+                .ToListAsync();
+            if (membros.Count == 0)
+                throw new InvalidOperationException("A família não tem ninguém pra dividir.");
+            var pesos = modo == ModoRateio.Proporcional
+                ? await new RendaService(_context).PesosAsync(familiaId, transacao.Data.Year, transacao.Data.Month)
+                : new Dictionary<Guid, decimal>();
+            var soma = membros.Sum(m => pesos.GetValueOrDefault(m));
+            partes = membros
+                .Select(m => (m, soma > 0 ? Math.Round(pesos.GetValueOrDefault(m) / soma * 100m, 4) : Math.Round(100m / membros.Count, 4)))
+                .ToList();
+        }
+
+        var resultado = partes.Select(p => new RateioTransacao
+        {
+            Id = Guid.NewGuid(), TransacaoId = transacao.Id, UsuarioId = p.UsuarioId, Percentual = p.Percentual,
+            Valor = Math.Round(transacao.Valor * p.Percentual / 100m, 2),
+        }).ToList();
+        var resto = transacao.Valor - resultado.Sum(r => r.Valor);
+        if (resto != 0m && resultado.Count > 0)
+            (resultado.FirstOrDefault(r => r.UsuarioId == transacao.CriadoPor) ?? resultado[0]).Valor += resto;
+        return resultado;
+    }
+
+    /// <summary>Troca as partes gravadas da despesa pelas calculadas agora (a transação vem com <c>Rateios</c>). Não salva.</summary>
+    public async Task AplicarPartesAsync(Transacao transacao, Guid familiaId, ModoRateio modo, List<RateioItemDto>? itens)
+    {
+        var novas = await CalcularPartesAsync(familiaId, transacao, modo, itens);
+        _context.RateiosTransacao.RemoveRange(transacao.Rateios.ToList());
+        transacao.Rateios.Clear();
+        // Pelo DbSet (Added): posta só na navegação, com a chave já definida, o EF marca como Modified e o salvar cai.
+        // O EF já encaixa cada item em transacao.Rateios (fixup); adicionar de novo duplicava.
+        _context.RateiosTransacao.AddRange(novas);
+        transacao.ModoRateio = modo;
+    }
+
+    /// <summary>Muda o jeito de dividir SÓ desta despesa (e regrava as partes).</summary>
     public async Task DefinirRateioTransacaoAsync(
         Guid transacaoId, Guid usuarioId, DefinirRateioTransacaoDto dto)
     {
@@ -41,37 +98,15 @@ public class RateioService
         if (transacao.CriadoPor != usuarioId)
             throw new ForbiddenAccessException("Você só pode alterar suas próprias transações.");
 
-        if (transacao.FamiliaId is null)
+        if (transacao.FamiliaId is not { } familiaId)
             throw new InvalidOperationException(
                 "A transação precisa ser uma despesa compartilhada para definir rateio.");
 
-        // Limpa rateios anteriores (substituição completa).
-        _context.RateiosTransacao.RemoveRange(transacao.Rateios);
-
-        if (dto.Modo == ModoRateio.Personalizado)
-        {
-            var itens = dto.Itens ?? throw new ArgumentException(
-                "O modo Personalizado exige a lista de itens de rateio.");
-
-            await ValidarItensAsync(transacao.FamiliaId.Value, itens);
-
-            foreach (var item in itens)
-            {
-                _context.RateiosTransacao.Add(new RateioTransacao
-                {
-                    Id = Guid.NewGuid(),
-                    TransacaoId = transacao.Id,
-                    UsuarioId = item.UsuarioId,
-                    Percentual = item.Percentual,
-                });
-            }
-        }
-
-        transacao.ModoRateio = dto.Modo;
+        await AplicarPartesAsync(transacao, familiaId, dto.Modo, dto.Itens);
         await _context.SaveChangesAsync();
     }
 
-    /// <summary>Remove o override de rateio — a despesa volta ao modo padrão da família.</summary>
+    /// <summary>Volta esta despesa ao padrão da família (regrava as partes pela regra de HOJE; segue gravada).</summary>
     public async Task RemoverRateioTransacaoAsync(Guid transacaoId, Guid usuarioId)
     {
         var transacao = await _context.Transacoes
@@ -82,13 +117,17 @@ public class RateioService
         if (transacao.CriadoPor != usuarioId)
             throw new ForbiddenAccessException("Você só pode alterar suas próprias transações.");
 
-        _context.RateiosTransacao.RemoveRange(transacao.Rateios);
-        transacao.ModoRateio = null;
+        if (transacao.FamiliaId is not { } familiaId)
+            throw new InvalidOperationException("A transação precisa ser uma despesa compartilhada.");
+
+        var familia = await _context.Familias.FirstOrDefaultAsync(f => f.Id == familiaId && f.Ativa)
+            ?? throw new KeyNotFoundException("Família não encontrada.");
+        await AplicarPartesAsync(transacao, familiaId, familia.ModoRateioPadrao, null);
         await _context.SaveChangesAsync();
     }
 
-    /// <summary>Lê o rateio de uma despesa: modo override + membros da família
-    /// com o percentual personalizado atual de cada um.</summary>
+    /// <summary>Lê o rateio de uma despesa: o modo e a parte gravada de cada um (quem saiu da família aparece com
+    /// <c>SaiuEm</c>). Quem lançou e qualquer membro da família podem ver.</summary>
     public async Task<RateioTransacaoDto> ObterRateioTransacaoAsync(Guid transacaoId, Guid usuarioId)
     {
         var transacao = await _context.Transacoes
@@ -97,22 +136,28 @@ public class RateioService
             ?? throw new KeyNotFoundException("Transação não encontrada.");
 
         if (transacao.CriadoPor != usuarioId)
-            throw new ForbiddenAccessException("Você só pode ver suas próprias transações.");
-
-        var percentualPorMembro = transacao.Rateios
-            .ToDictionary(r => r.UsuarioId, r => r.Percentual);
+        {
+            var ehMembro = transacao.FamiliaId is { } fid
+                && await _context.MembrosFamilia.AnyAsync(m => m.FamiliaId == fid && m.UsuarioId == usuarioId && m.Ativo);
+            if (!ehMembro)
+                throw new ForbiddenAccessException("Você só pode ver suas próprias transações.");
+        }
 
         var membros = new List<RateioMembroDto>();
         if (transacao.FamiliaId is { } familiaId)
         {
             var membrosFamilia = await _context.MembrosFamilia
-                .Where(m => m.FamiliaId == familiaId && m.Ativo)
-                .Select(m => new { m.UsuarioId, m.Usuario!.Nome })
+                .Where(m => m.FamiliaId == familiaId)
+                .Select(m => new { m.UsuarioId, m.Usuario!.Nome, m.Ativo, m.SaiuEm, m.PapelPermissao })
                 .ToListAsync();
-
+            var partes = transacao.Rateios.ToDictionary(r => r.UsuarioId);
+            // Os que entram na divisão hoje (ativos que não são "só vê") mais quem tem parte gravada (inclusive quem saiu).
             membros = membrosFamilia
-                .Select(m => new RateioMembroDto(
-                    m.UsuarioId, m.Nome, percentualPorMembro.GetValueOrDefault(m.UsuarioId, 0m)))
+                .Where(m => (m.Ativo && m.PapelPermissao != PapelFamilia.Dependente) || partes.ContainsKey(m.UsuarioId))
+                .Select(m => new RateioMembroDto(m.UsuarioId, m.Nome,
+                    partes.TryGetValue(m.UsuarioId, out var p) ? p.Percentual : 0m,
+                    partes.TryGetValue(m.UsuarioId, out var v) ? v.Valor : 0m,
+                    m.Ativo ? null : m.SaiuEm))
                 .ToList();
         }
 

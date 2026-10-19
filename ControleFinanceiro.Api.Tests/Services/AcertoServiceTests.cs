@@ -321,7 +321,7 @@ public class AcertoServiceTests
         // Bia paga os 100 que devia a Ana.
         await acertoSvc.RegistrarAsync(familiaId, ana, Dto(bia, ana, 100m, 5, 2026));
 
-        var balanco = await new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx))
+        var balanco = await new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx), new RateioService(ctx))
             .ObterBalancoAsync(familiaId, ana, 5, 2026);
 
         // Após o acerto, ambos os saldos vão a zero.

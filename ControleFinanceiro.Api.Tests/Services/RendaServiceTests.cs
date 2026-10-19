@@ -245,7 +245,7 @@ public class RendaServiceTests
         });
         ctx.SaveChanges();
 
-        var balanco = await new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx)).ObterBalancoAsync(familiaId, admin, 10, 2026);
+        var balanco = await new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx), new RateioService(ctx)).ObterBalancoAsync(familiaId, admin, 10, 2026);
 
         Assert.Equal(2, balanco.Saldos.Count);                       // admin e ana; bia nem aparece
         Assert.DoesNotContain(balanco.Saldos, s => s.UsuarioId == bia);

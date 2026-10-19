@@ -8,7 +8,8 @@ public record RateioItemDto(Guid UsuarioId, decimal Percentual);
 
 public record DefinirRateioTransacaoDto(ModoRateio Modo, List<RateioItemDto>? Itens);
 
-public record RateioMembroDto(Guid UsuarioId, string Nome, decimal Percentual);
+/// <summary>A parte gravada de um membro (quem já saiu da família também aparece, com <c>SaiuEm</c>).</summary>
+public record RateioMembroDto(Guid UsuarioId, string Nome, decimal Percentual, decimal Valor = 0m, DateTime? SaiuEm = null);
 
 public record RateioTransacaoDto(
     ModoRateio? Modo,

@@ -39,6 +39,10 @@ export interface RateioMembro {
   usuarioId: string
   nome: string
   percentual: number
+  /** A parte gravada em reais. */
+  valor: number
+  /** Saiu da família (continua nas despesas em que estava). */
+  saiuEm: string | null
 }
 
 export interface RateioTransacao {
@@ -90,6 +94,8 @@ export interface DespesaCompartilhada {
   aprovadoPorNome: string | null
   responsavelUsuarioId: string | null
   responsavelNome: string | null
+  /** A parte gravada de quem olha (null quando não entra na divisão). */
+  minhaParte: number | null
 }
 
 export interface SaldoMembro {
@@ -98,6 +104,8 @@ export interface SaldoMembro {
   pagou: number
   cota: number
   saldo: number
+  /** Saiu da família; continua no equilíbrio dos meses em que dividiu. */
+  saiuEm: string | null
 }
 
 export interface BalancoFamilia {

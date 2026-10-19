@@ -558,6 +558,10 @@ public static class RegrasFinanceiras
     /// <item>compra parcelada conta a PARCELA no mês dela (o valor com juros, se tiver), não o total no mês da
     /// compra. Parcelamento não vira lançamento: antes ficava de fora e o limite mostrava menos do que foi gasto.</item>
     /// </list>
+    /// <item>despesa DIVIDIDA com a família conta pela PARTE da pessoa (gravada ao dividir, <see cref="RateioTransacao"/>),
+    /// não pelo valor todo; e a parte dela nas despesas que os outros dividiram entra no mês dela, na categoria da
+    /// despesa. Dividida mas ainda esperando aprovação (ou recusada) conta inteira pra quem pagou. Decisão do Gustavo
+    /// 2026-10-19: "o gasto de cada um é a sua parte" (a luz de R$ 180 dividida é R$ 90 pra cada).</item>
     /// Parcela cancelada e parcelamento cancelado saem. Subcategoria soma na categoria dela.
     /// </summary>
     public static async Task<Dictionary<Guid, GastoCategoria>> GastosPorCategoriaDoMesAsync(
@@ -565,13 +569,37 @@ public static class RegrasFinanceiras
     {
         var inicio = new DateOnly(ano, mes, 1);
         var fim = inicio.AddMonths(1);
-        var lancamentos = await context.Transacoes.AsNoTracking()
+        var minhas = await context.Transacoes.AsNoTracking()
             .Where(t => t.CriadoPor == usuarioId && t.Tipo == TipoTransacao.Despesa && t.Ativo
                         && t.StatusTransacao != StatusTransacao.Cancelado && t.Data >= inicio && t.Data < fim)
             .Where(EntraNoResultado)
-            .GroupBy(t => new { t.CategoriaId, Efetivado = t.StatusTransacao == StatusTransacao.Executado })
-            .Select(g => new { g.Key.CategoriaId, g.Key.Efetivado, Total = g.Sum(t => t.Valor) })
+            .Select(t => new
+            {
+                t.Id, t.CategoriaId, Efetivado = t.StatusTransacao == StatusTransacao.Executado, t.Valor,
+                Dividida = t.FamiliaId != null && (t.StatusAprovacao == StatusAprovacaoDespesa.NaoRequerida
+                                                   || t.StatusAprovacao == StatusAprovacaoDespesa.Aprovada),
+                TemPartes = t.Rateios.Any(),
+                MinhaParte = t.Rateios.Where(r => r.UsuarioId == usuarioId).Sum(r => r.Valor),
+            })
             .ToListAsync();
+        // A minha parte no que os outros dividiram comigo (a despesa é deles; o gasto é meu).
+        var dosOutros = await context.Transacoes.AsNoTracking()
+            .Where(t => t.CriadoPor != usuarioId && t.Tipo == TipoTransacao.Despesa && t.Ativo
+                        && t.StatusTransacao != StatusTransacao.Cancelado && t.Data >= inicio && t.Data < fim
+                        && t.FamiliaId != null
+                        && (t.StatusAprovacao == StatusAprovacaoDespesa.NaoRequerida || t.StatusAprovacao == StatusAprovacaoDespesa.Aprovada)
+                        && t.Rateios.Any(r => r.UsuarioId == usuarioId))
+            .Where(EntraNoResultado)
+            .Select(t => new
+            {
+                t.CategoriaId, Efetivado = t.StatusTransacao == StatusTransacao.Executado,
+                Valor = t.Rateios.Where(r => r.UsuarioId == usuarioId).Sum(r => r.Valor),
+            })
+            .ToListAsync();
+        var lancamentos = minhas
+            .Select(l => new { l.CategoriaId, l.Efetivado, Total = l.Dividida && l.TemPartes ? l.MinhaParte : l.Valor })
+            .Concat(dosOutros.Select(o => new { o.CategoriaId, o.Efetivado, Total = o.Valor }))
+            .ToList();
 
         var de = inicio.ToDateTime(TimeOnly.MinValue);
         var ate = fim.ToDateTime(TimeOnly.MinValue);

@@ -969,6 +969,9 @@ namespace ControleFinanceiro.Api.Migrations
                         .IsRequired()
                         .HasColumnType("uuid[]");
 
+                    b.Property<DateTime?>("SaiuEm")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<Guid>("UsuarioId")
                         .HasColumnType("uuid");
 
@@ -1460,6 +1463,9 @@ namespace ControleFinanceiro.Api.Migrations
 
                     b.Property<Guid>("UsuarioId")
                         .HasColumnType("uuid");
+
+                    b.Property<decimal>("Valor")
+                        .HasColumnType("numeric");
 
                     b.HasKey("Id");
 
