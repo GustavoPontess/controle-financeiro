@@ -87,7 +87,7 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 **E2E vermelho no #316 e #317 consertado (2026-10-19, `45a189a`):** a migration `AddRendaPrevistaEVisibilidade` criava a categoria padrão "Dinheiro que volta" também em banco VAZIO; como roda antes do `CategoriaSeeder`, o seeder achava que já tinha semeado e pulava todas, o `DevDataSeeder` caía procurando "Renda" e a API do CI não subia (/health 180s). Agora só cria em banco que já tem categorias; reproduzido e conferido com banco novo local (bancos de teste apagados). Mergeado no #317. Lição: migration com dado nunca cria registro "padrão" que um seeder usa como sinal de "já semeei".
 
-**Próxima tela combinada:** Relatórios (depois Metas, Limites; aí família começando pelas ações na tela da transação).
+**Próxima tela combinada:** Metas → Limites → Empréstimos → família (começando pelas ações na tela da transação). **Relatórios por ÚLTIMO** (decisão do Gustavo, 2026-10-19): a tela responde perguntas com os dados que as outras telas fazem a pessoa preencher, então só dá pra desenhar direito depois delas. Até lá o item do menu segue mandando pro app antigo.
 
 **Próxima ação:** mostrar Perfil e Dados e privacidade no navegador pro Gustavo; depois a lista acima (Relatórios → Metas → Limites) ou as **ações de família na tela da transação**, o que ele mandar. PRs #314 → #315 → #316 → perfil, com CI (mergear nessa ordem);
 
