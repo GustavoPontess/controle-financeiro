@@ -52,6 +52,8 @@ arquivado em [`docs/history/ROADMAP_CONCLUIDO.md`](docs/history/ROADMAP_CONCLUID
 
 ## 🎯 Fila — o que fazer, na ordem
 
+> 🧭 **DIREÇÃO DO PRODUTO (Gustavo, 2026-10-19): responder perguntas, não só registrar.** "Os outros que pesquisamos só registram pra onde o dinheiro vai, que é o que estamos fazendo agora." Cada tela responde o que a pessoa pergunta ali, com o previsto junto (contas fixas que ainda caem, renda que ainda entra, faturas) e uma sugestão do que fazer. Exemplos dele: limite passou e ainda vem conta, vai dar pras outras? · meta de R$ 1 milhão em 1 ano pra quem declarou R$ 1.000/mês · metas pedindo R$ 5 mil/mês fora da realidade com gasolina e o resto. **Decisão pendente:** por onde começar (proposta: o cálculo do mês num lugar só no servidor + Limites + aviso ao criar meta).
+
 > **Comece por aqui.** Um item por vez, de cima pra baixo. O detalhe de cada um está mais abaixo neste arquivo; aqui fica só a ordem. Atualizar a fila ao fim de toda sessão. Item concluído sai daqui e vai pro [`docs/history/ROADMAP_CONCLUIDO.md`](docs/history/ROADMAP_CONCLUIDO.md).
 
 > ✅ **Entrou na `main` em 2026-10-05 (squash `8fee630`, PR #286):** bugs de dinheiro de 28/09, motor das contas fixas + revisão de segurança (P1-1/2/3 e P2-1..5), padrão de telas fase 2 (Transações/Empréstimos no `PontesTabela`), escala de tipografia, reconciliação redesenhada, **🔴 P0 responsivo de todas as telas** e o CI rodando em todo PR. Detalhe arquivado no histórico.
