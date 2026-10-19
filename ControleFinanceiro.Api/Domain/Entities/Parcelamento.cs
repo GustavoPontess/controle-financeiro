@@ -56,6 +56,10 @@ public class Parcelamento
     public Guid? CategoriaId { get; set; }
     public Categoria? Categoria { get; set; }
 
+    /// <summary>Subcategoria (opcional, sempre DA categoria). Mesma regra da transação e da conta fixa.</summary>
+    public Guid? SubcategoriaId { get; set; }
+    public Subcategoria? Subcategoria { get; set; }
+
     /// <summary>Soft delete: true=ativo, false=cancelado.</summary>
     public bool Ativo { get; set; } = true;
 

@@ -4,6 +4,8 @@
 .resposta[data-tom="negativo"] { background: var(--v2-negativo-suave); }
 .texto { margin: 0; flex: 1 1 280px; font-size: var(--v2-fs-sm); font-weight: 500; line-height: 1.5; color: var(--v2-texto); }
 .acoes { display: flex; gap: 8px; }
+.itens { flex-basis: 100%; min-width: 0; }
+.detalhe { flex-basis: 100%; margin: 0; font-size: var(--v2-fs-xs); color: var(--v2-texto-2); font-variant-numeric: tabular-nums; }
 
 @media (max-width: 900px) {
   .acoes { width: 100%; }

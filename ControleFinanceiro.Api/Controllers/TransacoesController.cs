@@ -2,6 +2,7 @@ using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.DTOs.Common;
 using ControleFinanceiro.Api.DTOs.Familia;
+using ControleFinanceiro.Api.DTOs.Parcelamento;
 using ControleFinanceiro.Api.DTOs.Relatorios;
 using ControleFinanceiro.Api.DTOs.Transacao;
 using ControleFinanceiro.Api.Services;
@@ -21,19 +22,25 @@ namespace ControleFinanceiro.Api.Controllers
         private readonly DependenteService _dependenteService;
         private readonly RateioService _rateioService;
         private readonly LancamentoService _lancamentos;
+        private readonly ParcelamentoService _parcelamentos;
+        private readonly AvisoDeCompraService _aviso;
 
         public TransacoesController(
             TransacaoService service,
             DespesaCompartilhadaService despesaCompartilhada,
             DependenteService dependenteService,
             RateioService rateioService,
-            LancamentoService lancamentos)
+            LancamentoService lancamentos,
+            ParcelamentoService parcelamentos,
+            AvisoDeCompraService aviso)
         {
+            _aviso = aviso;
             _service = service;
             _despesaCompartilhada = despesaCompartilhada;
             _dependenteService = dependenteService;
             _rateioService = rateioService;
             _lancamentos = lancamentos;
+            _parcelamentos = parcelamentos;
         }
 
         private Guid GetUserId()
@@ -44,9 +51,13 @@ namespace ControleFinanceiro.Api.Controllers
             return userId;
         }
 
+        /// <summary>
+        /// Cria um lançamento. Com <c>parcelas</c> &gt; 1 (só no cartão) vira um parcelamento de verdade e devolve
+        /// o parcelamento (as parcelas vão nas faturas; a compra aparece uma vez em Transações › Gastos).
+        /// </summary>
         [HttpPost]
         [ProducesResponseType(typeof(TransacaoDto), StatusCodes.Status201Created)]
-        [ProducesResponseType(typeof(IEnumerable<TransacaoDto>), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ParcelamentoDetalheDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Criar(
             [FromBody] CriarTransacaoDto dto,
@@ -54,12 +65,11 @@ namespace ControleFinanceiro.Api.Controllers
         {
             var usuarioId = GetUserId();
 
-            // Parcelamento → cria N transações e retorna lista
+            // Compra parcelada → parcelamento de verdade (nunca N lançamentos soltos)
             if (dto.Parcelas.HasValue && dto.Parcelas.Value > 1)
             {
-                var parcelas = await _service.CriarParcelamentoAsync(dto, usuarioId, idempotencyKey);
-                var retornoParcelas = parcelas.Select(ToDto).ToList();
-                return StatusCode(StatusCodes.Status201Created, retornoParcelas);
+                var parcelamento = await _parcelamentos.CriarDoLancamentoAsync(dto, usuarioId, idempotencyKey);
+                return StatusCode(StatusCodes.Status201Created, parcelamento);
             }
 
             // Transação à vista
@@ -111,6 +121,32 @@ namespace ControleFinanceiro.Api.Controllers
             Hora = t.Hora,
         };
 
+        // Compra parcelada na visão Gastos: uma linha só, na data da compra, com o total (com juros, se tiver).
+        private static TransacaoDto ToDto(Parcelamento p)
+        {
+            var total = p.ValorComJuros ?? p.ValorTotal;
+            return new()
+            {
+                Id = p.Id,
+                Descricao = p.Descricao,
+                Valor = total,
+                Tipo = (int)TipoTransacao.Despesa,
+                CategoriaId = p.CategoriaId,
+                SubcategoriaId = p.SubcategoriaId,
+                CartaoCreditoId = p.CartaoCreditoId,
+                CartaoCreditoNome = p.CartaoCredito?.Nome,
+                UsadoComoCredito = true,
+                MeioPagamento = (int)MeioPagamento.Credito,
+                MeioPagamentoDescricao = MeioPagamentoLabel(MeioPagamento.Credito),
+                ParcelamentoId = p.Id,
+                EhCompraParcelada = true,
+                Parcelas = p.QuantidadeParcelas,
+                ValorParcela = Math.Round(total / p.QuantidadeParcelas, 2),
+                StatusTransacao = (int)StatusTransacao.Executado,
+                Data = DateOnly.FromDateTime(p.DataCompra),
+            };
+        }
+
         [HttpGet]
         [ProducesResponseType(typeof(PagedResult<TransacaoDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> Listar(
@@ -129,9 +165,26 @@ namespace ControleFinanceiro.Api.Controllers
             [FromQuery] string? ordenacao = null,
             [FromQuery] bool apenasCaixa = false,
             [FromQuery] int? meioPagamento = null,
-            [FromQuery] string? natureza = null)
+            [FromQuery] string? natureza = null,
+            [FromQuery] string? visao = null)
         {
             var usuarioId = GetUserId();
+            // visao=gastos: o que a pessoa gastou, na data em que gastou (conta e cartão; compra parcelada uma
+            // vez, com o total). Sem visao: o extrato de sempre (com apenasCaixa, só o que mexe no saldo).
+            if (visao == "gastos")
+            {
+                var gastos = await _service.ListarGastosAsync(
+                    usuarioId, page, pageSize, from, to, categoriaId, q, tipo,
+                    contaId, cartaoId, valorMin, valorMax, status, ordenacao, meioPagamento, natureza);
+                return Ok(new PagedResult<TransacaoDto>
+                {
+                    Items = gastos.Items.Select(l => l.Parcelamento != null ? ToDto(l.Parcelamento) : ToDto(l.Transacao!)),
+                    Total = gastos.Total,
+                    Page = gastos.Page,
+                    PageSize = gastos.PageSize,
+                });
+            }
+
             var resultado = await _service.ListarAsync(
                 usuarioId, page, pageSize, from, to, categoriaId, q, tipo,
                 contaId, cartaoId, valorMin, valorMax, status, ordenacao, apenasCaixa, meioPagamento, natureza);
@@ -143,6 +196,22 @@ namespace ControleFinanceiro.Api.Controllers
                 Page = resultado.Page,
                 PageSize = resultado.PageSize,
             });
+        }
+
+        /// <summary>
+        /// Antes de salvar uma compra: ela tira o dinheiro das contas fixas dos próximos 30 dias? No cartão olha o
+        /// limite, na conta o saldo. 200 com o aviso (frase, contas uma por linha e o saldo/limite de hoje) ou 204
+        /// quando não aperta nada. Só avisa.
+        /// </summary>
+        [HttpGet("aviso")]
+        [ProducesResponseType(typeof(AvisoDeCompraDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<IActionResult> Aviso([FromQuery] decimal valor, [FromQuery] Guid? contaId = null, [FromQuery] Guid? cartaoId = null)
+        {
+            // "Hoje" no Brasil (UTC-3): o dia em que a pessoa está lançando.
+            var hoje = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(-3));
+            var resposta = await _aviso.AvisarAsync(GetUserId(), valor, contaId, cartaoId, hoje);
+            return resposta is null ? NoContent() : Ok(resposta);
         }
 
         /// <summary>

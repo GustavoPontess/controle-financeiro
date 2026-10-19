@@ -1387,6 +1387,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<int>("QuantidadeParcelas")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("SubcategoriaId")
+                        .HasColumnType("uuid");
+
                     b.Property<decimal?>("TaxaJuroMensal")
                         .HasColumnType("numeric");
 
@@ -1404,6 +1407,8 @@ namespace ControleFinanceiro.Api.Migrations
                     b.HasIndex("CartaoCreditoId");
 
                     b.HasIndex("CategoriaId");
+
+                    b.HasIndex("SubcategoriaId");
 
                     b.ToTable("Parcelamentos");
                 });
@@ -2590,9 +2595,16 @@ namespace ControleFinanceiro.Api.Migrations
                         .WithMany()
                         .HasForeignKey("CategoriaId");
 
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Subcategoria", "Subcategoria")
+                        .WithMany()
+                        .HasForeignKey("SubcategoriaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("CartaoCredito");
 
                     b.Navigation("Categoria");
+
+                    b.Navigation("Subcategoria");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.PasswordResetToken", b =>

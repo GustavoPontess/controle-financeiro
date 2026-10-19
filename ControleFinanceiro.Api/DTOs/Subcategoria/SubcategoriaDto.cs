@@ -15,4 +15,5 @@ public class UsoSubcategoriaDto
 {
     public int Lancamentos { get; set; }
     public int ContasFixas { get; set; }
+    public int Parcelamentos { get; set; }
 }

@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
+import { MemoryRouter } from "react-router-dom"
 import userEvent from "@testing-library/user-event"
 
-vi.mock("../../services/transactionService", () => ({ createTransaction: vi.fn(), updateTransaction: vi.fn() }))
+vi.mock("../../services/transactionService", () => ({ createTransaction: vi.fn(), updateTransaction: vi.fn(), avisoDeCompra: vi.fn(async () => null) }))
 vi.mock("../../services/transferenciaService", () => ({ createTransferencia: vi.fn() }))
-import { createTransaction } from "../../services/transactionService"
+import { avisoDeCompra, createTransaction } from "../../services/transactionService"
 import { createTransferencia } from "../../services/transferenciaService"
 import FormularioTransacao from "../../telas/FormularioTransacao"
 
@@ -58,5 +59,31 @@ describe("FormularioTransacao", () => {
     expect(screen.getByText("Escolha a conta de origem")).toBeInTheDocument()
     expect(screen.getByText("Escolha a conta de destino")).toBeInTheDocument()
     expect(createTransferencia).not.toHaveBeenCalled()
+  })
+
+  it("despesa nova mostra o aviso do servidor quando a compra aperta uma conta fixa", async () => {
+    vi.mocked(avisoDeCompra).mockResolvedValue({
+      tom: "alerta", texto: "Se fizer essa compra, falta saldo na conta Nubank pra:", detalhe: "Saldo da conta hoje: R$ 200,00.",
+      itens: [
+        { transacaoId: "t1", contaFixaId: "cf1", descricao: "Internet", data: "2099-01-20", categoriaId: null, categoria: "", valor: 99.9 },
+        { transacaoId: "t2", contaFixaId: "cf2", descricao: "Aluguel", data: "2099-02-05", categoriaId: null, categoria: "", valor: 1500 },
+      ],
+    })
+    render(
+      <MemoryRouter>
+        <FormularioTransacao contas={contas as never} cartoes={[]} categorias={categorias as never} subcategorias={[]} aoSair={vi.fn()} aoSalvo={vi.fn()} />
+      </MemoryRouter>,
+    )
+    await userEvent.type(screen.getByPlaceholderText("0,00"), "30000")
+    await userEvent.click(screen.getByRole("combobox", { name: "Conta" }))
+    await userEvent.click(screen.getByRole("option", { name: "Nubank" }))
+
+    expect(await screen.findByText("Se fizer essa compra, falta saldo na conta Nubank pra:")).toBeInTheDocument()
+    // As contas uma por linha (sem link: sair do formulário perderia o que foi digitado) e o saldo de hoje no fim.
+    const linhas = screen.getAllByRole("listitem").map((li) => li.textContent?.replace(/ /g, " "))
+    expect(linhas).toEqual(["Internet · 20/1R$ 99,90", "Aluguel · 5/2R$ 1.500,00"])
+    expect(screen.queryByRole("link", { name: /Internet/ })).toBeNull()
+    expect(screen.getByText(/^Saldo da conta hoje: R\$\s200,00\.$/)).toBeInTheDocument()
+    await waitFor(() => expect(avisoDeCompra).toHaveBeenLastCalledWith(300, { contaId: "k2" }))
   })
 })

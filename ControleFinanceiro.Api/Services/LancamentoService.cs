@@ -24,6 +24,7 @@ public class LancamentoService
     private readonly TransacaoService _transacoes;
     private readonly TransferenciaService _transferencias;
     private readonly RecorrenteService _recorrentes;
+    private readonly ParcelamentoService _parcelamentos;
     private readonly FinancialEventLogService _eventLog;
 
     public LancamentoService(
@@ -31,12 +32,14 @@ public class LancamentoService
         TransacaoService transacoes,
         TransferenciaService transferencias,
         RecorrenteService recorrentes,
+        ParcelamentoService parcelamentos,
         FinancialEventLogService eventLog)
     {
         _context = context;
         _transacoes = transacoes;
         _transferencias = transferencias;
         _recorrentes = recorrentes;
+        _parcelamentos = parcelamentos;
         _eventLog = eventLog;
     }
 
@@ -139,7 +142,8 @@ public class LancamentoService
                         novoId = contaFixa.Id;
                         break;
                     default:
-                        var parcelas = await _transacoes.CriarParcelamentoAsync(new CriarTransacaoDto
+                        // Vira um parcelamento de verdade, no mesmo commit (a chave é a da edição, gravada abaixo).
+                        var parcelamento = await _parcelamentos.CriarDoLancamentoAsync(new CriarTransacaoDto
                         {
                             Descricao = dto.Descricao,
                             Valor = dto.Valor,
@@ -151,9 +155,8 @@ public class LancamentoService
                             MeioPagamento = (int)MeioPagamento.Credito,
                             Parcelas = dto.Parcelas,
                             Data = dto.Data,
-                        }, usuarioId);
-                        // Crédito parcelado deste fluxo = N transações soltas (sem entidade de grupo): o resultado é a 1ª parcela.
-                        novoId = parcelas[0].Id;
+                        }, usuarioId, chave: null);
+                        novoId = parcelamento.Id;
                         break;
                 }
 
@@ -230,14 +233,13 @@ public class LancamentoService
         }
         if (dto.Parcelas is > 1)
         {
-            // Crédito parcelado = N transações soltas; a referência é a 1ª parcela ("X (1/N)").
-            var primeira = await _context.Transacoes.AsNoTracking()
+            var p = await _context.Parcelamentos.AsNoTracking()
                 .FirstOrDefaultAsync(x => x.Id == referenciaId && x.CriadoPor == usuarioId)
                 ?? throw new InvalidOperationException(Idempotencia.MensagemChaveConsumida);
-            if (primeira.CartaoCreditoId != dto.CartaoCreditoId || primeira.Data != dto.Data
-                || primeira.Descricao != $"{dto.Descricao} (1/{dto.Parcelas})")
+            if (p.CartaoCreditoId != dto.CartaoCreditoId || DateOnly.FromDateTime(p.DataCompra) != dto.Data
+                || p.Descricao != dto.Descricao || p.ValorTotal != dto.Valor || p.QuantidadeParcelas != dto.Parcelas)
                 throw new InvalidOperationException(Idempotencia.MensagemChaveComOutrosDados);
-            return new EdicaoLancamentoResultadoDto { Tipo = EdicaoLancamentoResultadoDto.TipoParcelamento, Id = primeira.Id };
+            return new EdicaoLancamentoResultadoDto { Tipo = EdicaoLancamentoResultadoDto.TipoParcelamento, Id = p.Id };
         }
         var t = await _context.Transacoes.AsNoTracking().FirstOrDefaultAsync(x => x.Id == referenciaId)
             ?? throw new InvalidOperationException(Idempotencia.MensagemChaveConsumida);

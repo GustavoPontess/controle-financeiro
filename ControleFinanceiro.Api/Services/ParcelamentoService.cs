@@ -3,6 +3,7 @@ using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.DTOs.Common;
 using ControleFinanceiro.Api.DTOs.Parcelamento;
+using ControleFinanceiro.Api.DTOs.Transacao;
 using ControleFinanceiro.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,7 +18,7 @@ namespace ControleFinanceiro.Api.Services;
 /// <remarks>
 /// <para>Padrões obrigatórios deste service:</para>
 /// <list type="bullet">
-///   <item>Idempotência via <c>idempotencyKey</c> consultado no <see cref="FinancialEventLogService"/>.</item>
+///   <item>Idempotência no criar via <see cref="RegistroIdempotencia"/> (índice único, gravado no mesmo SaveChanges).</item>
 ///   <item>Transação ACID (BeginTransaction) em mutações.</item>
 ///   <item>FinancialEventLog em cada mudança de saldo/limite com CorrelationId compartilhado.</item>
 ///   <item>Soft delete — cancelamento marca <c>Ativo=false</c>; nunca <c>Remove()</c>.</item>
@@ -55,21 +56,103 @@ public class ParcelamentoService
 
     // ── Criar ─────────────────────────────────────────────────────────────────
 
+    /// <summary>Operação no <see cref="RegistroIdempotencia"/> (espaço de chaves do criar parcelamento).</summary>
+    public const string OperacaoCriar = "CriarParcelamento";
+
     /// <summary>
     /// Cria um Parcelamento + N ParcelaTransacao + resolve faturas correspondentes,
-    /// dentro de uma transação ACID. Idempotente via dto.IdempotencyKey.
+    /// dentro de uma transação ACID. Idempotente via dto.IdempotencyKey: repetir devolve o mesmo
+    /// parcelamento; a mesma chave com outros dados → 409.
     /// </summary>
-    public async Task<ParcelamentoDetalheDto> CriarAsync(CriarParcelamentoDto dto, Guid usuarioId)
+    public Task<ParcelamentoDetalheDto> CriarAsync(CriarParcelamentoDto dto, Guid usuarioId)
     {
-        // 1. Idempotência — se já existe log com a mesma key, retorna detalhe anterior.
         if (string.IsNullOrWhiteSpace(dto.IdempotencyKey))
             throw new InvalidOperationException("idempotencyKey é obrigatório.");
+        return CriarAsync(dto, usuarioId, dto.IdempotencyKey);
+    }
 
-        var prev = await _eventLog.BuscarPorIdempotencyKeyAsync(usuarioId, dto.IdempotencyKey);
-        if (prev != null && prev.Tipo == FinancialEventType.ParcelamentoCriado
-            && prev.EntidadeAfetada == "Parcelamento")
+    /// <summary>
+    /// Compra parcelada lançada pelo formulário de transação (<c>POST /transacoes</c> com parcelas, ou a edição
+    /// que vira parcelado): vira um parcelamento de verdade, nunca N lançamentos soltos. A 1ª parcela vai na
+    /// fatura em que a compra cai. Compra antiga com parcelas em faturas que já venceram entra como compra em
+    /// andamento: essas contam como pagas antes (o app não cobra parcela em fatura vencida, ver o piso no criar).
+    /// <paramref name="chave"/> nula = sem registro de idempotência (quem chama cuida, como a edição).
+    /// </summary>
+    public async Task<ParcelamentoDetalheDto> CriarDoLancamentoAsync(CriarTransacaoDto dto, Guid usuarioId, string? chave)
+    {
+        if (!dto.CartaoCreditoId.HasValue)
+            throw new ArgumentException("Parcelamento requer cartão de crédito.");
+        if (dto.Tipo != (int)TipoTransacao.Despesa)
+            throw new ArgumentException("Só despesa pode ser parcelada.");
+        if (dto.Parcelas is not > 1)
+            throw new ArgumentException("Parcelamento requer no mínimo 2 parcelas.");
+
+        var cartao = await _context.CartoesCredito.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == dto.CartaoCreditoId && c.CriadoPor == usuarioId)
+            ?? throw new KeyNotFoundException("Cartão não encontrado.");
+        if (!cartao.TemCredito)
+            throw new InvalidOperationException("Cartão não possui modalidade crédito.");
+
+        var dataCompra = dto.Data.ToDateTime(TimeOnly.MinValue);
+        var meses = MesesDasFaturas(cartao, dataCompra);
+        var jaPagas = Math.Max(0, MesesEntre(meses.DaCompra, meses.NaoVencida));
+        if (jaPagas >= dto.Parcelas)
+            throw new InvalidOperationException(
+                "Todas as parcelas dessa compra caem em faturas que já venceram. Confira a data da compra.");
+
+        var pedido = new CriarParcelamentoDto
         {
-            return await ObterDetalheAsync(prev.EntidadeId, usuarioId);
+            Descricao = dto.Descricao,
+            Valor = dto.Valor,
+            Tipo = TipoParcelamento.CompraParcelada,
+            CartaoCreditoId = cartao.Id,
+            DataCompra = dataCompra,
+            Parcelas = dto.Parcelas.Value,
+            ParcelasJaPagas = jaPagas,
+            PrimeiraParcelaMes = meses.DaCompra.ToString("yyyy-MM", CultureInfo.InvariantCulture),
+            CategoriaId = dto.CategoriaId == Guid.Empty ? null : dto.CategoriaId,
+            SubcategoriaId = dto.SubcategoriaId,
+            IdempotencyKey = chave ?? string.Empty,
+        };
+        return await CriarAsync(pedido, usuarioId, string.IsNullOrWhiteSpace(chave) ? null : chave);
+    }
+
+    /// <summary>
+    /// Meses (dia 1) das faturas que importam pra 1ª parcela: a que FECHA depois da compra (em que ela cai), a
+    /// mais antiga que ainda não venceu (a que ainda aceita cobrança) e a aberta hoje. "Hoje" = o dia mais cedo
+    /// possível no Brasil agora (UTC-5, Acre): o form usa o dia LOCAL de quem usa, e o back não pode ser mais
+    /// estrito que ele (com o dia UTC, das 21h à meia-noite de Brasília na véspera do fechamento, a fatura que o
+    /// form sugere seria recusada).
+    /// </summary>
+    private (DateTime DaCompra, DateTime NaoVencida, DateTime Aberta) MesesDasFaturas(CartaoCredito cartao, DateTime dataCompra)
+    {
+        var hojeNoBrasil = _relogio.GetUtcNow().UtcDateTime.AddHours(-5).Date;
+        var (_, fechamentoDaCompra) = FaturaService.CalcularPeriodo(dataCompra.Date, cartao.DiaFechamento);
+        var (fechamentoDaAnterior, fechamentoDaAberta) = FaturaService.CalcularPeriodo(hojeNoBrasil, cartao.DiaFechamento);
+        // A fatura anterior à aberta (fechou em fechamentoDaAnterior) ainda aceita cobrança se não venceu.
+        var fechamentoNaoVencido =
+            FaturaService.CalcularVencimento(fechamentoDaAnterior, cartao.DiaVencimento) >= hojeNoBrasil
+                ? fechamentoDaAnterior
+                : fechamentoDaAberta;
+        static DateTime MesDe(DateTime fechamento) => new(fechamento.Year, fechamento.Month, 1);
+        return (MesDe(fechamentoDaCompra), MesDe(fechamentoNaoVencido), MesDe(fechamentoDaAberta));
+    }
+
+    private static int MesesEntre(DateTime de, DateTime ate) => (ate.Year - de.Year) * 12 + ate.Month - de.Month;
+
+    /// <summary>
+    /// O criar em si. <paramref name="chave"/> nula = sem registro de idempotência. Dentro de uma transação
+    /// que já existe (a edição de lançamento troca o antigo pelo parcelamento num commit só), entra nela.
+    /// </summary>
+    private async Task<ParcelamentoDetalheDto> CriarAsync(CriarParcelamentoDto dto, Guid usuarioId, string? chave)
+    {
+        // 1. Idempotência: replay ANTES das regras (o retry de um pedido que já gravou devolve o mesmo sucesso).
+        Idempotencia.ExigirTamanho(chave);
+        if (chave != null)
+        {
+            var anterior = await BuscarCriacaoPorChaveAsync(usuarioId, chave, dto);
+            if (anterior != null)
+                return anterior;
         }
 
         // 2. Validações sintáticas
@@ -88,6 +171,8 @@ public class ParcelamentoService
         var agoraUtc = _relogio.GetUtcNow().UtcDateTime;
         if (dto.DataCompra.Date > agoraUtc.Date)
             throw new InvalidOperationException("Data da compra não pode ser futura.");
+        if (string.IsNullOrWhiteSpace(dto.Descricao))
+            throw new InvalidOperationException("Descreva a compra.");
 
         if (dto.Tipo != TipoParcelamento.CompraParcelada && dto.Tipo != TipoParcelamento.PIXCredito)
             throw new InvalidOperationException(
@@ -126,22 +211,12 @@ public class ParcelamentoService
         //      voltava a ter restante. Mas a fatura que JÁ FECHOU e ainda não venceu é válida: compra do
         //      dia 24 (fecha 25, vence 5) lançada no dia 28 é cobrada justamente nela — travar na aberta
         //      jogava a 1ª parcela uma fatura depois do banco (o bug que motivou esta regra).
-        // "Hoje" = o dia mais cedo possível no Brasil agora (UTC-5, Acre): o form usa o dia LOCAL de
-        // quem usa, e o back não pode ser mais estrito que ele — com o dia UTC, das 21h à meia-noite
-        // de Brasília na véspera do fechamento, a fatura que o form sugere seria recusada.
-        var hojeNoBrasil = agoraUtc.AddHours(-5).Date;
-        var (_, fechamentoDaCompra) = FaturaService.CalcularPeriodo(dto.DataCompra.Date, cartao.DiaFechamento);
-        var (fechamentoDaAnterior, fechamentoDaAberta) = FaturaService.CalcularPeriodo(hojeNoBrasil, cartao.DiaFechamento);
-        // A fatura anterior à aberta (fechou em fechamentoDaAnterior) ainda aceita cobrança se não venceu.
-        var fechamentoNaoVencido =
-            FaturaService.CalcularVencimento(fechamentoDaAnterior, cartao.DiaVencimento) >= hojeNoBrasil
-                ? fechamentoDaAnterior
-                : fechamentoDaAberta;
-        static DateTime MesDe(DateTime fechamento) => new(fechamento.Year, fechamento.Month, 1);
+        // "Hoje" e os meses das faturas: MesesDasFaturas.
+        var meses = MesesDasFaturas(cartao, dto.DataCompra);
         var mesPrimeiraRegistrada = mesPrimeiraParcela.AddMonths(jaPagas);
-        var pisoPelaCompra = MesDe(fechamentoDaCompra).AddMonths(jaPagas);
-        var pisoEhACompra = pisoPelaCompra >= MesDe(fechamentoNaoVencido);
-        var piso = pisoEhACompra ? pisoPelaCompra : MesDe(fechamentoNaoVencido);
+        var pisoPelaCompra = meses.DaCompra.AddMonths(jaPagas);
+        var pisoEhACompra = pisoPelaCompra >= meses.NaoVencida;
+        var piso = pisoEhACompra ? pisoPelaCompra : meses.NaoVencida;
         if (mesPrimeiraRegistrada < piso)
         {
             var qualParcela = jaPagas == 0 ? "A primeira parcela" : "A próxima parcela";
@@ -155,9 +230,9 @@ public class ParcelamentoService
 
         // Teto da compra em andamento: a última já paga é da fatura anterior à próxima, e parcela paga é
         // de fatura que já fechou — a próxima vai no máximo na fatura aberta hoje.
-        if (jaPagas > 0 && mesPrimeiraRegistrada > MesDe(fechamentoDaAberta))
+        if (jaPagas > 0 && mesPrimeiraRegistrada > meses.Aberta)
             throw new InvalidOperationException(
-                $"A próxima parcela não pode passar da fatura de {RotuloMesFatura(fechamentoDaAberta)} — " +
+                $"A próxima parcela não pode passar da fatura de {RotuloMesFatura(meses.Aberta)} — " +
                 "a última já paga cairia numa fatura que ainda não fechou.");
 
         // 5. Categoria (opcional) — valida posse e Finalidade compatível com despesa
@@ -171,6 +246,16 @@ public class ParcelamentoService
             if (cat.Finalidade != Finalidade.Despesa && cat.Finalidade != Finalidade.Ambas)
                 throw new InvalidOperationException(
                     "Categoria incompatível com parcelamento (precisa ser Despesa ou Ambas).");
+        }
+
+        // 5b. Subcategoria (opcional): do usuário (ou global) e sempre DA categoria.
+        if (dto.SubcategoriaId.HasValue)
+        {
+            await DonoRecursos.ExigirSubcategoriaAsync(_context, dto.SubcategoriaId.Value, usuarioId);
+            var categoriaDaSub = await _context.Subcategorias
+                .Where(s => s.Id == dto.SubcategoriaId.Value).Select(s => s.CategoriaId).FirstAsync();
+            if (!dto.CategoriaId.HasValue || categoriaDaSub != dto.CategoriaId.Value)
+                throw new ArgumentException("Subcategoria não pertence à categoria selecionada.");
         }
 
         // 6. Juros (apenas PIXCredito)
@@ -209,15 +294,16 @@ public class ParcelamentoService
         var limiteAtual = await _limiteCalc.CalcularAsync(dto.CartaoCreditoId, usuarioId);
         if (limiteAtual.LimiteDisponivel < valorBloquear)
             throw new InvalidOperationException(
-                $"Limite insuficiente. Precisa de {Reais.Formatar(valorBloquear)}, " +
-                $"disponível {Reais.Formatar(limiteAtual.LimiteDisponivel)}.");
+                RegrasFinanceiras.MensagemLimiteInsuficiente(valorBloquear, limiteAtual.LimiteDisponivel));
 
         // 9. Transação ACID — INSERT Parcelamento + N ParcelaTransacao + 2 logs
         var correlationId = Guid.NewGuid();
         var parcelamentoId = Guid.NewGuid();
         var agora = DateTime.UtcNow;
 
-        await using var tx = await _context.Database.BeginTransactionAsync();
+        // Dentro de uma transação que já existe (edição de lançamento), entra nela; senão abre a própria.
+        var proprioTx = _context.Database.CurrentTransaction is null;
+        await using var tx = proprioTx ? await _context.Database.BeginTransactionAsync() : null;
         try
         {
             var parcelamento = new Parcelamento
@@ -234,6 +320,7 @@ public class ParcelamentoService
                 TaxaJuroMensal = dto.TaxaJuroMensal,
                 CartaoCreditoId = dto.CartaoCreditoId,
                 CategoriaId = dto.CategoriaId,
+                SubcategoriaId = dto.SubcategoriaId,
                 Ativo = true,
                 CriadoEm = agora,
             };
@@ -313,16 +400,51 @@ public class ParcelamentoService
                     delta = valorBloquear,
                 });
 
+            // Chave no MESMO SaveChanges: a 2ª requisição concorrente estoura o índice único e vira replay.
+            if (chave != null)
+                _context.RegistrosIdempotencia.Add(Idempotencia.Novo(usuarioId, OperacaoCriar, chave, parcelamentoId));
+
             await _context.SaveChangesAsync();
-            await tx.CommitAsync();
+            if (tx != null)
+                await tx.CommitAsync();
+        }
+        catch (DbUpdateException ex) when (chave != null && proprioTx && Idempotencia.EhViolacaoDeUnicidade(ex))
+        {
+            if (tx != null)
+                await tx.RollbackAsync();
+            _context.ChangeTracker.Clear();
+            var vencedor = await BuscarCriacaoPorChaveAsync(usuarioId, chave, dto);
+            if (vencedor != null)
+                return vencedor;
+            throw;
         }
         catch
         {
-            await tx.RollbackAsync();
+            if (tx != null)
+                await tx.RollbackAsync();
             throw;
         }
 
         return await ObterDetalheAsync(parcelamentoId, usuarioId);
+    }
+
+    /// <summary>
+    /// Parcelamento já criado com esta chave (replay) ou null se a chave é nova. 409 se a chave já criou um
+    /// pedido com outros dados.
+    /// </summary>
+    private async Task<ParcelamentoDetalheDto?> BuscarCriacaoPorChaveAsync(Guid usuarioId, string chave, CriarParcelamentoDto pedido)
+    {
+        var registro = await Idempotencia.BuscarAsync(_context, usuarioId, OperacaoCriar, chave);
+        if (registro == null)
+            return null;
+        var original = await _context.Parcelamentos.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == registro.ReferenciaId && p.CriadoPor == usuarioId)
+            ?? throw new InvalidOperationException(Idempotencia.MensagemChaveConsumida);
+        if (original.Descricao != pedido.Descricao || original.ValorTotal != pedido.Valor
+            || original.QuantidadeParcelas != pedido.Parcelas || original.CartaoCreditoId != pedido.CartaoCreditoId
+            || original.DataCompra.Date != pedido.DataCompra.Date || original.Tipo != pedido.Tipo)
+            throw new InvalidOperationException(Idempotencia.MensagemChaveComOutrosDados);
+        return await ObterDetalheAsync(original.Id, usuarioId);
     }
 
     // ── Cancelar (soft delete) ────────────────────────────────────────────────

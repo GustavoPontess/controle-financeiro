@@ -9,8 +9,10 @@
 // O servidor muda conta/cartão/status no lugar e, quando vira transferência / parcelado, troca o
 // registro numa transação só do banco (tudo ou nada). Idempotency-Key em criar e editar: reenviar não repete.
 // Lançamento sem hora pode continuar sem hora (PR #299).
-import { useMemo, useState } from "react"
-import { createTransaction, updateTransaction, type EdicaoLancamentoResultado } from "../services/transactionService"
+// Despesa nova: antes de salvar, o servidor diz se a compra tira o dinheiro das contas fixas dos próximos 30 dias
+// (limite no cartão, saldo na conta) e a resposta aparece embaixo da prévia. Só avisa (decisão do Gustavo 2026-10-19).
+import { useEffect, useMemo, useState } from "react"
+import { avisoDeCompra, createTransaction, updateTransaction, type EdicaoLancamentoResultado } from "../services/transactionService"
 import { createTransferencia } from "../services/transferenciaService"
 import { mensagemDeErro } from "../api/cliente"
 import type { Transaction } from "../types/Transaction"
@@ -26,13 +28,17 @@ import EntradaValor from "../componentes/EntradaValor"
 import Etiqueta from "../componentes/Etiqueta"
 import Formulario, { Campos, Lado, LinhaCampos, RodapeFormulario } from "../componentes/Formulario"
 import Interruptor from "../componentes/Interruptor"
+import ListaAindaVem from "../componentes/ListaAindaVem"
 import PreviaLancamento from "../componentes/PreviaLancamento"
+import Resposta from "../componentes/Resposta"
 import Segmentos from "../componentes/Segmentos"
 import Selecao from "../componentes/Selecao"
 import SeletorData, { formatarData } from "../componentes/SeletorData"
 import { MAX_DESCRICAO, MEIO, MEIOS_PAGAMENTO, MEIOS_RECEBIMENTO, PARCELAS, TIPO, horaValida } from "../dominio/transacao"
 import { formatMoney, moneyParaCampo, parseMoney } from "../utils/money"
 import { dataLocalISO, horaLocalHHMM, mascararHora, somaDias } from "../utils/dateTime"
+import { useAtrasado } from "../utils/useAtrasado"
+import type { AvisoDeCompra } from "../types/DinheiroDoMes"
 import styles from "./FormularioTransacao.module.css"
 
 type Natureza = "despesa" | "receita" | "transferencia"
@@ -223,6 +229,23 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
     return efetivado ? `${receita ? "Entra no" : "Sai do"} ${origemNome} ${quando}.` : `Fica como previsão no ${origemNome} para ${formatarData(data)}.`
   })()
   const previsto = !credito && !transferencia && !efetivado
+
+  // Aviso da compra (só despesa nova, com valor e de onde sai): espera parar de digitar e pergunta ao servidor.
+  const origemAviso = editando || transferencia || receita || v <= 0 ? null
+    : credito ? (cartaoId ? `cartao:${cartaoId}` : null) : (contaId ? `conta:${contaId}` : null)
+  const pedidoAviso = useAtrasado(origemAviso ? `${origemAviso}|${v}` : "")
+  const [aviso, setAviso] = useState<AvisoDeCompra | null>(null)
+  useEffect(() => {
+    if (!pedidoAviso) { setAviso(null); return }
+    let vivo = true
+    const [origem, valorPedido] = pedidoAviso.split("|")
+    const [tipoOrigem, id] = origem.split(":")
+    avisoDeCompra(Number(valorPedido), tipoOrigem === "cartao" ? { cartaoId: id } : { contaId: id })
+      .then((r) => { if (vivo) setAviso(r ?? null) })
+      .catch(() => { if (vivo) setAviso(null) }) // o aviso é ajuda: sem ele, o formulário segue igual
+    return () => { vivo = false }
+  }, [pedidoAviso])
+
   const rotuloSalvar = salvando ? "Salvando…" : editando ? "Salvar" : transferencia ? "Transferir" : "Adicionar"
 
   return (
@@ -320,6 +343,14 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
               {parcelado && <Etiqueta>{parcelas}x</Etiqueta>}
             </>
           ) : undefined} />
+
+        {aviso && origemAviso && (
+          <Resposta tom={aviso.tom} texto={aviso.texto} detalhe={aviso.detalhe}>
+            {aviso.itens.length > 0 && (
+              <ListaAindaVem itens={aviso.itens} semCategoria semLink comMes rotulo="Contas que ficam sem dinheiro" />
+            )}
+          </Resposta>
+        )}
 
         {!transferencia && !credito && (
           <Bloco titulo="Opções" className={styles.opcoes}>

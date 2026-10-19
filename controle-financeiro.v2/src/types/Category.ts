@@ -22,4 +22,5 @@ export interface UsoCategoria {
 export interface UsoSubcategoria {
   lancamentos: number
   contasFixas: number
+  parcelamentos: number
 }

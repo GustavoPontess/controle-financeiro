@@ -46,10 +46,10 @@ namespace ControleFinanceiro.Api.Services
 
         /// <summary>
         /// Cria uma transação simples (à vista) e, se for de crédito, associa automaticamente
-        /// à fatura correta. Para parcelamento, use CriarParcelamentoAsync.
+        /// à fatura correta. Compra parcelada é um parcelamento de verdade:
+        /// <see cref="ParcelamentoService.CriarDoLancamentoAsync"/>.
         /// </summary>
         public const string OperacaoCriarTransacao = "CriarTransacao";
-        public const string OperacaoCriarParcelamento = "CriarParcelamento";
 
         // idempotencyKey (opcional): com chave, repetir o pedido (duplo clique, retry de rede) devolve a transação
         // original em vez de lançar outra; a mesma chave com outros dados → 409.
@@ -115,6 +115,11 @@ namespace ControleFinanceiro.Api.Services
                 && transacao.Data > DateOnly.FromDateTime(DateTime.UtcNow))
                 throw new ArgumentException("A data da transação não pode ser futura.");
 
+            // Compra no cartão só entra se o limite disponível cobre (mesma trava da compra parcelada).
+            if (transacao.UsadoComoCredito && transacao.CartaoCreditoId.HasValue
+                && transacao.Tipo == TipoTransacao.Despesa && transacao.StatusTransacao == StatusTransacao.Executado)
+                await RegrasFinanceiras.ExigirLimiteDisponivelAsync(_context, transacao.CartaoCreditoId.Value, usuarioId, transacao.Valor);
+
             // Transação de crédito → associar à fatura correspondente (invariante 2)
             if (transacao.UsadoComoCredito && transacao.CartaoCreditoId.HasValue)
             {
@@ -164,106 +169,6 @@ namespace ControleFinanceiro.Api.Services
             return original;
         }
 
-        /// <summary>
-        /// Cria um parcelamento: N transações distribuídas em N faturas consecutivas.
-        /// </summary>
-        public async Task<List<Transacao>> CriarParcelamentoAsync(CriarTransacaoDto dto, Guid usuarioId, string? idempotencyKey = null)
-        {
-            Idempotencia.ExigirTamanho(idempotencyKey);
-            if (!string.IsNullOrWhiteSpace(idempotencyKey))
-            {
-                var anterior = await BuscarParcelamentoPorChaveAsync(usuarioId, idempotencyKey, dto);
-                if (anterior != null)
-                    return anterior;
-            }
-            if (!dto.CartaoCreditoId.HasValue)
-                throw new ArgumentException("Parcelamento requer cartão de crédito.");
-
-            var cartao = await _context.CartoesCredito
-                .FirstOrDefaultAsync(c => c.Id == dto.CartaoCreditoId && c.CriadoPor == usuarioId)
-                ?? throw new KeyNotFoundException("Cartão não encontrado.");
-
-            if (dto.CategoriaId != Guid.Empty)
-                await DonoRecursos.ExigirCategoriaAsync(_context, dto.CategoriaId, usuarioId);
-            if (dto.SubcategoriaId.HasValue)
-                await DonoRecursos.ExigirSubcategoriaAsync(_context, dto.SubcategoriaId.Value, usuarioId);
-
-            // Com chave, as parcelas e o registro da chave vão no mesmo commit (ou nada).
-            var proprioTx = !string.IsNullOrWhiteSpace(idempotencyKey) && _context.Database.CurrentTransaction is null;
-            await using var tx = proprioTx ? await _context.Database.BeginTransactionAsync() : null;
-            try
-            {
-                var parcelas = await _faturaService.CriarParcelamentoAsync(
-                    cartao.Id,
-                    dto.CategoriaId == Guid.Empty ? null : (Guid?)dto.CategoriaId,
-                    dto.Descricao,
-                    dto.Valor,
-                    dto.Parcelas!.Value,
-                    dto.Data,
-                    usuarioId,
-                    dto.SubcategoriaId);
-                if (!string.IsNullOrWhiteSpace(idempotencyKey))
-                {
-                    _context.RegistrosIdempotencia.Add(Idempotencia.Novo(usuarioId, OperacaoCriarParcelamento, idempotencyKey, parcelas[0].Id));
-                    await _context.SaveChangesAsync();
-                }
-                if (tx != null)
-                    await tx.CommitAsync();
-                return parcelas;
-            }
-            catch (DbUpdateException ex) when (!string.IsNullOrWhiteSpace(idempotencyKey) && Idempotencia.EhViolacaoDeUnicidade(ex))
-            {
-                if (tx != null)
-                    await tx.RollbackAsync();
-                _context.ChangeTracker.Clear();
-                var vencedor = await BuscarParcelamentoPorChaveAsync(usuarioId, idempotencyKey!, dto);
-                if (vencedor != null)
-                    return vencedor;
-                throw;
-            }
-            catch
-            {
-                if (tx != null)
-                    await tx.RollbackAsync();
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// Parcelado já criado com esta chave (replay) ou null. O crédito parcelado deste fluxo é o antigo: N
-        /// transações soltas, sem entidade de grupo — a chave referencia a 1ª parcela e o grupo é remontado pelo
-        /// nome fixo "X (i/N)", cartão e datas mensais (exato, não aproximado). Parcela que sumiu → 409.
-        /// </summary>
-        private async Task<List<Transacao>?> BuscarParcelamentoPorChaveAsync(Guid usuarioId, string chave, CriarTransacaoDto dto)
-        {
-            var registro = await Idempotencia.BuscarAsync(_context, usuarioId, OperacaoCriarParcelamento, chave);
-            if (registro == null)
-                return null;
-            var primeira = await _context.Transacoes.AsNoTracking()
-                .FirstOrDefaultAsync(t => t.Id == registro.ReferenciaId && t.CriadoPor == usuarioId)
-                ?? throw new InvalidOperationException(Idempotencia.MensagemChaveConsumida);
-            var n = dto.Parcelas ?? 0;
-            if (primeira.CartaoCreditoId != dto.CartaoCreditoId || primeira.Data != dto.Data
-                || primeira.Descricao != $"{dto.Descricao} (1/{n})")
-                throw new InvalidOperationException(Idempotencia.MensagemChaveComOutrosDados);
-            var parcelas = new List<Transacao>();
-            for (var i = 1; i <= n; i++)
-            {
-                var descricao = $"{dto.Descricao} ({i}/{n})";
-                var data = dto.Data.AddMonths(i - 1);
-                var parcela = await _context.Transacoes
-                    .Include(t => t.Conta)
-                    .Include(t => t.CartaoCredito)
-                    .FirstOrDefaultAsync(t => t.CriadoPor == usuarioId && t.CartaoCreditoId == dto.CartaoCreditoId
-                                              && t.Descricao == descricao && t.Data == data)
-                    ?? throw new InvalidOperationException(Idempotencia.MensagemChaveConsumida);
-                parcelas.Add(parcela);
-            }
-            if (parcelas.Sum(p => p.Valor) != dto.Valor)
-                throw new InvalidOperationException(Idempotencia.MensagemChaveComOutrosDados);
-            return parcelas;
-        }
-
         public async Task<DTOs.Common.PagedResult<Transacao>> ListarAsync(
             Guid usuarioId,
             int page = 1,
@@ -286,14 +191,163 @@ namespace ControleFinanceiro.Api.Services
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 100);
 
+            var query = TransacoesFiltradas(usuarioId, from, to, categoriaId, q, tipo, contaId, cartaoId,
+                    valorMin, valorMax, status, apenasCaixa, meioPagamento, natureza)
+                .Include(t => t.Conta)
+                .Include(t => t.CartaoCredito)
+                .Include(t => t.Categoria);
+
+            // Ordenação (default: data desc). Dentro do dia: quem tem hora vem antes de quem não tem —
+            // sem hora conta como 00:00 no DESC e como 23:59 no ASC (COALESCE), senão o Postgres põe
+            // NULL primeiro no DESC e o lançamento sem hora pulava pro topo do dia. O empate (mesma
+            // hora, ou os dois sem hora — caso do extrato importado) sai pela ordem de criação, que
+            // preserva a ordem do extrato. Sem isso a ordem dentro do dia era aleatória.
+            var semHoraNoFimDesc = TimeOnly.MinValue;
+            var semHoraNoFimAsc = TimeOnly.MaxValue;
+            var ordered = ordenacao switch
+            {
+                "data_asc"  => query.OrderBy(t => t.Data).ThenBy(t => t.Hora ?? semHoraNoFimAsc).ThenBy(t => t.CriadoEm),
+                "valor_desc" => query.OrderByDescending(t => t.Valor).ThenByDescending(t => t.Data).ThenByDescending(t => t.Hora ?? semHoraNoFimDesc).ThenByDescending(t => t.CriadoEm),
+                "valor_asc"  => query.OrderBy(t => t.Valor).ThenByDescending(t => t.Data).ThenByDescending(t => t.Hora ?? semHoraNoFimDesc).ThenByDescending(t => t.CriadoEm),
+                _            => query.OrderByDescending(t => t.Data).ThenByDescending(t => t.Hora ?? semHoraNoFimDesc).ThenByDescending(t => t.CriadoEm),
+            };
+            var total = await ordered.CountAsync();
+            var items = await ordered
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new DTOs.Common.PagedResult<Transacao>
+            {
+                Items = items,
+                Total = total,
+                Page = page,
+                PageSize = pageSize,
+            };
+        }
+
+        /// <summary>Uma linha da visão Gastos: um lançamento OU uma compra parcelada (o parcelamento inteiro).</summary>
+        public sealed record LinhaDeGasto(Transacao? Transacao, Parcelamento? Parcelamento);
+
+        /// <summary>
+        /// Visão "Gastos" de Transações (regime de competência, como o "Todos os lançamentos" do Organizze): o que a
+        /// pessoa gastou, na data em que gastou, em conta e no cartão. Despesa que entra no resultado
+        /// (<see cref="RegrasFinanceiras.EntraNoResultado"/>: fora pagamento de fatura e transferência, senão o
+        /// cartão contaria duas vezes) + cada compra parcelada UMA vez, na data da compra, com o total (as parcelas
+        /// moram nas faturas). Mesmos filtros da visão Saldo; busca, filtro, ordem e página no banco (UNION ALL).
+        /// </summary>
+        public async Task<DTOs.Common.PagedResult<LinhaDeGasto>> ListarGastosAsync(
+            Guid usuarioId,
+            int page = 1,
+            int pageSize = 25,
+            DateOnly? from = null,
+            DateOnly? to = null,
+            Guid? categoriaId = null,
+            string? q = null,
+            int? tipo = null,
+            Guid? contaId = null,
+            Guid? cartaoId = null,
+            decimal? valorMin = null,
+            decimal? valorMax = null,
+            int? status = null,
+            string? ordenacao = null,
+            int? meioPagamento = null,
+            string? natureza = null)
+        {
+            page = Math.Max(1, page);
+            pageSize = Math.Clamp(pageSize, 1, 100);
+
+            var lancamentos = TransacoesFiltradas(usuarioId, from, to, categoriaId, q, tipo, contaId, cartaoId,
+                    valorMin, valorMax, status, apenasCaixa: false, meioPagamento, natureza)
+                .Where(t => t.Tipo == TipoTransacao.Despesa)
+                .Where(RegrasFinanceiras.EntraNoResultado)
+                .Select(t => new ChaveDeLinha { Id = t.Id, EhParcelamento = false, Data = t.Data, Hora = t.Hora, CriadoEm = t.CriadoEm, Valor = t.Valor });
+
+            // Compra parcelada: só despesa, só no cartão, sempre efetivada, meio Crédito.
+            var semParcelamento = (tipo.HasValue && tipo.Value != (int)TipoTransacao.Despesa)
+                || contaId.HasValue
+                || (status.HasValue && status.Value != (int)StatusTransacao.Executado)
+                || (meioPagamento.HasValue && meioPagamento.Value != (int)MeioPagamento.Credito)
+                || (!string.IsNullOrEmpty(natureza) && natureza != "saida");
+            var parcelamentos = _context.Parcelamentos
+                .Where(p => p.CriadoPor == usuarioId && p.CartaoCredito!.CriadoPor == usuarioId && p.Ativo
+                            && p.Tipo != TipoParcelamento.Recorrente && !semParcelamento);
+            if (from.HasValue) { var de = from.Value.ToDateTime(TimeOnly.MinValue); parcelamentos = parcelamentos.Where(p => p.DataCompra >= de); }
+            if (to.HasValue) { var ate = to.Value.ToDateTime(TimeOnly.MinValue); parcelamentos = parcelamentos.Where(p => p.DataCompra < ate); }
+            if (categoriaId.HasValue) parcelamentos = parcelamentos.Where(p => p.CategoriaId == categoriaId.Value);
+            if (cartaoId.HasValue) parcelamentos = parcelamentos.Where(p => p.CartaoCreditoId == cartaoId.Value);
+            if (valorMin.HasValue) parcelamentos = parcelamentos.Where(p => (p.ValorComJuros ?? p.ValorTotal) >= valorMin.Value);
+            if (valorMax.HasValue) parcelamentos = parcelamentos.Where(p => (p.ValorComJuros ?? p.ValorTotal) <= valorMax.Value);
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var termo = $"%{q.Trim().ToLower()}%";
+                parcelamentos = parcelamentos.Where(p => EF.Functions.Like(p.Descricao.ToLower(), termo));
+            }
+            var compras = parcelamentos.Select(p => new ChaveDeLinha
+            {
+                Id = p.Id, EhParcelamento = true, Data = DateOnly.FromDateTime(p.DataCompra), Hora = null,
+                CriadoEm = p.CriadoEm, Valor = p.ValorComJuros ?? p.ValorTotal,
+            });
+
+            // Mesma ordem da visão Saldo (sem hora: 00:00 no DESC, 23:59 no ASC; empate pela criação).
+            var uniao = lancamentos.Concat(compras);
+            var semHoraNoFimDesc = TimeOnly.MinValue;
+            var semHoraNoFimAsc = TimeOnly.MaxValue;
+            var ordenada = ordenacao switch
+            {
+                "data_asc"  => uniao.OrderBy(l => l.Data).ThenBy(l => l.Hora ?? semHoraNoFimAsc).ThenBy(l => l.CriadoEm),
+                "valor_desc" => uniao.OrderByDescending(l => l.Valor).ThenByDescending(l => l.Data).ThenByDescending(l => l.Hora ?? semHoraNoFimDesc).ThenByDescending(l => l.CriadoEm),
+                "valor_asc"  => uniao.OrderBy(l => l.Valor).ThenByDescending(l => l.Data).ThenByDescending(l => l.Hora ?? semHoraNoFimDesc).ThenByDescending(l => l.CriadoEm),
+                _            => uniao.OrderByDescending(l => l.Data).ThenByDescending(l => l.Hora ?? semHoraNoFimDesc).ThenByDescending(l => l.CriadoEm),
+            };
+            var total = await uniao.CountAsync();
+            var pagina = await ordenada.Skip((page - 1) * pageSize).Take(pageSize)
+                .Select(l => new { l.Id, l.EhParcelamento }).ToListAsync();
+
+            // A página traz só as chaves; os registros vêm em duas consultas e voltam na ordem da página.
+            var idsT = pagina.Where(l => !l.EhParcelamento).Select(l => l.Id).ToList();
+            var idsP = pagina.Where(l => l.EhParcelamento).Select(l => l.Id).ToList();
+            var transacoes = await _context.Transacoes
+                .Where(t => idsT.Contains(t.Id))
+                .Include(t => t.Conta).Include(t => t.CartaoCredito).Include(t => t.Categoria)
+                .ToDictionaryAsync(t => t.Id);
+            var compradas = await _context.Parcelamentos
+                .Where(p => idsP.Contains(p.Id))
+                .Include(p => p.CartaoCredito)
+                .ToDictionaryAsync(p => p.Id);
+
+            return new DTOs.Common.PagedResult<LinhaDeGasto>
+            {
+                Items = pagina.Select(l => l.EhParcelamento
+                    ? new LinhaDeGasto(null, compradas[l.Id])
+                    : new LinhaDeGasto(transacoes[l.Id], null)).ToList(),
+                Total = total,
+                Page = page,
+                PageSize = pageSize,
+            };
+        }
+
+        /// <summary>Chave de ordenação de uma linha da lista (lançamento ou compra parcelada) pro UNION.</summary>
+        private sealed class ChaveDeLinha
+        {
+            public Guid Id { get; set; }
+            public bool EhParcelamento { get; set; }
+            public DateOnly Data { get; set; }
+            public TimeOnly? Hora { get; set; }
+            public DateTime CriadoEm { get; set; }
+            public decimal Valor { get; set; }
+        }
+
+        /// <summary>Lançamentos do usuário com os filtros da lista (conta dele ou cartão dele). Filtro no banco.</summary>
+        private IQueryable<Transacao> TransacoesFiltradas(
+            Guid usuarioId, DateOnly? from, DateOnly? to, Guid? categoriaId, string? q, int? tipo, Guid? contaId,
+            Guid? cartaoId, decimal? valorMin, decimal? valorMax, int? status, bool apenasCaixa, int? meioPagamento,
+            string? natureza)
+        {
             var query = _context.Transacoes
                 .Where(t =>
                     (t.ContaId.HasValue && t.Conta!.UsuarioIdProprietario == usuarioId) ||
-                    (t.CartaoCreditoId.HasValue && t.CartaoCredito!.CriadoPor == usuarioId))
-                .Include(t => t.Conta)
-                .Include(t => t.CartaoCredito)
-                .Include(t => t.Categoria)
-                .AsQueryable();
+                    (t.CartaoCreditoId.HasValue && t.CartaoCredito!.CriadoPor == usuarioId));
 
             // Escopo "extrato de caixa": só o que mexe no saldo da conta. Compra
             // no crédito tem só CartaoCreditoId (vive na fatura/aba Cartão) → cai
@@ -340,34 +394,7 @@ namespace ControleFinanceiro.Api.Services
                 var termo = $"%{q.Trim().ToLower()}%";
                 query = query.Where(t => EF.Functions.Like(t.Descricao.ToLower(), termo));
             }
-
-            // Ordenação (default: data desc). Dentro do dia: quem tem hora vem antes de quem não tem —
-            // sem hora conta como 00:00 no DESC e como 23:59 no ASC (COALESCE), senão o Postgres põe
-            // NULL primeiro no DESC e o lançamento sem hora pulava pro topo do dia. O empate (mesma
-            // hora, ou os dois sem hora — caso do extrato importado) sai pela ordem de criação, que
-            // preserva a ordem do extrato. Sem isso a ordem dentro do dia era aleatória.
-            var semHoraNoFimDesc = TimeOnly.MinValue;
-            var semHoraNoFimAsc = TimeOnly.MaxValue;
-            var ordered = ordenacao switch
-            {
-                "data_asc"  => query.OrderBy(t => t.Data).ThenBy(t => t.Hora ?? semHoraNoFimAsc).ThenBy(t => t.CriadoEm),
-                "valor_desc" => query.OrderByDescending(t => t.Valor).ThenByDescending(t => t.Data).ThenByDescending(t => t.Hora ?? semHoraNoFimDesc).ThenByDescending(t => t.CriadoEm),
-                "valor_asc"  => query.OrderBy(t => t.Valor).ThenByDescending(t => t.Data).ThenByDescending(t => t.Hora ?? semHoraNoFimDesc).ThenByDescending(t => t.CriadoEm),
-                _            => query.OrderByDescending(t => t.Data).ThenByDescending(t => t.Hora ?? semHoraNoFimDesc).ThenByDescending(t => t.CriadoEm),
-            };
-            var total = await ordered.CountAsync();
-            var items = await ordered
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            return new DTOs.Common.PagedResult<Transacao>
-            {
-                Items = items,
-                Total = total,
-                Page = page,
-                PageSize = pageSize,
-            };
+            return query;
         }
 
         /// <summary>
@@ -492,6 +519,16 @@ namespace ControleFinanceiro.Api.Services
                 await DonoRecursos.ExigirCategoriaAsync(_context, dados.CategoriaId.Value, usuarioId);
             if (dados.SubcategoriaId.HasValue)
                 await DonoRecursos.ExigirSubcategoriaAsync(_context, dados.SubcategoriaId.Value, usuarioId);
+
+            // Trava de limite: o que a edição põe A MAIS no cartão (no mesmo cartão, só o aumento; vindo de conta ou
+            // de outro cartão, o valor todo) tem que caber no disponível. Baixar o valor ou tirar do cartão sempre passa.
+            if (creditoNovo && dados.Tipo == TipoTransacao.Despesa)
+            {
+                var jaUsava = transacao.UsadoComoCredito && transacao.CartaoCreditoId == cartaoNovo
+                    && transacao.Tipo == TipoTransacao.Despesa && transacao.StatusTransacao == StatusTransacao.Executado;
+                await RegrasFinanceiras.ExigirLimiteDisponivelAsync(_context, cartaoNovo!.Value, usuarioId,
+                    jaUsava ? dados.Valor - transacao.Valor : dados.Valor);
+            }
 
             // Fatura de destino: no mesmo cartão a compra fica na fatura atual enquanto a data nova cai no período
             // dela (dado antigo com período fora do padrão não é mexido à toa); fora do período, ou em outro cartão,

@@ -8,6 +8,17 @@ export interface ParteDoMes {
   percentualDaRenda: number
 }
 
+/**
+ * Aviso antes de salvar uma compra (GET /transacoes/aviso): a frase curta, as contas que ficam sem dinheiro (uma por
+ * linha) e o saldo da conta ou o limite do cartão de hoje.
+ */
+export interface AvisoDeCompra {
+  tom: "alerta" | "negativo"
+  texto: string
+  detalhe: string
+  itens: AindaVem[]
+}
+
 export interface AindaVem {
   transacaoId: string
   /** A conta fixa de onde veio (pra pausar ou cancelar); null = lançamento previsto avulso. */

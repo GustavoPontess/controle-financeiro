@@ -249,12 +249,70 @@ public class LimiteCartaoRegraUnicaTests
     public async Task Estouro_DisponivelFicaNegativo_EmTodosOsPontos()
     {
         var ctx = CreateContext();
-        var c = await SeedAsync(ctx, limite: 1_000);
+        var c = await SeedAsync(ctx, limite: 1_500);
+        await ComprarAsync(ctx, c, 1_200m);
 
-        await ComprarAsync(ctx, c, 1_200m); // compra à vista não passa pela trava de limite
+        // A pessoa baixou o limite do cartão depois da compra: o disponível fica negativo, igual em todo lugar.
+        (await ctx.CartoesCredito.SingleAsync(x => x.Id == c.CartaoId)).LimiteTotal = 1_000m;
+        await ctx.SaveChangesAsync();
 
         await AssertMesmoNumeroEmTodosOsPontosAsync(ctx, c, 1_200m);
         Assert.Equal(-200m, (await CardAsync(ctx, c)).LimiteDisponivel);
+    }
+
+    // ══ Trava de limite (decisão do Gustavo 2026-10-19: à vista também) ═══════
+
+    [Fact]
+    public async Task CompraAVista_AcimaDoDisponivel_Recusada_ENadaEntra()
+    {
+        var ctx = CreateContext();
+        var c = await SeedAsync(ctx, limite: 1_000);
+        await ComprarAsync(ctx, c, 700m);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => ComprarAsync(ctx, c, 400m));
+
+        Assert.Equal("Limite insuficiente. Precisa de R$ 400,00, disponível R$ 300,00.", ex.Message.Replace('\u00A0', ' '));
+        Assert.Equal(700m, await UsadoAsync(ctx, c));
+        await ComprarAsync(ctx, c, 300m); // o que cabe passa
+        await ComprarAsync(ctx, c, 50m, StatusTransacao.Previsao); // previsão não usa limite
+    }
+
+    [Fact]
+    public async Task EditarCompra_SoOAumentoPrecisaCaber_EBaixarSemprePassa()
+    {
+        var ctx = CreateContext();
+        var c = await SeedAsync(ctx, limite: 1_000);
+        var compra = await ComprarAsync(ctx, c, 700m);
+        var svc = new TransacaoService(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx));
+        Transacao Dados(decimal valor) => new()
+        {
+            Descricao = "Compra", Valor = valor, Tipo = TipoTransacao.Despesa, CartaoCreditoId = c.CartaoId,
+            Data = compra.Data,
+        };
+
+        await svc.AtualizarAsync(compra.Id, Dados(1_000m), c.UsuarioId); // +300 cabe (disponível 300)
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.AtualizarAsync(compra.Id, Dados(1_001m), c.UsuarioId));
+        Assert.True(await svc.AtualizarAsync(compra.Id, Dados(100m), c.UsuarioId));
+        Assert.Equal(100m, await UsadoAsync(ctx, c));
+    }
+
+    [Fact]
+    public async Task EditarCompraDaContaProCartao_OValorTodoPrecisaCaber()
+    {
+        var ctx = CreateContext();
+        var c = await SeedAsync(ctx, limite: 1_000);
+        var svc = new TransacaoService(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx));
+        var naConta = await svc.CriarTransacaoAsync(new Transacao
+        {
+            Descricao = "Mercado", Valor = 1_200m, Tipo = TipoTransacao.Despesa, ContaId = c.ContaId,
+            Data = DateOnly.FromDateTime(DateTime.UtcNow),
+        }, c.UsuarioId);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.AtualizarAsync(naConta.Id, new Transacao
+        {
+            Descricao = "Mercado", Valor = 1_200m, Tipo = TipoTransacao.Despesa, CartaoCreditoId = c.CartaoId, Data = naConta.Data,
+        }, c.UsuarioId));
+        Assert.Equal(0m, await UsadoAsync(ctx, c));
     }
 
     // ══ Mesmo número que o total da fatura ═══════════════════════════════════
@@ -332,7 +390,7 @@ public class LimiteCartaoRegraUnicaTests
         await AssertMesmoNumeroEmTodosOsPontosAsync(ctx, c, 0m); // só previsão: ainda não usa limite
         Assert.Equal(240m, (await LimiteAsync(ctx, c)).ExposicaoFuturaPrevisao);
 
-        await new ExecutarRecorrentesJob(ctx).ExecuteAsync();
+        await new ExecutarRecorrentesJob(ctx, new NotificacaoService(ctx, NullLogger<NotificacaoService>.Instance)).ExecuteAsync();
 
         var executada = await ctx.Transacoes.AsNoTracking()
             .SingleAsync(t => t.Descricao == "Streaming" && t.StatusTransacao == StatusTransacao.Executado);
@@ -360,7 +418,7 @@ public class LimiteCartaoRegraUnicaTests
 
         await CriarRecorrenteNoCartaoAsync(ctx, c, hoje.AddMonths(-6)); // previsões de -6 a -4 meses
         await Recorrentes(ctx).GerarPendentesAsync(c.UsuarioId);       // efetivadas de -3 meses a hoje
-        await new ExecutarRecorrentesJob(ctx).ExecuteAsync();           // efetiva as previsões vencidas
+        await new ExecutarRecorrentesJob(ctx, new NotificacaoService(ctx, NullLogger<NotificacaoService>.Instance)).ExecuteAsync();           // efetiva as previsões vencidas
 
         var ocorrencias = await ctx.Transacoes.AsNoTracking().Where(t => t.Descricao == "Streaming").ToListAsync();
         Assert.Equal(7, ocorrencias.Count);

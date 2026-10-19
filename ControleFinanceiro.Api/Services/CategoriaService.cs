@@ -246,6 +246,10 @@ namespace ControleFinanceiro.Api.Services
                              .Where(t => t.SubcategoriaId != null && absorvidas.Contains(t.SubcategoriaId.Value) && t.CategoriaId != de)
                              .ToListAsync())
                     t.SubcategoriaId = NovaSub(t.SubcategoriaId);
+                foreach (var p in await _context.Parcelamentos.IgnoreQueryFilters()
+                             .Where(p => p.SubcategoriaId != null && absorvidas.Contains(p.SubcategoriaId.Value) && p.CategoriaId != de)
+                             .ToListAsync())
+                    p.SubcategoriaId = NovaSub(p.SubcategoriaId);
             }
             foreach (var r in await _context.Recorrentes.Where(r => r.CategoriaId == de).ToListAsync())
             {
@@ -253,7 +257,10 @@ namespace ControleFinanceiro.Api.Services
                 r.SubcategoriaId = NovaSub(r.SubcategoriaId);
             }
             foreach (var p in await _context.Parcelamentos.IgnoreQueryFilters().Where(p => p.CategoriaId == de).ToListAsync())
+            {
                 p.CategoriaId = para;
+                p.SubcategoriaId = NovaSub(p.SubcategoriaId);
+            }
             foreach (var m in await _context.Metas.IgnoreQueryFilters().Where(m => m.CategoriaId == de).ToListAsync())
                 m.CategoriaId = para;
 

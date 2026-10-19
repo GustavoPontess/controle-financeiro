@@ -15,6 +15,10 @@ export interface Transaction {
   faturaId?: string
   parcelas?: number
   numeroParcela?: number
+  /** Linha de Transações › Gastos que é a compra parcelada inteira (id = o parcelamento; valor = o total). */
+  ehCompraParcelada?: boolean
+  /** Total ÷ parcelas, pra "5x de R$ 300,00". */
+  valorParcela?: number | null
   // Origem do lançamento — usados pra rotular a natureza na lista
   // (recorrente / parcelado / pagamento de fatura) quando não há hora.
   recorrenteOrigemId?: string | null

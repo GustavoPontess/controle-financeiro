@@ -281,8 +281,10 @@ public class RecorrenteService
         {
             try
             {
-                // O que já venceu e ainda não foi gerado (até hoje, inclusive) entra como EFETIVADO.
-                houveMudanca |= await GerarOcorrenciasAsync(r, amanha, StatusTransacao.Executado) > 0;
+                // O que já venceu e ainda não foi gerado (até hoje, inclusive) entra como EFETIVADO. No cartão nasce
+                // prevista e é cobrada logo abaixo pela regra do limite (a que não cabe fica prevista; o job avisa).
+                houveMudanca |= await GerarOcorrenciasAsync(r, amanha,
+                    r.CartaoCreditoId.HasValue ? StatusTransacao.Previsao : StatusTransacao.Executado) > 0;
             }
             catch (KeyNotFoundException)
             {
@@ -294,6 +296,13 @@ public class RecorrenteService
         }
 
         if (!houveMudanca) return;
+        var vencidasNoCartao = _context.ChangeTracker.Entries<Transacao>()
+            .Where(e => e.State == EntityState.Added).Select(e => e.Entity)
+            .Where(t => t.RecorrenteOrigemId != null && t.CartaoCreditoId != null
+                        && t.StatusTransacao == StatusTransacao.Previsao && t.Data < amanha)
+            .ToList();
+        if (vencidasNoCartao.Count > 0)
+            await RegrasFinanceiras.CobrarOcorrenciasAsync(_context, vencidasNoCartao);
         try
         {
             await _context.SaveChangesAsync();

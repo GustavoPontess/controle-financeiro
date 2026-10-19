@@ -894,6 +894,14 @@ public class AppDbContext : DbContext
             .IsRequired(false)
             .OnDelete(DeleteBehavior.SetNull);
 
+        // Parcelamento → Subcategoria (SetNull: mesma regra da transação)
+        modelBuilder.Entity<Parcelamento>()
+            .HasOne(p => p.Subcategoria)
+            .WithMany()
+            .HasForeignKey(p => p.SubcategoriaId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
         // Recorrente (conta fixa) → Subcategoria (SetNull: mesma regra da transação)
         modelBuilder.Entity<Recorrente>()
             .HasOne(r => r.Subcategoria)

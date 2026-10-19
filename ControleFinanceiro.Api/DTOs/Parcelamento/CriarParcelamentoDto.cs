@@ -49,6 +49,9 @@ public class CriarParcelamentoDto
 
     public Guid? CategoriaId { get; set; }
 
+    /// <summary>Subcategoria (opcional, sempre da categoria).</summary>
+    public Guid? SubcategoriaId { get; set; }
+
     /// <summary>Taxa mensal em % (apenas PIXCredito). Range 1.99 a 11.99.</summary>
     public decimal? TaxaJuroMensal { get; set; }
 
