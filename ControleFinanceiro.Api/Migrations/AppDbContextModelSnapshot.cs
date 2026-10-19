@@ -1881,6 +1881,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<bool>("EhAjusteReconciliacao")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("EhEmprestimo")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("EhPagamentoFatura")
                         .HasColumnType("boolean");
 

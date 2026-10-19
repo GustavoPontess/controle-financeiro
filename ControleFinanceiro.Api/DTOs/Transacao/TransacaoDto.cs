@@ -30,6 +30,8 @@ namespace ControleFinanceiro.Api.DTOs.Transacao
         // Perna de transferência entre contas próprias — no extrato aparece
         // neutra (não conta como entrada/saída, só troca de bolso).
         public bool EhTransferencia { get; set; }
+        // Dinheiro de empréstimo (emprestei, peguei, voltou, devolvi): mexe no saldo, fora do resultado.
+        public bool EhEmprestimo { get; set; }
         // 0 = Previsao, 1 = Executado, 2 = Cancelado.
         public int StatusTransacao { get; set; }
         /// <summary>Dia do lançamento ("yyyy-MM-dd") — date puro, sem fuso.</summary>

@@ -27,6 +27,8 @@ export interface Transaction {
   ehPagamentoFatura?: boolean
   // Perna de transferência entre contas próprias — neutra no extrato.
   ehTransferencia?: boolean
+  // Dinheiro de empréstimo (emprestei, peguei, voltou, devolvi): mexe no saldo, fora do resultado do mês.
+  ehEmprestimo?: boolean
   // 0 = Previsao, 1 = Executado, 2 = Cancelado (resposta).
   statusTransacao?: number
   // Envio na criação: true = já recebido/pago (Executado); false = previsão.

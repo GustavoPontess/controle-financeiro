@@ -116,6 +116,7 @@ namespace ControleFinanceiro.Api.Controllers
             ParcelaTransacaoId = t.ParcelaTransacaoId,
             EhPagamentoFatura = t.EhPagamentoFatura,
             EhTransferencia = t.EhTransferencia,
+            EhEmprestimo = t.EhEmprestimo,
             StatusTransacao = (int)t.StatusTransacao,
             Data = t.Data,
             Hora = t.Hora,

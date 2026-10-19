@@ -28,10 +28,10 @@ public class RendaService
     }
 
     /// <summary>Receita que é renda: entra no resultado (fora transferência, pagamento de fatura, saldo inicial,
-    /// ajuste, Pix no Crédito) e não é "dinheiro que volta" (cashback, reembolso, estorno: categoria padrão).</summary>
+    /// ajuste, Pix no Crédito, empréstimo) e não é "dinheiro que volta" (cashback, reembolso, estorno: categoria padrão).</summary>
     public static readonly Expression<Func<Transacao, bool>> EhRenda = t =>
         t.Tipo == TipoTransacao.Receita && t.Ativo && t.StatusTransacao != StatusTransacao.Cancelado
-        && !t.EhTransferencia && !t.EhPagamentoFatura && !t.EhSaldoInicial && !t.EhAjusteReconciliacao && !t.EhPixNoCredito
+        && !t.EhTransferencia && !t.EhPagamentoFatura && !t.EhSaldoInicial && !t.EhAjusteReconciliacao && !t.EhPixNoCredito && !t.EhEmprestimo
         && (t.Categoria == null || t.Categoria.UsuarioId != null || t.Categoria.Descricao != CategoriaDinheiroQueVolta);
 
     // ── Pessoa ───────────────────────────────────────────────────────────────────────────────────

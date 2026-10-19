@@ -2660,4 +2660,48 @@ public class EmprestimoServiceTests
         Assert.Equal((TipoTransacao.Receita, "Recebimento empréstimo: Empréstimo para João"), (t.Tipo, t.Descricao));
         Assert.Equal(100m, (await ctx.Emprestimos.SingleAsync()).ValorPago);
     }
+
+    // ── Dinheiro de empréstimo fora do resultado (decisão do Gustavo, 2026-10-19) ─────
+
+    [Fact]
+    public async Task LancamentosDoEmprestimo_SaoMarcados_EFicamForaDoGastoDoMes()
+    {
+        // Emprestar R$ 500 e receber R$ 100 de volta: mexe no saldo, mas não é gasto nem renda (vai e volta).
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var u = SeedUsuario(ctx, "u@x.com");
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, u);
+        var (contaR, categoriaR) = SeedContaECategoriaReceita(ctx, u);
+        var dto = DtoValido();
+        dto.ContaId = contaId;
+        dto.CategoriaId = categoriaId;
+        var criado = await svc.CriarAsync(dto, u);
+        await svc.SolicitarPagamentoAsync(criado.Id, SolicitarDtoValido(contaR, categoriaR), u);
+
+        var lancamentos = await ctx.Transacoes.ToListAsync();
+        Assert.Equal(2, lancamentos.Count);
+        Assert.All(lancamentos, t => Assert.True(t.EhEmprestimo));
+        var hoje = DateTime.UtcNow;
+        Assert.Empty(await RegrasFinanceiras.GastosPorCategoriaDoMesAsync(ctx, u, hoje.Year, hoje.Month));
+        Assert.Equal(0m, (await new RendaService(ctx).ObterMesAsync(u, hoje.Year, hoje.Month)).Recebido);
+        // O saldo continua mexendo: saiu 500, voltou 100.
+        var saldo = (await RegrasFinanceiras.SaldosDasContasAsync(ctx, [contaId, contaR], u)).Values.Sum(m => m.Saldo);
+        Assert.Equal(-400m, saldo);
+    }
+
+    [Fact]
+    public async Task LancamentoQueJaExistia_LigadoAoEmprestimo_TambemSaiDoResultado()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var u = SeedUsuario(ctx, "u@x.com");
+        var (contaId, _) = SeedContaECategoria(ctx, u);
+        var pix = SeedDespesaExistente(ctx, u, contaId, 500);
+        var dto = DtoValido();
+        dto.TransacaoExistenteId = pix.Id;
+
+        await svc.CriarAsync(dto, u);
+
+        Assert.True((await ctx.Transacoes.SingleAsync(t => t.Id == pix.Id)).EhEmprestimo);
+    }
 }

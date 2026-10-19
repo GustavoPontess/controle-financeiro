@@ -1,6 +1,7 @@
 // Como um lançamento vira uma linha da ListaPorDia — o mesmo em Transações e no extrato da conta
 // (Bancos). Transferência e pagamento de fatura são neutros: mexem no caixa, não são ganho nem gasto.
 // Compra parcelada (Transações › Gastos) é uma linha só, com o total, e abre a página do parcelamento.
+// Dinheiro de empréstimo leva a etiqueta "Empréstimo": mexe no saldo, mas fica fora do mês (vai e volta).
 import { ArrowLeftRight, CreditCard } from "lucide-react"
 import type { Transaction } from "../types/Transaction"
 import type { TomDinheiro } from "../componentes/Dinheiro"
@@ -35,7 +36,7 @@ export function linhaDoLancamento(t: Transaction, categoria?: string, opcoes: { 
     nome: t.descricao,
     sub: [deOnde, categoria, comoPagou].filter(Boolean).join(" · ") || undefined,
     hora: t.hora ? t.hora.slice(0, 5) : null,
-    etiqueta: t.statusTransacao === 0 ? <Etiqueta tom="alerta">Previsto</Etiqueta> : undefined,
+    etiqueta: t.statusTransacao === 0 ? <Etiqueta tom="alerta">Previsto</Etiqueta> : t.ehEmprestimo ? <Etiqueta>Empréstimo</Etiqueta> : undefined,
     valor: t.valor,
     tom,
   }
