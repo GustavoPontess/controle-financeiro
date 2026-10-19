@@ -49,6 +49,19 @@ export interface CriarMetaDto {
   icone?: string | null
 }
 
+/** "Essa meta cabe?": quanto pede por mês × o que sobra no mês (renda esperada − gasto típico − outras metas). */
+export interface ViabilidadeMeta {
+  porMes: number | null
+  meses: number | null
+  folga: number | null
+  rendaEsperada: number | null
+  gastoTipico: number | null
+  outrasMetasPorMes: number
+  /** Mês (ISO, dia 1) em que dá pra chegar guardando a folga, quando o prazo não cabe ou não tem prazo. */
+  prazoQueCabe: string | null
+  resposta: { tom: "positivo" | "alerta" | "negativo" | "neutro"; texto: string; acoes: { rotulo: string; para: string }[] }
+}
+
 /** Uma linha do histórico: guardou (de uma conta pra caixinha) ou resgatou (da caixinha pra uma conta). */
 export interface MovimentoMeta {
   transferenciaId: string

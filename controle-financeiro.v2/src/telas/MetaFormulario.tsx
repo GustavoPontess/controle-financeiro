@@ -3,10 +3,15 @@
 // "Criar outra igual" (de uma meta concluída) chega com `state.modelo`: nome, ícone, quanto e a mesma duração do
 // prazo a partir deste mês, tudo editável; nada do dinheiro nem do histórico vem junto.
 // O prazo é um MÊS; o servidor guarda o dia 1. Mês que já passou não vale (na edição, o prazo antigo pode ficar).
+// Enquanto a pessoa preenche quanto e até quando, a tela responde se cabe (renda − gasto típico − outras metas, no
+// servidor) e, quando não cabe, oferece o mês em que dá pra chegar como prazo. Avisa, não proíbe.
 // Guardar e resgatar são outras telas (a partir da página da meta): aqui é só a meta.
 import { useEffect, useRef, useState, type KeyboardEvent } from "react"
 import { useLocation, useNavigate, useParams } from "react-router-dom"
-import { atualizarMeta, criarMeta, getMeta } from "../services/metaService"
+import { atualizarMeta, criarMeta, getMeta, getViabilidadeMeta } from "../services/metaService"
+import type { ViabilidadeMeta } from "../types/Meta"
+import Resposta from "../componentes/Resposta"
+import { useAtrasado } from "../utils/useAtrasado"
 import { mensagemDeErro } from "../api/cliente"
 import Botao from "../componentes/Botao"
 import Campo from "../componentes/Campo"
@@ -44,6 +49,7 @@ export default function MetaFormulario() {
   const [erro, setErro] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
   const limpa = (k: keyof Erros) => setErros((e) => ({ ...e, [k]: undefined }))
+  const [viabilidade, setViabilidade] = useState<ViabilidadeMeta | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -62,6 +68,22 @@ export default function MetaFormulario() {
     }).catch(() => { if (vivo) { setErroCarga("Não deu pra carregar a meta."); setCarregando(false) } })
     return () => { vivo = false }
   }, [id])
+
+  // "Cabe?": pergunta ao servidor quando quanto e o prazo estão preenchidos (espera a pessoa parar de digitar).
+  const valorNumero = parseMoney(valor)
+  const prazoEscolhido = comPrazo && mes && ano ? prazoIso(Number(ano), Number(mes)) : null
+  const pergunta = useAtrasado(valorNumero > 0 && (!comPrazo || prazoEscolhido) ? `${valorNumero}|${prazoEscolhido ?? ""}` : "", 400)
+  useEffect(() => {
+    let vivo = true
+    if (!pergunta) { setViabilidade(null); return }
+    const [v, p] = pergunta.split("|")
+    getViabilidadeMeta(Number(v), p || null, id).then((r) => { if (vivo) setViabilidade(r) }).catch(() => { if (vivo) setViabilidade(null) })
+    return () => { vivo = false }
+  }, [pergunta, id])
+  const usarPrazo = (iso: string) => {
+    setComPrazo(true); setAno(iso.slice(0, 4)); setMes(String(Number(iso.slice(5, 7)))); limpa("prazo")
+  }
+  const prazoSugerido = viabilidade?.prazoQueCabe ?? null
 
   const anos = Array.from({ length: 31 }, (_, i) => anoAtual + i)
   if (ano && !anos.includes(Number(ano))) anos.unshift(Number(ano))
@@ -135,6 +157,16 @@ export default function MetaFormulario() {
                   onChange={(x) => { setAno(x); limpa("prazo") }} />
               </LinhaCampos>
             </Campo>
+          )}
+          {viabilidade && (
+            <div className={styles.cabe}>
+              <Resposta tom={viabilidade.resposta.tom} texto={viabilidade.resposta.texto} acoes={viabilidade.resposta.acoes} />
+              {prazoSugerido && prazoSugerido.slice(0, 7) !== prazoEscolhido?.slice(0, 7) && (
+                <Botao variante="texto" onClick={() => usarPrazo(prazoSugerido)}>
+                  Usar {MESES[Number(prazoSugerido.slice(5, 7)) - 1]} de {prazoSugerido.slice(0, 4)} como prazo
+                </Botao>
+              )}
+            </div>
           )}
         </Campos>
         <RodapeFormulario>

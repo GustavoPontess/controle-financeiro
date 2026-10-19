@@ -1,6 +1,6 @@
 # Respostas, não só registro (visão, 2026-10-19)
 
-> Ideia do Gustavo, estruturada na conversa de 2026-10-19. Status: **visão, nada implementado** além do que já existe (renda declarada, contas fixas, limites, metas, alerta de limite). Decisão pendente: por onde começar (ver "Ordem").
+> Ideia do Gustavo, estruturada na conversa de 2026-10-19. **Passo 1 feito (2026-10-19, branch `feat/v2-respostas`):** a conta do mês no servidor (`DinheiroDoMesService`), o cartão "Renda do mês" no Início (`UsoDaRenda`), as respostas em Limites ("vai passar", o que ainda vem) e o "essa meta cabe?" no formulário de meta (`ViabilidadeMetaService`).
 
 ## O problema
 
@@ -71,11 +71,12 @@ Números do mockup = a conta do Gustavo em outubro/2026 (banco local).
 - **Assinaturas** como tipo de conta fixa (pra sugerir cancelar).
 - Renda declarada é opcional hoje: sem ela, as respostas usam a renda média que caiu nos últimos 3 meses e a tela pede pra declarar.
 
-## Ordem proposta
+## Ordem
 
-1. O cálculo do mês (regra única) + resposta na hora em Limites e ao criar meta.
-2. Lista de Metas e Início ("vai dar até o fim do mês?").
-3. Essencial/não essencial + sinais.
-4. Relatórios (check-up).
-5. Modo "juntar mais".
-6. Conversa (cartões, depois IA).
+1. ✅ O cálculo do mês (regra única) + o cartão no Início + resposta em Limites e ao criar meta.
+2. Lista de Metas (as metas juntas cabem na folga?) e o cartão também na tela de Renda.
+3. **Tela de Empréstimos** (o Gustavo lembrou: falta antes de Relatórios).
+4. Essencial/não essencial + sinais.
+5. Relatórios (check-up).
+6. Modo "juntar mais".
+7. Conversa (cartões, depois IA).

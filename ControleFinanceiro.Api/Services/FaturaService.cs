@@ -275,7 +275,7 @@ public class FaturaService
         if (valorRestante <= 0)
             throw new InvalidOperationException("Esta fatura já foi paga integralmente.");
         if (dto.Valor <= 0 || dto.Valor > valorRestante)
-            throw new ArgumentException($"Valor inválido. Restante a pagar: {valorRestante:C}.");
+            throw new ArgumentException($"Valor inválido. Restante a pagar: {Reais.Formatar(valorRestante)}.");
         // Pagamento debita a conta na hora: data futura seria dinheiro que ainda não saiu (mesma regra da
         // transferência e do lançamento efetivado em conta). O front já barra; o back também.
         if (DateOnly.FromDateTime(dto.DataPagamento) > DateOnly.FromDateTime(DateTime.UtcNow))

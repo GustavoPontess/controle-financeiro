@@ -15,11 +15,22 @@ namespace ControleFinanceiro.Api.Controllers;
 public class MetasController : ControllerBase
 {
     private readonly MetaService _service;
+    private readonly ViabilidadeMetaService _viabilidade;
 
-    public MetasController(MetaService service)
+    public MetasController(MetaService service, ViabilidadeMetaService viabilidade)
     {
         _service = service;
+        _viabilidade = viabilidade;
     }
+
+    /// <summary>
+    /// "Essa meta cabe?": quanto guardar por mês até o prazo × o que sobra no mês (renda esperada − gasto típico − as
+    /// outras metas), com a resposta em uma frase e o mês em que dá pra chegar. <c>metaId</c> = editando aquela meta.
+    /// </summary>
+    [HttpGet("viabilidade")]
+    [ProducesResponseType(typeof(ViabilidadeMetaDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Viabilidade([FromQuery] decimal valorAlvo, [FromQuery] DateTime? dataLimite, [FromQuery] Guid? metaId) =>
+        Ok(await _viabilidade.CalcularAsync(GetUserId(), valorAlvo, dataLimite, metaId));
 
     private Guid GetUserId()
     {
