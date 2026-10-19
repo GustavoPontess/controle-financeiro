@@ -28,6 +28,7 @@ import EntradaValor from "../componentes/EntradaValor"
 import Etiqueta from "../componentes/Etiqueta"
 import Formulario, { Campos, Lado, LinhaCampos, RodapeFormulario } from "../componentes/Formulario"
 import Interruptor from "../componentes/Interruptor"
+import ListaAindaVem from "../componentes/ListaAindaVem"
 import PreviaLancamento from "../componentes/PreviaLancamento"
 import Resposta from "../componentes/Resposta"
 import Segmentos from "../componentes/Segmentos"
@@ -37,7 +38,7 @@ import { MAX_DESCRICAO, MEIO, MEIOS_PAGAMENTO, MEIOS_RECEBIMENTO, PARCELAS, TIPO
 import { formatMoney, moneyParaCampo, parseMoney } from "../utils/money"
 import { dataLocalISO, horaLocalHHMM, mascararHora, somaDias } from "../utils/dateTime"
 import { useAtrasado } from "../utils/useAtrasado"
-import type { RespostaDoMes } from "../types/DinheiroDoMes"
+import type { AvisoDeCompra } from "../types/DinheiroDoMes"
 import styles from "./FormularioTransacao.module.css"
 
 type Natureza = "despesa" | "receita" | "transferencia"
@@ -233,7 +234,7 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
   const origemAviso = editando || transferencia || receita || v <= 0 ? null
     : credito ? (cartaoId ? `cartao:${cartaoId}` : null) : (contaId ? `conta:${contaId}` : null)
   const pedidoAviso = useAtrasado(origemAviso ? `${origemAviso}|${v}` : "")
-  const [aviso, setAviso] = useState<RespostaDoMes | null>(null)
+  const [aviso, setAviso] = useState<AvisoDeCompra | null>(null)
   useEffect(() => {
     if (!pedidoAviso) { setAviso(null); return }
     let vivo = true
@@ -343,7 +344,13 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
             </>
           ) : undefined} />
 
-        {aviso && origemAviso && <Resposta tom={aviso.tom} texto={aviso.texto} />}
+        {aviso && origemAviso && (
+          <Resposta tom={aviso.tom} texto={aviso.texto} detalhe={aviso.detalhe}>
+            {aviso.itens.length > 0 && (
+              <ListaAindaVem itens={aviso.itens} semCategoria semLink comMes rotulo="Contas que ficam sem dinheiro" />
+            )}
+          </Resposta>
+        )}
 
         {!transferencia && !credito && (
           <Bloco titulo="Opções" className={styles.opcoes}>

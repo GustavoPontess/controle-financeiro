@@ -136,7 +136,7 @@ public class CobrancaEAvisoDeCompraTests
 
     private static readonly DateOnly Dia19 = new(2026, 10, 19);
 
-    private static Task<DTOs.DinheiroDoMes.RespostaDto?> Avisar(Cenario c, decimal valor, bool noCartao = true) =>
+    private static Task<DTOs.Transacao.AvisoDeCompraDto?> Avisar(Cenario c, decimal valor, bool noCartao = true) =>
         new AvisoDeCompraService(c.Ctx).AvisarAsync(c.U, valor, noCartao ? null : c.ContaId, noCartao ? c.CartaoId : null, Dia19);
 
     [Fact]
@@ -148,12 +148,16 @@ public class CobrancaEAvisoDeCompraTests
         Lancar(c, "Depois de 30 dias", 999m, new DateOnly(2026, 12, 1), StatusTransacao.Previsao);
 
         var aperta = await Avisar(c, 980m); // sobram 20: nem Netflix nem Spotify passam
-        Assert.Equal("alerta", aperta!.Tom);
-        Assert.Equal("Se fizer essa compra, falta limite no cartão Nubank pra Netflix (dia 25, R$ 55,90) e Spotify (2/11, R$ 21,90).",
-            SemNbsp(aperta.Texto));
+        Assert.Equal(("alerta", "Se fizer essa compra, falta limite no cartão Nubank pra:", "Limite disponível hoje: R$ 1.000,00."),
+            (aperta!.Tom, aperta.Texto, SemNbsp(aperta.Detalhe)));
+        Assert.Equal(new[] { ("Netflix", new DateOnly(2026, 10, 25), 55.90m), ("Spotify", new DateOnly(2026, 11, 2), 21.90m) },
+            aperta.Itens.Select(i => (i.Descricao, i.Data, i.Valor)));
+        Assert.All(aperta.Itens, i => Assert.NotNull(i.ContaFixaId)); // a linha leva pra conta fixa (pausar/cancelar)
 
         var naoCabe = await Avisar(c, 1_001m);
-        Assert.Equal(("negativo", "Não cabe no limite do cartão Nubank: disponível R$ 1.000,00."), (naoCabe!.Tom, SemNbsp(naoCabe.Texto)));
+        Assert.Equal(("negativo", "Não cabe no limite do cartão Nubank.", "Limite disponível hoje: R$ 1.000,00."),
+            (naoCabe!.Tom, naoCabe.Texto, SemNbsp(naoCabe.Detalhe)));
+        Assert.Empty(naoCabe.Itens);
 
         Assert.Null(await Avisar(c, 900m)); // sobram 100: cabem as duas
     }
@@ -166,8 +170,9 @@ public class CobrancaEAvisoDeCompraTests
         Lancar(c, "Aluguel", 1_500m, new DateOnly(2026, 11, 5), StatusTransacao.Previsao, noCartao: false);
 
         var aperta = await Avisar(c, 300m, noCartao: false);
-        Assert.Equal(("alerta", "Se fizer essa compra, falta saldo na conta Itaú pra Aluguel (5/11, R$ 1.500,00)."),
-            (aperta!.Tom, SemNbsp(aperta.Texto)));
+        Assert.Equal(("alerta", "Se fizer essa compra, falta saldo na conta Itaú pra:", "Saldo da conta hoje: R$ 1.000,00."),
+            (aperta!.Tom, aperta.Texto, SemNbsp(aperta.Detalhe)));
+        Assert.Equal("Aluguel", Assert.Single(aperta.Itens).Descricao);
 
         // O salário previsto entra antes do aluguel: aí cabe.
         Lancar(c, "Salário", 3_000m, new DateOnly(2026, 11, 5), StatusTransacao.Previsao, noCartao: false, daContaFixa: false, tipo: TipoTransacao.Receita);

@@ -1,7 +1,6 @@
 using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.DTOs.Common;
-using ControleFinanceiro.Api.DTOs.DinheiroDoMes;
 using ControleFinanceiro.Api.DTOs.Familia;
 using ControleFinanceiro.Api.DTOs.Parcelamento;
 using ControleFinanceiro.Api.DTOs.Relatorios;
@@ -201,10 +200,11 @@ namespace ControleFinanceiro.Api.Controllers
 
         /// <summary>
         /// Antes de salvar uma compra: ela tira o dinheiro das contas fixas dos próximos 30 dias? No cartão olha o
-        /// limite, na conta o saldo. 200 com a resposta (tom + frase) ou 204 quando não aperta nada. Só avisa.
+        /// limite, na conta o saldo. 200 com o aviso (frase, contas uma por linha e o saldo/limite de hoje) ou 204
+        /// quando não aperta nada. Só avisa.
         /// </summary>
         [HttpGet("aviso")]
-        [ProducesResponseType(typeof(RespostaDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(AvisoDeCompraDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         public async Task<IActionResult> Aviso([FromQuery] decimal valor, [FromQuery] Guid? contaId = null, [FromQuery] Guid? cartaoId = null)
         {
