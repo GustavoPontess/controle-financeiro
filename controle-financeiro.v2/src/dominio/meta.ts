@@ -1,7 +1,7 @@
 // Rótulos, ícones e contas de Metas no v2 (um lugar só pra lista, página da meta, formulário e guardar/resgatar).
 import type { LucideIcon } from "lucide-react"
 import { Baby, Car, Gift, GraduationCap, HeartPulse, House, PartyPopper, PawPrint, Plane, ShieldCheck, Smartphone, Target } from "lucide-react"
-import type { SituacaoMeta } from "../types/Meta"
+import type { Meta, SituacaoMeta } from "../types/Meta"
 
 /** Mesmo limite do servidor (CriarMetaDto, nome da caixinha). */
 export const MAX_NOME_META = 100
@@ -44,6 +44,13 @@ export const SITUACAO_META: Record<SituacaoMeta, { rotulo: string; tom?: "positi
   "prazo-passou": { rotulo: "Prazo passou", tom: "negativo" },
   "sem-prazo": null,
 }
+/** Etiqueta da meta: "Concluída" quando o dinheiro já foi usado; senão, a da situação. */
+export const etiquetaDaMeta = (m: Pick<Meta, "situacao" | "concluidaEm">) =>
+  m.concluidaEm ? { rotulo: "Concluída", tom: "positivo" as const } : SITUACAO_META[m.situacao]
+/** O que a barra e o número grande mostram: o que juntou (concluída) ou o que está guardado. */
+export const progressoDaMeta = (m: Pick<Meta, "guardado" | "concluidaEm" | "valorJuntado">) =>
+  m.concluidaEm ? m.valorJuntado ?? 0 : m.guardado
+
 /** Cor da barra de progresso pela situação. */
 export const tomDaBarra = (s: SituacaoMeta): "positivo" | "alerta" | undefined =>
   s === "concluida" ? "positivo" : s === "atras" || s === "prazo-passou" ? "alerta" : undefined

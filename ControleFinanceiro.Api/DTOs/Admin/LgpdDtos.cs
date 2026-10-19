@@ -66,6 +66,10 @@ public class MetaExportadaDto
     public string Nome { get; set; } = string.Empty;
     public decimal ValorAlvo { get; set; }
     public DateTime? DataLimite { get; set; }
+    /// <summary>Quando a meta foi concluída (o dinheiro foi usado) e quanto juntou; null = não concluída.</summary>
+    public DateTime? ConcluidaEm { get; set; }
+    public decimal? ValorJuntado { get; set; }
+
     /// <summary>Saldo da caixinha da meta (o que está guardado nela).</summary>
     public decimal Guardado { get; set; }
 }

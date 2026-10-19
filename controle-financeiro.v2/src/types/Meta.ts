@@ -31,6 +31,9 @@ export interface Meta {
   ativo: boolean
   criadoEm: string
   atualizadoEm: string
+  /** Concluída de vez ("Concluir e usar o dinheiro"): quando, e quanto juntou. Aí `guardado` é 0. */
+  concluidaEm: string | null
+  valorJuntado: number | null
 }
 
 export interface CriarMetaDto {

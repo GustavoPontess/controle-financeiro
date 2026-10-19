@@ -2,10 +2,12 @@
 // quanto tem guardado (de quanto, a barra) com Resgatar e Guardar, e o histórico (guardou de qual conta,
 // resgatou pra qual conta, por dia). Na coluna da direita, o plano (quanto quer juntar, falta, prazo, por mês)
 // e Editar / Excluir. Excluir só com a caixinha zerada: com dinheiro, a tela pede pra resgatar antes.
+// Chegou lá: aparece "Concluir e usar o dinheiro" (o guardado todo vai pra uma conta e a meta fica em
+// Concluídas com o que juntou e o histórico). Concluída: mostra "Juntou", sem Guardar/Resgatar; Reabrir desfaz.
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { ArrowDownToLine, ArrowUpFromLine, Pencil, Trash2 } from "lucide-react"
-import { excluirMeta, getHistoricoMeta, getMeta } from "../services/metaService"
+import { ArrowDownToLine, ArrowUpFromLine, CircleCheck, Pencil, RotateCcw, Trash2 } from "lucide-react"
+import { excluirMeta, getHistoricoMeta, getMeta, reabrirMeta } from "../services/metaService"
 import { mensagemDeErro } from "../api/cliente"
 import type { Meta, MovimentoMeta } from "../types/Meta"
 import BarraProgresso from "../componentes/BarraProgresso"
@@ -17,8 +19,8 @@ import Etiqueta from "../componentes/Etiqueta"
 import { RodapeFormulario } from "../componentes/Formulario"
 import { DadosFicha } from "../componentes/ListaFicha"
 import ListaPorDia, { type ItemDoDia } from "../componentes/ListaPorDia"
-import { MESES, SITUACAO_META, iconeDaMeta, tomDaBarra } from "../dominio/meta"
-import { dataBR } from "../utils/dateTime"
+import { MESES, etiquetaDaMeta, iconeDaMeta, progressoDaMeta, tomDaBarra } from "../dominio/meta"
+import { dataBR, diaDeInstante } from "../utils/dateTime"
 import { formatMoney } from "../utils/money"
 import styles from "./MetaPagina.module.css"
 
@@ -52,8 +54,15 @@ export default function MetaPagina() {
     )
 
   const Icone = iconeDaMeta(meta.icone)
-  const situacao = SITUACAO_META[meta.situacao]
+  const situacao = etiquetaDaMeta(meta)
   const pct = Math.round(meta.percentualConcluido)
+  const concluida = !!meta.concluidaEm
+  const progresso = progressoDaMeta(meta)
+  const reabrir = async () => {
+    setOcupado(true); setErro(null)
+    try { setMeta(await reabrirMeta(meta.id)) } catch (e) { setErro(mensagemDeErro(e)) }
+    setOcupado(false)
+  }
   const voltar = { state: { voltarPara: `/metas/${meta.id}` } }
   const pedirExclusao = () => {
     setErro(null)
@@ -94,16 +103,22 @@ export default function MetaPagina() {
       <div className={styles.grade}>
         <div className={styles.principal}>
           <Bloco className={styles.saldo}>
-            <span className={styles.rotulo}>Guardado</span>
-            <Dinheiro valor={meta.guardado} className={styles.valorGrande} />
-            <span className={styles.muted}>de <Dinheiro valor={meta.valorAlvo} /> · {pct}%</span>
-            <BarraProgresso fracao={meta.valorAlvo > 0 ? meta.guardado / meta.valorAlvo : 0} tom={tomDaBarra(meta.situacao)} rotulo={`${pct}% guardado`} />
-            <div className={styles.acoes}>
-              <Botao disabled={meta.guardado <= 0} onClick={() => navigate(`/metas/${meta.id}/resgatar`, voltar)}
-                icone={<ArrowUpFromLine size={15} strokeWidth={2.25} aria-hidden="true" />}>Resgatar</Botao>
-              <Botao variante="primario" onClick={() => navigate(`/metas/${meta.id}/guardar`, voltar)}
-                icone={<ArrowDownToLine size={15} strokeWidth={2.25} aria-hidden="true" />}>Guardar</Botao>
-            </div>
+            <span className={styles.rotulo}>{concluida ? "Juntou" : "Guardado"}</span>
+            <Dinheiro valor={progresso} className={styles.valorGrande} />
+            <span className={styles.muted}>de <Dinheiro valor={meta.valorAlvo} /> · {pct}%{concluida ? ` · concluída em ${dataBR(meta.concluidaEm!)}` : ""}</span>
+            <BarraProgresso fracao={meta.valorAlvo > 0 ? progresso / meta.valorAlvo : 0} tom={tomDaBarra(meta.situacao)} rotulo={`${pct}% ${concluida ? "juntado" : "guardado"}`} />
+            {!concluida && (
+              <div className={styles.acoes}>
+                <Botao disabled={meta.guardado <= 0} onClick={() => navigate(`/metas/${meta.id}/resgatar`, voltar)}
+                  icone={<ArrowUpFromLine size={15} strokeWidth={2.25} aria-hidden="true" />}>Resgatar</Botao>
+                <Botao variante={meta.concluida ? "secundario" : "primario"} onClick={() => navigate(`/metas/${meta.id}/guardar`, voltar)}
+                  icone={<ArrowDownToLine size={15} strokeWidth={2.25} aria-hidden="true" />}>Guardar</Botao>
+                {meta.concluida && (
+                  <Botao variante="primario" onClick={() => navigate(`/metas/${meta.id}/concluir`, voltar)}
+                    icone={<CircleCheck size={15} strokeWidth={2.25} aria-hidden="true" />}>Concluir e usar o dinheiro</Botao>
+                )}
+              </div>
+            )}
           </Bloco>
 
           <Bloco titulo="Histórico" semRespiro>
@@ -117,16 +132,19 @@ export default function MetaPagina() {
           <Bloco titulo="Plano">
             <DadosFicha>
               <div><dt>Quanto quer juntar</dt><dd><Dinheiro valor={meta.valorAlvo} /></dd></div>
-              <div><dt>Falta</dt><dd><Dinheiro valor={meta.falta} /></dd></div>
+              {concluida
+                ? <div><dt>Concluída em</dt><dd>{dataBR(meta.concluidaEm!)}</dd></div>
+                : <div><dt>Falta</dt><dd><Dinheiro valor={meta.falta} /></dd></div>}
               <div><dt>Prazo</dt><dd>{meta.dataLimite
                 ? `${mesPorExtenso(meta.dataLimite)}${meta.mesesRestantes ? ` · ${meta.mesesRestantes} ${meta.mesesRestantes === 1 ? "mês" : "meses"}` : ""}`
                 : "Sem prazo"}</dd></div>
               {meta.porMes !== null && <div><dt>Por mês pra chegar no prazo</dt><dd><Dinheiro valor={meta.porMes} /></dd></div>}
-              <div><dt>Criada em</dt><dd>{dataBR(meta.criadoEm)}</dd></div>
+              <div><dt>Criada em</dt><dd>{diaDeInstante(meta.criadoEm)}</dd></div>
             </DadosFicha>
           </Bloco>
           <RodapeFormulario>
             <Botao perigo disabled={ocupado} onClick={pedirExclusao} icone={<Trash2 size={15} strokeWidth={2.25} aria-hidden="true" />}>Excluir</Botao>
+            {concluida && <Botao disabled={ocupado} onClick={() => { void reabrir() }} icone={<RotateCcw size={15} strokeWidth={2.25} aria-hidden="true" />}>Reabrir</Botao>}
             <Botao onClick={() => navigate(`/metas/${meta.id}/editar`, voltar)} icone={<Pencil size={15} strokeWidth={2.25} aria-hidden="true" />}>Editar meta</Botao>
           </RodapeFormulario>
         </aside>

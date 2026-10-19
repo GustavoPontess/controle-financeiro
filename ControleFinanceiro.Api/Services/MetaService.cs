@@ -162,8 +162,10 @@ public class MetaService
         var meta = await BuscarPropriaAsync(metaId, usuarioId);
         var caixinha = await GarantirCaixinhaAsync(meta, usuarioId);
         var transf = Transferencia(dto.ContaId, caixinha, dto, $"Guardado em {meta.Nome}");
+        await using var tx = await TransacaoTravadaAsync(metaId);
         if (!await JaFeitoAsync(usuarioId, chave))
         {
+            ExigirNaoConcluida(meta);
             if (dto.ContaId == caixinha)
                 throw new ArgumentException("Escolha uma conta sua, não a própria caixinha.");
             await ExigirNaoCaixinhaAsync(dto.ContaId);
@@ -174,6 +176,7 @@ public class MetaService
         }
         using (_context.LiberarCaixinha())
             await _transferencias.CriarAsync(transf, usuarioId, chave);
+        if (tx is not null) await tx.CommitAsync();
         return await ObterAsync(metaId, usuarioId);
     }
 
@@ -184,8 +187,10 @@ public class MetaService
         var meta = await BuscarPropriaAsync(metaId, usuarioId);
         var caixinha = await GarantirCaixinhaAsync(meta, usuarioId);
         var transf = Transferencia(caixinha, dto.ContaId, dto, $"Resgatado de {meta.Nome}");
+        await using var tx = await TransacaoTravadaAsync(metaId);
         if (!await JaFeitoAsync(usuarioId, chave))
         {
+            ExigirNaoConcluida(meta);
             if (dto.ContaId == caixinha)
                 throw new ArgumentException("Escolha pra qual conta sua o dinheiro volta.");
             await ExigirNaoCaixinhaAsync(dto.ContaId);
@@ -196,6 +201,71 @@ public class MetaService
         }
         using (_context.LiberarCaixinha())
             await _transferencias.CriarAsync(transf, usuarioId, chave);
+        if (tx is not null) await tx.CommitAsync();
+        return await ObterAsync(metaId, usuarioId);
+    }
+
+    /// <summary>
+    /// "Concluir e usar o dinheiro": a meta que chegou lá (guardado ≥ alvo) manda o guardado TODO pra uma conta
+    /// da pessoa (uma transferência), grava quando concluiu e quanto juntou e encerra a caixinha, tudo numa
+    /// transação. A meta fica em Concluídas com o histórico. Idempotency-Key obrigatória (repetir devolve a meta).
+    /// </summary>
+    public async Task<MetaDto> ConcluirAsync(Guid metaId, ConcluirMetaDto dto, Guid usuarioId, string? idempotencyKey)
+    {
+        var chave = ExigirChave(idempotencyKey);
+        var meta = await BuscarPropriaAsync(metaId, usuarioId);
+        var caixinha = await GarantirCaixinhaAsync(meta, usuarioId);
+        await using var tx = await TransacaoTravadaAsync(metaId);
+        await _context.Entry(meta).ReloadAsync(); // outra aba pode ter concluído enquanto esta esperava a trava
+        if (await JaFeitoAsync(usuarioId, chave))
+        {
+            if (meta.ConcluidaEm is not null) return await ObterAsync(metaId, usuarioId); // repetição
+            throw new InvalidOperationException(Idempotencia.MensagemChaveComOutrosDados);
+        }
+        if (meta.ConcluidaEm is not null)
+            throw new InvalidOperationException("Essa meta já foi concluída.");
+        if (dto.ContaId == caixinha)
+            throw new ArgumentException("Escolha pra qual conta sua o dinheiro vai.");
+        await ExigirNaoCaixinhaAsync(dto.ContaId);
+        await DonoRecursos.ExigirContaAbertaAsync(_context, dto.ContaId, usuarioId);
+        var guardado = (await RegrasFinanceiras.SaldoDaContaAsync(_context, caixinha, usuarioId)).Saldo;
+        if (guardado < meta.ValorAlvo)
+            throw new InvalidOperationException($"A meta ainda não chegou lá: faltam {meta.ValorAlvo - guardado:C}. Pra usar uma parte, resgate.");
+
+        // O dia é o do aparelho da pessoa (a tela manda), o mesmo da transferência: UtcNow virava o dia seguinte
+        // depois das 21h em Brasília.
+        var dia = dto.Data ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        using (_context.LiberarCaixinha())
+            await _transferencias.CriarAsync(new CriarTransferenciaDto
+            {
+                ContaOrigemId = caixinha,
+                ContaDestinoId = dto.ContaId,
+                Valor = guardado,
+                Data = dia,
+                Descricao = $"Meta concluída: {meta.Nome}",
+            }, usuarioId, chave);
+        meta.ConcluidaEm = dia.ToDateTime(TimeOnly.MinValue);
+        meta.ValorJuntado = guardado;
+        meta.AtualizadoEm = DateTime.UtcNow;
+        if (await _context.Contas.FindAsync(caixinha) is { } conta)
+            conta.EncerradaEm = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        if (tx is not null) await tx.CommitAsync();
+        return await ObterAsync(metaId, usuarioId);
+    }
+
+    /// <summary>Desfaz a conclusão: a meta volta pra Em andamento com a caixinha (vazia) aberta de novo.</summary>
+    public async Task<MetaDto> ReabrirAsync(Guid metaId, Guid usuarioId)
+    {
+        var meta = await BuscarPropriaAsync(metaId, usuarioId);
+        if (meta.ConcluidaEm is null)
+            throw new InvalidOperationException("Essa meta não está concluída.");
+        meta.ConcluidaEm = null;
+        meta.ValorJuntado = null;
+        meta.AtualizadoEm = DateTime.UtcNow;
+        if (meta.ContaId.HasValue && await _context.Contas.FindAsync(meta.ContaId.Value) is { } caixinha)
+            caixinha.EncerradaEm = null;
+        await _context.SaveChangesAsync();
         return await ObterAsync(metaId, usuarioId);
     }
 
@@ -223,12 +293,17 @@ public class MetaService
 
     private static MetaDto Montar(Meta m, decimal guardado, DateTime hoje)
     {
-        var (situacao, meses, porMes) = Situacao(m.ValorAlvo, guardado, m.DataLimite, m.CriadoEm, hoje);
-        var pct = m.ValorAlvo > 0 ? Math.Clamp(Math.Round(guardado * 100m / m.ValorAlvo, 2), 0m, 100m) : 0m;
+        // Concluída (o dinheiro já foi usado): o progresso é o que juntou, não o que sobrou na caixinha.
+        var concluidaDeVez = m.ConcluidaEm is not null;
+        var progresso = concluidaDeVez ? m.ValorJuntado ?? 0m : guardado;
+        var (situacao, meses, porMes) = concluidaDeVez ? ("concluida", (int?)null, (decimal?)null)
+            : Situacao(m.ValorAlvo, guardado, m.DataLimite, m.CriadoEm, hoje);
+        var pct = m.ValorAlvo > 0 ? Math.Clamp(Math.Round(progresso * 100m / m.ValorAlvo, 2), 0m, 100m) : 0m;
         return new MetaDto(
-            m.Id, m.Nome, m.Descricao, m.Icone ?? "alvo", m.ValorAlvo, guardado, Math.Max(0m, m.ValorAlvo - guardado), pct,
-            guardado >= m.ValorAlvo, m.DataLimite, meses, porMes, situacao, m.ContaId,
-            m.UsuarioId, m.FamiliaId, m.CategoriaId, m.Ativo, m.CriadoEm, m.AtualizadoEm);
+            m.Id, m.Nome, m.Descricao, m.Icone ?? "alvo", m.ValorAlvo, guardado,
+            concluidaDeVez ? 0m : Math.Max(0m, m.ValorAlvo - guardado), pct,
+            concluidaDeVez || guardado >= m.ValorAlvo, m.DataLimite, meses, porMes, situacao, m.ContaId,
+            m.UsuarioId, m.FamiliaId, m.CategoriaId, m.Ativo, m.CriadoEm, m.AtualizadoEm, m.ConcluidaEm, m.ValorJuntado);
     }
 
     /// <summary>Saldo de cada caixinha, pela regra única de saldo (dono da caixinha = dono da meta).</summary>
@@ -268,6 +343,25 @@ public class MetaService
         Data = dto.Data ?? DateOnly.FromDateTime(DateTime.UtcNow),
         Descricao = descricao,
     };
+
+    private static void ExigirNaoConcluida(Meta meta)
+    {
+        if (meta.ConcluidaEm is not null)
+            throw new InvalidOperationException("Essa meta já foi concluída. Reabra pra mexer nela de novo.");
+    }
+
+    /// <summary>
+    /// Transação com a linha da meta travada (Postgres, <c>FOR UPDATE</c>): guardar, resgatar e concluir da MESMA
+    /// meta passam um de cada vez. Sem isso, dois resgates ao mesmo tempo (chaves diferentes) liam o mesmo
+    /// guardado e deixavam a caixinha negativa. Já dentro de uma transação (ou fora do Postgres): nada a abrir.
+    /// </summary>
+    private async Task<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction?> TransacaoTravadaAsync(Guid metaId)
+    {
+        if (_context.Database.CurrentTransaction is not null || !_context.Database.IsRelational()) return null;
+        var tx = await _context.Database.BeginTransactionAsync();
+        await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT 1 FROM \"Metas\" WHERE \"Id\" = {metaId} FOR UPDATE");
+        return tx;
+    }
 
     private async Task ExigirNaoCaixinhaAsync(Guid contaId)
     {
@@ -316,10 +410,11 @@ public class MetaService
         return mes;
     }
 
+    /// <summary>Meta que a pessoa pode MEXER (só quem criou). Quem nem vê → 404, igual "não existe" (não confirma
+    /// que o id existe); quem vê pela família mas não criou → 403.</summary>
     private async Task<Meta> BuscarPropriaAsync(Guid metaId, Guid usuarioId)
     {
-        var meta = await _context.Metas.FirstOrDefaultAsync(m => m.Id == metaId && m.Ativo)
-            ?? throw new KeyNotFoundException("Meta não encontrada.");
+        var meta = await BuscarComAcessoAsync(metaId, usuarioId);
         if (meta.UsuarioId != usuarioId)
             throw new ForbiddenAccessException("Você não tem permissão para mexer nesta meta.");
         return meta;

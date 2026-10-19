@@ -128,6 +128,7 @@ public class AdminLgpdService
                 .Select(m => new MetaExportadaDto
                 {
                     Id = m.Id, Nome = m.Nome, ValorAlvo = m.ValorAlvo, DataLimite = m.DataLimite,
+                    ConcluidaEm = m.ConcluidaEm, ValorJuntado = m.ValorJuntado,
                     Guardado = m.ContaId.HasValue && caixinhas.TryGetValue(m.ContaId.Value, out var s) ? s.Saldo : 0m,
                 })
                 .ToList(),

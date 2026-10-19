@@ -147,16 +147,22 @@ public class MetaServiceTests
     }
 
     [Fact]
-    public async Task AtualizarAsync_NaoCriador_LancaUnauthorized()
+    public async Task AtualizarAsync_Estranho404_MembroDaFamiliaQueNaoCriou403()
     {
         var ctx = CreateContext();
         var dono = SeedUsuario(ctx, "dono@test.com");
         var outro = SeedUsuario(ctx, "outro@test.com");
+        var membro = SeedUsuario(ctx, "membro@test.com");
+        var familiaId = await SeedFamilia(ctx, dono);
+        ctx.MembrosFamilia.Add(new MembroFamilia { Id = Guid.NewGuid(), FamiliaId = familiaId, UsuarioId = membro, Papel = "Membro", Ativo = true });
+        ctx.SaveChanges();
         var svc = Servico(ctx);
-        var criada = await svc.CriarAsync(MetaDto(), dono);
+        var criada = await svc.CriarAsync(MetaDto("Da casa", 1000m, familiaId), dono);
 
-        await Assert.ThrowsAsync<ForbiddenAccessException>(
-            () => svc.AtualizarAsync(criada.Id, MetaDto(), outro));
+        // Estranho: nem confirma que a meta existe.
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.AtualizarAsync(criada.Id, MetaDto(), outro));
+        // Da família: vê, mas só quem criou mexe.
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() => svc.AtualizarAsync(criada.Id, MetaDto(), membro));
     }
 
     // ── Caixinha: guardar e resgatar são transferências de verdade ─────────────
@@ -392,6 +398,97 @@ public class MetaServiceTests
         Assert.Equal(2, (await svc.ListarAsync(dono)).Count);
     }
 
+    // ── Concluir e usar o dinheiro ───────────────────────────────────────────
+
+    [Fact]
+    public async Task Concluir_LevaTudoPraConta_FicaConcluidaComOQueJuntou_EncerraACaixinha()
+    {
+        var ctx = CreateContext();
+        var user = SeedUsuario(ctx, "u@test.com");
+        var conta = SeedConta(ctx, user, 1000m);
+        var svc = Servico(ctx);
+        var meta = await svc.CriarAsync(MetaDto("Notebook", 600m), user);
+        await svc.GuardarAsync(meta.Id, new MovimentoMetaDto(conta, 650m), user, Chave());
+
+        var concluida = await svc.ConcluirAsync(meta.Id, new ConcluirMetaDto(conta, new DateOnly(2026, 10, 18)), user, Chave());
+
+        Assert.Equal(new DateTime(2026, 10, 18), concluida.ConcluidaEm); // o dia do aparelho, não o instante em UTC
+        Assert.Equal(650m, concluida.ValorJuntado);
+        Assert.Equal(0m, concluida.Guardado);
+        Assert.True(concluida.Concluida);
+        Assert.Equal("concluida", concluida.Situacao);
+        Assert.Equal(100m, concluida.PercentualConcluido);
+        Assert.Equal(1000m, await Saldo(ctx, conta, user)); // o dinheiro voltou todo pra conta
+        Assert.NotNull((await ctx.Contas.FindAsync(meta.ContaId))!.EncerradaEm);
+        Assert.Contains((await svc.HistoricoAsync(meta.Id, user)), h => h.Tipo == "resgatou" && h.Valor == 650m);
+        Assert.Contains(await svc.ListarAsync(user, soPessoais: true), m => m.Id == meta.Id && m.Concluida);
+    }
+
+    [Fact]
+    public async Task Concluir_SemChegarLa_Recusa_EMesmaChaveNaoMoveDuasVezes()
+    {
+        var ctx = CreateContext();
+        var user = SeedUsuario(ctx, "u@test.com");
+        var conta = SeedConta(ctx, user, 1000m);
+        var svc = Servico(ctx);
+        var meta = await svc.CriarAsync(MetaDto("Notebook", 600m), user);
+        await svc.GuardarAsync(meta.Id, new MovimentoMetaDto(conta, 400m), user, Chave());
+
+        var erro = await Assert.ThrowsAsync<InvalidOperationException>(() => svc.ConcluirAsync(meta.Id, new ConcluirMetaDto(conta), user, Chave()));
+        Assert.Contains("faltam", erro.Message);
+
+        await svc.GuardarAsync(meta.Id, new MovimentoMetaDto(conta, 200m), user, Chave());
+        var chave = Chave();
+        await svc.ConcluirAsync(meta.Id, new ConcluirMetaDto(conta), user, chave);
+        var repetido = await svc.ConcluirAsync(meta.Id, new ConcluirMetaDto(conta), user, chave);
+        Assert.Equal(600m, repetido.ValorJuntado);
+        Assert.Equal(3, ctx.Transferencias.Count()); // dois guardar + um concluir
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.ConcluirAsync(meta.Id, new ConcluirMetaDto(conta), user, Chave()));
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.ConcluirAsync(meta.Id, new ConcluirMetaDto(conta), user, null));
+    }
+
+    [Fact]
+    public async Task Concluida_NaoGuardaNemResgata_ReabrirVoltaPraEmAndamento()
+    {
+        var ctx = CreateContext();
+        var user = SeedUsuario(ctx, "u@test.com");
+        var conta = SeedConta(ctx, user, 1000m);
+        var svc = Servico(ctx);
+        var meta = await svc.CriarAsync(MetaDto("Notebook", 300m), user);
+        await svc.GuardarAsync(meta.Id, new MovimentoMetaDto(conta, 300m), user, Chave());
+        await svc.ConcluirAsync(meta.Id, new ConcluirMetaDto(conta), user, Chave());
+
+        var erro = await Assert.ThrowsAsync<InvalidOperationException>(() => svc.GuardarAsync(meta.Id, new MovimentoMetaDto(conta, 10m), user, Chave()));
+        Assert.Contains("Reabra", erro.Message);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.ResgatarAsync(meta.Id, new MovimentoMetaDto(conta, 10m), user, Chave()));
+
+        var reaberta = await svc.ReabrirAsync(meta.Id, user);
+        Assert.Null(reaberta.ConcluidaEm);
+        Assert.Null(reaberta.ValorJuntado);
+        Assert.False(reaberta.Concluida);
+        Assert.Null((await ctx.Contas.FindAsync(meta.ContaId))!.EncerradaEm);
+        await svc.GuardarAsync(meta.Id, new MovimentoMetaDto(conta, 50m), user, Chave());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.ReabrirAsync(meta.Id, user)); // não está concluída
+    }
+
+    [Fact]
+    public async Task Concluir_SoODono_ENaoPraCaixinha()
+    {
+        var ctx = CreateContext();
+        var user = SeedUsuario(ctx, "u@test.com");
+        var outro = SeedUsuario(ctx, "outro@test.com");
+        var conta = SeedConta(ctx, user, 1000m);
+        var doOutro = SeedConta(ctx, outro, 0m);
+        var svc = Servico(ctx);
+        var meta = await svc.CriarAsync(MetaDto("Notebook", 300m), user);
+        await svc.GuardarAsync(meta.Id, new MovimentoMetaDto(conta, 300m), user, Chave());
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.ConcluirAsync(meta.Id, new ConcluirMetaDto(doOutro), outro, Chave())); // meta de outro: 404
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.ConcluirAsync(meta.Id, new ConcluirMetaDto(doOutro), user, Chave()));
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.ConcluirAsync(meta.Id, new ConcluirMetaDto(meta.ContaId!.Value), user, Chave()));
+        Assert.Null((await svc.ObterAsync(meta.Id, user)).ConcluidaEm);
+    }
+
     // ── Trava: só Metas mexe na caixinha (AppDbContext.SaveChanges) ──────────────
 
     [Fact]
@@ -536,7 +633,7 @@ public class MetaServiceTests
     }
 
     [Fact]
-    public async Task ExcluirAsync_NaoCriador_LancaUnauthorized()
+    public async Task ExcluirAsync_Estranho_404()
     {
         var ctx = CreateContext();
         var dono = SeedUsuario(ctx, "dono@test.com");
@@ -544,7 +641,7 @@ public class MetaServiceTests
         var svc = Servico(ctx);
         var meta = await svc.CriarAsync(MetaDto(), dono);
 
-        await Assert.ThrowsAsync<ForbiddenAccessException>(
+        await Assert.ThrowsAsync<KeyNotFoundException>(
             () => svc.ExcluirAsync(meta.Id, outro));
     }
 

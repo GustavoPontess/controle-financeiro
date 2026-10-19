@@ -7,7 +7,8 @@ namespace ControleFinanceiro.Api.DTOs.Meta;
 /// (<c>ContaId</c>, tipo Caixinha) e guardar é transferência de verdade da conta da pessoa pra ela.
 /// <c>Guardado</c> = saldo da caixinha. <c>Situacao</c>: "concluida" · "sem-prazo" · "prazo-passou" · "no-ritmo"
 /// · "atras". <c>PorMes</c> = quanto falta dividido pelos meses até o prazo (contando o atual).
-/// <c>ValorAtual</c> = <c>Guardado</c> (compatibilidade com o app antigo).
+/// <c>ConcluidaEm</c>/<c>ValorJuntado</c>: a pessoa concluiu e levou o dinheiro (aí <c>Guardado</c> é 0 e a meta
+/// continua "concluida"). <c>ValorAtual</c> = <c>Guardado</c> (compatibilidade com o app antigo).
 /// </summary>
 public record MetaDto(
     Guid Id,
@@ -29,7 +30,9 @@ public record MetaDto(
     Guid? CategoriaId,
     bool Ativo,
     DateTime CriadoEm,
-    DateTime AtualizadoEm)
+    DateTime AtualizadoEm,
+    DateTime? ConcluidaEm = null,
+    decimal? ValorJuntado = null)
 {
     public decimal ValorAtual => Guardado;
 }
@@ -49,6 +52,9 @@ public record MovimentoMetaDto(
     Guid ContaId,
     [Range(0.01, 999_999_999.99, ErrorMessage = "Diga quanto.")] decimal Valor,
     DateOnly? Data = null);
+
+/// <summary>Concluir a meta que chegou lá: o guardado todo vai pra <c>ContaId</c>. <c>Data</c> omitida = hoje.</summary>
+public record ConcluirMetaDto(Guid ContaId, DateOnly? Data = null);
 
 /// <summary>Uma linha do histórico da meta: quando, se guardou ou resgatou, de/pra qual conta e quanto.</summary>
 public record MetaHistoricoDto(Guid TransferenciaId, DateTime Data, string Tipo, Guid ContaId, string ContaNome, decimal Valor);

@@ -57,8 +57,8 @@ public static class DemoSeeder
     //    conta (o seeder corta, não inventa).
     private static async Task MetasAsync(IServiceProvider sp, AppDbContext context, Guid dev, Guid corrente, Guid poupanca, DateTime hoje)
     {
-        if (await context.Metas.AnyAsync(m => m.UsuarioId == dev))
-            return;
+        // Cada bloco olha se a meta dele já existe: dá pra acrescentar estado novo sem apagar o banco.
+        var jaTem = await context.Metas.Where(m => m.UsuarioId == dev).Select(m => m.Nome).ToListAsync();
         var svc = sp.GetRequiredService<MetaService>();
         var mes = new DateTime(hoje.Year, hoje.Month, 1);
         async Task<Guid> Meta(string nome, string icone, decimal alvo, DateTime? prazo, int criadaHaMeses, params (Guid Conta, decimal Valor)[] guardar)
@@ -79,11 +79,27 @@ public static class DemoSeeder
             }
             return m.Id;
         }
-        await Meta("Entrada do apê", "casa", 60000m, mes.AddMonths(14), 4, (corrente, 1500m), (poupanca, 3500m));
-        await Meta("Reserva de emergência", "emergencia", 10000m, null, 2, (poupanca, 2300m));
-        await Meta("Carro novo", "carro", 40000m, mes.AddMonths(24), 0, (corrente, 2000m));
-        var viagem = await Meta("Viagem de férias", "viagem", 6000m, mes.AddMonths(5), 1, (corrente, 6500m));
-        await svc.ResgatarAsync(viagem, new MovimentoMetaDto(corrente, 500m), dev, Guid.NewGuid().ToString());
+        if (!jaTem.Contains("Entrada do apê"))
+        {
+            await Meta("Entrada do apê", "casa", 60000m, mes.AddMonths(14), 4, (corrente, 1500m), (poupanca, 3500m));
+            await Meta("Reserva de emergência", "emergencia", 10000m, null, 2, (poupanca, 2300m));
+            await Meta("Carro novo", "carro", 40000m, mes.AddMonths(24), 0, (corrente, 2000m));
+            var viagem = await Meta("Viagem de férias", "viagem", 6000m, mes.AddMonths(5), 1, (corrente, 6500m));
+            await svc.ResgatarAsync(viagem, new MovimentoMetaDto(corrente, 500m), dev, Guid.NewGuid().ToString());
+        }
+        // Concluída de vez: chegou lá e o dinheiro foi usado ("Concluir e usar o dinheiro"), fica em Concluídas.
+        if (!jaTem.Contains("Notebook novo"))
+        {
+            var saldoC = (await RegrasFinanceiras.SaldoDaContaAsync(context, corrente, dev)).Saldo;
+            var saldoP = (await RegrasFinanceiras.SaldoDaContaAsync(context, poupanca, dev)).Saldo;
+            var (origem, saldo) = saldoC >= saldoP ? (corrente, saldoC) : (poupanca, saldoP);
+            if (saldo >= 1000m)
+            {
+                var alvo = Math.Min(3500m, Math.Floor(saldo));
+                var notebook = await Meta("Notebook novo", "celular", alvo, mes, 3, (origem, alvo));
+                await svc.ConcluirAsync(notebook, new ConcluirMetaDto(corrente), dev, Guid.NewGuid().ToString());
+            }
+        }
     }
 
     // ── Renda: o que o Gabriel declara esperar no mês (salário fixo + variável), pro cartão "Renda do mês" ter

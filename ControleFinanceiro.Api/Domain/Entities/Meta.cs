@@ -48,4 +48,15 @@ public class Meta
 
     /// <summary>Ícone escolhido (um de <c>MetaService.Icones</c>); null = alvo.</summary>
     public string? Icone { get; set; }
+
+    /// <summary>
+    /// Quando a pessoa concluiu a meta e levou o dinheiro pra uma conta ("Concluir e usar o dinheiro"). Concluída
+    /// fica em Concluídas com o histórico, a caixinha é encerrada e não guarda nem resgata mais (só reabrindo).
+    /// Guarda o DIA (do aparelho da pessoa, meia-noite), não o instante. Null = não concluída: aí "chegou lá" é só
+    /// guardado ≥ alvo, calculado.
+    /// </summary>
+    public DateTime? ConcluidaEm { get; set; }
+
+    /// <summary>Quanto a caixinha tinha quando a meta foi concluída (o que a pessoa juntou).</summary>
+    public decimal? ValorJuntado { get; set; }
 }

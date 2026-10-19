@@ -15,7 +15,7 @@ import Botao from "../componentes/Botao"
 import { Dinheiro } from "../componentes/Dinheiro"
 import Etiqueta from "../componentes/Etiqueta"
 import Segmentos from "../componentes/Segmentos"
-import { SITUACAO_META, iconeDaMeta, mesAnoCurto, tomDaBarra } from "../dominio/meta"
+import { etiquetaDaMeta, iconeDaMeta, mesAnoCurto, progressoDaMeta, tomDaBarra } from "../dominio/meta"
 import styles from "./Metas.module.css"
 
 type Aba = "andamento" | "concluidas"
@@ -87,8 +87,9 @@ function Numero({ rotulo, valor }: { rotulo: string; valor?: number }) {
 /** A caixinha da meta: ícone e situação em cima, nome, quanto tem, de quanto, a barra e o prazo. */
 function Cartao({ m }: { m: Meta }) {
   const Icone = iconeDaMeta(m.icone)
-  const situacao = SITUACAO_META[m.situacao]
+  const situacao = etiquetaDaMeta(m)
   const pct = Math.round(m.percentualConcluido)
+  const progresso = progressoDaMeta(m)
   return (
     <Link to={`/metas/${m.id}`} className={styles.cartao} data-concluida={m.concluida || undefined}>
       <span className={styles.cartaoTopo}>
@@ -97,12 +98,12 @@ function Cartao({ m }: { m: Meta }) {
       </span>
       <span className={styles.nome}>{m.nome}</span>
       <span className={styles.valores}>
-        <Dinheiro valor={m.guardado} className={styles.guardado} />
+        <Dinheiro valor={progresso} className={styles.guardado} />
         <span className={styles.de}>de <Dinheiro valor={m.valorAlvo} /></span>
       </span>
-      <BarraProgresso fracao={m.valorAlvo > 0 ? m.guardado / m.valorAlvo : 0} tom={tomDaBarra(m.situacao)} rotulo={`${pct}% guardado`} />
+      <BarraProgresso fracao={m.valorAlvo > 0 ? progresso / m.valorAlvo : 0} tom={tomDaBarra(m.situacao)} rotulo={`${pct}% ${m.concluidaEm ? "juntado" : "guardado"}`} />
       <span className={styles.rodape}>
-        <span>{m.dataLimite ? `Até ${mesAnoCurto(m.dataLimite)}` : "Sem prazo"}</span>
+        <span>{m.concluidaEm ? `Concluída em ${mesAnoCurto(m.concluidaEm)}` : m.dataLimite ? `Até ${mesAnoCurto(m.dataLimite)}` : "Sem prazo"}</span>
         {m.porMes !== null ? <span className={styles.porMes}><Dinheiro valor={m.porMes} />/mês</span> : <span className={styles.pct}>{pct}%</span>}
       </span>
     </Link>

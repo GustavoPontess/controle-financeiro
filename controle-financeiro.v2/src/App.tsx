@@ -93,6 +93,7 @@ export default function App() {
         <Route path="/metas/:id/editar" element={<MetaFormulario />} />
         <Route path="/metas/:id/guardar" element={<MovimentoMeta modo="guardar" />} />
         <Route path="/metas/:id/resgatar" element={<MovimentoMeta modo="resgatar" />} />
+        <Route path="/metas/:id/concluir" element={<MovimentoMeta modo="concluir" />} />
         <Route path="/familias" element={<Familias />} />
         <Route path="/familias/nova" element={<NovaFamilia />} />
         {/* Espaço da família: cada item do menu é uma página (modelo Notion/Slack, 2026-10-18). */}

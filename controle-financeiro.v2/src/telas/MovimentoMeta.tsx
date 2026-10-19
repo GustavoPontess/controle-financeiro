@@ -1,16 +1,17 @@
-// Guardar (/metas/:id/guardar) e resgatar (/metas/:id/resgatar), no modelo de caixinha: guardar TIRA o dinheiro
+// Guardar (/metas/:id/guardar), resgatar (/metas/:id/resgatar) e concluir (/metas/:id/concluir: a meta que chegou
+// lá manda o guardado TODO pra uma conta e fica em Concluídas), no modelo de caixinha: guardar TIRA o dinheiro
 // de uma conta e põe na caixinha da meta (vira uma transferência, fora do resultado do mês); resgatar devolve da
 // caixinha pra uma conta. Guardar não passa do saldo da conta escolhida; resgatar não passa do guardado.
 // A Idempotency-Key nasce ao abrir a tela e vai em todas as tentativas (duplo clique não move 2x).
 import { useEffect, useState } from "react"
 import { useLocation, useNavigate, useParams } from "react-router-dom"
-import { getMeta, guardarNaMeta, resgatarDaMeta } from "../services/metaService"
+import { concluirMeta, getMeta, guardarNaMeta, resgatarDaMeta } from "../services/metaService"
 import { getContas } from "../services/contaService"
 import { mensagemDeErro } from "../api/cliente"
 import type { Conta } from "../types/Conta"
 import type { Meta } from "../types/Meta"
 import Botao from "../componentes/Botao"
-import Campo from "../componentes/Campo"
+import Campo, { ValorFixo } from "../componentes/Campo"
 import { Dinheiro } from "../componentes/Dinheiro"
 import EntradaValor from "../componentes/EntradaValor"
 import Formulario, { Campos, LinhaCampos, PaginaFormulario, RodapeFormulario } from "../componentes/Formulario"
@@ -21,11 +22,12 @@ import styles from "./MetaFormulario.module.css"
 
 type Erros = Partial<Record<"conta" | "valor", string>>
 
-export default function MovimentoMeta({ modo }: { modo: "guardar" | "resgatar" }) {
+export default function MovimentoMeta({ modo }: { modo: "guardar" | "resgatar" | "concluir" }) {
   const { id = "" } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const voltarPara = (useLocation().state as { voltarPara?: string } | null)?.voltarPara ?? `/metas/${id}`
   const guardar = modo === "guardar"
+  const concluir = modo === "concluir"
   const [meta, setMeta] = useState<Meta | null>(null)
   const [contas, setContas] = useState<Conta[]>([])
   const [carregando, setCarregando] = useState(true)
@@ -61,10 +63,11 @@ export default function MovimentoMeta({ modo }: { modo: "guardar" | "resgatar" }
   const enviar = async () => {
     setErro(null)
     const e: Erros = {}
-    if (!contaId) e.conta = guardar ? "Escolha de qual conta sai." : "Escolha pra qual conta volta."
-    const v = parseMoney(valor)
-    if (!(v > 0)) e.valor = "Diga quanto."
-    else if (limite !== undefined && v > limite)
+    if (!contaId) e.conta = guardar ? "Escolha de qual conta sai." : concluir ? "Escolha pra qual conta vai o dinheiro." : "Escolha pra qual conta volta."
+    // Concluir leva o guardado todo: não tem valor pra digitar.
+    const v = concluir ? meta?.guardado ?? 0 : parseMoney(valor)
+    if (!concluir && !(v > 0)) e.valor = "Diga quanto."
+    else if (!concluir && limite !== undefined && v > limite)
       e.valor = guardar
         ? (limite > 0 ? `Só tem ${formatMoney(limite)} nessa conta.` : "Essa conta está sem saldo pra guardar.")
         : `A meta só tem ${formatMoney(limite)} guardado.`
@@ -72,7 +75,8 @@ export default function MovimentoMeta({ modo }: { modo: "guardar" | "resgatar" }
     if (Object.keys(e).length > 0) return
     setEnviando(true)
     try {
-      await (guardar ? guardarNaMeta : resgatarDaMeta)(id, contaId, v, dataLocalISO(), chave)
+      if (concluir) await concluirMeta(id, contaId, dataLocalISO(), chave)
+      else await (guardar ? guardarNaMeta : resgatarDaMeta)(id, contaId, v, dataLocalISO(), chave)
       navigate(voltarPara, { replace: true })
     } catch (err) {
       const msg = mensagemDeErro(err)
@@ -83,7 +87,8 @@ export default function MovimentoMeta({ modo }: { modo: "guardar" | "resgatar" }
   }
 
   return (
-    <PaginaFormulario titulo={guardar ? `Guardar em ${meta?.nome ?? "…"}` : `Resgatar de ${meta?.nome ?? "…"}`} carregando={carregando} erroCarga={erroCarga}>
+    <PaginaFormulario titulo={guardar ? `Guardar em ${meta?.nome ?? "…"}` : concluir ? `Concluir ${meta?.nome ?? "…"}` : `Resgatar de ${meta?.nome ?? "…"}`}
+      carregando={carregando} erroCarga={erroCarga}>
       <Formulario onSubmit={() => { void enviar() }}>
         <Campos>
           {erro && <p className={styles.alerta} role="alert">{erro}</p>}
@@ -95,15 +100,19 @@ export default function MovimentoMeta({ modo }: { modo: "guardar" | "resgatar" }
             </div>
           )}
           <LinhaCampos colunas="minmax(0, 2fr) minmax(0, 1fr)">
-            <Campo rotulo={guardar ? "De qual conta sai" : "Pra qual conta volta"} erro={erros.conta}>
+            <Campo rotulo={guardar ? "De qual conta sai" : concluir ? "Pra qual conta vai o dinheiro" : "Pra qual conta volta"} erro={erros.conta}>
               <Selecao valor={contaId} placeholder={opcoes.length === 0 ? "Nenhuma conta" : "Escolha a conta"} desabilitado={opcoes.length === 0}
                 invalido={!!erros.conta} opcoes={opcoes} onChange={(x) => { setContaId(x); limpa("conta"); limpa("valor") }} />
             </Campo>
-            <Campo rotulo="Quanto" erro={erros.valor}>
-              <EntradaValor compacto valor={valor} autoFocus onChange={(x) => { setValor(x); limpa("valor") }} />
-            </Campo>
+            {concluir ? (
+              <Campo rotulo="Quanto" estatico><ValorFixo><Dinheiro valor={meta?.guardado ?? 0} /></ValorFixo></Campo>
+            ) : (
+              <Campo rotulo="Quanto" erro={erros.valor}>
+                <EntradaValor compacto valor={valor} autoFocus onChange={(x) => { setValor(x); limpa("valor") }} />
+              </Campo>
+            )}
           </LinhaCampos>
-          {limite !== undefined && limite > 0 && (
+          {!concluir && limite !== undefined && limite > 0 && (
             <Botao variante="texto" onClick={() => { setValor(moneyParaCampo(limite)); limpa("valor") }}>
               {guardar ? `Guardar tudo que tem na conta (${formatMoney(limite)})` : `Resgatar tudo (${formatMoney(limite)})`}
             </Botao>
@@ -111,7 +120,9 @@ export default function MovimentoMeta({ modo }: { modo: "guardar" | "resgatar" }
         </Campos>
         <RodapeFormulario>
           <Botao onClick={() => navigate(voltarPara, { replace: true })} disabled={enviando}>Cancelar</Botao>
-          <Botao variante="primario" type="submit" disabled={enviando}>{enviando ? (guardar ? "Guardando…" : "Resgatando…") : guardar ? "Guardar" : "Resgatar"}</Botao>
+          <Botao variante="primario" type="submit" disabled={enviando}>
+            {enviando ? (guardar ? "Guardando…" : concluir ? "Concluindo…" : "Resgatando…") : guardar ? "Guardar" : concluir ? "Concluir meta" : "Resgatar"}
+          </Botao>
         </RodapeFormulario>
       </Formulario>
     </PaginaFormulario>

@@ -999,6 +999,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<Guid?>("CategoriaId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("ConcluidaEm")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<Guid?>("ContaId")
                         .HasColumnType("uuid");
 
@@ -1026,6 +1029,9 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<decimal>("ValorAlvo")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal?>("ValorJuntado")
                         .HasColumnType("numeric");
 
                     b.HasKey("Id");
