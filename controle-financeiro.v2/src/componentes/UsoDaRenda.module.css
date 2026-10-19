@@ -32,6 +32,15 @@
 .livre .valor { color: var(--v2-positivo); }
 .livre[data-passou="true"] .nome, .livre[data-passou="true"] .valor { color: var(--v2-negativo); }
 
+/* Faturas a pagar: à parte da barra (caixa, não gasto) */
+.grupoTotal { margin-left: 6px; font-weight: 600; color: var(--v2-texto-2); font-variant-numeric: tabular-nums; }
+.faturas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.faturas li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 5px 0; font-size: var(--v2-fs-sm); }
+.faturaNome { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: inherit; text-decoration: none; }
+.faturaNome:hover { text-decoration: underline; text-decoration-color: var(--v2-linha-forte); text-underline-offset: 3px; }
+.faturaValor { grid-column: 3; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+.mudo { color: var(--v2-texto-3); font-weight: 400; }
+
 /* A resposta do mês (componentes/Resposta) */
 .respostaLugar { margin-top: 6px; }
 

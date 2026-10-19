@@ -537,6 +537,38 @@ public static class RegrasFinanceiras
         return resultado;
     }
 
+    /// <summary>Uma fatura a pagar: quanto cobra no total, quanto já foi pago e o que falta.</summary>
+    public sealed record FaturaAPagar(Guid FaturaId, Guid CartaoId, string Cartao, DateTime DataInicio, DateTime DataFechamento,
+        DateTime DataVencimento, decimal Total, decimal Pago, decimal Restante, bool Atrasada);
+
+    /// <summary>
+    /// As faturas que a pessoa tem que pagar no mês: as que VENCEM nele com algo a pagar, mais as de antes que ficaram
+    /// sem pagar (atrasadas). Total pela regra da fatura (<see cref="CompoeTotalFatura(Transacao)"/> + parcelas não
+    /// canceladas, com juros), escrita em SQL; restante nunca negativo (<see cref="ValorRestanteFatura(decimal, decimal)"/>).
+    /// É o lado do CAIXA (quando o dinheiro sai da conta): as compras dessas faturas já contaram como gasto no mês em
+    /// que foram feitas, então isto nunca soma no gasto do mês.
+    /// </summary>
+    public static async Task<List<FaturaAPagar>> FaturasAPagarNoMesAsync(AppDbContext context, Guid usuarioId, int ano, int mes)
+    {
+        var inicio = new DateTime(ano, mes, 1);
+        var fim = inicio.AddMonths(1);
+        var linhas = await context.Faturas.AsNoTracking()
+            .Where(f => f.CartaoCredito.CriadoPor == usuarioId && f.CartaoCredito.Ativo && f.DataVencimento < fim)
+            .Select(f => new
+            {
+                f.Id, f.CartaoCreditoId, Cartao = f.CartaoCredito.Nome, f.DataInicio, f.DataFechamento, f.DataVencimento, f.ValorPago,
+                Total = f.Transacoes.Where(t => t.UsadoComoCredito && t.Ativo).Sum(t => t.Valor)
+                        + f.ParcelasTransacao.Where(p => p.Status != StatusParcela.Cancelada).Sum(p => p.ValorComJuros ?? p.Valor),
+            })
+            .ToListAsync();
+        return linhas
+            .Select(l => new FaturaAPagar(l.Id, l.CartaoCreditoId, l.Cartao, l.DataInicio, l.DataFechamento, l.DataVencimento,
+                l.Total, l.ValorPago, ValorRestanteFatura(l.Total, l.ValorPago), l.DataVencimento < inicio))
+            .Where(f => f.Restante > 0)
+            .OrderBy(f => f.DataVencimento).ThenBy(f => f.Cartao)
+            .ToList();
+    }
+
     /// <summary>Uma despesa prevista no mês que ainda não aconteceu (a ocorrência de uma conta fixa, quase sempre).</summary>
     public sealed record PrevistoDoMes(Guid TransacaoId, Guid? ContaFixaId, string Descricao, DateOnly Data, Guid? CategoriaId, decimal Valor);
 

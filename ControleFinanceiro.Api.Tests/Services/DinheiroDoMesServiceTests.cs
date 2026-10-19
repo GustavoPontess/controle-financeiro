@@ -125,6 +125,45 @@ public class DinheiroDoMesServiceTests
         Assert.Equal(("Outras", 300m), (mes.JaSaiuPorCategoria[^1].Nome, mes.JaSaiuPorCategoria[^1].Valor)); // C1 + C2
     }
 
+    [Fact]
+    public async Task FaturasAPagar_SaoOLadoDoCaixa_NaoSomamNoGastoDoMes()
+    {
+        var ctx = CreateContext();
+        var u = Usuario(ctx);
+        RendaEsperada(ctx, u, 3000m);
+        var nubank = new CartaoCredito { Id = Guid.NewGuid(), Nome = "Nubank", CriadoPor = u, TemCredito = true };
+        ctx.CartoesCredito.Add(nubank);
+        Fatura NovaFatura(int mesVencimento, decimal pago) => new()
+        {
+            Id = Guid.NewGuid(), CartaoCreditoId = nubank.Id, CriadoPor = u, ValorPago = pago,
+            DataInicio = new DateTime(2026, mesVencimento - 1, 3).AddMonths(-1), DataFechamento = new DateTime(2026, mesVencimento, 3).AddMonths(-1),
+            DataVencimento = new DateTime(2026, mesVencimento, 10),
+        };
+        var outubro = NovaFatura(10, pago: 200m);   // compras de setembro, R$ 200 já pagos
+        var setembro = NovaFatura(9, pago: 0m);     // venceu em setembro e ficou sem pagar
+        var agosto = NovaFatura(8, pago: 300m);     // paga toda
+        var novembro = NovaFatura(11, pago: 0m);    // vence só no mês que vem
+        ctx.Faturas.AddRange(outubro, setembro, agosto, novembro);
+        void Compra(Fatura f, decimal valor, int mes) => ctx.Transacoes.Add(new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "Compra", Valor = valor, Tipo = TipoTransacao.Despesa, CriadoPor = u, CartaoCreditoId = nubank.Id,
+            FaturaId = f.Id, UsadoComoCredito = true, Data = new DateOnly(2026, mes, 15), StatusTransacao = StatusTransacao.Executado, Ativo = true,
+        });
+        Compra(outubro, 1200m, 9);
+        Compra(setembro, 150m, 8);
+        Compra(agosto, 300m, 7);
+        Compra(novembro, 500m, 10);
+        ctx.SaveChanges();
+
+        var mes = await Servico(ctx).CalcularAsync(u, 2026, 10);
+
+        Assert.Equal([("Nubank", 150m, true), ("Nubank", 1000m, false)], mes.Faturas.Select(f => (f.Cartao, f.Restante, f.Atrasada)));
+        Assert.Equal((1200m, 200m), (mes.Faturas[1].Total, mes.Faturas[1].Pago));
+        Assert.Equal(1150m, mes.FaturasAPagar);
+        Assert.Equal(500m, mes.JaSaiu);       // só a compra de outubro; a fatura não soma no gasto
+        Assert.Equal(2500m, mes.Livre);       // nem no livre (as compras já contaram quando foram feitas)
+    }
+
     [Theory]
     [InlineData(900, 200, "alerta", "Com o que ainda vem (R$ 200,00 em contas), o mês passa R$ 100,00 da renda.")]
     [InlineData(950, 0, "alerta", "Sobra pouco: R$ 50,00 até o fim do mês, contando o que ainda entra e sai.")]

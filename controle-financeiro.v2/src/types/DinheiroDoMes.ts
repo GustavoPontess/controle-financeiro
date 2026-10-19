@@ -20,6 +20,22 @@ export interface AindaVem {
   valor: number
 }
 
+/** Fatura de cartão a pagar no mês: o lado do caixa (as compras dela já contaram como gasto quando foram feitas). */
+export interface FaturaDoMes {
+  faturaId: string
+  cartaoId: string
+  cartao: string
+  /** Período das compras (ISO). */
+  dataInicio: string
+  dataFechamento: string
+  dataVencimento: string
+  total: number
+  pago: number
+  restante: number
+  /** Venceu antes deste mês e ficou algo por pagar. */
+  atrasada: boolean
+}
+
 export interface AcaoResposta {
   rotulo: string
   /** Rota do app. */
@@ -47,4 +63,7 @@ export interface DinheiroDoMes {
   jaSaiuPorCategoria: ParteDoMes[]
   aindaVem: AindaVem[]
   resposta: RespostaDoMes
+  /** Faturas a pagar no mês: fora do gasto e do livre (as compras já contaram quando foram feitas). */
+  faturas: FaturaDoMes[]
+  faturasAPagar: number
 }

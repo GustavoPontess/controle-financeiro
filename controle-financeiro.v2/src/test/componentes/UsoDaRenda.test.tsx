@@ -14,6 +14,11 @@ const base: DinheiroDoMes = {
   ],
   aindaVem: [{ transacaoId: "t1", contaFixaId: "cf1", descricao: "Internet", data: "2026-10-20", categoriaId: "moradia", categoria: "Moradia", valor: 99.9 }],
   resposta: { tom: "negativo", texto: "Saiu mais do que entrou: R$ 2.173,90 acima da renda.", acoes: [{ rotulo: "Classificar lançamentos", para: "/transacoes" }] },
+  faturas: [
+    { faturaId: "f0", cartaoId: "inter", cartao: "Inter", dataInicio: "2026-08-05T00:00:00", dataFechamento: "2026-09-04T00:00:00", dataVencimento: "2026-09-12T00:00:00", total: 150, pago: 0, restante: 150, atrasada: true },
+    { faturaId: "f1", cartaoId: "nubank", cartao: "Nubank", dataInicio: "2026-09-03T00:00:00", dataFechamento: "2026-10-02T00:00:00", dataVencimento: "2026-10-10T00:00:00", total: 1200, pago: 200, restante: 1000, atrasada: false },
+  ],
+  faturasAPagar: 1150,
 }
 const Onde = () => <p>em {useLocation().pathname}</p>
 const renderizar = (dados: DinheiroDoMes) => render(
@@ -39,6 +44,16 @@ describe("UsoDaRenda", () => {
     expect(within(vem).getByRole("link")).toHaveAttribute("href", "/contas-fixas/cf1")
     expect(within(vem).getByRole("link")).toHaveTextContent("Internet · dia 20 · Moradia")
     expect(screen.getByText("Passou da renda")).toBeInTheDocument()
+
+    // Faturas: à parte, com quando vence, de quando são as compras e o que falta pagar.
+    const faturas = screen.getByRole("list", { name: "Faturas a pagar este mês" })
+    const [inter, nubank] = within(faturas).getAllByRole("listitem")
+    expect(inter).toHaveTextContent("Inter · venceu 12/9 · compras de 5/8 a 4/9")
+    expect(inter).toHaveTextContent("Atrasada")
+    expect(nubank).toHaveTextContent("Nubank · vence dia 10 · compras de 3/9 a 2/10")
+    expect(nubank).toHaveTextContent("R$ 1.000,00 de R$ 1.200,00")
+    expect(within(nubank).getByRole("link")).toHaveAttribute("href", "/cartoes/nubank")
+    expect(screen.getByText(/Faturas a pagar este mês/)).toHaveTextContent("R$ 1.150,00")
   })
 
   it("a resposta leva pra ação", async () => {
