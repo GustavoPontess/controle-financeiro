@@ -482,4 +482,78 @@ public static class RegrasFinanceiras
     /// <summary>Limite usado de UM cartão (mesma regra/consultas de <see cref="LimitesUsadosDosCartoesAsync"/>).</summary>
     public static async Task<decimal> LimiteUsadoDoCartaoAsync(AppDbContext context, Guid cartaoId, Guid usuarioId) =>
         (await LimitesUsadosDosCartoesAsync(context, new[] { cartaoId }, usuarioId))[cartaoId];
+
+    // ── Gasto do mês por categoria ───────────────────────────────────────────
+
+    /// <summary>O que foi gasto (efetivado) e o que ainda está previsto numa categoria no mês.</summary>
+    public readonly record struct GastoCategoria(decimal Gasto, decimal Previsto);
+
+    /// <summary>Chave de "sem categoria" no dicionário de <see cref="GastosPorCategoriaDoMesAsync"/>.</summary>
+    public static readonly Guid SemCategoria = Guid.Empty;
+
+    /// <summary>
+    /// Gasto do mês de uma pessoa por categoria (Limites; depois Relatórios). Regra única:
+    /// <list type="bullet">
+    /// <item>despesa que entra no resultado (<see cref="EntraNoResultado"/>), em conta ou à vista no cartão, pela
+    /// data do lançamento; efetivada é gasto, prevista (conta fixa que ainda vai cair) é previsto;</item>
+    /// <item>compra parcelada conta a PARCELA no mês dela (o valor com juros, se tiver), não o total no mês da
+    /// compra. Parcelamento não vira lançamento: antes ficava de fora e o limite mostrava menos do que foi gasto.</item>
+    /// </list>
+    /// Parcela cancelada e parcelamento cancelado saem. Subcategoria soma na categoria dela.
+    /// </summary>
+    public static async Task<Dictionary<Guid, GastoCategoria>> GastosPorCategoriaDoMesAsync(
+        AppDbContext context, Guid usuarioId, int ano, int mes)
+    {
+        var inicio = new DateOnly(ano, mes, 1);
+        var fim = inicio.AddMonths(1);
+        var lancamentos = await context.Transacoes.AsNoTracking()
+            .Where(t => t.CriadoPor == usuarioId && t.Tipo == TipoTransacao.Despesa && t.Ativo
+                        && t.StatusTransacao != StatusTransacao.Cancelado && t.Data >= inicio && t.Data < fim)
+            .Where(EntraNoResultado)
+            .GroupBy(t => new { t.CategoriaId, Efetivado = t.StatusTransacao == StatusTransacao.Executado })
+            .Select(g => new { g.Key.CategoriaId, g.Key.Efetivado, Total = g.Sum(t => t.Valor) })
+            .ToListAsync();
+
+        var de = inicio.ToDateTime(TimeOnly.MinValue);
+        var ate = fim.ToDateTime(TimeOnly.MinValue);
+        var parcelas = await context.ParcelasTransacao.AsNoTracking()
+            .Where(p => p.Parcelamento!.CriadoPor == usuarioId && p.Parcelamento.Ativo
+                        && p.Status != StatusParcela.Cancelada && p.DataVencimento >= de && p.DataVencimento < ate)
+            .GroupBy(p => p.Parcelamento!.CategoriaId)
+            .Select(g => new { CategoriaId = g.Key, Total = g.Sum(p => p.ValorComJuros ?? p.Valor) })
+            .ToListAsync();
+
+        var resultado = new Dictionary<Guid, GastoCategoria>();
+        void Soma(Guid? categoriaId, decimal gasto, decimal previsto)
+        {
+            var chave = categoriaId ?? SemCategoria;
+            var atual = resultado.GetValueOrDefault(chave);
+            resultado[chave] = new GastoCategoria(atual.Gasto + gasto, atual.Previsto + previsto);
+        }
+        foreach (var l in lancamentos)
+            Soma(l.CategoriaId, l.Efetivado ? l.Total : 0m, l.Efetivado ? 0m : l.Total);
+        foreach (var p in parcelas)
+            Soma(p.CategoriaId, p.Total, 0m);
+        return resultado;
+    }
+
+    /// <summary>Uma despesa prevista no mês que ainda não aconteceu (a ocorrência de uma conta fixa, quase sempre).</summary>
+    public sealed record PrevistoDoMes(Guid TransacaoId, Guid? ContaFixaId, string Descricao, DateOnly Data, Guid? CategoriaId, decimal Valor);
+
+    /// <summary>
+    /// O que ainda vai sair no mês: as despesas PREVISTAS (mesmo recorte do "previsto" de
+    /// <see cref="GastosPorCategoriaDoMesAsync"/>), da data mais perto pra mais longe.
+    /// </summary>
+    public static async Task<List<PrevistoDoMes>> PrevistosDoMesAsync(AppDbContext context, Guid usuarioId, int ano, int mes)
+    {
+        var inicio = new DateOnly(ano, mes, 1);
+        var fim = inicio.AddMonths(1);
+        return await context.Transacoes.AsNoTracking()
+            .Where(t => t.CriadoPor == usuarioId && t.Tipo == TipoTransacao.Despesa && t.Ativo
+                        && t.StatusTransacao == StatusTransacao.Previsao && t.Data >= inicio && t.Data < fim)
+            .Where(EntraNoResultado)
+            .OrderBy(t => t.Data).ThenBy(t => t.Descricao)
+            .Select(t => new PrevistoDoMes(t.Id, t.RecorrenteOrigemId, t.Descricao, t.Data, t.CategoriaId, t.Valor))
+            .ToListAsync();
+    }
 }

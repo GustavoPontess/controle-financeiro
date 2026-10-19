@@ -31,7 +31,7 @@ import Marcar from "../componentes/Marcar"
 import type { Periodo } from "../componentes/NavegadorMes"
 import Selecao from "../componentes/Selecao"
 import { APROVACAO, MAX_PAPEL, MODOS_RATEIO, PAPEL_PERMISSAO, fraseSaldo, primeiroNome, rotuloTipoDependente, sugerirEquilibrio } from "../dominio/familia"
-import { dataBR } from "../utils/dateTime"
+import { dataBR, diaDeInstante } from "../utils/dateTime"
 import { moneyParaCampo, parseMoney } from "../utils/money"
 import styles from "./Familia.module.css"
 
@@ -224,7 +224,7 @@ export function Membro({ m, familia, meuId, mesNome, renda, aoMudar }: {
       <ItemFicha id={`membro-${m.id}`} aberto={aberto} aoAbrir={() => setAberto((a) => !a)}
         marca={<InicialFicha texto={m.nomeUsuario} destaque={sou} foto={urlFoto(m.usuarioId, m.fotoEm)} />}
         titulo={<>{m.nomeUsuario}{sou && <span className={styles.voce}> você</span>}</>}
-        detalhe={`${m.papel} · desde ${dataBR(m.entrouEm)}`}
+        detalhe={`${m.papel} · desde ${diaDeInstante(m.entrouEm)}`}
         direita={m.papelPermissao === PAPEL_PERMISSAO.admin ? <Etiqueta>Admin</Etiqueta> : m.papelPermissao === PAPEL_PERMISSAO.dependente ? <Etiqueta>Só vê</Etiqueta> : undefined}>
         <Alerta erro={erro} />
         <DadosFicha>
@@ -294,7 +294,7 @@ export function Convite({ c, familiaId, admin, aoMudar }: { c: ConviteFamilia; f
   }
   return (
     <ItemFicha id={`convite-${c.id}`} aberto={aberto} aoAbrir={() => setAberto((a) => !a)} apagado
-      marca={<InicialFicha texto={c.emailConvidado} />} titulo={c.emailConvidado} detalhe={`${c.papel} · vale até ${dataBR(c.expiraEm)}`}
+      marca={<InicialFicha texto={c.emailConvidado} />} titulo={c.emailConvidado} detalhe={`${c.papel} · vale até ${diaDeInstante(c.expiraEm)}`}
       direita={<Etiqueta tom="alerta">Aguardando</Etiqueta>}>
       <Alerta erro={erro} />
       <DadosFicha>
@@ -375,7 +375,7 @@ export function Acerto({ a, familiaId, podeAgir, aoMudar, foto }: { a: AcertoCon
       <ItemFicha id={`acerto-${a.id}`} aberto={aberto} aoAbrir={() => setAberto((act) => !act)}
         marca={<InicialFicha texto={a.deNome} foto={foto} />}
         titulo={<>{primeiroNome(a.deNome)} <ArrowRight size={14} strokeWidth={2.5} aria-hidden="true" className={styles.seta} /> {primeiroNome(a.paraNome)}</>}
-        detalhe={`${dataBR(a.criadoEm)}${a.observacao ? ` · ${a.observacao}` : ""}`}
+        detalhe={`${diaDeInstante(a.criadoEm)}${a.observacao ? ` · ${a.observacao}` : ""}`}
         direita={<Dinheiro valor={a.valor} className={styles.valor} />}>
         <Alerta erro={erro} />
         {podeAgir ? <AcoesFicha><Botao variante="texto" perigo disabled={ocupado} onClick={() => setConfirmando(true)}>Desfazer</Botao></AcoesFicha> : <p className={styles.dica}>Registrado por quem lança.</p>}

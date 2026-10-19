@@ -130,6 +130,8 @@ builder.Services.AddScoped<ReconciliacaoService>();
 builder.Services.AddScoped<CartaoCreditoService>();
 builder.Services.AddScoped<FaturaService>();
 builder.Services.AddScoped<OrcamentoService>();
+builder.Services.AddScoped<DinheiroDoMesService>();
+builder.Services.AddScoped<ViabilidadeMetaService>();
 builder.Services.AddScoped<MetaService>();
 
 // Issue #22 — Família + Membros
@@ -174,6 +176,7 @@ builder.Services.AddScoped<FaturaAtrasoJob>();
 builder.Services.AddScoped<ExpandirRecorrentesJob>();
 builder.Services.AddScoped<ExecutarRecorrentesJob>();
 builder.Services.AddScoped<RecalcularLimitesJob>();
+builder.Services.AddScoped<AlertaLimitesJob>();
 builder.Services.AddScoped<PurgaExclusaoExpiradaJob>();
 builder.Services.AddScoped<PurgaRegistroAcessoExpiradoJob>();
 
@@ -586,6 +589,7 @@ if (!isTesting)
         recManager.AddOrUpdate<ExpandirRecorrentesJob>("expandir-recorrentes", job => job.ExecuteAsync(), "0 3 * * *", utc);
         recManager.AddOrUpdate<ExecutarRecorrentesJob>("executar-recorrentes", job => job.ExecuteAsync(), "30 3 * * *", utc);
         recManager.AddOrUpdate<RecalcularLimitesJob>("recalcular-limites", job => job.ExecuteAsync(), "0 * * * *", utc);
+        recManager.AddOrUpdate<AlertaLimitesJob>("alerta-limites", job => job.ExecuteAsync(null), "15 * * * *", utc);
         // Purga LGPD (Módulo C): 4h UTC, purga contas com carência de exclusão vencida.
         recManager.AddOrUpdate<PurgaExclusaoExpiradaJob>("purga-exclusao-lgpd", job => job.ExecuteAsync(), "0 4 * * *", utc);
         // Retenção Marco Civil (Art. 15): 4h30 UTC, purga registros de acesso com guarda de 6 meses vencida.

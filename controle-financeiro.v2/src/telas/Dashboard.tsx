@@ -1,15 +1,18 @@
-// Visão geral do v2: o saldo num palco escuro com os 4 números do mês; embaixo, evolução, maiores gastos,
-// recentes, contas e cartões — mesmos dados do /dashboard do app atual.
+// Visão geral do v2: o saldo num palco escuro com os 4 números do mês; logo abaixo, a renda do mês e o que está
+// comendo ela, com a resposta "vai dar?" (UsoDaRenda, docs/features/respostas/visao.md); embaixo, evolução,
+// maiores gastos, recentes, contas e cartões.
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { ArrowDownLeft, ArrowDownRight, ArrowLeftRight, ArrowUpRight, ChevronLeft, ChevronRight, CreditCard } from "lucide-react"
+import { ArrowDownLeft, ArrowDownRight, ArrowLeftRight, ArrowUpRight, ChevronLeft, ChevronRight, CreditCard, PiggyBank } from "lucide-react"
 import { getDashboard } from "../services/dashboardService"
-import { getRendaMes } from "../services/rendaService"
-import type { RendaMes } from "../types/Renda"
+import { getDinheiroDoMes } from "../services/dinheiroDoMesService"
+import type { DinheiroDoMes } from "../types/DinheiroDoMes"
+import UsoDaRenda from "../componentes/UsoDaRenda"
 import type { DashboardData, TransacaoRecente } from "../types/Dashboard"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import { Dinheiro, diaCurto, variacao, type TomDinheiro } from "../componentes/Dinheiro"
 import LogoMarca from "../componentes/LogoMarca"
+import { TIPO_CONTA } from "../dominio/conta"
 import GraficoLinha from "../componentes/GraficoLinha"
 import styles from "./Dashboard.module.css"
 
@@ -20,14 +23,15 @@ export default function Dashboard() {
   const [ref, setRef] = useState({ ano: hoje.getFullYear(), mes: hoje.getMonth() + 1 })
   const [dados, setDados] = useState<DashboardData | null>(null)
   const [erro, setErro] = useState(false)
-  // Renda do mês (previsto × recebido): pedido à parte, a Visão geral não espera por ele.
-  const [renda, setRenda] = useState<RendaMes | null>(null)
+  // O dinheiro do mês (renda × o que saiu e o que vem): pedido à parte, a Visão geral não espera por ele.
+  const [mesDinheiro, setMesDinheiro] = useState<DinheiroDoMes | null>(null)
+  const [erroMes, setErroMes] = useState(false)
 
   useEffect(() => {
     let vivo = true
-    setDados(null); setErro(false); setRenda(null)
+    setDados(null); setErro(false); setMesDinheiro(null); setErroMes(false)
     getDashboard(ref.ano, ref.mes).then((d) => { if (vivo) setDados(d) }).catch(() => { if (vivo) setErro(true) })
-    getRendaMes(ref.ano, ref.mes).then((r) => { if (vivo) setRenda(r) }).catch(() => { /* o cartão fica sem número */ })
+    getDinheiroDoMes(ref.ano, ref.mes).then((m) => { if (vivo) setMesDinheiro(m) }).catch(() => { if (vivo) setErroMes(true) })
     return () => { vivo = false }
   }, [ref])
 
@@ -39,6 +43,7 @@ export default function Dashboard() {
   const mesAnterior = MESES[(ref.mes + 10) % 12]
   const d = dados
   const diferenca = d ? d.saldoTotal - d.saldoMesAnterior : 0
+  const caixinhas = d ? d.saldoContas.filter((c) => c.tipo === TIPO_CONTA.caixinha).reduce((s, c) => s + c.saldo, 0) : 0
 
   return (
     <div className={styles.pagina}>
@@ -65,42 +70,16 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <Bloco titulo="Renda do mês" acao="Ver renda" para="/renda">
-        {!renda ? <Esqueleto linhas={1} altura={28} /> : (
-          <div className={styles.renda}>
-            <div className={styles.rendaNumero}><span className={styles.rendaRotulo}>Esperado</span><Dinheiro valor={renda.previsto} className={styles.rendaValor} /></div>
-            <div className={styles.rendaNumero}><span className={styles.rendaRotulo}>Recebido</span><Dinheiro valor={renda.recebido} className={styles.rendaValor} tom="positivo" /></div>
-            <div className={styles.rendaNumero}>
-              <span className={styles.rendaRotulo}>{renda.falta > 0 ? "Falta" : "A mais que o previsto"}</span>
-              <Dinheiro valor={renda.falta > 0 ? renda.falta : Math.max(0, renda.recebido - renda.previsto)} className={styles.rendaValor} />
-            </div>
-            <span className={styles.rendaDetalhe}>
-              {renda.previsto === 0
-                ? (renda.sugestaoMedia3Meses !== null ? <>Diga o que espera receber; nos últimos meses caiu em média <Dinheiro valor={renda.sugestaoMedia3Meses} />.</> : "Diga em Renda o que espera receber por mês.")
-                : <>Fixa <Dinheiro valor={renda.fixaEsperada} /> · variável <Dinheiro valor={renda.variavelEsperada} /></>}
-            </span>
-          </div>
-        )}
+      <Bloco titulo={`Renda de ${MESES[ref.mes - 1].toLowerCase()}`} acao="Ver renda" para="/renda">
+        {erroMes ? <p className={styles.erroMes} role="alert">Não deu pra carregar a renda do mês.</p>
+          : !mesDinheiro ? <Esqueleto linhas={4} altura={18} /> : <UsoDaRenda dados={mesDinheiro} />}
       </Bloco>
 
-      <div className={styles.grade}>
-        <Bloco titulo="Saldo nos últimos meses">
-          {d ? <GraficoLinha pontos={d.evolucaoSaldo.map((p) => ({ rotulo: p.label, valor: p.saldo }))} /> : <Esqueleto linhas={4} altura={18} />}
-        </Bloco>
-        <Bloco titulo="Maiores gastos do mês">
-          {!d ? <Esqueleto /> : d.topCategorias.length === 0 ? <Vazio texto="Sem gastos neste mês." /> : (
-            <ul className={styles.categorias}>
-              {d.topCategorias.slice(0, 5).map((c) => (
-                <li key={c.descricao} className={styles.categoria}>
-                  <span className={styles.categoriaNome}>{c.descricao}</span>
-                  <span className={styles.categoriaValor}><Dinheiro valor={c.valor} /> <span className={styles.categoriaPct}>{Math.round(c.percentual)}%</span></span>
-                  <span className={styles.trilho}><span className={styles.trilhoFill} style={{ width: `${Math.min(100, c.percentual)}%` }} /></span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Bloco>
-      </div>
+      {/* "Maiores gastos do mês" saiu: as categorias moram no cartão da renda (mesma regra do limite, com o cartão);
+          o bloco antigo contava só o que saiu da conta e mostrava outro número pro mesmo nome. */}
+      <Bloco titulo="Saldo nos últimos meses">
+        {d ? <GraficoLinha pontos={d.evolucaoSaldo.map((p) => ({ rotulo: p.label, valor: p.saldo }))} /> : <Esqueleto linhas={4} altura={18} />}
+      </Bloco>
 
       <div className={styles.grade}>
         <Bloco titulo="Transações recentes" acao="Ver todas" para="/transacoes" semRespiro>
@@ -112,13 +91,23 @@ export default function Dashboard() {
           <Bloco titulo="Contas" acao="Ver todas" para="/bancos" semRespiro>
             {!d ? <div className={styles.respiro}><Esqueleto linhas={3} /></div> : (
               <ul className={styles.lista}>
-                {d.saldoContas.map((c) => (
+                {d.saldoContas.filter((c) => c.tipo !== TIPO_CONTA.caixinha).map((c) => (
                   <li key={c.id} className={styles.linha}>
                     <LogoMarca nome={c.nome} logoUrl={c.logoUrl} cor={c.cor} tamanho={36} />
                     <span className={styles.texto}><span className={styles.nome}>{c.nome}</span><span className={styles.sub}>{c.tipoDescricao}</span></span>
                     <Dinheiro valor={c.saldo} className={styles.valor} tom={c.saldo < 0 ? "negativo" : undefined} />
                   </li>
                 ))}
+                {/* As caixinhas das metas numa linha só (o dinheiro guardado nelas continua no saldo total). */}
+                {caixinhas > 0 && (
+                  <li>
+                    <Link to="/metas" className={styles.linha}>
+                      <span className={styles.icone} data-tom="acento" aria-hidden="true"><PiggyBank size={17} strokeWidth={2.25} /></span>
+                      <span className={styles.texto}><span className={styles.nome}>Caixinhas das metas</span><span className={styles.sub}>Guardado nas metas</span></span>
+                      <Dinheiro valor={caixinhas} className={styles.valor} />
+                    </Link>
+                  </li>
+                )}
               </ul>
             )}
           </Bloco>

@@ -170,6 +170,21 @@ public class RelatorioServiceTests
     }
 
     [Fact]
+    public async Task GetRelatorioAsync_RotuloDoMesFixo_MesmoComCulturaInvariante()
+    {
+        // Antes: new CultureInfo("pt-BR"), que na imagem alpine (globalização invariante) lança erro.
+        var antes = System.Globalization.CultureInfo.CurrentCulture;
+        System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
+        try
+        {
+            var rel = await new RelatorioService(CreateContext()).GetRelatorioAsync(Guid.NewGuid(), 2026);
+            Assert.Equal(["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"],
+                rel.EvolucaoMensal.OrderBy(m => m.Mes).Select(m => m.MesLabel));
+        }
+        finally { System.Globalization.CultureInfo.CurrentCulture = antes; }
+    }
+
+    [Fact]
     public async Task GetRelatorioAsync_SaldoFimDoMes_EhOSaldoRealDasContas_ComOQueVinhaDeAntes()
     {
         // Caso real (dogfood 2026-10-09): abril saiu 916,58 a mais do que entrou, mas a conta terminou

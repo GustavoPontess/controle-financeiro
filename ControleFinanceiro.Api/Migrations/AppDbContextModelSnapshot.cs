@@ -999,6 +999,12 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<Guid?>("CategoriaId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("ConcluidaEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("ContaId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("timestamp without time zone");
 
@@ -1011,6 +1017,10 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<Guid?>("FamiliaId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Icone")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasColumnType("text");
@@ -1021,12 +1031,16 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<decimal>("ValorAlvo")
                         .HasColumnType("numeric");
 
-                    b.Property<decimal>("ValorAtual")
+                    b.Property<decimal?>("ValorJuntado")
                         .HasColumnType("numeric");
 
                     b.HasKey("Id");
 
                     b.HasIndex("CategoriaId");
+
+                    b.HasIndex("ContaId")
+                        .IsUnique()
+                        .HasFilter("\"ContaId\" IS NOT NULL");
 
                     b.HasIndex("FamiliaId");
 
@@ -1150,6 +1164,10 @@ namespace ControleFinanceiro.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Chave")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("timestamp without time zone");
 
@@ -1177,6 +1195,10 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId", "Chave")
+                        .IsUnique()
+                        .HasFilter("\"Chave\" IS NOT NULL");
 
                     b.HasIndex("UsuarioId", "Lida");
 
@@ -2446,6 +2468,11 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasForeignKey("CategoriaId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Conta", "Conta")
+                        .WithMany()
+                        .HasForeignKey("ContaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("ControleFinanceiro.Api.Domain.Entities.Familia", "Familia")
                         .WithMany()
                         .HasForeignKey("FamiliaId")
@@ -2458,6 +2485,8 @@ namespace ControleFinanceiro.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Categoria");
+
+                    b.Navigation("Conta");
 
                     b.Navigation("Familia");
 

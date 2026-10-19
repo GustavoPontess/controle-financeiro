@@ -422,7 +422,7 @@ public class RegrasFinanceirasTests
 
         // 2. Tela de contas (listagem e detalhe)
         var controller = new ContasController(new ContaService(ctx, new FinancialEventLogService(ctx)),
-            new EncerramentoContaService(ctx, new TransferenciaService(ctx), new FinancialEventLogService(ctx)))
+            new EncerramentoContaService(ctx, new TransferenciaService(ctx), new FinancialEventLogService(ctx)), new MetaService(ctx, new TransferenciaService(ctx)))
         {
             ControllerContext = new ControllerContext
             {

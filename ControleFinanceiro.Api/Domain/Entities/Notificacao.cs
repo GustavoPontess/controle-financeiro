@@ -26,5 +26,12 @@ public class Notificacao
 
     public bool Lida { get; set; }
 
+    /// <summary>
+    /// Aviso que só pode sair UMA vez (ex.: "limite:{categoria}:2026-10:passou"). Único por usuário quando
+    /// preenchido; null = notificação comum (pode repetir).
+    /// </summary>
+    [MaxLength(120)]
+    public string? Chave { get; set; }
+
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 }

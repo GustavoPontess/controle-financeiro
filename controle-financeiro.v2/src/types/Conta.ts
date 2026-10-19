@@ -19,4 +19,6 @@ export interface Conta {
   bancoCor?: string | null
   /** Encerrada (fechada no banco): fora das listas, sem lançamento novo. Null/ausente = aberta. */
   encerradaEm?: string | null
+  /** Caixinha de meta (tipo 7): a meta dona dela. Só vem com `incluirCaixinhas` (Bancos). */
+  metaId?: string | null
 }
