@@ -1,6 +1,7 @@
 // Metas (/metas), no modelo de reserva (Monarch; decisão do Gustavo em 2026-10-19): guardar numa meta reserva
 // parte do saldo de uma conta real, sem mover dinheiro. No topo: quanto está guardado nas metas, quanto falta e
-// quanto guardar por mês pra chegar nos prazos. Lista: em andamento e concluídas; a linha mostra o progresso e a
+// quanto guardar por mês pra chegar nos prazos. Barra da lista no padrão de Bancos: Em andamento | Concluídas à
+// esquerda, "Nova meta" à direita; em andamento vem em Com prazo e Sem prazo. A linha mostra o progresso e a
 // situação (no ritmo / atrás / prazo passou / chegou lá); a ficha mostra onde o dinheiro está guardado e as
 // ações (Guardar, Tirar, Editar, Excluir). Metas da família moram no espaço da família.
 import { useEffect, useMemo, useState } from "react"
@@ -15,9 +16,12 @@ import Botao from "../componentes/Botao"
 import Confirmar from "../componentes/Confirmar"
 import { Dinheiro } from "../componentes/Dinheiro"
 import Etiqueta from "../componentes/Etiqueta"
+import Segmentos from "../componentes/Segmentos"
 import { AcoesFicha, DadosFicha, GrupoFicha, ItemFicha, ListaFicha } from "../componentes/ListaFicha"
 import { SITUACAO_META, mesAnoCurto } from "../dominio/meta"
 import styles from "./Metas.module.css"
+
+type Aba = "andamento" | "concluidas"
 
 export default function Metas() {
   const { state } = useLocation()
@@ -25,11 +29,22 @@ export default function Metas() {
   const [metas, setMetas] = useState<Meta[] | null>(null)
   const [erro, setErro] = useState(false)
   const [abertaId, setAbertaId] = useState<string | null>(() => (state as { abrir?: string } | null)?.abrir ?? null)
+  const [aba, setAba] = useState<Aba>("andamento")
   const carregar = () => getMetas(true).then(setMetas).catch(() => setErro(true))
   useEffect(() => { void carregar() }, [])
 
   const andamento = useMemo(() => (metas ?? []).filter((m) => !m.concluida), [metas])
   const concluidas = useMemo(() => (metas ?? []).filter((m) => m.concluida), [metas])
+  // Chegou com uma meta concluída pra abrir (ex.: acabou de guardar o que faltava): mostra a aba dela.
+  const abrirConcluida = !!metas?.find((m) => m.id === abertaId)?.concluida
+  useEffect(() => { if (abrirConcluida) setAba("concluidas") }, [abrirConcluida])
+  // Em andamento: com prazo primeiro (o mais perto em cima), depois as sem prazo. Concluídas: um grupo só.
+  const grupos = aba === "concluidas"
+    ? [{ chave: "concluidas", rotulo: "Concluídas", metas: concluidas }]
+    : [
+      { chave: "prazo", rotulo: "Com prazo", metas: andamento.filter((m) => m.dataLimite).sort((a, b) => a.dataLimite!.localeCompare(b.dataLimite!)) },
+      { chave: "sem-prazo", rotulo: "Sem prazo", metas: andamento.filter((m) => !m.dataLimite) },
+    ].filter((g) => g.metas.length > 0)
   const totais = useMemo(() => metas && ({
     guardado: metas.reduce((s, m) => s + m.guardado, 0),
     falta: andamento.reduce((s, m) => s + m.falta, 0),
@@ -48,24 +63,24 @@ export default function Metas() {
       </Bloco>
 
       <Bloco semRespiro>
+        <div className={styles.toolbar}>
+          <Segmentos<Aba> ariaLabel="Situação" valor={aba} onChange={setAba} opcoes={[
+            { valor: "andamento", rotulo: "Em andamento" },
+            { valor: "concluidas", rotulo: concluidas.length > 0 ? `Concluídas (${concluidas.length})` : "Concluídas" },
+          ]} />
+          <Botao compactoNoCelular onClick={nova} icone={<Plus size={15} strokeWidth={2.5} aria-hidden="true" />}>Nova meta</Botao>
+        </div>
         {metas === null && !erro ? <div className={styles.respiro}><Esqueleto linhas={3} altura={18} /></div>
           : erro ? <p className={styles.vazio} role="alert">Não deu pra carregar as metas.</p>
-          : metas!.length === 0 ? (
-            <div className={styles.vazioAcao}>
-              <p className={styles.vazio}>Nenhuma meta ainda.</p>
-              <Botao variante="primario" onClick={nova} icone={<Plus size={15} strokeWidth={2.5} aria-hidden="true" />}>Nova meta</Botao>
-            </div>
+          : grupos.length === 0 ? (
+            <p className={styles.vazio}>{metas!.length === 0 ? "Nenhuma meta ainda." : aba === "andamento" ? "Nenhuma meta em andamento." : "Nenhuma meta concluída."}</p>
           ) : (
             <ListaFicha rotulo="Metas">
-              <GrupoFicha rotulo="Em andamento" extra={<button type="button" className={styles.linkGrupo} onClick={nova}>Nova meta</button>}>
-                {andamento.length === 0 && <li className={styles.vazioGrupo}>Todas as metas chegaram lá.</li>}
-                {andamento.map((m) => <Linha key={m.id} m={m} aberta={m.id === abertaId} aoAbrir={() => setAbertaId((a) => (a === m.id ? null : m.id))} aoMudar={carregar} />)}
-              </GrupoFicha>
-              {concluidas.length > 0 && (
-                <GrupoFicha rotulo="Concluídas">
-                  {concluidas.map((m) => <Linha key={m.id} m={m} aberta={m.id === abertaId} aoAbrir={() => setAbertaId((a) => (a === m.id ? null : m.id))} aoMudar={carregar} />)}
+              {grupos.map((g) => (
+                <GrupoFicha key={g.chave} rotulo={g.rotulo}>
+                  {g.metas.map((m) => <Linha key={m.id} m={m} aberta={m.id === abertaId} aoAbrir={() => setAbertaId((a) => (a === m.id ? null : m.id))} aoMudar={carregar} />)}
                 </GrupoFicha>
-              )}
+              ))}
             </ListaFicha>
           )}
       </Bloco>

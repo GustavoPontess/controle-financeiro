@@ -57,20 +57,24 @@ describe("Metas (modelo de reserva)", () => {
     ]
   })
 
-  it("lista: só as pessoais; faixa soma guardado, falta e o por mês; situação na linha; ficha mostra onde está guardado; concluídas à parte", async () => {
+  it("lista: só as pessoais; faixa soma guardado, falta e o por mês; barra com Em andamento | Concluídas e Nova meta; situação na linha; ficha mostra onde está guardado", async () => {
     renderizar("/metas", true)
     const lista = await screen.findByRole("list", { name: "Metas" })
     expect(getMetas).toHaveBeenCalledWith(true)
     expect(screen.getByText("Guardado nas metas").parentElement).toHaveTextContent("13.300,00")
     expect(screen.getByText("Falta").parentElement).toHaveTextContent("62.700,00")
     expect(screen.getByText("Por mês pra chegar no prazo").parentElement).toHaveTextContent("3.437,50")
-    const andamento = within(lista).getByRole("list", { name: "Em andamento" })
+    const andamento = within(lista).getByRole("list", { name: "Com prazo" })
     expect(andamento).toHaveTextContent("Atrás do ritmo")
     expect(andamento).toHaveTextContent("até dez/2027")
-    expect(andamento).toHaveTextContent("sem prazo")
-    expect(within(lista).getByRole("list", { name: "Concluídas" })).toHaveTextContent("Chegou lá")
+    expect(within(lista).getByRole("list", { name: "Sem prazo" })).toHaveTextContent("Reserva de emergência")
+    expect(within(lista).queryByText("Viagem de férias")).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Nova meta" })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole("radio", { name: "Concluídas (1)" }))
+    expect(screen.getByRole("list", { name: "Concluídas" })).toHaveTextContent("Chegou lá")
+    await userEvent.click(screen.getByRole("radio", { name: "Em andamento" }))
 
-    await userEvent.click(within(andamento).getByRole("button", { name: /Entrada do apê/ }))
+    await userEvent.click(screen.getByRole("button", { name: /Entrada do apê/ }))
     const guardado = screen.getByRole("list", { name: "Onde está guardado" })
     expect(guardado).toHaveTextContent("Conta Corrente")
     expect(guardado).toHaveTextContent("1.500,00")
