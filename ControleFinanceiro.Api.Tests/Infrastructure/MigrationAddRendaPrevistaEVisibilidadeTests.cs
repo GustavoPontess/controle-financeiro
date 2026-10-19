@@ -53,6 +53,9 @@ public class MigrationAddRendaPrevistaEVisibilidadeTests
         Assert.True(ops.IndexOf(sqls[^1]) < ops.IndexOf(apagada), "o SQL de dados tem que rodar antes do DropColumn");
         var todoSql = string.Join("\n", sqls.Select(s => s.Sql));
         Assert.Contains("Dinheiro que volta", todoSql);
+        // Banco novo: a categoria só nasce aqui se as padrão já existem (senão o CategoriaSeeder pulava todas).
+        var criaCategoria = sqls.Single(s => s.Sql.Contains("INSERT INTO \"Categorias\"")).Sql;
+        Assert.Contains("WHERE EXISTS (SELECT 1 FROM \"Categorias\" WHERE \"UsuarioId\" IS NULL)", criaCategoria);
         Assert.Contains("RendasPrevistas", todoSql);
         Assert.Contains("Bolsa Família", todoSql);
         Assert.DoesNotContain(ops, o => o is DropTableOperation);

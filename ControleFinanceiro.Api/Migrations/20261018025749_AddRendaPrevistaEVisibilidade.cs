@@ -73,11 +73,15 @@ namespace ControleFinanceiro.Api.Migrations
                 GROUP BY m."UsuarioId";
                 """);
 
-            // 2. Categoria padrão "Dinheiro que volta" (receita que não é renda).
+            // 2. Categoria padrão "Dinheiro que volta" (receita que não é renda). SÓ em banco que já tem as
+            //    categorias padrão: num banco novo a migration roda antes do CategoriaSeeder, e uma categoria
+            //    padrão criada aqui fazia o seeder achar que já tinha semeado e pular TODAS as outras (o
+            //    DevDataSeeder caía procurando "Renda" e a API não subia; foi o E2E do #316).
             migrationBuilder.Sql("""
                 INSERT INTO "Categorias" ("Id", "Descricao", "Finalidade", "UsuarioId")
                 SELECT gen_random_uuid(), 'Dinheiro que volta', 2, NULL
-                WHERE NOT EXISTS (SELECT 1 FROM "Categorias" WHERE "UsuarioId" IS NULL AND "Descricao" = 'Dinheiro que volta');
+                WHERE EXISTS (SELECT 1 FROM "Categorias" WHERE "UsuarioId" IS NULL)
+                  AND NOT EXISTS (SELECT 1 FROM "Categorias" WHERE "UsuarioId" IS NULL AND "Descricao" = 'Dinheiro que volta');
                 """);
 
             // 3. Cashback e Reembolso saem de "Renda" (subcategorias padrão, os lançamentos e as contas fixas vão junto).
