@@ -57,6 +57,9 @@ public class AdminLgpdService
     {
         var u = await BuscarOuFalharAsync(usuarioId);
         var foto = await _context.FotosPerfil.AsNoTracking().FirstOrDefaultAsync(f => f.UsuarioId == usuarioId);
+        // Guardado de cada meta = saldo da caixinha dela (regra única de saldo).
+        var metas = await _context.Metas.AsNoTracking().Where(m => m.UsuarioId == usuarioId).ToListAsync();
+        var caixinhas = await RegrasFinanceiras.SaldosDasContasAsync(_context, metas.Where(m => m.ContaId.HasValue).Select(m => m.ContaId!.Value), usuarioId);
 
         return new ExportacaoUsuarioDto
         {
@@ -121,10 +124,13 @@ public class AdminLgpdService
                     Categoria = t.Categoria,
                 })
                 .ToList(),
-            Metas = await _context.Metas
-                .Where(m => m.UsuarioId == usuarioId)
-                .Select(m => new MetaExportadaDto { Id = m.Id, Nome = m.Nome, ValorAlvo = m.ValorAlvo, DataLimite = m.DataLimite, Guardado = m.Reservas.Sum(r => r.Valor) })
-                .ToListAsync(),
+            Metas = metas
+                .Select(m => new MetaExportadaDto
+                {
+                    Id = m.Id, Nome = m.Nome, ValorAlvo = m.ValorAlvo, DataLimite = m.DataLimite,
+                    Guardado = m.ContaId.HasValue && caixinhas.TryGetValue(m.ContaId.Value, out var s) ? s.Saldo : 0m,
+                })
+                .ToList(),
             Orcamentos = await _context.Orcamentos
                 .Where(o => o.UsuarioId == usuarioId)
                 .Select(o => new OrcamentoExportadoDto { Id = o.Id, Mes = o.Mes, Ano = o.Ano, Valor = o.ValorLimite })

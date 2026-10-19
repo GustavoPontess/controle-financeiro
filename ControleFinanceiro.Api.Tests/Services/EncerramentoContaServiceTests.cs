@@ -45,20 +45,17 @@ public class EncerramentoContaServiceTests
         (await RegrasFinanceiras.SaldosDasContasAsync(ctx, new[] { contaId }, usuarioId))[contaId].Saldo;
 
     [Fact]
-    public async Task ComDinheiroGuardadoEmMeta_RecusaEncerrar()
+    public async Task CaixinhaDeMeta_NaoSeEncerraPorBancos()
     {
         var ctx = CreateContext();
         var u = Guid.NewGuid();
-        var conta = NovaConta(ctx, u, "Reserva", 500m);
-        await ctx.SaveChangesAsync();
-        var metas = new MetaService(ctx);
+        var metas = new MetaService(ctx, new TransferenciaService(ctx));
         var meta = await metas.CriarAsync(new DTOs.Meta.CriarMetaDto("Viagem", null, 1000m, null, null, null), u);
-        await metas.GuardarAsync(meta.Id, new DTOs.Meta.MovimentoMetaDto(conta.Id, 200m), u, Chave());
 
         var erro = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            Servico(ctx).EncerrarAsync(conta.Id, new DTOs.Conta.EncerrarContaDto { Ajustar = true }, u, Chave()));
-        Assert.Contains("metas", erro.Message);
-        Assert.Null((await ctx.Contas.FindAsync(conta.Id))!.EncerradaEm);
+            Servico(ctx).EncerrarAsync(meta.ContaId!.Value, new DTOs.Conta.EncerrarContaDto { Ajustar = true }, u, Chave()));
+        Assert.Contains("Metas", erro.Message);
+        Assert.Null((await ctx.Contas.FindAsync(meta.ContaId))!.EncerradaEm);
     }
 
     [Fact]

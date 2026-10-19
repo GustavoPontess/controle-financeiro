@@ -999,6 +999,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<Guid?>("CategoriaId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ContaId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("timestamp without time zone");
 
@@ -1010,6 +1013,10 @@ namespace ControleFinanceiro.Api.Migrations
 
                     b.Property<Guid?>("FamiliaId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("Icone")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -1025,46 +1032,15 @@ namespace ControleFinanceiro.Api.Migrations
 
                     b.HasIndex("CategoriaId");
 
+                    b.HasIndex("ContaId")
+                        .IsUnique()
+                        .HasFilter("\"ContaId\" IS NOT NULL");
+
                     b.HasIndex("FamiliaId");
 
                     b.HasIndex("UsuarioId");
 
                     b.ToTable("Metas");
-                });
-
-            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.MetaReserva", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("AtualizadoEm")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<Guid>("ContaId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CriadoEm")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<Guid>("MetaId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("UsuarioId")
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("Valor")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ContaId");
-
-                    b.HasIndex("MetaId", "ContaId")
-                        .IsUnique();
-
-                    b.ToTable("MetasReservas");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.MfaBackupCode", b =>
@@ -2478,6 +2454,11 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasForeignKey("CategoriaId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Conta", "Conta")
+                        .WithMany()
+                        .HasForeignKey("ContaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("ControleFinanceiro.Api.Domain.Entities.Familia", "Familia")
                         .WithMany()
                         .HasForeignKey("FamiliaId")
@@ -2491,28 +2472,11 @@ namespace ControleFinanceiro.Api.Migrations
 
                     b.Navigation("Categoria");
 
+                    b.Navigation("Conta");
+
                     b.Navigation("Familia");
 
                     b.Navigation("Usuario");
-                });
-
-            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.MetaReserva", b =>
-                {
-                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Conta", "Conta")
-                        .WithMany()
-                        .HasForeignKey("ContaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Meta", "Meta")
-                        .WithMany("Reservas")
-                        .HasForeignKey("MetaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Conta");
-
-                    b.Navigation("Meta");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.MfaBackupCode", b =>
@@ -2897,11 +2861,6 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Navigation("ParcelasTransacao");
 
                     b.Navigation("Transacoes");
-                });
-
-            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Meta", b =>
-                {
-                    b.Navigation("Reservas");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Parcelamento", b =>

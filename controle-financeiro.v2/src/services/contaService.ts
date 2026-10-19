@@ -9,9 +9,14 @@ export type CriarContaPayload = ContaBase & {
   dataSaldoInicial?: string
 }
 
-/** Contas abertas (seleções do app). A tela de contas pede as encerradas também. */
-export const getContas = async (opcoes: { incluirEncerradas?: boolean } = {}): Promise<Conta[]> => {
-  const res = await api.get("/contas", { params: opcoes.incluirEncerradas ? { incluirEncerradas: true } : undefined })
+/** Contas abertas (seleções do app). A tela de contas pede as encerradas e as caixinhas das metas também
+ *  (caixinha não aparece em seleção nenhuma: só Metas põe e tira dinheiro dela). */
+export const getContas = async (opcoes: { incluirEncerradas?: boolean; incluirCaixinhas?: boolean } = {}): Promise<Conta[]> => {
+  const params = {
+    ...(opcoes.incluirEncerradas ? { incluirEncerradas: true } : {}),
+    ...(opcoes.incluirCaixinhas ? { incluirCaixinhas: true } : {}),
+  }
+  const res = await api.get("/contas", { params: Object.keys(params).length > 0 ? params : undefined })
   return res.data
 }
 

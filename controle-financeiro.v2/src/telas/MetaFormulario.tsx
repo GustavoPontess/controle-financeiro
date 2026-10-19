@@ -1,7 +1,8 @@
-// Nova meta (/metas/nova) e editar (/metas/:id/editar): nome, quanto quer juntar e o prazo (mês e ano, opcional).
+// Nova meta (/metas/nova) e editar (/metas/:id/editar): nome, quanto quer juntar, o ícone e o prazo (mês e ano,
+// opcional). Na meta nova, as sugestões (reserva de emergência, viagem, casa…) preenchem nome e ícone num toque.
 // O prazo é um MÊS; o servidor guarda o dia 1. Mês que já passou não vale (na edição, o prazo antigo pode ficar).
-// Guardar dinheiro é outra tela (/metas/:id/guardar): aqui é só a meta.
-import { useEffect, useState } from "react"
+// Guardar e resgatar são outras telas (a partir da página da meta): aqui é só a meta.
+import { useEffect, useRef, useState, type KeyboardEvent } from "react"
 import { useLocation, useNavigate, useParams } from "react-router-dom"
 import { atualizarMeta, criarMeta, getMeta } from "../services/metaService"
 import { mensagemDeErro } from "../api/cliente"
@@ -12,7 +13,7 @@ import EntradaValor from "../componentes/EntradaValor"
 import Formulario, { Campos, LinhaCampos, PaginaFormulario, RodapeFormulario } from "../componentes/Formulario"
 import Interruptor from "../componentes/Interruptor"
 import Selecao from "../componentes/Selecao"
-import { MAX_NOME_META, MESES, prazoIso } from "../dominio/meta"
+import { ICONES_META, MAX_NOME_META, MESES, TEMAS_META, prazoIso } from "../dominio/meta"
 import { moneyParaCampo, parseMoney } from "../utils/money"
 import styles from "./MetaFormulario.module.css"
 
@@ -21,13 +22,14 @@ type Erros = Partial<Record<"nome" | "valor" | "prazo", string>>
 export default function MetaFormulario() {
   const { id } = useParams<{ id?: string }>()
   const navigate = useNavigate()
-  const voltarPara = (useLocation().state as { voltarPara?: string } | null)?.voltarPara ?? "/metas"
+  const voltarPara = (useLocation().state as { voltarPara?: string } | null)?.voltarPara ?? (id ? `/metas/${id}` : "/metas")
   const hoje = new Date()
   const anoAtual = hoje.getFullYear(), mesAtual = hoje.getMonth() + 1
   const [carregando, setCarregando] = useState(!!id)
   const [erroCarga, setErroCarga] = useState<string | null>(null)
   const [nome, setNome] = useState("")
   const [valor, setValor] = useState("")
+  const [icone, setIcone] = useState("alvo")
   const [comPrazo, setComPrazo] = useState(true)
   const [mes, setMes] = useState("")
   const [ano, setAno] = useState("")
@@ -44,6 +46,7 @@ export default function MetaFormulario() {
       if (!vivo) return
       setNome(m.nome)
       setValor(moneyParaCampo(m.valorAlvo))
+      setIcone(m.icone || "alvo")
       setComPrazo(!!m.dataLimite)
       if (m.dataLimite) {
         setAno(m.dataLimite.slice(0, 4)); setMes(String(Number(m.dataLimite.slice(5, 7))))
@@ -76,9 +79,9 @@ export default function MetaFormulario() {
     if (Object.keys(e).length > 0) return
     setSalvando(true)
     try {
-      const dto = { nome: nome.trim(), valorAlvo: v, dataLimite }
+      const dto = { nome: nome.trim(), valorAlvo: v, dataLimite, icone }
       const m = id ? await atualizarMeta(id, dto) : await criarMeta(dto)
-      navigate("/metas", { replace: true, state: { abrir: m.id } })
+      navigate(`/metas/${m.id}`, { replace: true })
     } catch (err) { setErro(mensagemDeErro(err)); setSalvando(false) }
   }
 
@@ -87,6 +90,21 @@ export default function MetaFormulario() {
       <Formulario onSubmit={() => { void enviar() }}>
         <Campos>
           {erro && <p className={styles.alerta} role="alert">{erro}</p>}
+          {!id && (
+            <Campo rotulo="Sugestões" grupo>
+              <div className={styles.temas}>
+                {TEMAS_META.map((t) => {
+                  const Icone = ICONES_META.find((i) => i.chave === t.icone)!.Icone
+                  return (
+                    <button key={t.nome} type="button" className={styles.tema} data-ativo={nome === t.nome || undefined}
+                      onClick={() => { setNome(t.nome); setIcone(t.icone); limpa("nome") }}>
+                      <Icone size={14} strokeWidth={2.25} aria-hidden="true" />{t.nome}
+                    </button>
+                  )
+                })}
+              </div>
+            </Campo>
+          )}
           <LinhaCampos colunas="minmax(0, 2fr) minmax(0, 1fr)">
             <Campo rotulo="Nome" erro={erros.nome}>
               <Entrada value={nome} maxLength={MAX_NOME_META} placeholder="Entrada do apê, viagem, reserva de emergência" autoFocus
@@ -96,6 +114,9 @@ export default function MetaFormulario() {
               <EntradaValor compacto valor={valor} onChange={(x) => { setValor(x); limpa("valor") }} />
             </Campo>
           </LinhaCampos>
+          <Campo rotulo="Ícone" grupo>
+            <EscolhaIcone valor={icone} onChange={setIcone} />
+          </Campo>
           <Interruptor ligado={comPrazo} onChange={(on) => { setComPrazo(on); limpa("prazo") }}>Tem prazo</Interruptor>
           {comPrazo && (
             <Campo rotulo="Até quando" erro={erros.prazo}>
@@ -116,5 +137,30 @@ export default function MetaFormulario() {
         </RodapeFormulario>
       </Formulario>
     </PaginaFormulario>
+  )
+}
+
+/** Escolha do ícone: role="radiogroup" (Tab entra no escolhido, setas trocam), como os Segmentos. */
+function EscolhaIcone({ valor, onChange }: { valor: string; onChange: (v: string) => void }) {
+  const botoes = useRef<(HTMLButtonElement | null)[]>([])
+  const ativo = Math.max(0, ICONES_META.findIndex((i) => i.chave === valor))
+  const tecla = (e: KeyboardEvent, i: number) => {
+    const passo = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0
+    if (!passo) return
+    e.preventDefault()
+    const n = (i + passo + ICONES_META.length) % ICONES_META.length
+    onChange(ICONES_META[n].chave)
+    botoes.current[n]?.focus()
+  }
+  return (
+    <div role="radiogroup" aria-label="Ícone da meta" className={styles.icones}>
+      {ICONES_META.map(({ chave, rotulo, Icone }, i) => (
+        <button key={chave} ref={(el) => { botoes.current[i] = el }} type="button" role="radio" aria-checked={chave === valor}
+          aria-label={rotulo} title={rotulo} tabIndex={i === ativo ? 0 : -1} className={styles.iconeOpcao} data-ativo={chave === valor || undefined}
+          onClick={() => onChange(chave)} onKeyDown={(e) => tecla(e, i)}>
+          <Icone size={18} strokeWidth={2.25} aria-hidden="true" />
+        </button>
+      ))}
+    </div>
   )
 }

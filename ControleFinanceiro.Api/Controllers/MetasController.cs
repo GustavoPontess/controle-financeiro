@@ -40,12 +40,10 @@ public class MetasController : ControllerBase
         return Ok(resultado);
     }
 
-    /// <summary>
-    /// Contas abertas da pessoa com o saldo, o que já está reservado em metas e o que sobra livre (pra guardar).
-    /// </summary>
-    [HttpGet("contas")]
-    [ProducesResponseType(typeof(List<ContaLivreDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Contas() => Ok(await _service.ContasLivresAsync(GetUserId()));
+    /// <summary>Guardou e resgatou (as transferências da caixinha), do mais recente pro mais antigo.</summary>
+    [HttpGet("{id:guid}/historico")]
+    [ProducesResponseType(typeof(List<MetaHistoricoDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Historico(Guid id) => Ok(await _service.HistoricoAsync(id, GetUserId()));
 
     /// <summary>
     /// Obtém uma meta pelo ID.
@@ -85,8 +83,8 @@ public class MetasController : ControllerBase
     }
 
     /// <summary>
-    /// Guarda (reserva) dinheiro de uma conta pra meta: o dinheiro fica na conta, a meta reserva a parte.
-    /// Não passa do livre da conta. Exige o header Idempotency-Key (o mesmo nas tentativas).
+    /// Guarda: transfere da conta da pessoa pra caixinha da meta (o saldo da conta cai). Não passa do saldo.
+    /// Exige o header Idempotency-Key (o mesmo nas tentativas).
     /// </summary>
     [HttpPost("{id:guid}/guardar")]
     [ProducesResponseType(typeof(MetaDto), StatusCodes.Status200OK)]
@@ -96,14 +94,15 @@ public class MetasController : ControllerBase
         Ok(await _service.GuardarAsync(id, dto, GetUserId(), idempotencyKey));
 
     /// <summary>
-    /// Tira dinheiro da meta (solta a reserva daquela conta). Exige o header Idempotency-Key.
+    /// Resgata: transfere da caixinha da meta de volta pra uma conta da pessoa. Não passa do guardado.
+    /// Exige o header Idempotency-Key.
     /// </summary>
-    [HttpPost("{id:guid}/tirar")]
+    [HttpPost("{id:guid}/resgatar")]
     [ProducesResponseType(typeof(MetaDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> Tirar(Guid id, [FromBody] MovimentoMetaDto dto,
+    public async Task<IActionResult> Resgatar(Guid id, [FromBody] MovimentoMetaDto dto,
         [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey) =>
-        Ok(await _service.TirarAsync(id, dto, GetUserId(), idempotencyKey));
+        Ok(await _service.ResgatarAsync(id, dto, GetUserId(), idempotencyKey));
 
     /// <summary>
     /// Inativa (soft delete) uma meta (somente o criador).

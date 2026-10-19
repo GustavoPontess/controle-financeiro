@@ -80,19 +80,23 @@ namespace ControleFinanceiro.Api.Controllers
         /// <summary>
         /// Contas do usuário com o saldo atual. Encerradas ficam fora (seleções de conta no app); a tela de
         /// Bancos/contas pede <paramref name="incluirEncerradas"/>=true pra mostrar a seção "Encerradas".
+        /// Caixinhas de meta (tipo 7) também ficam fora, salvo <paramref name="incluirCaixinhas"/> (Bancos): o
+        /// dinheiro delas entra e sai só por Metas.
         /// </summary>
         [HttpGet]
-        public async Task<IActionResult> Listar([FromQuery] bool incluirEncerradas = false)
+        public async Task<IActionResult> Listar([FromQuery] bool incluirEncerradas = false, [FromQuery] bool incluirCaixinhas = false)
         {
             var usuarioId = GetUserId();
             var lista = await _service.ListarAsync(usuarioId, incluirEncerradas);
+            if (!incluirCaixinhas)
+                lista = lista.Where(c => c.Tipo != TipoConta.Caixinha).ToList();
             var saldos = await _service.ObterSaldosAsync(lista.Select(c => c.Id), usuarioId);
             var iniciais = await _service.ObterSaldosIniciaisAsync(lista.Select(c => c.Id), usuarioId);
-            var reservado = await _metas.ReservadoPorContaAsync(lista.Select(c => c.Id));
+            var metaDaCaixinha = await _metas.MetaPorCaixinhaAsync(lista.Where(c => c.Tipo == TipoConta.Caixinha).Select(c => c.Id));
             return Ok(lista.Select(c =>
             {
                 var dto = ToDto(c, saldos[c.Id].Saldo, iniciais.TryGetValue(c.Id, out var si) ? si : null);
-                dto.ReservadoEmMetas = reservado.GetValueOrDefault(c.Id);
+                dto.MetaId = metaDaCaixinha.TryGetValue(c.Id, out var m) ? m : null;
                 return dto;
             }));
         }

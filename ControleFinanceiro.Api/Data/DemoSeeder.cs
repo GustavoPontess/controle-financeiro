@@ -51,22 +51,23 @@ public static class DemoSeeder
         await MetasAsync(sp, context, dev.Id, corrente.Id, poupanca.Id, hoje);
     }
 
-    // ── Metas (modelo de reserva): uma de cada situação. "Entrada do apê" atrás do ritmo (criada há 4 meses,
-    //    reservada em duas contas), "Reserva de emergência" sem prazo, "Carro novo" no ritmo (criada agora) e
-    //    "Viagem de férias" concluída. Reserva nunca passa do livre da conta (o seeder corta, não inventa).
+    // ── Metas (caixinhas): uma de cada situação. "Entrada do apê" atrás do ritmo (criada há 4 meses, guardada de
+    //    duas contas), "Reserva de emergência" sem prazo, "Carro novo" no ritmo (criada agora) e "Viagem de férias"
+    //    concluída (com um resgate no histórico). Guardar é transferência de verdade e nunca passa do saldo da
+    //    conta (o seeder corta, não inventa).
     private static async Task MetasAsync(IServiceProvider sp, AppDbContext context, Guid dev, Guid corrente, Guid poupanca, DateTime hoje)
     {
         if (await context.Metas.AnyAsync(m => m.UsuarioId == dev))
             return;
         var svc = sp.GetRequiredService<MetaService>();
         var mes = new DateTime(hoje.Year, hoje.Month, 1);
-        async Task Meta(string nome, decimal alvo, DateTime? prazo, int criadaHaMeses, params (Guid Conta, decimal Valor)[] reservas)
+        async Task<Guid> Meta(string nome, string icone, decimal alvo, DateTime? prazo, int criadaHaMeses, params (Guid Conta, decimal Valor)[] guardar)
         {
-            var m = await svc.CriarAsync(new CriarMetaDto(nome, null, alvo, prazo, null, null), dev);
-            foreach (var (conta, valor) in reservas)
+            var m = await svc.CriarAsync(new CriarMetaDto(nome, null, alvo, prazo, null, null, icone), dev);
+            foreach (var (conta, valor) in guardar)
             {
-                var livre = (await svc.ContasLivresAsync(dev)).First(c => c.ContaId == conta).Livre;
-                var v = Math.Min(valor, livre);
+                var saldo = (await RegrasFinanceiras.SaldoDaContaAsync(context, conta, dev)).Saldo;
+                var v = Math.Min(valor, saldo);
                 if (v > 0)
                     await svc.GuardarAsync(m.Id, new MovimentoMetaDto(conta, v), dev, Guid.NewGuid().ToString());
             }
@@ -76,11 +77,13 @@ public static class DemoSeeder
                 entidade.CriadoEm = mes.AddMonths(-criadaHaMeses);
                 await context.SaveChangesAsync();
             }
+            return m.Id;
         }
-        await Meta("Entrada do apê", 60000m, mes.AddMonths(14), 4, (corrente, 1500m), (poupanca, 3500m));
-        await Meta("Reserva de emergência", 10000m, null, 2, (poupanca, 2300m));
-        await Meta("Carro novo", 40000m, mes.AddMonths(24), 0, (corrente, 2000m));
-        await Meta("Viagem de férias", 6000m, mes.AddMonths(5), 1, (corrente, 6000m));
+        await Meta("Entrada do apê", "casa", 60000m, mes.AddMonths(14), 4, (corrente, 1500m), (poupanca, 3500m));
+        await Meta("Reserva de emergência", "emergencia", 10000m, null, 2, (poupanca, 2300m));
+        await Meta("Carro novo", "carro", 40000m, mes.AddMonths(24), 0, (corrente, 2000m));
+        var viagem = await Meta("Viagem de férias", "viagem", 6000m, mes.AddMonths(5), 1, (corrente, 6500m));
+        await svc.ResgatarAsync(viagem, new MovimentoMetaDto(corrente, 500m), dev, Guid.NewGuid().ToString());
     }
 
     // ── Renda: o que o Gabriel declara esperar no mês (salário fixo + variável), pro cartão "Renda do mês" ter

@@ -1,6 +1,9 @@
 // Transações do v2 — extrato de caixa da conta: só o que mexe no saldo (receita/despesa de conta,
 // pagamento de fatura e transferências). Compra no crédito vive em Cartões. Busca, filtros e
 // paginação rodam no servidor (mesmos endpoints do app atual). Nada de enfeite: cada controle filtra.
+// Sem período escolhido, a lista vai até HOJE, o mais recente em cima: as previsões das contas fixas
+// (geradas meses pra frente) empurravam o dia de hoje pro fim. Os previstos aparecem pelo filtro de status
+// (do mais perto pro mais longe) ou escolhendo as datas.
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useLocation } from "react-router-dom"
 import { SlidersHorizontal } from "lucide-react"
@@ -20,7 +23,7 @@ import Campo from "../componentes/Campo"
 import Entrada from "../componentes/Entrada"
 import SeletorData from "../componentes/SeletorData"
 import { maskMoney, parseMoney } from "../utils/money"
-import { diaSeguinte } from "../utils/dateTime"
+import { dataLocalISO, diaSeguinte } from "../utils/dateTime"
 import { useAtrasado } from "../utils/useAtrasado"
 import { linhaDoLancamento } from "../dominio/linhaLancamento"
 import styles from "./Transacoes.module.css"
@@ -96,6 +99,7 @@ export default function Transacoes() {
     return () => { vivo = false }
   }, [])
 
+  const soPrevistos = filtros.status === "0"
   useEffect(() => {
     let vivo = true
     setErro(false)
@@ -107,8 +111,10 @@ export default function Transacoes() {
       valorMin: filtros.valorMin !== "" ? parseMoney(filtros.valorMin) : undefined,
       valorMax: filtros.valorMax !== "" ? parseMoney(filtros.valorMax) : undefined,
       from: filtros.de || undefined,
-      // "Até" inclui o dia escolhido; o back filtra Data < to.
-      to: filtros.ate ? diaSeguinte(filtros.ate) : undefined,
+      // "Até" inclui o dia escolhido; o back filtra Data < to. Sem período (e sem pedir os previstos): até hoje.
+      to: filtros.ate ? diaSeguinte(filtros.ate) : soPrevistos || filtros.de ? undefined : diaSeguinte(dataLocalISO()),
+      // Previstos: o próximo primeiro.
+      ordenacao: soPrevistos ? "data_asc" : undefined,
       apenasCaixa: true,
     })
       .then((r) => { if (vivo) { setItens(r.items); setTotal(r.total) } })

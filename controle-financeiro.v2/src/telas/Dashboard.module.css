@@ -46,6 +46,7 @@ a.linha:hover { background: var(--v2-hover-linha); }
 .icone { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; background: var(--v2-superficie-2); color: var(--v2-texto-2); font-size: var(--v2-fs-sm); font-weight: 700; flex-shrink: 0; }
 .icone[data-tom="positivo"] { background: var(--v2-positivo-suave); color: var(--v2-positivo); }
 .icone[data-tom="neutro"] { color: var(--v2-texto-3); }
+.icone[data-tom="acento"] { background: var(--v2-acento-suave); color: var(--v2-acento); }
 .texto { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .nome { font-size: var(--v2-fs-md); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sub { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -18,6 +18,8 @@
 /* Lista com ficha: componentes/ListaFicha. Aqui só o que é de conta (total do grupo, carteira, saldo, cartões). */
 .grupoTotal { font-variant-numeric: tabular-nums; color: var(--v2-texto-2); }
 .carteira { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; background: var(--v2-superficie-2); color: var(--v2-texto-2); }
+/* Caixinha de meta: cofrinho na cor de acento (a mesma das metas) */
+.caixinha { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; background: var(--v2-acento-suave); color: var(--v2-acento); }
 .valor { font-size: var(--v2-fs-md); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .valor[data-tom="negativo"] { color: var(--v2-negativo); }
 .valor[data-tom="neutro"] { font-weight: 500; color: var(--v2-texto-2); }
@@ -38,5 +40,3 @@
   .numeroValor { font-size: var(--v2-fs-lg); }
   .toolbar { padding: 14px 16px 4px; }
 }
-.linkFicha { color: inherit; text-decoration: underline; text-decoration-color: var(--v2-linha-forte); text-underline-offset: 3px; }
-.linkFicha:hover { text-decoration-color: currentColor; }

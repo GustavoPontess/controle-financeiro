@@ -2,149 +2,171 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom"
-import type { ContaLivre, Meta } from "../../types/Meta"
+import type { Meta, MovimentoMeta as Movimento } from "../../types/Meta"
+import type { Conta } from "../../types/Conta"
 
 const meta = (extra: Partial<Meta>): Meta => ({
-  id: "m1", nome: "Entrada do apê", descricao: null, valorAlvo: 60000, guardado: 5000, falta: 55000, percentualConcluido: 8.33,
-  concluida: false, dataLimite: "2027-12-01T00:00:00", mesesRestantes: 16, porMes: 3437.5, situacao: "atras",
-  reservas: [
-    { contaId: "c1", contaNome: "Conta Corrente", bancoNome: "Nubank", bancoCor: null, valor: 1500 },
-    { contaId: "c2", contaNome: "Poupança", bancoNome: "Inter", bancoCor: null, valor: 3500 },
-  ],
-  usuarioId: "u1", familiaId: null, categoriaId: null, ativo: true, criadoEm: "2026-06-01", atualizadoEm: "2026-10-01", ...extra,
+  id: "m1", nome: "Entrada do apê", descricao: null, icone: "casa", valorAlvo: 60000, guardado: 5000, falta: 55000, percentualConcluido: 8.33,
+  concluida: false, dataLimite: "2027-12-01T00:00:00", mesesRestantes: 16, porMes: 3437.5, situacao: "atras", contaId: "cx1",
+  usuarioId: "u1", familiaId: null, categoriaId: null, ativo: true, criadoEm: "2026-06-01T00:00:00", atualizadoEm: "2026-10-01T00:00:00", ...extra,
 })
+const conta = (id: string, nome: string, saldoAtual: number): Conta => ({ id, nome, tipo: 1, tipoDescricao: "Conta Corrente", saldoAtual, isCarteira: false })
 let metas: Meta[] = []
-let contas: ContaLivre[] = []
+let contas: Conta[] = []
+let historico: Movimento[] = []
 vi.mock("../../services/metaService", () => ({
   getMetas: vi.fn(async () => metas),
   getMeta: vi.fn(async (id: string) => metas.find((m) => m.id === id)),
-  getContasLivres: vi.fn(async () => contas),
-  criarMeta: vi.fn(async (dto: { nome: string }) => ({ ...meta({}), id: "nova", nome: dto.nome })),
+  getHistoricoMeta: vi.fn(async () => historico),
+  criarMeta: vi.fn(async (dto: { nome: string }) => ({ ...meta({}), id: "m9", nome: dto.nome })),
   atualizarMeta: vi.fn(async () => meta({})),
   excluirMeta: vi.fn(async () => {}),
   guardarNaMeta: vi.fn(async () => meta({})),
-  tirarDaMeta: vi.fn(async () => meta({})),
+  resgatarDaMeta: vi.fn(async () => meta({})),
 }))
-import { criarMeta, excluirMeta, getMetas, guardarNaMeta, tirarDaMeta } from "../../services/metaService"
+vi.mock("../../services/contaService", () => ({ getContas: vi.fn(async () => contas) }))
+import { criarMeta, excluirMeta, getMetas, guardarNaMeta, resgatarDaMeta } from "../../services/metaService"
 import Metas from "../../telas/Metas"
 import MetaFormulario from "../../telas/MetaFormulario"
+import MetaPagina from "../../telas/MetaPagina"
 import MovimentoMeta from "../../telas/MovimentoMeta"
 
-const Lista = () => { const { state } = useLocation(); return <p>lista de metas {JSON.stringify(state)}</p> }
-const renderizar = (inicio: string, lista = false) => render(
+const Onde = () => <p>em {useLocation().pathname}</p>
+const renderizar = (inicio: string, { lista = false, pagina = false } = {}) => render(
   <MemoryRouter initialEntries={[inicio]}>
     <Routes>
-      <Route path="/metas" element={lista ? <Metas /> : <Lista />} />
+      <Route path="/metas" element={lista ? <Metas /> : <Onde />} />
       <Route path="/metas/nova" element={<MetaFormulario />} />
+      <Route path="/metas/:id" element={pagina ? <MetaPagina /> : <Onde />} />
       <Route path="/metas/:id/editar" element={<MetaFormulario />} />
       <Route path="/metas/:id/guardar" element={<MovimentoMeta modo="guardar" />} />
-      <Route path="/metas/:id/tirar" element={<MovimentoMeta modo="tirar" />} />
+      <Route path="/metas/:id/resgatar" element={<MovimentoMeta modo="resgatar" />} />
     </Routes>
   </MemoryRouter>,
 )
 
-describe("Metas (modelo de reserva)", () => {
+describe("Metas (caixinhas)", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     metas = [
       meta({}),
-      meta({ id: "m2", nome: "Reserva de emergência", valorAlvo: 10000, guardado: 2300, falta: 7700, percentualConcluido: 23, dataLimite: null, mesesRestantes: null, porMes: null, situacao: "sem-prazo", reservas: [{ contaId: "c2", contaNome: "Poupança", bancoNome: "Inter", bancoCor: null, valor: 2300 }] }),
-      meta({ id: "m3", nome: "Viagem de férias", valorAlvo: 6000, guardado: 6000, falta: 0, percentualConcluido: 100, concluida: true, porMes: null, situacao: "concluida", reservas: [] }),
+      meta({ id: "m2", nome: "Reserva de emergência", icone: "emergencia", valorAlvo: 10000, guardado: 2300, falta: 7700, percentualConcluido: 23, dataLimite: null, mesesRestantes: null, porMes: null, situacao: "sem-prazo" }),
+      meta({ id: "m3", nome: "Viagem de férias", icone: "viagem", valorAlvo: 6000, guardado: 6000, falta: 0, percentualConcluido: 100, concluida: true, porMes: null, situacao: "concluida" }),
     ]
-    contas = [
-      { contaId: "c1", nome: "Conta Corrente", bancoNome: "Nubank", bancoCor: null, saldo: 3000, reservado: 1500, livre: 1500 },
-      { contaId: "c2", nome: "Poupança", bancoNome: "Inter", bancoCor: null, saldo: 6100, reservado: 5800, livre: 300 },
+    contas = [conta("c1", "Conta Corrente", 3000), conta("c2", "Poupança", 300)]
+    historico = [
+      { transferenciaId: "t2", data: "2026-10-10T00:00:00", tipo: "resgatou", contaId: "c2", contaNome: "Poupança", valor: 500 },
+      { transferenciaId: "t1", data: "2026-10-01T00:00:00", tipo: "guardou", contaId: "c1", contaNome: "Conta Corrente", valor: 5500 },
     ]
   })
 
-  it("lista: só as pessoais; faixa soma guardado, falta e o por mês; barra com Em andamento | Concluídas e Nova meta; situação na linha; ficha mostra onde está guardado", async () => {
-    renderizar("/metas", true)
-    const lista = await screen.findByRole("list", { name: "Metas" })
+  it("lista: só as pessoais; faixa soma guardado, falta e o por mês; cartões com situação e prazo levam pra página da meta", async () => {
+    const user = userEvent.setup()
+    renderizar("/metas", { lista: true })
+    const grade = await screen.findByRole("list", { name: "Metas" })
+
     expect(getMetas).toHaveBeenCalledWith(true)
-    expect(screen.getByText("Guardado nas metas").parentElement).toHaveTextContent("13.300,00")
-    expect(screen.getByText("Falta").parentElement).toHaveTextContent("62.700,00")
-    expect(screen.getByText("Por mês pra chegar no prazo").parentElement).toHaveTextContent("3.437,50")
-    const andamento = within(lista).getByRole("list", { name: "Com prazo" })
-    expect(andamento).toHaveTextContent("Atrás do ritmo")
-    expect(andamento).toHaveTextContent("até dez/2027")
-    expect(within(lista).getByRole("list", { name: "Sem prazo" })).toHaveTextContent("Reserva de emergência")
-    expect(within(lista).queryByText("Viagem de férias")).not.toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Nova meta" })).toBeInTheDocument()
-    await userEvent.click(screen.getByRole("radio", { name: "Concluídas (1)" }))
-    expect(screen.getByRole("list", { name: "Concluídas" })).toHaveTextContent("Chegou lá")
-    await userEvent.click(screen.getByRole("radio", { name: "Em andamento" }))
+    expect(screen.getByText("R$ 13.300,00")).toBeInTheDocument() // guardado: 5000 + 2300 + 6000
+    expect(screen.getByText("R$ 62.700,00")).toBeInTheDocument() // falta: só das em andamento
+    const cartoes = within(grade).getAllByRole("link")
+    expect(cartoes).toHaveLength(2) // em andamento: com prazo primeiro, depois sem prazo
+    expect(cartoes[0]).toHaveTextContent("Entrada do apê")
+    expect(cartoes[0]).toHaveTextContent("Atrás do ritmo")
+    expect(cartoes[0]).toHaveTextContent("Até dez/2027")
+    expect(cartoes[0]).toHaveAttribute("href", "/metas/m1")
+    expect(cartoes[1]).toHaveTextContent("Sem prazo")
+    expect(screen.getByRole("button", { name: /Nova meta/ })).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole("button", { name: /Entrada do apê/ }))
-    const guardado = screen.getByRole("list", { name: "Onde está guardado" })
-    expect(guardado).toHaveTextContent("Conta Corrente")
-    expect(guardado).toHaveTextContent("1.500,00")
-    expect(guardado).toHaveTextContent("3.500,00")
-    expect(screen.getByRole("button", { name: "Guardar" })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Tirar" })).toBeInTheDocument()
+    await user.click(screen.getByRole("radio", { name: "Concluídas (1)" }))
+    expect(within(screen.getByRole("list", { name: "Metas" })).getByRole("link")).toHaveTextContent("Chegou lá")
   })
 
-  it("excluir pede confirmação e avisa que o dinheiro volta a ficar livre", async () => {
-    renderizar("/metas", true)
-    await userEvent.click(await screen.findByRole("button", { name: /Entrada do apê/ }))
-    await userEvent.click(screen.getByRole("button", { name: "Excluir" }))
-    const dialogo = await screen.findByRole("alertdialog")
-    expect(dialogo).toHaveTextContent("volta a ficar livre")
-    await userEvent.click(within(dialogo).getByRole("button", { name: "Excluir" }))
+  it("página da meta: guardado, histórico de guardar e resgatar, e Guardar/Resgatar levam pras telas", async () => {
+    const user = userEvent.setup()
+    renderizar("/metas/m1", { pagina: true })
+
+    expect(await screen.findByRole("heading", { name: "Entrada do apê" })).toBeInTheDocument()
+    expect(screen.getByText("Até dezembro de 2027")).toBeInTheDocument()
+    expect(await screen.findByText("de Conta Corrente")).toBeInTheDocument()
+    expect(screen.getByText("pra Poupança")).toBeInTheDocument()
+    expect(screen.getByText("Guardou")).toBeInTheDocument()
+    expect(screen.getByText("Resgatou")).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "Resgatar" }))
+    expect(await screen.findByRole("heading", { name: "Resgatar de Entrada do apê" })).toBeInTheDocument()
+  })
+
+  it("excluir com dinheiro guardado pede pra resgatar antes; zerada, confirma e exclui", async () => {
+    const user = userEvent.setup()
+    const { unmount } = renderizar("/metas/m1", { pagina: true })
+    await user.click(await screen.findByRole("button", { name: "Excluir" }))
+    expect(screen.getByRole("alert")).toHaveTextContent("Resgate pra uma conta antes de excluir")
+    expect(excluirMeta).not.toHaveBeenCalled()
+    unmount()
+
+    metas = [meta({ guardado: 0, falta: 60000, percentualConcluido: 0 })]
+    historico = []
+    renderizar("/metas/m1", { pagina: true })
+    expect(await screen.findByText("Nada guardado ainda.")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Resgatar" })).toBeDisabled()
+    await user.click(screen.getByRole("button", { name: "Excluir" }))
+    await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Excluir" }))
     expect(excluirMeta).toHaveBeenCalledWith("m1")
+    expect(await screen.findByText("em /metas")).toBeInTheDocument()
   })
 
-  it("nova meta: vazio bloqueia com erro em cada campo; prazo pede mês e ano; payload exato", async () => {
+  it("nova meta: submit vazio bloqueia com erros; sugestão preenche nome e ícone; cria e vai pra página dela", async () => {
+    const user = userEvent.setup()
     renderizar("/metas/nova")
-    await userEvent.click(screen.getByRole("button", { name: "Criar meta" }))
+    await user.click(await screen.findByRole("button", { name: "Criar meta" }))
     expect(screen.getByText("Dê um nome pra meta.")).toBeInTheDocument()
     expect(screen.getByText("Diga quanto quer juntar.")).toBeInTheDocument()
     expect(screen.getByText("Escolha o mês e o ano.")).toBeInTheDocument()
     expect(criarMeta).not.toHaveBeenCalled()
 
-    await userEvent.type(screen.getByRole("textbox", { name: "Nome" }), " Carro novo ")
-    await userEvent.type(screen.getByLabelText("Quanto quer juntar"), "4000000")
-    await userEvent.click(screen.getByRole("switch", { name: "Tem prazo" })) // sem prazo
-    await userEvent.click(screen.getByRole("button", { name: "Criar meta" }))
-    expect(criarMeta).toHaveBeenCalledWith({ nome: "Carro novo", valorAlvo: 40000, dataLimite: null })
-    expect(await screen.findByText(/lista de metas/)).toHaveTextContent('"abrir":"nova"')
+    await user.click(screen.getByRole("button", { name: "Viagem" }))
+    expect(screen.getByLabelText("Nome")).toHaveValue("Viagem")
+    expect(screen.getByRole("radio", { name: "Viagem" })).toHaveAttribute("aria-checked", "true")
+    await user.type(screen.getByLabelText("Quanto quer juntar"), "500000")
+    await user.click(screen.getByRole("switch"))
+    await user.click(screen.getByRole("button", { name: "Criar meta" }))
+    expect(criarMeta).toHaveBeenCalledWith({ nome: "Viagem", valorAlvo: 5000, dataLimite: null, icone: "viagem" })
+    expect(await screen.findByText("em /metas/m9")).toBeInTheDocument()
   })
 
-  it("guardar: escolhe a conta (com o livre), não passa do livre, manda a mesma chave nas tentativas", async () => {
-    vi.mocked(guardarNaMeta).mockRejectedValueOnce({ response: { status: 500, data: {} } })
+  it("guardar: não passa do saldo da conta; guarda com a mesma chave e volta pra página da meta", async () => {
+    const user = userEvent.setup()
     renderizar("/metas/m1/guardar")
-    await screen.findByRole("heading", { name: /Guardar em Entrada do apê/ })
-    await userEvent.click(screen.getByRole("button", { name: "Guardar" }))
-    expect(screen.getByText("Escolha de qual conta.")).toBeInTheDocument()
-    expect(screen.getByText("Diga quanto.")).toBeInTheDocument()
+    expect(await screen.findByRole("heading", { name: "Guardar em Entrada do apê" })).toBeInTheDocument()
+    // Duas contas com saldo: nenhuma vem escolhida.
+    await user.click(screen.getByRole("button", { name: "Guardar" }))
+    expect(screen.getByText("Escolha de qual conta sai.")).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole("combobox", { name: "De qual conta" }))
-    await userEvent.click(screen.getByRole("option", { name: /Conta Corrente/ }))
-    await userEvent.type(screen.getByLabelText("Quanto"), "200000")
-    await userEvent.click(screen.getByRole("button", { name: "Guardar" }))
-    expect(screen.getByText("Só tem R$ 1.500,00 livre nessa conta.")).toBeInTheDocument()
+    await user.click(screen.getByRole("combobox"))
+    await user.click(screen.getByRole("option", { name: /Poupança/ }))
+    await user.type(screen.getByLabelText("Quanto"), "50000")
+    await user.click(screen.getByRole("button", { name: "Guardar" }))
+    expect(screen.getByText("Só tem R$ 300,00 nessa conta.")).toBeInTheDocument()
     expect(guardarNaMeta).not.toHaveBeenCalled()
 
-    await userEvent.click(screen.getByRole("button", { name: /Usar tudo que está livre/ }))
-    await userEvent.click(screen.getByRole("button", { name: "Guardar" }))
-    await userEvent.click(await screen.findByRole("button", { name: "Guardar" }))
-    expect(guardarNaMeta).toHaveBeenCalledTimes(2)
-    const [[, c1, v1, k1], [, c2, v2, k2]] = vi.mocked(guardarNaMeta).mock.calls
-    expect([c1, v1, c2, v2]).toEqual(["c1", 1500, "c1", 1500])
-    expect(k1).toBe(k2)
-    expect(await screen.findByText(/lista de metas/)).toHaveTextContent('"abrir":"m1"')
+    await user.click(screen.getByRole("button", { name: /Guardar tudo que tem na conta/ }))
+    await user.click(screen.getByRole("button", { name: "Guardar" }))
+    expect(guardarNaMeta).toHaveBeenCalledWith("m1", "c2", 300, expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), expect.any(String))
+    expect(await screen.findByText("em /metas/m1")).toBeInTheDocument()
   })
 
-  it("tirar: só as contas onde a meta tem dinheiro, até o que tem lá", async () => {
-    renderizar("/metas/m1/tirar")
-    await screen.findByRole("heading", { name: /Tirar de Entrada do apê/ })
-    await userEvent.click(screen.getByRole("combobox", { name: "Tirar de qual conta" }))
-    expect(screen.getAllByRole("option")).toHaveLength(2)
-    await userEvent.click(screen.getByRole("option", { name: /Poupança/ }))
-    await userEvent.type(screen.getByLabelText("Quanto"), "400000")
-    await userEvent.click(screen.getByRole("button", { name: "Tirar" }))
-    expect(screen.getByText("Nessa conta a meta só tem R$ 3.500,00.")).toBeInTheDocument()
-    await userEvent.click(screen.getByRole("button", { name: /Tirar tudo/ }))
-    await userEvent.click(screen.getByRole("button", { name: "Tirar" }))
-    expect(tirarDaMeta).toHaveBeenCalledWith("m1", "c2", 3500, expect.any(String))
+  it("resgatar: não passa do guardado na meta", async () => {
+    const user = userEvent.setup()
+    contas = [conta("c1", "Conta Corrente", 3000)]
+    renderizar("/metas/m1/resgatar")
+    expect(await screen.findByRole("heading", { name: "Resgatar de Entrada do apê" })).toBeInTheDocument()
+    await user.type(screen.getByLabelText("Quanto"), "600000") // conta única já vem escolhida
+    await user.click(screen.getByRole("button", { name: "Resgatar" }))
+    expect(screen.getByText("A meta só tem R$ 5.000,00 guardado.")).toBeInTheDocument()
+    expect(resgatarDaMeta).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole("button", { name: /Resgatar tudo/ }))
+    await user.click(screen.getByRole("button", { name: "Resgatar" }))
+    expect(resgatarDaMeta).toHaveBeenCalledWith("m1", "c1", 5000, expect.any(String), expect.any(String))
   })
 })

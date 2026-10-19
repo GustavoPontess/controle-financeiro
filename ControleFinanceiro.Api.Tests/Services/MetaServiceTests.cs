@@ -46,13 +46,14 @@ public class MetaServiceTests
     {
         var ctx = CreateContext();
         var user = SeedUsuario(ctx, "u@test.com", "User");
-        var svc = new MetaService(ctx);
+        var svc = Servico(ctx);
 
         var dto = await svc.CriarAsync(MetaDto("Casa", 100_000m), user);
 
         Assert.Equal("Casa", dto.Nome);
         Assert.Equal(100_000m, dto.ValorAlvo);
         Assert.Equal(0m, dto.ValorAtual);
+        Assert.NotNull(dto.ContaId);
         Assert.Equal(0m, dto.PercentualConcluido);
         Assert.False(dto.Concluida);
         Assert.Equal(user, dto.UsuarioId);
@@ -65,7 +66,7 @@ public class MetaServiceTests
         var dono = SeedUsuario(ctx, "dono@test.com");
         var familiaId = await SeedFamilia(ctx, dono);
         var estranho = SeedUsuario(ctx, "estranho@test.com");
-        var svc = new MetaService(ctx);
+        var svc = Servico(ctx);
 
         await Assert.ThrowsAsync<KeyNotFoundException>(
             () => svc.CriarAsync(MetaDto(familiaId: familiaId), estranho));
@@ -77,7 +78,7 @@ public class MetaServiceTests
         var ctx = CreateContext();
         var dono = SeedUsuario(ctx, "dono@test.com");
         var familiaId = await SeedFamilia(ctx, dono);
-        var svc = new MetaService(ctx);
+        var svc = Servico(ctx);
 
         var dto = await svc.CriarAsync(MetaDto("Viagem", 3000m, familiaId), dono);
 
@@ -99,7 +100,7 @@ public class MetaServiceTests
             Papel = "Membro", EntrouEm = DateTime.UtcNow, Ativo = true,
         });
         ctx.SaveChanges();
-        var svc = new MetaService(ctx);
+        var svc = Servico(ctx);
 
         await svc.CriarAsync(MetaDto("Pessoal Ana"), ana);           // pessoal de Ana
         await svc.CriarAsync(MetaDto("Conjunta", familiaId: familiaId), ana); // conjunta
@@ -119,7 +120,7 @@ public class MetaServiceTests
     {
         var ctx = CreateContext();
         var user = SeedUsuario(ctx, "u@test.com");
-        var svc = new MetaService(ctx);
+        var svc = Servico(ctx);
 
         var criada = await svc.CriarAsync(MetaDto(), user);
         await svc.ExcluirAsync(criada.Id, user);
@@ -135,7 +136,7 @@ public class MetaServiceTests
     {
         var ctx = CreateContext();
         var user = SeedUsuario(ctx, "u@test.com");
-        var svc = new MetaService(ctx);
+        var svc = Servico(ctx);
         var criada = await svc.CriarAsync(MetaDto("Velha", 1000m), user);
 
         var atualizada = await svc.AtualizarAsync(
@@ -151,16 +152,17 @@ public class MetaServiceTests
         var ctx = CreateContext();
         var dono = SeedUsuario(ctx, "dono@test.com");
         var outro = SeedUsuario(ctx, "outro@test.com");
-        var svc = new MetaService(ctx);
+        var svc = Servico(ctx);
         var criada = await svc.CriarAsync(MetaDto(), dono);
 
         await Assert.ThrowsAsync<ForbiddenAccessException>(
             () => svc.AtualizarAsync(criada.Id, MetaDto(), outro));
     }
 
-    // ── Guardar / tirar (reserva do saldo de conta real) ─────────────────────
+    // ── Caixinha: guardar e resgatar são transferências de verdade ─────────────
 
     private static string Chave() => Guid.NewGuid().ToString();
+    private static MetaService Servico(AppDbContext ctx) => new(ctx, new TransferenciaService(ctx));
 
     /// <summary>Conta do usuário com saldo inicial (o saldo real vem de RegrasFinanceiras).</summary>
     private static Guid SeedConta(AppDbContext ctx, Guid usuarioId, decimal saldo, string nome = "Corrente", bool encerrada = false)
@@ -181,15 +183,33 @@ public class MetaServiceTests
         return c.Id;
     }
 
+    private static async Task<decimal> Saldo(AppDbContext ctx, Guid contaId, Guid usuarioId) =>
+        (await RegrasFinanceiras.SaldoDaContaAsync(ctx, contaId, usuarioId)).Saldo;
+
     [Fact]
-    public async Task Guardar_ReservaDoSaldo_SemCriarLancamento_ESomaNaMesmaConta()
+    public async Task Criar_NasceComACaixinhaDela()
+    {
+        var ctx = CreateContext();
+        var user = SeedUsuario(ctx, "u@test.com");
+        var meta = await Servico(ctx).CriarAsync(new CriarMetaDto("Viagem", null, 1000m, null, null, null, "viagem"), user);
+
+        var caixinha = await ctx.Contas.SingleAsync(c => c.Id == meta.ContaId);
+        Assert.Equal(TipoConta.Caixinha, caixinha.Tipo);
+        Assert.Equal("Viagem", caixinha.Nome);
+        Assert.Equal(user, caixinha.UsuarioIdProprietario);
+        Assert.Equal("viagem", meta.Icone);
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => Servico(ctx).CriarAsync(new CriarMetaDto("X", null, 10m, null, null, null, "foguete"), user));
+    }
+
+    [Fact]
+    public async Task Guardar_TiraDaContaEPoeNaCaixinha_ComTransferencia()
     {
         var ctx = CreateContext();
         var user = SeedUsuario(ctx, "u@test.com");
         var conta = SeedConta(ctx, user, 1000m);
-        var svc = new MetaService(ctx);
+        var svc = Servico(ctx);
         var meta = await svc.CriarAsync(MetaDto("Viagem", 1000m), user);
-        var lancamentosAntes = ctx.Transacoes.Count();
 
         await svc.GuardarAsync(meta.Id, new MovimentoMetaDto(conta, 300m), user, Chave());
         var result = await svc.GuardarAsync(meta.Id, new MovimentoMetaDto(conta, 200m), user, Chave());
@@ -198,93 +218,96 @@ public class MetaServiceTests
         Assert.Equal(500m, result.ValorAtual);
         Assert.Equal(500m, result.Falta);
         Assert.Equal(50m, result.PercentualConcluido);
-        var reserva = Assert.Single(result.Reservas);
-        Assert.Equal(conta, reserva.ContaId);
-        Assert.Equal(500m, reserva.Valor);
-        Assert.Equal(lancamentosAntes, ctx.Transacoes.Count()); // nada de dinheiro inventado
-        var livre = (await svc.ContasLivresAsync(user)).Single();
-        Assert.Equal(1000m, livre.Saldo);
-        Assert.Equal(500m, livre.Reservado);
-        Assert.Equal(500m, livre.Livre);
+        Assert.Equal(500m, await Saldo(ctx, conta, user));            // o dinheiro SAIU da conta
+        Assert.Equal(500m, await Saldo(ctx, meta.ContaId!.Value, user)); // e está na caixinha
+        Assert.Equal(2, ctx.Transferencias.Count());
+        Assert.All(ctx.Transacoes.Where(t => !t.EhSaldoInicial), t => Assert.True(t.EhTransferencia)); // fora do resultado
+        Assert.Contains(ctx.Transacoes, t => t.Descricao == "Guardado em Viagem");
     }
 
     [Fact]
-    public async Task Guardar_NaoPassaDoLivreDaConta_ContandoOutrasMetas()
-    {
-        var ctx = CreateContext();
-        var user = SeedUsuario(ctx, "u@test.com");
-        var conta = SeedConta(ctx, user, 1000m);
-        var svc = new MetaService(ctx);
-        var a = await svc.CriarAsync(MetaDto("A", 5000m), user);
-        var b = await svc.CriarAsync(MetaDto("B", 5000m), user);
-        await svc.GuardarAsync(a.Id, new MovimentoMetaDto(conta, 800m), user, Chave());
-
-        var erro = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => svc.GuardarAsync(b.Id, new MovimentoMetaDto(conta, 201m), user, Chave()));
-        Assert.Contains("livre", erro.Message);
-        var ok = await svc.GuardarAsync(b.Id, new MovimentoMetaDto(conta, 200m), user, Chave());
-        Assert.Equal(200m, ok.Guardado);
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => svc.GuardarAsync(a.Id, new MovimentoMetaDto(conta, 1m), user, Chave()));
-    }
-
-    [Fact]
-    public async Task Guardar_ContaDeOutroOuEncerrada_Recusa()
+    public async Task Guardar_NaoPassaDoSaldoDaConta_NemDeContaEncerradaOuDeOutro()
     {
         var ctx = CreateContext();
         var user = SeedUsuario(ctx, "u@test.com");
         var outro = SeedUsuario(ctx, "outro@test.com");
-        var contaDoOutro = SeedConta(ctx, outro, 1000m);
+        var conta = SeedConta(ctx, user, 1000m);
         var encerrada = SeedConta(ctx, user, 1000m, "Velha", encerrada: true);
-        var svc = new MetaService(ctx);
-        var meta = await svc.CriarAsync(MetaDto(), user);
+        var doOutro = SeedConta(ctx, outro, 1000m);
+        var svc = Servico(ctx);
+        var meta = await svc.CriarAsync(MetaDto("A", 5000m), user);
 
-        await Assert.ThrowsAsync<KeyNotFoundException>(
-            () => svc.GuardarAsync(meta.Id, new MovimentoMetaDto(contaDoOutro, 10m), user, Chave()));
+        var erro = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => svc.GuardarAsync(meta.Id, new MovimentoMetaDto(conta, 1000.01m), user, Chave()));
+        Assert.Contains("Só tem", erro.Message);
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => svc.GuardarAsync(meta.Id, new MovimentoMetaDto(encerrada, 10m), user, Chave()));
-        Assert.Empty(ctx.MetasReservas);
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => svc.GuardarAsync(meta.Id, new MovimentoMetaDto(doOutro, 10m), user, Chave()));
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => svc.GuardarAsync(meta.Id, new MovimentoMetaDto(meta.ContaId!.Value, 10m), user, Chave()));
+        Assert.Empty(ctx.Transferencias);
     }
 
     [Fact]
-    public async Task Guardar_MesmaChave_NaoReservaDuasVezes_SemChaveRecusa()
+    public async Task Guardar_DaCaixinhaDeOutraMeta_Recusa()
     {
         var ctx = CreateContext();
         var user = SeedUsuario(ctx, "u@test.com");
         var conta = SeedConta(ctx, user, 1000m);
-        var svc = new MetaService(ctx);
+        var svc = Servico(ctx);
+        var a = await svc.CriarAsync(MetaDto("A", 5000m), user);
+        var b = await svc.CriarAsync(MetaDto("B", 5000m), user);
+        await svc.GuardarAsync(a.Id, new MovimentoMetaDto(conta, 400m), user, Chave());
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => svc.GuardarAsync(b.Id, new MovimentoMetaDto(a.ContaId!.Value, 100m), user, Chave()));
+    }
+
+    [Fact]
+    public async Task Guardar_MesmaChave_NaoMoveDuasVezes_SemChaveRecusa()
+    {
+        var ctx = CreateContext();
+        var user = SeedUsuario(ctx, "u@test.com");
+        var conta = SeedConta(ctx, user, 1000m);
+        var svc = Servico(ctx);
         var meta = await svc.CriarAsync(MetaDto(), user);
-        var outra = await svc.CriarAsync(MetaDto("Outra"), user);
         var chave = Chave();
 
-        await svc.GuardarAsync(meta.Id, new MovimentoMetaDto(conta, 100m), user, chave);
-        var repetido = await svc.GuardarAsync(meta.Id, new MovimentoMetaDto(conta, 100m), user, chave);
+        await svc.GuardarAsync(meta.Id, new MovimentoMetaDto(conta, 1000m), user, chave);
+        // Repetir (saldo da conta já é zero): devolve o mesmo, sem barrar por saldo e sem mover de novo.
+        var repetido = await svc.GuardarAsync(meta.Id, new MovimentoMetaDto(conta, 1000m), user, chave);
 
-        Assert.Equal(100m, repetido.Guardado);
+        Assert.Equal(1000m, repetido.Guardado);
+        Assert.Single(ctx.Transferencias);
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => svc.GuardarAsync(outra.Id, new MovimentoMetaDto(conta, 100m), user, chave));
+            () => svc.GuardarAsync(meta.Id, new MovimentoMetaDto(conta, 999m), user, chave)); // mesma chave, outros dados
         await Assert.ThrowsAsync<ArgumentException>(
-            () => svc.GuardarAsync(meta.Id, new MovimentoMetaDto(conta, 100m), user, null));
+            () => svc.GuardarAsync(meta.Id, new MovimentoMetaDto(conta, 1m), user, null));
     }
 
     [Fact]
-    public async Task Tirar_SoltaAReserva_EApagaAoZerar_NaoPassaDoReservado()
+    public async Task Resgatar_VoltaPraConta_NaoPassaDoGuardado_EApareceNoHistorico()
     {
         var ctx = CreateContext();
         var user = SeedUsuario(ctx, "u@test.com");
         var conta = SeedConta(ctx, user, 1000m);
-        var svc = new MetaService(ctx);
-        var meta = await svc.CriarAsync(MetaDto(), user);
+        var outra = SeedConta(ctx, user, 0m, "Poupança");
+        var svc = Servico(ctx);
+        var meta = await svc.CriarAsync(MetaDto("Viagem"), user);
         await svc.GuardarAsync(meta.Id, new MovimentoMetaDto(conta, 400m), user, Chave());
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => svc.TirarAsync(meta.Id, new MovimentoMetaDto(conta, 401m), user, Chave()));
-        var parcial = await svc.TirarAsync(meta.Id, new MovimentoMetaDto(conta, 150m), user, Chave());
-        Assert.Equal(250m, parcial.Guardado);
-        var zerado = await svc.TirarAsync(meta.Id, new MovimentoMetaDto(conta, 250m), user, Chave());
-        Assert.Equal(0m, zerado.Guardado);
-        Assert.Empty(ctx.MetasReservas);
-        Assert.Equal(1000m, (await svc.ContasLivresAsync(user)).Single().Livre);
+            () => svc.ResgatarAsync(meta.Id, new MovimentoMetaDto(outra, 401m), user, Chave()));
+        var depois = await svc.ResgatarAsync(meta.Id, new MovimentoMetaDto(outra, 150m), user, Chave());
+
+        Assert.Equal(250m, depois.Guardado);
+        Assert.Equal(150m, await Saldo(ctx, outra, user));
+        var historico = await svc.HistoricoAsync(meta.Id, user);
+        Assert.Equal(2, historico.Count);
+        Assert.Equal(["resgatou", "guardou"], historico.Select(h => h.Tipo)); // mais recente em cima
+        Assert.Contains(historico, h => h.Tipo == "guardou" && h.Valor == 400m && h.ContaId == conta && h.ContaNome == "Corrente");
+        Assert.Contains(historico, h => h.Tipo == "resgatou" && h.Valor == 150m && h.ContaId == outra && h.ContaNome == "Poupança");
     }
 
     [Fact]
@@ -293,7 +316,7 @@ public class MetaServiceTests
         var ctx = CreateContext();
         var user = SeedUsuario(ctx, "u@test.com");
         var conta = SeedConta(ctx, user, 1000m);
-        var svc = new MetaService(ctx);
+        var svc = Servico(ctx);
         var meta = await svc.CriarAsync(MetaDto("X", 100m), user);
 
         var result = await svc.GuardarAsync(meta.Id, new MovimentoMetaDto(conta, 150m), user, Chave());
@@ -305,44 +328,52 @@ public class MetaServiceTests
     }
 
     [Fact]
-    public async Task MembroDaFamilia_GuardaDaPropriaConta_NaMetaDaFamilia()
-    {
-        var ctx = CreateContext();
-        var dono = SeedUsuario(ctx, "dono@test.com");
-        var bia = SeedUsuario(ctx, "bia@test.com");
-        var familiaId = await SeedFamilia(ctx, dono);
-        ctx.MembrosFamilia.Add(new MembroFamilia
-        {
-            Id = Guid.NewGuid(), FamiliaId = familiaId, UsuarioId = bia,
-            Papel = "Membro", EntrouEm = DateTime.UtcNow, Ativo = true,
-        });
-        ctx.SaveChanges();
-        var contaBia = SeedConta(ctx, bia, 1000m, "Conta da Bia");
-        var contaDono = SeedConta(ctx, dono, 1000m, "Conta do dono");
-        var svc = new MetaService(ctx);
-        var meta = await svc.CriarAsync(MetaDto("Conjunta", 1000m, familiaId), dono);
-
-        var result = await svc.GuardarAsync(meta.Id, new MovimentoMetaDto(contaBia, 400m), bia, Chave());
-        Assert.Equal(400m, result.Guardado);
-        // A Bia não reserva da conta do dono
-        await Assert.ThrowsAsync<KeyNotFoundException>(
-            () => svc.GuardarAsync(meta.Id, new MovimentoMetaDto(contaDono, 1m), bia, Chave()));
-    }
-
-    [Fact]
-    public async Task Excluir_SoltaAsReservas()
+    public async Task Excluir_ComDinheiro_Recusa_Zerada_EncerraACaixinha()
     {
         var ctx = CreateContext();
         var user = SeedUsuario(ctx, "u@test.com");
         var conta = SeedConta(ctx, user, 1000m);
-        var svc = new MetaService(ctx);
+        var svc = Servico(ctx);
         var meta = await svc.CriarAsync(MetaDto(), user);
         await svc.GuardarAsync(meta.Id, new MovimentoMetaDto(conta, 600m), user, Chave());
 
+        var erro = await Assert.ThrowsAsync<InvalidOperationException>(() => svc.ExcluirAsync(meta.Id, user));
+        Assert.Contains("Resgate", erro.Message);
+        await svc.ResgatarAsync(meta.Id, new MovimentoMetaDto(conta, 600m), user, Chave());
         await svc.ExcluirAsync(meta.Id, user);
 
-        Assert.Empty(ctx.MetasReservas);
-        Assert.Equal(1000m, (await svc.ContasLivresAsync(user)).Single().Livre);
+        Assert.False((await ctx.Metas.FindAsync(meta.Id))!.Ativo);
+        Assert.NotNull((await ctx.Contas.FindAsync(meta.ContaId))!.EncerradaEm);
+        Assert.Equal(1000m, await Saldo(ctx, conta, user));
+    }
+
+    [Fact]
+    public async Task Atualizar_RenomeiaACaixinha()
+    {
+        var ctx = CreateContext();
+        var user = SeedUsuario(ctx, "u@test.com");
+        var svc = Servico(ctx);
+        var meta = await svc.CriarAsync(MetaDto("Viagem"), user);
+
+        await svc.AtualizarAsync(meta.Id, new CriarMetaDto("Viagem pra praia", null, 2000m, null, null, null, "viagem"), user);
+
+        Assert.Equal("Viagem pra praia", (await ctx.Contas.FindAsync(meta.ContaId))!.Nome);
+    }
+
+    [Fact]
+    public async Task MetaAntigaSemCaixinha_GanhaUmaNoPrimeiroGuardar()
+    {
+        var ctx = CreateContext();
+        var user = SeedUsuario(ctx, "u@test.com");
+        var conta = SeedConta(ctx, user, 1000m);
+        var antiga = new Meta { Id = Guid.NewGuid(), Nome = "Antiga", ValorAlvo = 500m, UsuarioId = user };
+        ctx.Metas.Add(antiga);
+        ctx.SaveChanges();
+
+        var result = await Servico(ctx).GuardarAsync(antiga.Id, new MovimentoMetaDto(conta, 100m), user, Chave());
+
+        Assert.NotNull(result.ContaId);
+        Assert.Equal(100m, result.Guardado);
     }
 
     [Fact]
@@ -351,7 +382,7 @@ public class MetaServiceTests
         var ctx = CreateContext();
         var dono = SeedUsuario(ctx, "dono@test.com");
         var familiaId = await SeedFamilia(ctx, dono);
-        var svc = new MetaService(ctx);
+        var svc = Servico(ctx);
         await svc.CriarAsync(MetaDto("Minha"), dono);
         await svc.CriarAsync(MetaDto("Da casa", 1000m, familiaId), dono);
 
@@ -359,6 +390,86 @@ public class MetaServiceTests
 
         Assert.Equal("Minha", Assert.Single(pessoais).Nome);
         Assert.Equal(2, (await svc.ListarAsync(dono)).Count);
+    }
+
+    // ── Trava: só Metas mexe na caixinha (AppDbContext.SaveChanges) ──────────────
+
+    [Fact]
+    public async Task Caixinha_LancamentoOuTransferenciaPorFora_Recusa()
+    {
+        var ctx = CreateContext();
+        var user = SeedUsuario(ctx, "u@test.com");
+        var conta = SeedConta(ctx, user, 1000m);
+        var meta = await Servico(ctx).CriarAsync(MetaDto(), user);
+        var caixinha = meta.ContaId!.Value;
+
+        // Transferência avulsa (tela de transferências) pra caixinha.
+        var erro = await Assert.ThrowsAsync<InvalidOperationException>(() => new TransferenciaService(ctx).CriarAsync(
+            new DTOs.Transferencia.CriarTransferenciaDto { ContaOrigemId = conta, ContaDestinoId = caixinha, Valor = 10m, Data = DateOnly.FromDateTime(DateTime.UtcNow) }, user));
+        Assert.Equal(Conta.MensagemCaixinha, erro.Message);
+        ctx.ChangeTracker.Clear();
+
+        // Lançamento direto, qualquer caminho.
+        ctx.Transacoes.Add(new Transacao { Id = Guid.NewGuid(), Descricao = "x", Valor = 5m, Tipo = TipoTransacao.Despesa, ContaId = caixinha, CriadoPor = user, Data = DateOnly.FromDateTime(DateTime.UtcNow) });
+        await Assert.ThrowsAsync<InvalidOperationException>(() => ctx.SaveChangesAsync());
+        ctx.ChangeTracker.Clear();
+
+        // Checagem de dono das escritas também recusa (erro cedo, antes de montar o lançamento).
+        await Assert.ThrowsAsync<InvalidOperationException>(() => DonoRecursos.ExigirContaAbertaAsync(ctx, caixinha, user));
+        Assert.Equal(0m, await Saldo(ctx, caixinha, user));
+    }
+
+    [Fact]
+    public async Task Caixinha_ExcluirOuMoverAPernaPelaTelaDeTransacoes_Recusa()
+    {
+        var ctx = CreateContext();
+        var user = SeedUsuario(ctx, "u@test.com");
+        var conta = SeedConta(ctx, user, 1000m);
+        var svc = Servico(ctx);
+        var meta = await svc.CriarAsync(MetaDto(), user);
+        await svc.GuardarAsync(meta.Id, new MovimentoMetaDto(conta, 300m), user, Chave());
+        var perna = ctx.Transacoes.Single(t => t.ContaId == meta.ContaId);
+
+        perna.Ativo = false;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => ctx.SaveChangesAsync());
+        perna.Ativo = true;
+        perna.ContaId = conta; // tirar da caixinha mudando a conta
+        await Assert.ThrowsAsync<InvalidOperationException>(() => ctx.SaveChangesAsync());
+        ctx.ChangeTracker.Clear();
+
+        Assert.Equal(300m, await Saldo(ctx, meta.ContaId!.Value, user));
+    }
+
+    [Fact]
+    public async Task Caixinha_ContaFixaOuCartaoLigadoAEla_Recusa()
+    {
+        var ctx = CreateContext();
+        var user = SeedUsuario(ctx, "u@test.com");
+        var meta = await Servico(ctx).CriarAsync(MetaDto(), user);
+
+        ctx.Recorrentes.Add(new Recorrente { Id = Guid.NewGuid(), Descricao = "Aluguel", Valor = 100m, Tipo = TipoTransacao.Despesa, ContaId = meta.ContaId, CriadoPor = user, Dia = 5, DataInicio = DateTime.UtcNow });
+        await Assert.ThrowsAsync<InvalidOperationException>(() => ctx.SaveChangesAsync());
+        ctx.ChangeTracker.Clear();
+        ctx.CartoesCredito.Add(new CartaoCredito { Id = Guid.NewGuid(), Nome = "Cartão", ContaId = meta.ContaId, CriadoPor = user });
+        await Assert.ThrowsAsync<InvalidOperationException>(() => ctx.SaveChangesAsync());
+    }
+
+    [Fact]
+    public async Task Caixinha_ListaGeralDeTransacoes_MostraSoAPernaDaContaReal()
+    {
+        var ctx = CreateContext();
+        var user = SeedUsuario(ctx, "u@test.com");
+        var conta = SeedConta(ctx, user, 1000m);
+        var svc = Servico(ctx);
+        var meta = await svc.CriarAsync(MetaDto("Viagem"), user);
+        await svc.GuardarAsync(meta.Id, new MovimentoMetaDto(conta, 300m), user, Chave());
+        var transacoes = new TransacaoService(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx));
+
+        var lista = (await transacoes.ListarAsync(user, q: "Guardado")).Items;
+
+        Assert.Equal(conta, Assert.Single(lista).ContaId);
+        // Pedindo a caixinha de propósito, ela aparece (o filtro é só da lista geral).
+        Assert.Single((await transacoes.ListarAsync(user, contaId: meta.ContaId)).Items);
     }
 
     // ── Prazo, por mês e situação (cálculo puro) ─────────────────────────────
@@ -397,7 +508,7 @@ public class MetaServiceTests
     {
         var ctx = CreateContext();
         var user = SeedUsuario(ctx, "u@test.com");
-        var svc = new MetaService(ctx);
+        var svc = Servico(ctx);
         var passado = DateTime.UtcNow.AddMonths(-1);
         await Assert.ThrowsAsync<ArgumentException>(
             () => svc.CriarAsync(new CriarMetaDto("X", null, 100m, passado, null, null), user));
@@ -414,7 +525,7 @@ public class MetaServiceTests
     {
         var ctx = CreateContext();
         var user = SeedUsuario(ctx, "u@test.com");
-        var svc = new MetaService(ctx);
+        var svc = Servico(ctx);
         var meta = await svc.CriarAsync(MetaDto(), user);
 
         await svc.ExcluirAsync(meta.Id, user);
@@ -430,7 +541,7 @@ public class MetaServiceTests
         var ctx = CreateContext();
         var dono = SeedUsuario(ctx, "dono@test.com");
         var outro = SeedUsuario(ctx, "outro@test.com");
-        var svc = new MetaService(ctx);
+        var svc = Servico(ctx);
         var meta = await svc.CriarAsync(MetaDto(), dono);
 
         await Assert.ThrowsAsync<ForbiddenAccessException>(
@@ -448,7 +559,7 @@ public class MetaServiceTests
         var categoriaDeOutro = new Categoria { Id = Guid.NewGuid(), Descricao = "Privada", Finalidade = Finalidade.Despesa, UsuarioId = outro };
         ctx.Categorias.Add(categoriaDeOutro);
         ctx.SaveChanges();
-        var svc = new MetaService(ctx);
+        var svc = Servico(ctx);
 
         var dto = new CriarMetaDto("Viagem", null, 1000m, null, null, categoriaDeOutro.Id);
 
@@ -461,7 +572,7 @@ public class MetaServiceTests
         var ctx = CreateContext();
         var user = SeedUsuario(ctx, "u@test.com");
         var outro = SeedUsuario(ctx, "outro@test.com");
-        var svc = new MetaService(ctx);
+        var svc = Servico(ctx);
         var criada = await svc.CriarAsync(MetaDto("Original", 1000m), user);
 
         var categoriaDeOutro = new Categoria { Id = Guid.NewGuid(), Descricao = "Privada", Finalidade = Finalidade.Despesa, UsuarioId = outro };

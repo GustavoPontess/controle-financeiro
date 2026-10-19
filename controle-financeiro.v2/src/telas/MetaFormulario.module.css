@@ -1,3 +1,17 @@
 .alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
 .resumo { display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: var(--v2-fs-sm); color: var(--v2-texto-2); font-variant-numeric: tabular-nums; }
 .resumo strong { color: var(--v2-texto); font-weight: 600; }
+
+/* Sugestões: pílulas que preenchem nome e ícone */
+.temas { display: flex; flex-wrap: wrap; gap: 6px; }
+.tema { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--v2-linha); border-radius: 999px; background: var(--v2-superficie); color: var(--v2-texto-2); font: inherit; font-size: var(--v2-fs-sm); font-weight: 500; cursor: pointer; transition: border-color 0.12s, color 0.12s, background 0.12s; }
+.tema:hover { border-color: var(--v2-linha-forte); color: var(--v2-texto); }
+.tema:focus-visible { outline: none; box-shadow: var(--v2-anel-foco); }
+.tema[data-ativo="true"] { border-color: var(--v2-acento); background: var(--v2-acento-suave); color: var(--v2-acento); }
+
+/* Ícones: círculos lado a lado, o escolhido na cor de acento */
+.icones { display: flex; flex-wrap: wrap; gap: 8px; }
+.iconeOpcao { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: 1px solid var(--v2-linha); border-radius: 999px; background: var(--v2-superficie); color: var(--v2-texto-2); cursor: pointer; transition: border-color 0.12s, color 0.12s, background 0.12s; }
+.iconeOpcao:hover { border-color: var(--v2-linha-forte); color: var(--v2-texto); }
+.iconeOpcao:focus-visible { outline: none; box-shadow: var(--v2-anel-foco); }
+.iconeOpcao[data-ativo="true"] { border-color: var(--v2-acento); background: var(--v2-acento-suave); color: var(--v2-acento); }

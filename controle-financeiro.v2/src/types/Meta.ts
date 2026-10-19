@@ -1,21 +1,17 @@
 /** "concluida" · "sem-prazo" · "prazo-passou" · "no-ritmo" · "atras" (calculado no servidor). */
 export type SituacaoMeta = "concluida" | "sem-prazo" | "prazo-passou" | "no-ritmo" | "atras"
 
-/** Quanto de uma conta está reservado pra meta (o dinheiro continua na conta). */
-export interface MetaReserva {
-  contaId: string
-  contaNome: string
-  bancoNome: string | null
-  bancoCor: string | null
-  valor: number
-}
-
+/**
+ * Meta no modelo de caixinha (como o Nubank): cada meta tem a própria conta (`contaId`, tipo Caixinha) e guardar
+ * é uma transferência de verdade da conta da pessoa pra ela. `guardado` = saldo da caixinha.
+ */
 export interface Meta {
   id: string
   nome: string
   descricao: string | null
+  /** Chave do ícone (ver ICONES_META). */
+  icone: string
   valorAlvo: number
-  /** Σ reservas: o que já está guardado (reservado em contas). */
   guardado: number
   falta: number
   percentualConcluido: number
@@ -27,7 +23,8 @@ export interface Meta {
   /** Quanto guardar por mês pra chegar no prazo; null sem prazo, concluída ou prazo passado. */
   porMes: number | null
   situacao: SituacaoMeta
-  reservas: MetaReserva[]
+  /** A caixinha da meta (conta tipo 7). Null só em meta antiga que nunca guardou nada. */
+  contaId: string | null
   usuarioId: string
   familiaId: string | null
   categoriaId: string | null
@@ -44,15 +41,16 @@ export interface CriarMetaDto {
   dataLimite?: string | null
   familiaId?: string | null
   categoriaId?: string | null
+  icone?: string | null
 }
 
-/** Conta aberta com o que já está reservado em metas e o que sobra livre. */
-export interface ContaLivre {
+/** Uma linha do histórico: guardou (de uma conta pra caixinha) ou resgatou (da caixinha pra uma conta). */
+export interface MovimentoMeta {
+  transferenciaId: string
+  /** Dia (ISO, meia-noite). */
+  data: string
+  tipo: "guardou" | "resgatou"
   contaId: string
-  nome: string
-  bancoNome: string | null
-  bancoCor: string | null
-  saldo: number
-  reservado: number
-  livre: number
+  contaNome: string
+  valor: number
 }

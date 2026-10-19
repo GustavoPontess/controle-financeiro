@@ -302,6 +302,11 @@ namespace ControleFinanceiro.Api.Services
             if (apenasCaixa)
                 query = query.Where(t => t.ContaId.HasValue && !t.EhSaldoInicial);
 
+            // Caixinha de meta: o lado de dentro da meta não aparece na lista geral. "Guardado em X" fica uma vez
+            // só, na conta de onde o dinheiro saiu (como o extrato do Nubank); o histórico da meta mora em Metas.
+            if (!contaId.HasValue)
+                query = query.Where(t => t.ContaId == null || t.Conta!.Tipo != Domain.Enums.TipoConta.Caixinha);
+
             // Filtros opcionais aplicados no banco — só assim a paginação serve
             // pra UI: o front pagina o conjunto JÁ filtrado (por mês, categoria
             // etc), em vez de pedir tudo e filtrar no cliente.

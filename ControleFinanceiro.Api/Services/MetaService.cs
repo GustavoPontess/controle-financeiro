@@ -1,31 +1,38 @@
 using ControleFinanceiro.Api.Domain.Entities;
+using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.DTOs.Meta;
+using ControleFinanceiro.Api.DTOs.Transferencia;
 using ControleFinanceiro.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
 namespace ControleFinanceiro.Api.Services;
 
 /// <summary>
-/// Metas no modelo de RESERVA (Monarch; decisão do Gustavo em 2026-10-19): guardar numa meta reserva parte do
-/// saldo de uma conta, sem mover dinheiro nem criar lançamento. Progresso = Σ reservas. Livre de uma conta =
-/// saldo real (<see cref="RegrasFinanceiras"/>) − Σ reservas dela; não dá pra reservar mais que o livre.
-/// Guardar e tirar exigem Idempotency-Key (<see cref="Idempotencia"/>): duplo clique não reserva duas vezes.
+/// Metas no modelo de CAIXINHA (como o Nubank; decisão do Gustavo em 2026-10-19): cada meta tem a própria conta
+/// (<see cref="TipoConta.Caixinha"/>), criada junto com ela. Guardar = transferência de verdade da conta da pessoa
+/// pra caixinha; resgatar = da caixinha pra conta. O dinheiro SAI da conta de origem (o saldo dela cai) e o
+/// histórico da meta são essas transferências. Guardado = saldo da caixinha (<see cref="RegrasFinanceiras"/>).
+/// Guardar não passa do saldo da conta; resgatar não passa do guardado. Idempotency-Key obrigatória (a mesma
+/// regra da transferência: repetir devolve o original, outros dados → 409).
 /// </summary>
 public class MetaService
 {
-    public const string OperacaoGuardar = "MetaGuardar";
-    public const string OperacaoTirar = "MetaTirar";
+    /// <summary>Ícones que a tela oferece (o front mostra o desenho de cada um).</summary>
+    public static readonly HashSet<string> Icones =
+        ["alvo", "emergencia", "viagem", "casa", "carro", "estudos", "presente", "saude", "pet", "festa", "celular", "bebe"];
 
     private readonly AppDbContext _context;
+    private readonly TransferenciaService _transferencias;
 
-    public MetaService(AppDbContext context)
+    public MetaService(AppDbContext context, TransferenciaService transferencias)
     {
         _context = context;
+        _transferencias = transferencias;
     }
 
     // ── Criar / editar / excluir ─────────────────────────────────────────────
 
-    /// <summary>Cria uma meta pessoal (ou de família, se <c>FamiliaId</c>).</summary>
+    /// <summary>Cria a meta e a caixinha dela (uma conta do tipo Caixinha com o nome da meta).</summary>
     public async Task<MetaDto> CriarAsync(CriarMetaDto dto, Guid usuarioId)
     {
         if (dto.FamiliaId.HasValue)
@@ -33,25 +40,26 @@ public class MetaService
         if (dto.CategoriaId.HasValue)
             await DonoRecursos.ExigirCategoriaAsync(_context, dto.CategoriaId.Value, usuarioId);
         var nome = ValidarNome(dto.Nome);
-        var prazo = NormalizarPrazo(dto.DataLimite, permitirPassado: false);
 
         var meta = new Meta
         {
             Id = Guid.NewGuid(),
             Nome = nome,
             Descricao = string.IsNullOrWhiteSpace(dto.Descricao) ? null : dto.Descricao.Trim(),
+            Icone = ValidarIcone(dto.Icone),
             ValorAlvo = dto.ValorAlvo,
-            DataLimite = prazo,
+            DataLimite = NormalizarPrazo(dto.DataLimite, permitirPassado: false),
             UsuarioId = usuarioId,
             FamiliaId = dto.FamiliaId,
             CategoriaId = dto.CategoriaId,
         };
+        meta.ContaId = NovaCaixinha(nome, usuarioId).Id;
         _context.Metas.Add(meta);
         await _context.SaveChangesAsync();
-        return Montar(meta, [], DateTime.UtcNow);
+        return Montar(meta, 0m, DateTime.UtcNow);
     }
 
-    /// <summary>Edita nome, alvo e prazo (só quem criou). Prazo já passado continua valendo se não mudou.</summary>
+    /// <summary>Edita nome, ícone, alvo e prazo (só quem criou). A caixinha acompanha o nome.</summary>
     public async Task<MetaDto> AtualizarAsync(Guid metaId, CriarMetaDto dto, Guid usuarioId)
     {
         var meta = await BuscarPropriaAsync(metaId, usuarioId);
@@ -63,19 +71,29 @@ public class MetaService
 
         meta.Nome = ValidarNome(dto.Nome);
         meta.Descricao = string.IsNullOrWhiteSpace(dto.Descricao) ? null : dto.Descricao.Trim();
+        meta.Icone = ValidarIcone(dto.Icone ?? meta.Icone);
         meta.ValorAlvo = dto.ValorAlvo;
         meta.DataLimite = prazo;
         meta.CategoriaId = dto.CategoriaId;
         meta.AtualizadoEm = DateTime.UtcNow;
+        if (meta.ContaId.HasValue && await _context.Contas.FindAsync(meta.ContaId.Value) is { } caixinha)
+            caixinha.Nome = meta.Nome;
         await _context.SaveChangesAsync();
         return await ObterAsync(metaId, usuarioId);
     }
 
-    /// <summary>Exclui (soft delete) e solta as reservas: o dinheiro volta a ficar livre nas contas.</summary>
+    /// <summary>Exclui a meta (soft delete) e encerra a caixinha. Com dinheiro guardado, recusa: resgate antes.</summary>
     public async Task ExcluirAsync(Guid metaId, Guid usuarioId)
     {
         var meta = await BuscarPropriaAsync(metaId, usuarioId);
-        _context.MetasReservas.RemoveRange(await _context.MetasReservas.Where(r => r.MetaId == metaId).ToListAsync());
+        if (meta.ContaId.HasValue)
+        {
+            var saldo = (await RegrasFinanceiras.SaldoDaContaAsync(_context, meta.ContaId.Value, usuarioId)).Saldo;
+            if (saldo != 0m)
+                throw new InvalidOperationException($"A meta ainda tem {saldo:C} guardado. Resgate pra uma conta antes de excluir.");
+            if (await _context.Contas.FindAsync(meta.ContaId.Value) is { } caixinha)
+                caixinha.EncerradaEm = DateTime.UtcNow;
+        }
         meta.Ativo = false;
         meta.AtualizadoEm = DateTime.UtcNow;
         await _context.SaveChangesAsync();
@@ -83,117 +101,101 @@ public class MetaService
 
     // ── Ler ──────────────────────────────────────────────────────────────────
 
-    /// <summary>Metas ativas: as pessoais da pessoa e as das famílias dela; <paramref name="soPessoais"/> tira as de família.</summary>
+    /// <summary>Metas ativas: as pessoais e as das famílias da pessoa; <paramref name="soPessoais"/> tira as de família.</summary>
     public async Task<List<MetaDto>> ListarAsync(Guid usuarioId, bool soPessoais = false, DateTime? agora = null)
     {
         var familiaIds = soPessoais ? [] : await _context.MembrosFamilia
             .Where(m => m.UsuarioId == usuarioId && m.Ativo)
             .Select(m => m.FamiliaId)
             .ToListAsync();
-
         var metas = await _context.Metas
             .Where(m => m.Ativo && (soPessoais
                 ? m.UsuarioId == usuarioId && m.FamiliaId == null
                 : m.UsuarioId == usuarioId || (m.FamiliaId != null && familiaIds.Contains(m.FamiliaId.Value))))
             .OrderBy(m => m.CriadoEm)
             .ToListAsync();
-        var reservas = await ReservasDasMetasAsync(metas.Select(m => m.Id));
+        var guardado = await GuardadoAsync(metas);
         var hoje = agora ?? DateTime.UtcNow;
-        return metas.Select(m => Montar(m, reservas.GetValueOrDefault(m.Id, []), hoje)).ToList();
+        return metas.Select(m => Montar(m, guardado.GetValueOrDefault(m.Id), hoje)).ToList();
     }
 
     public async Task<MetaDto> ObterAsync(Guid metaId, Guid usuarioId, DateTime? agora = null)
     {
         var meta = await BuscarComAcessoAsync(metaId, usuarioId);
-        var reservas = await ReservasDasMetasAsync([meta.Id]);
-        return Montar(meta, reservas.GetValueOrDefault(meta.Id, []), agora ?? DateTime.UtcNow);
+        var guardado = await GuardadoAsync([meta]);
+        return Montar(meta, guardado.GetValueOrDefault(meta.Id), agora ?? DateTime.UtcNow);
     }
 
-    /// <summary>Contas abertas da pessoa: saldo, quanto já está reservado em metas e quanto sobra livre.</summary>
-    public async Task<List<ContaLivreDto>> ContasLivresAsync(Guid usuarioId)
+    /// <summary>Guardou e resgatou, do mais recente pro mais antigo (as transferências da caixinha).</summary>
+    public async Task<List<MetaHistoricoDto>> HistoricoAsync(Guid metaId, Guid usuarioId)
     {
-        var contas = await _context.Contas.AsNoTracking()
-            .Where(c => c.UsuarioIdProprietario == usuarioId && c.EncerradaEm == null)
-            .OrderByDescending(c => c.IsCarteira).ThenBy(c => c.Nome)
-            .Select(c => new { c.Id, c.Nome, Banco = c.Banco != null ? c.Banco.Nome : null, Cor = c.Banco != null ? c.Banco.Cor : null })
+        var meta = await BuscarComAcessoAsync(metaId, usuarioId);
+        if (!meta.ContaId.HasValue) return [];
+        var caixinha = meta.ContaId.Value;
+        // Mais recente em cima; no mesmo dia, pela hora em que foi feito (a perna de saída carrega o CriadoEm).
+        return await (
+                from t in _context.Transferencias.AsNoTracking()
+                join perna in _context.Transacoes on t.TransacaoOrigemId equals perna.Id
+                where perna.Ativo && (t.ContaDestinoId == caixinha || t.ContaOrigemId == caixinha)
+                orderby t.Data descending, perna.CriadoEm descending
+                select t.ContaDestinoId == caixinha
+                    ? new MetaHistoricoDto(t.Id, t.Data, "guardou", t.ContaOrigemId, t.ContaOrigem!.Nome, t.Valor)
+                    : new MetaHistoricoDto(t.Id, t.Data, "resgatou", t.ContaDestinoId, t.ContaDestino!.Nome, t.Valor))
             .ToListAsync();
-        var ids = contas.Select(c => c.Id).ToList();
-        var saldos = await RegrasFinanceiras.SaldosDasContasAsync(_context, ids, usuarioId);
-        var reservado = await ReservadoPorContaAsync(ids);
-        return contas.Select(c =>
-        {
-            var saldo = saldos[c.Id].Saldo;
-            var res = reservado.GetValueOrDefault(c.Id);
-            return new ContaLivreDto(c.Id, c.Nome, c.Banco, c.Cor, saldo, res, saldo - res);
-        }).ToList();
     }
 
-    /// <summary>Σ reservas por conta (meta ativa), pra Bancos e pro "livre".</summary>
-    public async Task<Dictionary<Guid, decimal>> ReservadoPorContaAsync(IEnumerable<Guid> contaIds)
+    /// <summary>Meta de cada caixinha (pra Bancos levar da conta-caixinha pra página da meta).</summary>
+    public async Task<Dictionary<Guid, Guid>> MetaPorCaixinhaAsync(IEnumerable<Guid> contaIds)
     {
         var ids = contaIds.ToList();
-        return await _context.MetasReservas
-            .Where(r => ids.Contains(r.ContaId) && r.Meta!.Ativo)
-            .GroupBy(r => r.ContaId)
-            .Select(g => new { g.Key, Total = g.Sum(r => r.Valor) })
-            .ToDictionaryAsync(x => x.Key, x => x.Total);
+        return await _context.Metas
+            .Where(m => m.ContaId != null && ids.Contains(m.ContaId.Value))
+            .ToDictionaryAsync(m => m.ContaId!.Value, m => m.Id);
     }
 
-    // ── Guardar / tirar ──────────────────────────────────────────────────────
+    // ── Guardar / resgatar ───────────────────────────────────────────────────
 
-    /// <summary>Reserva <c>Valor</c> da conta pra meta. Não passa do livre da conta (saldo − já reservado).</summary>
+    /// <summary>Transfere <c>Valor</c> da conta da pessoa pra caixinha da meta. Não passa do saldo da conta.</summary>
     public async Task<MetaDto> GuardarAsync(Guid metaId, MovimentoMetaDto dto, Guid usuarioId, string? idempotencyKey)
     {
         var chave = ExigirChave(idempotencyKey);
-        var meta = await BuscarComAcessoAsync(metaId, usuarioId);
-        if (await JaFeitoAsync(usuarioId, OperacaoGuardar, chave, metaId))
-            return await ObterAsync(metaId, usuarioId);
-
-        await DonoRecursos.ExigirContaAbertaAsync(_context, dto.ContaId, usuarioId);
-        var saldo = (await RegrasFinanceiras.SaldoDaContaAsync(_context, dto.ContaId, usuarioId)).Saldo;
-        var reservado = (await ReservadoPorContaAsync([dto.ContaId])).GetValueOrDefault(dto.ContaId);
-        var livre = saldo - reservado;
-        if (dto.Valor > livre)
-            throw new InvalidOperationException(livre > 0
-                ? $"Só tem {livre:C} livre nessa conta."
-                : "Essa conta não tem dinheiro livre: o saldo já está todo reservado em metas.");
-
-        var reserva = await _context.MetasReservas.FirstOrDefaultAsync(r => r.MetaId == metaId && r.ContaId == dto.ContaId);
-        if (reserva is null)
-            _context.MetasReservas.Add(new MetaReserva
-            {
-                Id = Guid.NewGuid(), MetaId = metaId, ContaId = dto.ContaId, UsuarioId = usuarioId, Valor = dto.Valor,
-            });
-        else
+        var meta = await BuscarPropriaAsync(metaId, usuarioId);
+        var caixinha = await GarantirCaixinhaAsync(meta, usuarioId);
+        var transf = Transferencia(dto.ContaId, caixinha, dto, $"Guardado em {meta.Nome}");
+        if (!await JaFeitoAsync(usuarioId, chave))
         {
-            reserva.Valor += dto.Valor;
-            reserva.AtualizadoEm = DateTime.UtcNow;
+            if (dto.ContaId == caixinha)
+                throw new ArgumentException("Escolha uma conta sua, não a própria caixinha.");
+            await ExigirNaoCaixinhaAsync(dto.ContaId);
+            await DonoRecursos.ExigirContaAbertaAsync(_context, dto.ContaId, usuarioId);
+            var saldo = (await RegrasFinanceiras.SaldoDaContaAsync(_context, dto.ContaId, usuarioId)).Saldo;
+            if (dto.Valor > saldo)
+                throw new InvalidOperationException(saldo > 0 ? $"Só tem {saldo:C} nessa conta." : "Essa conta está sem saldo pra guardar.");
         }
-        meta.AtualizadoEm = DateTime.UtcNow;
-        await SalvarComChaveAsync(usuarioId, OperacaoGuardar, chave, metaId);
+        using (_context.LiberarCaixinha())
+            await _transferencias.CriarAsync(transf, usuarioId, chave);
         return await ObterAsync(metaId, usuarioId);
     }
 
-    /// <summary>Solta <c>Valor</c> da reserva dessa conta (o dinheiro volta a ficar livre). Não passa do reservado.</summary>
-    public async Task<MetaDto> TirarAsync(Guid metaId, MovimentoMetaDto dto, Guid usuarioId, string? idempotencyKey)
+    /// <summary>Transfere <c>Valor</c> da caixinha de volta pra uma conta da pessoa. Não passa do guardado.</summary>
+    public async Task<MetaDto> ResgatarAsync(Guid metaId, MovimentoMetaDto dto, Guid usuarioId, string? idempotencyKey)
     {
         var chave = ExigirChave(idempotencyKey);
-        var meta = await BuscarComAcessoAsync(metaId, usuarioId);
-        if (await JaFeitoAsync(usuarioId, OperacaoTirar, chave, metaId))
-            return await ObterAsync(metaId, usuarioId);
-
-        await DonoRecursos.ExigirContaAsync(_context, dto.ContaId, usuarioId);
-        var reserva = await _context.MetasReservas.FirstOrDefaultAsync(r => r.MetaId == metaId && r.ContaId == dto.ContaId)
-            ?? throw new InvalidOperationException("Essa meta não tem dinheiro guardado nessa conta.");
-        if (dto.Valor > reserva.Valor)
-            throw new InvalidOperationException($"Nessa conta a meta só tem {reserva.Valor:C} guardado.");
-
-        reserva.Valor -= dto.Valor;
-        reserva.AtualizadoEm = DateTime.UtcNow;
-        if (reserva.Valor == 0m)
-            _context.MetasReservas.Remove(reserva);
-        meta.AtualizadoEm = DateTime.UtcNow;
-        await SalvarComChaveAsync(usuarioId, OperacaoTirar, chave, metaId);
+        var meta = await BuscarPropriaAsync(metaId, usuarioId);
+        var caixinha = await GarantirCaixinhaAsync(meta, usuarioId);
+        var transf = Transferencia(caixinha, dto.ContaId, dto, $"Resgatado de {meta.Nome}");
+        if (!await JaFeitoAsync(usuarioId, chave))
+        {
+            if (dto.ContaId == caixinha)
+                throw new ArgumentException("Escolha pra qual conta sua o dinheiro volta.");
+            await ExigirNaoCaixinhaAsync(dto.ContaId);
+            await DonoRecursos.ExigirContaAbertaAsync(_context, dto.ContaId, usuarioId);
+            var guardado = (await RegrasFinanceiras.SaldoDaContaAsync(_context, caixinha, usuarioId)).Saldo;
+            if (dto.Valor > guardado)
+                throw new InvalidOperationException(guardado > 0 ? $"A meta só tem {guardado:C} guardado." : "A meta ainda não tem nada guardado.");
+        }
+        using (_context.LiberarCaixinha())
+            await _transferencias.CriarAsync(transf, usuarioId, chave);
         return await ObterAsync(metaId, usuarioId);
     }
 
@@ -219,31 +221,58 @@ public class MetaService
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    private static MetaDto Montar(Meta m, List<MetaReservaDto> reservas, DateTime hoje)
+    private static MetaDto Montar(Meta m, decimal guardado, DateTime hoje)
     {
-        var guardado = reservas.Sum(r => r.Valor);
         var (situacao, meses, porMes) = Situacao(m.ValorAlvo, guardado, m.DataLimite, m.CriadoEm, hoje);
-        var pct = m.ValorAlvo > 0 ? Math.Min(100m, Math.Round(guardado * 100m / m.ValorAlvo, 2)) : 0m;
+        var pct = m.ValorAlvo > 0 ? Math.Clamp(Math.Round(guardado * 100m / m.ValorAlvo, 2), 0m, 100m) : 0m;
         return new MetaDto(
-            m.Id, m.Nome, m.Descricao, m.ValorAlvo, guardado, Math.Max(0m, m.ValorAlvo - guardado), pct,
-            guardado >= m.ValorAlvo, m.DataLimite, meses, porMes, situacao, reservas,
+            m.Id, m.Nome, m.Descricao, m.Icone ?? "alvo", m.ValorAlvo, guardado, Math.Max(0m, m.ValorAlvo - guardado), pct,
+            guardado >= m.ValorAlvo, m.DataLimite, meses, porMes, situacao, m.ContaId,
             m.UsuarioId, m.FamiliaId, m.CategoriaId, m.Ativo, m.CriadoEm, m.AtualizadoEm);
     }
 
-    private async Task<Dictionary<Guid, List<MetaReservaDto>>> ReservasDasMetasAsync(IEnumerable<Guid> metaIds)
+    /// <summary>Saldo de cada caixinha, pela regra única de saldo (dono da caixinha = dono da meta).</summary>
+    private async Task<Dictionary<Guid, decimal>> GuardadoAsync(List<Meta> metas)
     {
-        var ids = metaIds.ToList();
-        var linhas = await _context.MetasReservas.AsNoTracking()
-            .Where(r => ids.Contains(r.MetaId))
-            .OrderByDescending(r => r.Valor)
-            .Select(r => new
-            {
-                r.MetaId,
-                Dto = new MetaReservaDto(r.ContaId, r.Conta!.Nome, r.Conta.Banco != null ? r.Conta.Banco.Nome : null,
-                    r.Conta.Banco != null ? r.Conta.Banco.Cor : null, r.Valor),
-            })
-            .ToListAsync();
-        return linhas.GroupBy(l => l.MetaId).ToDictionary(g => g.Key, g => g.Select(l => l.Dto).ToList());
+        var resultado = new Dictionary<Guid, decimal>();
+        foreach (var dono in metas.Where(m => m.ContaId.HasValue).GroupBy(m => m.UsuarioId))
+        {
+            var saldos = await RegrasFinanceiras.SaldosDasContasAsync(_context, dono.Select(m => m.ContaId!.Value), dono.Key);
+            foreach (var m in dono)
+                resultado[m.Id] = saldos[m.ContaId!.Value].Saldo;
+        }
+        return resultado;
+    }
+
+    private Conta NovaCaixinha(string nome, Guid usuarioId)
+    {
+        var conta = new Conta { Id = Guid.NewGuid(), Nome = nome, Tipo = TipoConta.Caixinha, UsuarioIdProprietario = usuarioId };
+        _context.Contas.Add(conta);
+        return conta;
+    }
+
+    /// <summary>Meta antiga (de antes das caixinhas) ganha a dela no primeiro guardar/resgatar.</summary>
+    private async Task<Guid> GarantirCaixinhaAsync(Meta meta, Guid usuarioId)
+    {
+        if (meta.ContaId.HasValue) return meta.ContaId.Value;
+        meta.ContaId = NovaCaixinha(meta.Nome, usuarioId).Id;
+        await _context.SaveChangesAsync();
+        return meta.ContaId.Value;
+    }
+
+    private static CriarTransferenciaDto Transferencia(Guid origem, Guid destino, MovimentoMetaDto dto, string descricao) => new()
+    {
+        ContaOrigemId = origem,
+        ContaDestinoId = destino,
+        Valor = dto.Valor,
+        Data = dto.Data ?? DateOnly.FromDateTime(DateTime.UtcNow),
+        Descricao = descricao,
+    };
+
+    private async Task ExigirNaoCaixinhaAsync(Guid contaId)
+    {
+        if (await _context.Contas.AnyAsync(c => c.Id == contaId && c.Tipo == TipoConta.Caixinha))
+            throw new ArgumentException("Escolha uma conta sua, não a caixinha de outra meta.");
     }
 
     private static string ExigirChave(string? chave)
@@ -254,37 +283,23 @@ public class MetaService
         return chave;
     }
 
-    /// <summary>Replay: a chave já foi usada nessa meta → não aplica de novo; noutra meta → 409.</summary>
-    private async Task<bool> JaFeitoAsync(Guid usuarioId, string operacao, string chave, Guid metaId)
-    {
-        var registro = await Idempotencia.BuscarAsync(_context, usuarioId, operacao, chave);
-        if (registro is null) return false;
-        if (registro.ReferenciaId != metaId)
-            throw new InvalidOperationException(Idempotencia.MensagemChaveComOutrosDados);
-        return true;
-    }
-
-    /// <summary>Grava a operação e a chave no MESMO SaveChanges; corrida com a mesma chave vira replay.</summary>
-    private async Task SalvarComChaveAsync(Guid usuarioId, string operacao, string chave, Guid metaId)
-    {
-        _context.RegistrosIdempotencia.Add(Idempotencia.Novo(usuarioId, operacao, chave, metaId));
-        try
-        {
-            await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateException ex) when (Idempotencia.EhViolacaoDeUnicidade(ex))
-        {
-            foreach (var entry in _context.ChangeTracker.Entries().ToList())
-                entry.State = EntityState.Detached;
-        }
-    }
+    /// <summary>A chave já moveu dinheiro? (aí a transferência devolve a original ou 409, sem checar saldo de novo).</summary>
+    private async Task<bool> JaFeitoAsync(Guid usuarioId, string chave) =>
+        await Idempotencia.BuscarAsync(_context, usuarioId, TransferenciaService.OperacaoCriarTransferencia, chave) is not null;
 
     private static string ValidarNome(string nome)
     {
         nome = (nome ?? string.Empty).Trim();
         if (nome.Length == 0) throw new ArgumentException("Dê um nome pra meta.");
-        if (nome.Length > 120) throw new ArgumentException("O nome pode ter no máximo 120 caracteres.");
+        if (nome.Length > 100) throw new ArgumentException("O nome pode ter no máximo 100 caracteres.");
         return nome;
+    }
+
+    private static string ValidarIcone(string? icone)
+    {
+        if (string.IsNullOrWhiteSpace(icone)) return "alvo";
+        if (!Icones.Contains(icone)) throw new ArgumentException("Ícone inválido.");
+        return icone;
     }
 
     private static DateTime InicioDoMes(DateTime d) => new(d.Year, d.Month, 1);
@@ -306,7 +321,7 @@ public class MetaService
         var meta = await _context.Metas.FirstOrDefaultAsync(m => m.Id == metaId && m.Ativo)
             ?? throw new KeyNotFoundException("Meta não encontrada.");
         if (meta.UsuarioId != usuarioId)
-            throw new ForbiddenAccessException("Você não tem permissão para editar esta meta.");
+            throw new ForbiddenAccessException("Você não tem permissão para mexer nesta meta.");
         return meta;
     }
 

@@ -66,7 +66,7 @@ public class MetaExportadaDto
     public string Nome { get; set; } = string.Empty;
     public decimal ValorAlvo { get; set; }
     public DateTime? DataLimite { get; set; }
-    /// <summary>Soma do que está reservado nas contas pra esta meta.</summary>
+    /// <summary>Saldo da caixinha da meta (o que está guardado nela).</summary>
     public decimal Guardado { get; set; }
 }
 

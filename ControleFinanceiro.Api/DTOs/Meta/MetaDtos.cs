@@ -2,20 +2,18 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ControleFinanceiro.Api.DTOs.Meta;
 
-/// <summary>Onde o dinheiro da meta está guardado: quanto de cada conta está reservado pra ela.</summary>
-public record MetaReservaDto(Guid ContaId, string ContaNome, string? BancoNome, string? BancoCor, decimal Valor);
-
 /// <summary>
-/// Meta com o progresso calculado das reservas (modelo do Monarch: o dinheiro fica na conta, a meta reserva).
-/// <c>Situacao</c>: "concluida" · "sem-prazo" · "prazo-passou" · "no-ritmo" · "atras" (comparando o guardado com o
-/// que já deveria estar guardado se fosse igual todo mês desde a criação). <c>PorMes</c> = quanto falta dividido
-/// pelos meses até o prazo (contando o atual); null sem prazo, concluída ou prazo passado.
+/// Meta no modelo de CAIXINHA (como o Nubank; decisão do Gustavo em 2026-10-19): cada meta tem a própria conta
+/// (<c>ContaId</c>, tipo Caixinha) e guardar é transferência de verdade da conta da pessoa pra ela.
+/// <c>Guardado</c> = saldo da caixinha. <c>Situacao</c>: "concluida" · "sem-prazo" · "prazo-passou" · "no-ritmo"
+/// · "atras". <c>PorMes</c> = quanto falta dividido pelos meses até o prazo (contando o atual).
 /// <c>ValorAtual</c> = <c>Guardado</c> (compatibilidade com o app antigo).
 /// </summary>
 public record MetaDto(
     Guid Id,
     string Nome,
     string? Descricao,
+    string Icone,
     decimal ValorAlvo,
     decimal Guardado,
     decimal Falta,
@@ -25,7 +23,7 @@ public record MetaDto(
     int? MesesRestantes,
     decimal? PorMes,
     string Situacao,
-    List<MetaReservaDto> Reservas,
+    Guid? ContaId,
     Guid UsuarioId,
     Guid? FamiliaId,
     Guid? CategoriaId,
@@ -36,19 +34,21 @@ public record MetaDto(
     public decimal ValorAtual => Guardado;
 }
 
-/// <summary>Criação ou atualização de uma meta. <c>DataLimite</c>: o mês do prazo (o dia é ignorado).</summary>
+/// <summary>Criação ou edição. <c>DataLimite</c>: o mês do prazo (o dia é ignorado). <c>Icone</c>: um da lista.</summary>
 public record CriarMetaDto(
-    [Required][MaxLength(120)] string Nome,
+    [Required][MaxLength(100)] string Nome,
     [MaxLength(500)] string? Descricao,
     [Range(0.01, 999_999_999.99, ErrorMessage = "Diga quanto quer juntar.")] decimal ValorAlvo,
     DateTime? DataLimite,
     Guid? FamiliaId,
-    Guid? CategoriaId);
+    Guid? CategoriaId,
+    [MaxLength(30)] string? Icone = null);
 
-/// <summary>Guardar (reservar) ou tirar dinheiro de uma conta pra/da meta.</summary>
+/// <summary>Guardar (da conta pra caixinha) ou resgatar (da caixinha pra conta). <c>Data</c> omitida = hoje.</summary>
 public record MovimentoMetaDto(
     Guid ContaId,
-    [Range(0.01, 999_999_999.99, ErrorMessage = "Diga quanto.")] decimal Valor);
+    [Range(0.01, 999_999_999.99, ErrorMessage = "Diga quanto.")] decimal Valor,
+    DateOnly? Data = null);
 
-/// <summary>Conta aberta da pessoa com o que está reservado em metas e o que sobra livre.</summary>
-public record ContaLivreDto(Guid ContaId, string Nome, string? BancoNome, string? BancoCor, decimal Saldo, decimal Reservado, decimal Livre);
+/// <summary>Uma linha do histórico da meta: quando, se guardou ou resgatou, de/pra qual conta e quanto.</summary>
+public record MetaHistoricoDto(Guid TransferenciaId, DateTime Data, string Tipo, Guid ContaId, string ContaNome, decimal Valor);

@@ -2,8 +2,9 @@ namespace ControleFinanceiro.Api.Domain.Entities;
 
 /// <summary>
 /// Meta financeira individual ou conjunta (ex.: viagem, reserva de emergência, casa).
-/// O progresso é a soma das <see cref="MetaReserva"/>: parte do saldo de contas reais reservada pra meta
-/// (o dinheiro não sai da conta). O antigo contador <c>ValorAtual</c> saiu (migration <c>AddMetaReserva</c>).
+/// Cada meta tem a própria conta-caixinha (<see cref="ContaId"/>, tipo Caixinha, como o Nubank): guardar é
+/// transferência de verdade pra ela e o progresso é o saldo dela. O antigo contador <c>ValorAtual</c> saiu
+/// (migration <c>AddMetaCaixinha</c>).
 /// </summary>
 public class Meta
 {
@@ -40,5 +41,11 @@ public class Meta
     public Usuario Usuario { get; set; } = null!;
     public Familia? Familia { get; set; }
     public Categoria? Categoria { get; set; }
-    public ICollection<MetaReserva> Reservas { get; set; } = new List<MetaReserva>();
+
+    /// <summary>A caixinha da meta (conta tipo Caixinha). Null só em meta antiga: ganha uma no primeiro guardar.</summary>
+    public Guid? ContaId { get; set; }
+    public Conta? Conta { get; set; }
+
+    /// <summary>Ícone escolhido (um de <c>MetaService.Icones</c>); null = alvo.</summary>
+    public string? Icone { get; set; }
 }

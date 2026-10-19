@@ -2,7 +2,7 @@
 // recentes, contas e cartões — mesmos dados do /dashboard do app atual.
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { ArrowDownLeft, ArrowDownRight, ArrowLeftRight, ArrowUpRight, ChevronLeft, ChevronRight, CreditCard } from "lucide-react"
+import { ArrowDownLeft, ArrowDownRight, ArrowLeftRight, ArrowUpRight, ChevronLeft, ChevronRight, CreditCard, PiggyBank } from "lucide-react"
 import { getDashboard } from "../services/dashboardService"
 import { getRendaMes } from "../services/rendaService"
 import type { RendaMes } from "../types/Renda"
@@ -10,6 +10,7 @@ import type { DashboardData, TransacaoRecente } from "../types/Dashboard"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import { Dinheiro, diaCurto, variacao, type TomDinheiro } from "../componentes/Dinheiro"
 import LogoMarca from "../componentes/LogoMarca"
+import { TIPO_CONTA } from "../dominio/conta"
 import GraficoLinha from "../componentes/GraficoLinha"
 import styles from "./Dashboard.module.css"
 
@@ -39,6 +40,7 @@ export default function Dashboard() {
   const mesAnterior = MESES[(ref.mes + 10) % 12]
   const d = dados
   const diferenca = d ? d.saldoTotal - d.saldoMesAnterior : 0
+  const caixinhas = d ? d.saldoContas.filter((c) => c.tipo === TIPO_CONTA.caixinha).reduce((s, c) => s + c.saldo, 0) : 0
 
   return (
     <div className={styles.pagina}>
@@ -112,13 +114,23 @@ export default function Dashboard() {
           <Bloco titulo="Contas" acao="Ver todas" para="/bancos" semRespiro>
             {!d ? <div className={styles.respiro}><Esqueleto linhas={3} /></div> : (
               <ul className={styles.lista}>
-                {d.saldoContas.map((c) => (
+                {d.saldoContas.filter((c) => c.tipo !== TIPO_CONTA.caixinha).map((c) => (
                   <li key={c.id} className={styles.linha}>
                     <LogoMarca nome={c.nome} logoUrl={c.logoUrl} cor={c.cor} tamanho={36} />
                     <span className={styles.texto}><span className={styles.nome}>{c.nome}</span><span className={styles.sub}>{c.tipoDescricao}</span></span>
                     <Dinheiro valor={c.saldo} className={styles.valor} tom={c.saldo < 0 ? "negativo" : undefined} />
                   </li>
                 ))}
+                {/* As caixinhas das metas numa linha só (o dinheiro guardado nelas continua no saldo total). */}
+                {caixinhas > 0 && (
+                  <li>
+                    <Link to="/metas" className={styles.linha}>
+                      <span className={styles.icone} data-tom="acento" aria-hidden="true"><PiggyBank size={17} strokeWidth={2.25} /></span>
+                      <span className={styles.texto}><span className={styles.nome}>Caixinhas das metas</span><span className={styles.sub}>Guardado nas metas</span></span>
+                      <Dinheiro valor={caixinhas} className={styles.valor} />
+                    </Link>
+                  </li>
+                )}
               </ul>
             )}
           </Bloco>

@@ -54,6 +54,8 @@ public class EncerramentoContaService
 
         if (conta.IsCarteira)
             throw new InvalidOperationException("A carteira não pode ser encerrada.");
+        if (conta.Tipo == TipoConta.Caixinha)
+            throw new InvalidOperationException(ContaService.MensagemCaixinha);
         if (conta.EncerradaEm != null)
             throw new InvalidOperationException("Esta conta já está encerrada.");
         if (dto.ContaDestinoId.HasValue && dto.Ajustar)
@@ -74,10 +76,6 @@ public class EncerramentoContaService
         if (await _context.Transacoes.AnyAsync(t => t.ContaId == contaId && t.StatusTransacao == StatusTransacao.Previsao))
             throw new InvalidOperationException(
                 "Esta conta tem lançamentos previstos. Efetive ou exclua as previsões antes de encerrar.");
-
-        if (await _context.MetasReservas.AnyAsync(r => r.ContaId == contaId && r.Meta!.Ativo))
-            throw new InvalidOperationException(
-                "Esta conta tem dinheiro guardado em metas. Tire das metas (ou guarde em outra conta) antes de encerrar.");
 
         var saldos = await RegrasFinanceiras.SaldosDasContasAsync(_context, new[] { contaId }, usuarioId);
         var saldo = saldos.TryGetValue(contaId, out var mov) ? mov.Saldo : 0m;
@@ -168,6 +166,8 @@ public class EncerramentoContaService
         var conta = await _context.Contas.FirstOrDefaultAsync(c => c.Id == contaId && c.UsuarioIdProprietario == usuarioId)
             ?? throw new KeyNotFoundException("Conta não encontrada.");
         if (conta.EncerradaEm is null) return;
+        if (conta.Tipo == TipoConta.Caixinha)
+            throw new InvalidOperationException(ContaService.MensagemCaixinha);
         conta.EncerradaEm = null;
         await _context.SaveChangesAsync();
     }
