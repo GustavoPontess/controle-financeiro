@@ -14,7 +14,7 @@ import Botao from "../componentes/Botao"
 import { GrupoFicha, ListaFicha } from "../componentes/ListaFicha"
 import NavegadorMes, { nomeDoPeriodo } from "../componentes/NavegadorMes"
 import { APROVACAO, primeiroNome } from "../dominio/familia"
-import { Acerto, Alerta, Despesa, Equilibrio, FaixaMes, Saldos, papeisDe, useFamilia } from "./FamiliaPecas"
+import { Acerto, Alerta, Despesa, Equilibrio, FaixaMes, Saldos, fotosDe, papeisDe, useFamilia } from "./FamiliaPecas"
 import styles from "./Familia.module.css"
 
 export default function FamiliaVisaoGeral() {
@@ -51,6 +51,7 @@ export default function FamiliaVisaoGeral() {
   const pendentes = (despesas ?? []).filter((d) => d.statusAprovacao === APROVACAO.pendente)
   const membrosOpcoes = detalhe.membros.map((m) => ({ valor: m.usuarioId, rotulo: primeiroNome(m.nomeUsuario) }))
   const sozinho = detalhe.membros.length === 1
+  const fotos = fotosDe(detalhe)
 
   return (
     <div className={styles.pagina}>
@@ -69,7 +70,7 @@ export default function FamiliaVisaoGeral() {
               <p className={styles.vazioMes}>Nenhuma despesa compartilhada em {mesMin}.</p>
             ) : (
               <>
-                <Saldos balanco={balanco} meuId={meuId} />
+                <Saldos balanco={balanco} meuId={meuId} fotos={fotos} />
                 <Equilibrio balanco={balanco} familiaId={detalhe.id} podeAgir={podeAgir} voltarPara={aqui} />
               </>
             )}
@@ -77,7 +78,7 @@ export default function FamiliaVisaoGeral() {
               {acertos !== null && acertos.length > 0 ? (
                 <ListaFicha rotulo="Entre vocês">
                   <GrupoFicha rotulo="Passou entre vocês" extra={<Botao variante="texto" onClick={() => navigate(`${aqui}/entre-voces`)}>Ver tudo</Botao>}>
-                    {acertos.map((a) => <Acerto key={a.id} a={a} familiaId={detalhe.id} podeAgir={podeAgir} aoMudar={recarregar} />)}
+                    {acertos.map((a) => <Acerto key={a.id} a={a} familiaId={detalhe.id} podeAgir={podeAgir} aoMudar={recarregar} foto={fotos[a.deUsuarioId]} />)}
                   </GrupoFicha>
                 </ListaFicha>
               ) : (
@@ -98,7 +99,7 @@ export default function FamiliaVisaoGeral() {
         <Bloco semRespiro>
           <ListaFicha rotulo="Despesas compartilhadas">
             <GrupoFicha rotulo="Aguardando aprovação" extra={<Link to={`${aqui}/despesas`} className={styles.linkFicha}>Ver todas</Link>}>
-              {pendentes.map((d) => <Despesa key={d.id} d={d} familiaId={detalhe.id} meuId={meuId} podeAgir={podeAgir} membros={membrosOpcoes} voltarPara={aqui} aoMudar={recarregar} />)}
+              {pendentes.map((d) => <Despesa key={d.id} d={d} familiaId={detalhe.id} meuId={meuId} podeAgir={podeAgir} membros={membrosOpcoes} voltarPara={aqui} aoMudar={recarregar} foto={fotos[d.pagadorUsuarioId]} />)}
             </GrupoFicha>
           </ListaFicha>
         </Bloco>

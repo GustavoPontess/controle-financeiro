@@ -25,6 +25,8 @@ public class PerfilExportadoDto
     public string Email { get; set; } = string.Empty;
     public string Nome { get; set; } = string.Empty;
     public DateTime? DataNascimento { get; set; }
+    /// <summary>A foto de perfil como data URL ("data:image/webp;base64,..."), ou null.</summary>
+    public string? FotoPerfil { get; set; }
     public StatusUsuario Status { get; set; }
     public bool MfaAtivo { get; set; }
     public bool OnboardingConcluido { get; set; }
@@ -63,6 +65,13 @@ public class MetaExportadaDto
     public Guid Id { get; set; }
     public string Nome { get; set; } = string.Empty;
     public decimal ValorAlvo { get; set; }
+    public DateTime? DataLimite { get; set; }
+    /// <summary>Quando a meta foi concluída (o dinheiro foi usado) e quanto juntou; null = não concluída.</summary>
+    public DateTime? ConcluidaEm { get; set; }
+    public decimal? ValorJuntado { get; set; }
+
+    /// <summary>Saldo da caixinha da meta (o que está guardado nela).</summary>
+    public decimal Guardado { get; set; }
 }
 
 public class OrcamentoExportadoDto

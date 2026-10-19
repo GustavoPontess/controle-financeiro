@@ -16,6 +16,7 @@ import { recarregarEspacos } from "../estado/espaco"
 import type { AcertoContas, BalancoFamilia, ConviteFamilia, Dependente, DespesaCompartilhada, FamiliaDetalhe, MembroFamilia, ModoRateio } from "../types/Familia"
 import type { RendaFamilia, VisibilidadeRenda } from "../types/Renda"
 import { VISIBILIDADE_RENDA } from "../types/Renda"
+import { urlFoto } from "../componentes/Avatar"
 import Bloco from "../componentes/Bloco"
 import Botao from "../componentes/Botao"
 import Campo from "../componentes/Campo"
@@ -30,7 +31,7 @@ import Marcar from "../componentes/Marcar"
 import type { Periodo } from "../componentes/NavegadorMes"
 import Selecao from "../componentes/Selecao"
 import { APROVACAO, MAX_PAPEL, MODOS_RATEIO, PAPEL_PERMISSAO, fraseSaldo, primeiroNome, rotuloTipoDependente, sugerirEquilibrio } from "../dominio/familia"
-import { dataBR } from "../utils/dateTime"
+import { dataBR, diaDeInstante } from "../utils/dateTime"
 import { moneyParaCampo, parseMoney } from "../utils/money"
 import styles from "./Familia.module.css"
 
@@ -52,6 +53,11 @@ export function useFamilia(id: string, versao: number) {
     return () => { vivo = false }
   }, [id, versao])
   return { detalhe, erro }
+}
+
+/** Foto de cada membro (usuarioId → URL), pra pôr o rosto em quem pagou, no equilíbrio, nas passagens. */
+export function fotosDe(detalhe: FamiliaDetalhe): Record<string, string | undefined> {
+  return Object.fromEntries(detalhe.membros.map((m) => [m.usuarioId, urlFoto(m.usuarioId, m.fotoEm)]))
 }
 
 export function papeisDe(detalhe: FamiliaDetalhe, meuId: string) {
@@ -95,14 +101,14 @@ export function FaixaMes({ total, renda, meuId }: { total: number; renda: RendaF
 }
 
 // ── Quem pagou o quê e o que falta pra equilibrar ───────────────────────────────────────────────────────
-export function Saldos({ balanco, meuId }: { balanco: BalancoFamilia; meuId: string }) {
+export function Saldos({ balanco, meuId, fotos }: { balanco: BalancoFamilia; meuId: string; fotos?: Record<string, string | undefined> }) {
   return (
     <ul className={styles.saldos} aria-label="Quanto cada um pagou">
       {balanco.saldos.map((s) => {
         const f = fraseSaldo(s.saldo)
         return (
           <li key={s.usuarioId}>
-            <InicialFicha texto={s.nome} destaque={s.usuarioId === meuId} />
+            <InicialFicha texto={s.nome} destaque={s.usuarioId === meuId} foto={fotos?.[s.usuarioId]} />
             <span className={styles.saldoTexto}>
               <span className={styles.saldoNome}>{primeiroNome(s.nome)}{s.usuarioId === meuId && <span className={styles.voce}> você</span>}</span>
               <span className={styles.saldoDetalhe}>pagou <Dinheiro valor={s.pagou} /> · a parte é <Dinheiro valor={s.cota} /></span>
@@ -216,9 +222,9 @@ export function Membro({ m, familia, meuId, mesNome, renda, aoMudar }: {
   return (
     <>
       <ItemFicha id={`membro-${m.id}`} aberto={aberto} aoAbrir={() => setAberto((a) => !a)}
-        marca={<InicialFicha texto={m.nomeUsuario} destaque={sou} />}
+        marca={<InicialFicha texto={m.nomeUsuario} destaque={sou} foto={urlFoto(m.usuarioId, m.fotoEm)} />}
         titulo={<>{m.nomeUsuario}{sou && <span className={styles.voce}> você</span>}</>}
-        detalhe={`${m.papel} · desde ${dataBR(m.entrouEm)}`}
+        detalhe={`${m.papel} · desde ${diaDeInstante(m.entrouEm)}`}
         direita={m.papelPermissao === PAPEL_PERMISSAO.admin ? <Etiqueta>Admin</Etiqueta> : m.papelPermissao === PAPEL_PERMISSAO.dependente ? <Etiqueta>Só vê</Etiqueta> : undefined}>
         <Alerta erro={erro} />
         <DadosFicha>
@@ -288,7 +294,7 @@ export function Convite({ c, familiaId, admin, aoMudar }: { c: ConviteFamilia; f
   }
   return (
     <ItemFicha id={`convite-${c.id}`} aberto={aberto} aoAbrir={() => setAberto((a) => !a)} apagado
-      marca={<InicialFicha texto={c.emailConvidado} />} titulo={c.emailConvidado} detalhe={`${c.papel} · vale até ${dataBR(c.expiraEm)}`}
+      marca={<InicialFicha texto={c.emailConvidado} />} titulo={c.emailConvidado} detalhe={`${c.papel} · vale até ${diaDeInstante(c.expiraEm)}`}
       direita={<Etiqueta tom="alerta">Aguardando</Etiqueta>}>
       <Alerta erro={erro} />
       <DadosFicha>
@@ -300,8 +306,10 @@ export function Convite({ c, familiaId, admin, aoMudar }: { c: ConviteFamilia; f
 }
 
 // ── Despesa compartilhada: quem pagou, aprovação e responsável na própria linha ─────────────────────────────
-export function Despesa({ d, familiaId, meuId, podeAgir, membros, voltarPara, aoMudar }: {
+export function Despesa({ d, familiaId, meuId, podeAgir, membros, voltarPara, aoMudar, foto }: {
   d: DespesaCompartilhada; familiaId: string; meuId: string; podeAgir: boolean; membros: { valor: string; rotulo: string }[]; voltarPara: string; aoMudar: () => void
+  /** Foto de quem pagou. */
+  foto?: string
 }) {
   const navigate = useNavigate()
   const [aberto, setAberto] = useState(false)
@@ -319,7 +327,7 @@ export function Despesa({ d, familiaId, meuId, podeAgir, membros, voltarPara, ao
 
   return (
     <ItemFicha id={`despesa-${d.id}`} aberto={aberto} aoAbrir={() => setAberto((a) => !a)}
-      marca={<InicialFicha texto={d.pagadorNome} destaque={minha} />}
+      marca={<InicialFicha texto={d.pagadorNome} destaque={minha} foto={foto} />}
       titulo={d.descricao}
       detalhe={<>{primeiroNome(d.pagadorNome)} pagou · {diaMes(d.data)}{d.categoriaNome ? ` · ${d.categoriaNome}` : ""}{d.responsavelNome ? ` · responsável: ${primeiroNome(d.responsavelNome)}` : ""}</>}
       direita={<span className={styles.direita}>{etiqueta}<Dinheiro valor={d.valor} className={styles.valor} /></span>}>
@@ -353,7 +361,7 @@ export function Despesa({ d, familiaId, meuId, podeAgir, membros, voltarPara, ao
   )
 }
 
-export function Acerto({ a, familiaId, podeAgir, aoMudar }: { a: AcertoContas; familiaId: string; podeAgir: boolean; aoMudar: () => void }) {
+export function Acerto({ a, familiaId, podeAgir, aoMudar, foto }: { a: AcertoContas; familiaId: string; podeAgir: boolean; aoMudar: () => void; foto?: string }) {
   const [aberto, setAberto] = useState(false)
   const [confirmando, setConfirmando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
@@ -365,9 +373,9 @@ export function Acerto({ a, familiaId, podeAgir, aoMudar }: { a: AcertoContas; f
   return (
     <>
       <ItemFicha id={`acerto-${a.id}`} aberto={aberto} aoAbrir={() => setAberto((act) => !act)}
-        marca={<InicialFicha texto={a.deNome} />}
+        marca={<InicialFicha texto={a.deNome} foto={foto} />}
         titulo={<>{primeiroNome(a.deNome)} <ArrowRight size={14} strokeWidth={2.5} aria-hidden="true" className={styles.seta} /> {primeiroNome(a.paraNome)}</>}
-        detalhe={`${dataBR(a.criadoEm)}${a.observacao ? ` · ${a.observacao}` : ""}`}
+        detalhe={`${diaDeInstante(a.criadoEm)}${a.observacao ? ` · ${a.observacao}` : ""}`}
         direita={<Dinheiro valor={a.valor} className={styles.valor} />}>
         <Alerta erro={erro} />
         {podeAgir ? <AcoesFicha><Botao variante="texto" perigo disabled={ocupado} onClick={() => setConfirmando(true)}>Desfazer</Botao></AcoesFicha> : <p className={styles.dica}>Registrado por quem lança.</p>}

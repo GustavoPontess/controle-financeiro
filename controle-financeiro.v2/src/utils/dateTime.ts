@@ -67,6 +67,14 @@ export function mascararHora(raw: string): string {
   return d.length <= 2 ? d : `${d.slice(0, 2)}:${d.slice(2)}`
 }
 
+/** Instante do servidor (UTC, com ou sem "Z": `criadoEm`, `atualizadoEm`…) → "15/10/2026" no dia de quem vê.
+ *  `dataBR` lê o dia escrito e, das 21h à meia-noite em Brasília, mostrava o dia seguinte. */
+export function diaDeInstante(isoUtc: string): string {
+  const temFuso = /(Z|[+-]\d{2}:?\d{2})$/i.test(isoUtc)
+  const d = new Date(temFuso ? isoUtc : `${isoUtc}Z`)
+  return Number.isNaN(d.getTime()) ? "" : dataBR(dataLocalISO(d))
+}
+
 /** "2026-10-15T00:00:00" ou "2026-10-15" → "15/10/2026" (sem fuso: o dia é o que está escrito). */
 export function dataBR(iso: string): string {
   const [a, m, d] = iso.slice(0, 10).split("-")

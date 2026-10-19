@@ -1,0 +1,17 @@
+.linha { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.texto { margin: 0; font-size: var(--v2-fs-sm); line-height: 1.55; color: var(--v2-texto-2); max-width: 520px; }
+.form { display: flex; flex-direction: column; gap: 14px; }
+/* Um campo por passo: o campo à esquerda (até 420px) e os botões na mesma linha, alinhados com a caixa de texto. */
+.formLinha { display: flex; align-items: flex-start; gap: 12px; }
+.formLinha > :first-child { flex: 1; max-width: 420px; }
+.formLinha > .acoes { margin-top: 26px; }
+.acoes { display: flex; justify-content: flex-end; gap: 8px; }
+.alerta { margin: 0 0 12px; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
+/* A caixa de excluir tem a borda da cor de perigo: é a única ação sem volta da página. */
+.perigo { box-shadow: inset 0 0 0 1px var(--v2-negativo-suave); }
+@media (max-width: 900px) {
+  .linha { flex-direction: column; align-items: stretch; }
+  .formLinha { flex-direction: column; align-items: stretch; }
+  .formLinha > :first-child { max-width: none; }
+  .formLinha > .acoes { margin-top: 0; }
+}

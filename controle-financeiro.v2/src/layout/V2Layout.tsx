@@ -12,6 +12,7 @@ import {
   ArrowLeft, ArrowLeftRight, Baby, BarChart3, Bell, Check, ChevronsUpDown, CreditCard, Gauge, Handshake, Landmark, LayoutDashboard, LogOut, Mail,
   PanelLeftClose, PanelLeftOpen, Plus, Receipt, Repeat, Scale, Settings, SlidersHorizontal, Tags, Target, Upload, Users, Eye, EyeOff, Wallet,
 } from "lucide-react"
+import Avatar, { urlFoto } from "../componentes/Avatar"
 import Botao from "../componentes/Botao"
 import Logo from "../componentes/Logo"
 import LogoMark from "../componentes/LogoMark"
@@ -121,6 +122,7 @@ export default function V2Layout() {
 
   const iniciaisDe = (nome: string) => nome.trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase() || "?"
   const iniciais = iniciaisDe(usuario?.nome ?? "?")
+  const minhaFoto = urlFoto(usuario?.id, usuario?.fotoEm)
   const outrasContas = contas.filter((c) => c.id !== usuario?.id)
   // Trocar de conta: o servidor reaponta a sessão; depois tudo recarrega como a outra pessoa (a chave do
   // conteúdo leva o id da conta, então nenhuma tela fica com dado da conta anterior).
@@ -167,7 +169,7 @@ export default function V2Layout() {
             {/* O bloco da pessoa diz em que espaço ela está (Pessoal ou a família); o menu troca de espaço. */}
             <button type="button" className={styles.usuarioBotao} aria-label={usuario?.nome ?? "Conta"} title={recolhido ? `${usuario?.nome} · ${nomeDoEspaco}` : undefined}
               aria-haspopup="menu" aria-expanded={menuUsuario} onClick={() => setMenuUsuario((v) => !v)}>
-              <span className={styles.avatar} aria-hidden="true">{iniciais}</span>
+              <Avatar className={styles.avatar} foto={minhaFoto} texto={iniciais} />
               <span className={`${styles.usuarioTexto} ${styles.itemRotulo}`}>
                 <span className={styles.usuarioNome}>{usuario?.nome ?? "—"}</span>
                 <span className={styles.usuarioPlano}>{nomeDoEspaco}</span>
@@ -178,7 +180,7 @@ export default function V2Layout() {
               <div className={styles.menuUsuario} role="menu" aria-label="Conta e espaços">
                 {/* A própria conta é o espaço pessoal: clicar nela sai da família. */}
                 <button type="button" role="menuitemradio" aria-checked={!familiaId} className={`${styles.menuItem} ${styles.menuConta}`} onClick={() => irPara("/dashboard")}>
-                  <span className={styles.avatar} aria-hidden="true">{iniciais}</span>
+                  <Avatar className={styles.avatar} foto={minhaFoto} texto={iniciais} />
                   <span className={styles.menuContaTexto}>
                     <span className={styles.usuarioNome}>{usuario?.nome}</span>
                     <span className={styles.usuarioPlano}>{usuario?.email}</span>

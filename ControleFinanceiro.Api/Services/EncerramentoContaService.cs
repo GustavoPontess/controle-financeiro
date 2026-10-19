@@ -54,6 +54,8 @@ public class EncerramentoContaService
 
         if (conta.IsCarteira)
             throw new InvalidOperationException("A carteira não pode ser encerrada.");
+        if (conta.Tipo == TipoConta.Caixinha)
+            throw new InvalidOperationException(ContaService.MensagemCaixinha);
         if (conta.EncerradaEm != null)
             throw new InvalidOperationException("Esta conta já está encerrada.");
         if (dto.ContaDestinoId.HasValue && dto.Ajustar)
@@ -79,7 +81,7 @@ public class EncerramentoContaService
         var saldo = saldos.TryGetValue(contaId, out var mov) ? mov.Saldo : 0m;
         if (saldo != 0m && !dto.ContaDestinoId.HasValue && !dto.Ajustar)
             throw new ArgumentException(
-                $"A conta ainda tem saldo de {saldo:C}. Diga pra onde foi o dinheiro (transferir) ou que no banco já está zerado (ajustar).");
+                $"A conta ainda tem saldo de {Reais.Formatar(saldo)}. Diga pra onde foi o dinheiro (transferir) ou que no banco já está zerado (ajustar).");
 
         var resolucao = saldo == 0m ? ResolucaoZerada : dto.ContaDestinoId.HasValue ? ResolucaoTransferencia : ResolucaoAjuste;
         var correlationId = Guid.NewGuid();
@@ -164,6 +166,8 @@ public class EncerramentoContaService
         var conta = await _context.Contas.FirstOrDefaultAsync(c => c.Id == contaId && c.UsuarioIdProprietario == usuarioId)
             ?? throw new KeyNotFoundException("Conta não encontrada.");
         if (conta.EncerradaEm is null) return;
+        if (conta.Tipo == TipoConta.Caixinha)
+            throw new InvalidOperationException(ContaService.MensagemCaixinha);
         conta.EncerradaEm = null;
         await _context.SaveChangesAsync();
     }

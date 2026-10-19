@@ -1,0 +1,4 @@
+/* O círculo (tamanho, cor) é de quem usa; com foto, some o fundo e a foto preenche o círculo. */
+.avatar { overflow: hidden; }
+.avatar[data-foto="true"] { background: var(--v2-superficie-2); }
+.img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }

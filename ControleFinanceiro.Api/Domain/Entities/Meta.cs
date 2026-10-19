@@ -2,7 +2,9 @@ namespace ControleFinanceiro.Api.Domain.Entities;
 
 /// <summary>
 /// Meta financeira individual ou conjunta (ex.: viagem, reserva de emergência, casa).
-/// ValorAtual é acumulado manualmente via contribuições.
+/// Cada meta tem a própria conta-caixinha (<see cref="ContaId"/>, tipo Caixinha, como o Nubank): guardar é
+/// transferência de verdade pra ela e o progresso é o saldo dela. O antigo contador <c>ValorAtual</c> saiu
+/// (migration <c>AddMetaCaixinha</c>).
 /// </summary>
 public class Meta
 {
@@ -17,10 +19,7 @@ public class Meta
     /// <summary>Valor a ser atingido.</summary>
     public decimal ValorAlvo { get; set; }
 
-    /// <summary>Valor acumulado até o momento.</summary>
-    public decimal ValorAtual { get; set; }
-
-    /// <summary>Data limite opcional para atingir a meta.</summary>
+    /// <summary>Mês do prazo (dia 1), opcional.</summary>
     public DateTime? DataLimite { get; set; }
 
     /// <summary>Criador da meta.</summary>
@@ -42,4 +41,22 @@ public class Meta
     public Usuario Usuario { get; set; } = null!;
     public Familia? Familia { get; set; }
     public Categoria? Categoria { get; set; }
+
+    /// <summary>A caixinha da meta (conta tipo Caixinha). Null só em meta antiga: ganha uma no primeiro guardar.</summary>
+    public Guid? ContaId { get; set; }
+    public Conta? Conta { get; set; }
+
+    /// <summary>Ícone escolhido (um de <c>MetaService.Icones</c>); null = alvo.</summary>
+    public string? Icone { get; set; }
+
+    /// <summary>
+    /// Quando a pessoa concluiu a meta e levou o dinheiro pra uma conta ("Concluir e usar o dinheiro"). Concluída
+    /// fica em Concluídas com o histórico, a caixinha é encerrada e não guarda nem resgata mais (só reabrindo).
+    /// Guarda o DIA (do aparelho da pessoa, meia-noite), não o instante. Null = não concluída: aí "chegou lá" é só
+    /// guardado ≥ alvo, calculado.
+    /// </summary>
+    public DateTime? ConcluidaEm { get; set; }
+
+    /// <summary>Quanto a caixinha tinha quando a meta foi concluída (o que a pessoa juntou).</summary>
+    public decimal? ValorJuntado { get; set; }
 }

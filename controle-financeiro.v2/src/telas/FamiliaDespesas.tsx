@@ -10,7 +10,7 @@ import Bloco, { Esqueleto } from "../componentes/Bloco"
 import { GrupoFicha, ListaFicha } from "../componentes/ListaFicha"
 import NavegadorMes, { nomeDoPeriodo } from "../componentes/NavegadorMes"
 import { APROVACAO, primeiroNome } from "../dominio/familia"
-import { Alerta, Despesa, papeisDe, useFamilia } from "./FamiliaPecas"
+import { Alerta, Despesa, fotosDe, papeisDe, useFamilia } from "./FamiliaPecas"
 import styles from "./Familia.module.css"
 
 export default function FamiliaDespesas() {
@@ -39,7 +39,8 @@ export default function FamiliaDespesas() {
   const membrosOpcoes = detalhe.membros.map((m) => ({ valor: m.usuarioId, rotulo: primeiroNome(m.nomeUsuario) }))
   const pendentes = (despesas ?? []).filter((d) => d.statusAprovacao === APROVACAO.pendente)
   const doMes = (despesas ?? []).filter((d) => d.statusAprovacao !== APROVACAO.pendente)
-  const linha = (d: DespesaCompartilhada) => <Despesa key={d.id} d={d} familiaId={detalhe.id} meuId={meuId} podeAgir={podeAgir} membros={membrosOpcoes} voltarPara={aqui} aoMudar={recarregar} />
+  const fotos = fotosDe(detalhe)
+  const linha = (d: DespesaCompartilhada) => <Despesa key={d.id} d={d} familiaId={detalhe.id} meuId={meuId} podeAgir={podeAgir} membros={membrosOpcoes} voltarPara={aqui} aoMudar={recarregar} foto={fotos[d.pagadorUsuarioId]} />
 
   return (
     <div className={styles.pagina}>

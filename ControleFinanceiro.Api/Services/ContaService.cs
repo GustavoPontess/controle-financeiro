@@ -22,7 +22,10 @@ namespace ControleFinanceiro.Api.Services
             _eventLog = eventLog;
         }
 
-        /// <summary>O que a pessoa cria em Bancos. Cartão (3) e Empréstimo (5) são legado com entidade própria.</summary>
+        public const string MensagemCaixinha = Conta.MensagemCaixinha;
+
+        /// <summary>O que a pessoa cria em Bancos. Cartão (3) e Empréstimo (5) são legado com entidade própria;
+        /// Caixinha (7) nasce com a meta.</summary>
         private static readonly HashSet<TipoConta> TiposPermitidos =
             [TipoConta.ContaCorrente, TipoConta.ContaPoupanca, TipoConta.Dinheiro, TipoConta.Investimento];
 
@@ -138,6 +141,8 @@ namespace ControleFinanceiro.Api.Services
                 .FirstOrDefaultAsync(c => c.Id == contaId && c.UsuarioIdProprietario == usuarioId)
                 ?? throw new KeyNotFoundException("Conta não encontrada.");
 
+            if (conta.Tipo == TipoConta.Caixinha)
+                throw new InvalidOperationException(MensagemCaixinha);
             if (valor < 0)
                 throw new ArgumentException("Saldo inicial não pode ser negativo.");
 
@@ -226,6 +231,8 @@ namespace ControleFinanceiro.Api.Services
 
             if (existente.IsCarteira)
                 throw new InvalidOperationException("A carteira não pode ser editada.");
+            if (existente.Tipo == TipoConta.Caixinha)
+                throw new InvalidOperationException(MensagemCaixinha);
 
             if (string.IsNullOrWhiteSpace(conta.Nome))
                 throw new ArgumentException("Nome é obrigatório.");
@@ -253,6 +260,8 @@ namespace ControleFinanceiro.Api.Services
 
             if (conta.IsCarteira)
                 throw new InvalidOperationException("A carteira não pode ser deletada.");
+            if (conta.Tipo == TipoConta.Caixinha)
+                throw new InvalidOperationException(MensagemCaixinha);
 
             // Conta com histórico não sai: o Conta → Transacoes era cascade, e excluir apagava todos os
             // lançamentos dela (inclusive os já cancelados), sem trilha — some do saldo, dos relatórios e

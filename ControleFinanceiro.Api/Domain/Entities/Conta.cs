@@ -5,6 +5,9 @@ namespace ControleFinanceiro.Api.Domain.Entities;
 
 public class Conta
 {
+    /// <summary>Recusa de qualquer escrita numa caixinha de meta fora de Metas (lançamento, conta fixa, cartão, edição).</summary>
+    public const string MensagemCaixinha = "Essa é a caixinha de uma meta: guarde, resgate e edite por Metas.";
+
     public Guid Id { get; set; }
 
     [Required]

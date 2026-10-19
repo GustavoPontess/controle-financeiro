@@ -28,6 +28,7 @@ export default function Entrar() {
   const { entrar, verificarMfa, reativar, adicionarConta, autenticado, carregando } = useAuth()
   const navigate = useNavigate()
   const { state } = useLocation()
+  const contaExcluida = !!(state as { contaExcluida?: boolean } | null)?.contaExcluida
 
   const [email, setEmail] = useState("")
   const [senha, setSenha] = useState("")
@@ -221,6 +222,9 @@ export default function Entrar() {
 
           <div className={styles.marcaMovel}><Logo size={26} /></div>
           <h1 className={styles.titulo}>{titulo}</h1>
+          {contaExcluida && (passo === "form" || passo === "escolher") && (
+            <p className={styles.aviso} role="status">Sua conta foi marcada pra exclusão. Pra reativar, é só entrar de novo em até 30 dias.</p>
+          )}
           {passo === "form" && <p className={styles.sub}>Não tem conta? <Link to="/cadastro">Criar conta grátis</Link></p>}
           {passo === "mfa" && <p className={styles.sub}>Digite o código do seu app autenticador (ou um código de recuperação).</p>}
           {passo === "exclusao" && <p className={styles.sub}>Sua conta está marcada para exclusão. Você ainda pode reativá-la.</p>}

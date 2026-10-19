@@ -46,6 +46,33 @@ public class NotificacaoService
         }
     }
 
+    /// <summary>
+    /// Cria a notificação só se ainda não saiu uma com a mesma <paramref name="chave"/> pra pessoa (aviso de uma vez
+    /// só, como o alerta de limite). Devolve se criou. Duas chamadas ao mesmo tempo: o índice único segura a segunda.
+    /// </summary>
+    public async Task<bool> CriarUmaVezAsync(
+        Guid usuarioId, string chave, TipoNotificacao tipo, string titulo, string mensagem, string? linkRelativo = null)
+    {
+        if (await _context.Notificacoes.AnyAsync(n => n.UsuarioId == usuarioId && n.Chave == chave))
+            return false;
+        var n = new Notificacao
+        {
+            Id = Guid.NewGuid(), UsuarioId = usuarioId, Tipo = tipo, Titulo = titulo, Mensagem = mensagem,
+            LinkRelativo = linkRelativo, Chave = chave,
+        };
+        _context.Notificacoes.Add(n);
+        try
+        {
+            await _context.SaveChangesAsync();
+            return true;
+        }
+        catch (DbUpdateException ex) when (Idempotencia.EhViolacaoDeUnicidade(ex))
+        {
+            _context.Entry(n).State = EntityState.Detached;
+            return false;
+        }
+    }
+
     /// <summary>Lista as notificações do usuário (mais recentes primeiro).</summary>
     public async Task<List<NotificacaoDto>> ListarAsync(Guid usuarioId)
     {
