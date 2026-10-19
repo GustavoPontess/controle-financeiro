@@ -867,6 +867,12 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Notificacao>()
             .HasIndex(n => new { n.UsuarioId, n.Lida });
 
+        // Aviso de uma vez só (alerta de limite): a segunda tentativa estoura o índice e é ignorada.
+        modelBuilder.Entity<Notificacao>()
+            .HasIndex(n => new { n.UsuarioId, n.Chave })
+            .IsUnique()
+            .HasFilter("\"Chave\" IS NOT NULL");
+
         // ── Issue #83 Subcategorias ──
 
         // Subcategoria → Categoria (Cascade: subcategorias somem com a categoria)

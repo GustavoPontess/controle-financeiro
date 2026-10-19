@@ -92,7 +92,7 @@ public class MetaService
         {
             var saldo = (await RegrasFinanceiras.SaldoDaContaAsync(_context, meta.ContaId.Value, usuarioId)).Saldo;
             if (saldo != 0m)
-                throw new InvalidOperationException($"A meta ainda tem {saldo:C} guardado. Resgate pra uma conta antes de excluir.");
+                throw new InvalidOperationException($"A meta ainda tem {Reais.Formatar(saldo)} guardado. Resgate pra uma conta antes de excluir.");
             if (await _context.Contas.FindAsync(meta.ContaId.Value) is { } caixinha)
                 caixinha.EncerradaEm = DateTime.UtcNow;
         }
@@ -174,7 +174,7 @@ public class MetaService
             await DonoRecursos.ExigirContaAbertaAsync(_context, dto.ContaId, usuarioId);
             var saldo = (await RegrasFinanceiras.SaldoDaContaAsync(_context, dto.ContaId, usuarioId)).Saldo;
             if (dto.Valor > saldo)
-                throw new InvalidOperationException(saldo > 0 ? $"Só tem {saldo:C} nessa conta." : "Essa conta está sem saldo pra guardar.");
+                throw new InvalidOperationException(saldo > 0 ? $"Só tem {Reais.Formatar(saldo)} nessa conta." : "Essa conta está sem saldo pra guardar.");
         }
         using (_context.LiberarCaixinha())
             await _transferencias.CriarAsync(transf, usuarioId, chave);
@@ -199,7 +199,7 @@ public class MetaService
             await DonoRecursos.ExigirContaAbertaAsync(_context, dto.ContaId, usuarioId);
             var guardado = (await RegrasFinanceiras.SaldoDaContaAsync(_context, caixinha, usuarioId)).Saldo;
             if (dto.Valor > guardado)
-                throw new InvalidOperationException(guardado > 0 ? $"A meta só tem {guardado:C} guardado." : "A meta ainda não tem nada guardado.");
+                throw new InvalidOperationException(guardado > 0 ? $"A meta só tem {Reais.Formatar(guardado)} guardado." : "A meta ainda não tem nada guardado.");
         }
         using (_context.LiberarCaixinha())
             await _transferencias.CriarAsync(transf, usuarioId, chave);
@@ -233,7 +233,7 @@ public class MetaService
         await DonoRecursos.ExigirContaAbertaAsync(_context, dto.ContaId, usuarioId);
         var guardado = (await RegrasFinanceiras.SaldoDaContaAsync(_context, caixinha, usuarioId)).Saldo;
         if (guardado < meta.ValorAlvo)
-            throw new InvalidOperationException($"A meta ainda não chegou lá: faltam {meta.ValorAlvo - guardado:C}. Pra usar uma parte, resgate.");
+            throw new InvalidOperationException($"A meta ainda não chegou lá: faltam {Reais.Formatar(meta.ValorAlvo - guardado)}. Pra usar uma parte, resgate.");
 
         // O dia é o do aparelho da pessoa (a tela manda), o mesmo da transferência: UtcNow virava o dia seguinte
         // depois das 21h em Brasília.
