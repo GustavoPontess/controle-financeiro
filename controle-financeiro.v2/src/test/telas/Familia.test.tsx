@@ -18,12 +18,12 @@ const detalhe = (extra: Partial<FamiliaDetalhe> = {}): FamiliaDetalhe => ({
   ...extra,
 })
 const balanco: BalancoFamilia = { mes: 10, ano: 2026, modo: 1, total: 1000, cota: 500, saldos: [
-  { usuarioId: "u1", nome: "Gabriel Dev", pagou: 800, cota: 500, saldo: 300 },
-  { usuarioId: "u2", nome: "Marina Dev", pagou: 200, cota: 500, saldo: -300 },
+  { usuarioId: "u1", nome: "Gabriel Dev", pagou: 800, cota: 500, saldo: 300, saiuEm: null },
+  { usuarioId: "u2", nome: "Marina Dev", pagou: 200, cota: 500, saldo: -300, saiuEm: null },
 ] }
 const despesas: DespesaCompartilhada[] = [
-  { id: "t1", descricao: "Supermercado", valor: 300, data: "2026-10-05", categoriaNome: "Alimentação", pagadorUsuarioId: "u1", pagadorNome: "Gabriel Dev", statusAprovacao: 0, aprovadoPorNome: null, responsavelUsuarioId: null, responsavelNome: null },
-  { id: "t2", descricao: "Sofá novo", valor: 2500, data: "2026-10-09", categoriaNome: "Casa", pagadorUsuarioId: "u2", pagadorNome: "Marina Dev", statusAprovacao: 1, aprovadoPorNome: null, responsavelUsuarioId: null, responsavelNome: null },
+  { id: "t1", descricao: "Supermercado", valor: 300, data: "2026-10-05", categoriaNome: "Alimentação", pagadorUsuarioId: "u1", pagadorNome: "Gabriel Dev", statusAprovacao: 0, aprovadoPorNome: null, responsavelUsuarioId: null, responsavelNome: null, minhaParte: 150 },
+  { id: "t2", descricao: "Sofá novo", valor: 2500, data: "2026-10-09", categoriaNome: "Casa", pagadorUsuarioId: "u2", pagadorNome: "Marina Dev", statusAprovacao: 1, aprovadoPorNome: null, responsavelUsuarioId: null, responsavelNome: null, minhaParte: 1250 },
 ]
 const acertos: AcertoContas[] = [{ id: "a1", deUsuarioId: "u2", deNome: "Marina Dev", paraUsuarioId: "u1", paraNome: "Gabriel Dev", valor: 150, mes: 10, ano: 2026, observacao: "Pix", criadoEm: "2026-10-10" }]
 const dependentes: Dependente[] = [{ id: "d1", familiaId: "f1", nome: "Theo", apelido: null, dataNascimento: "2021-03-10", tipo: 1, ativo: true }]
@@ -81,6 +81,20 @@ const renderizar = (inicio = "/familias/f1") => render(
   </MemoryRouter>,
 )
 const linha = (lista: string, nome: RegExp) => within(screen.getByRole("list", { name: lista })).getByRole("button", { name: nome })
+
+describe("Espaço da família: a parte de cada um fica gravada", () => {
+  it("a despesa mostra a sua parte; quem saiu continua no equilíbrio com a data que saiu", async () => {
+    renderizar("/familias/f1/despesas")
+    expect(await screen.findByText("Supermercado")).toBeInTheDocument()
+    expect(screen.getAllByText(/sua parte/).length).toBe(2)
+
+    balanco.saldos[1].saiuEm = "2026-10-15T00:00:00"
+    try {
+      renderizar("/familias/f1")
+      expect(await screen.findByText(/saiu em out\/2026/)).toBeInTheDocument()
+    } finally { balanco.saldos[1].saiuEm = null }
+  })
+})
 
 describe("Espaço da família (páginas)", () => {
   beforeEach(() => {

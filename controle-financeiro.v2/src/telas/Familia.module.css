@@ -51,6 +51,10 @@ dd > .linkFicha { margin-left: 8px; }
 /* Linhas das listas */
 .direita { display: inline-flex; align-items: center; gap: 10px; }
 .valor { font-size: var(--v2-fs-md); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Valor da despesa dividida com a parte de quem olha embaixo ("sua parte R$ 90,00") */
+.regraNota { margin: -6px 0 0; font-size: var(--v2-fs-xs); color: var(--v2-texto-3); }
+.valorComParte { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.parte { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* Dentro da ficha: mini formulário (relação, responsável), quem vê a renda, regras */
 .fichaForm { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }

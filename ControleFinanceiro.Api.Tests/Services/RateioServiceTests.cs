@@ -202,7 +202,7 @@ public class RateioServiceTests
     }
 
     [Fact]
-    public async Task RemoverRateioTransacaoAsync_LimpaModoEItens()
+    public async Task RemoverRateioTransacaoAsync_VoltaAoPadraoDaFamilia_ERegravaAsPartes()
     {
         var ctx = CreateContext();
         var dono = SeedUsuario(ctx, "dono@test.com");
@@ -217,9 +217,11 @@ public class RateioServiceTests
 
         await svc.RemoverRateioTransacaoAsync(txId, dono);
 
+        // Volta ao padrão da família (Igual) e regrava as partes pela regra de hoje: continua gravado, nunca "ao vivo".
         var tx = await ctx.Transacoes.FindAsync(txId);
-        Assert.Null(tx!.ModoRateio);
-        Assert.Empty(ctx.RateiosTransacao.Where(r => r.TransacaoId == txId));
+        Assert.Equal(ModoRateio.Igualitario, tx!.ModoRateio);
+        var parte = Assert.Single(ctx.RateiosTransacao.Where(r => r.TransacaoId == txId));
+        Assert.Equal((dono, 100m, 100m), (parte.UsuarioId, parte.Percentual, parte.Valor));
     }
 
     // ── Balanço por modo (DespesaCompartilhadaService) ──
@@ -240,7 +242,7 @@ public class RateioServiceTests
 
         SeedDespesa(ctx, ana, 400m, familiaId); // total 400, renda 3000+1000
 
-        var balanco = await new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx))
+        var balanco = await new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx), new RateioService(ctx))
             .ObterBalancoAsync(familiaId, ana, 5, 2026);
 
         var ax = balanco.Saldos.First(s => s.UsuarioId == ana);
@@ -264,7 +266,7 @@ public class RateioServiceTests
 
         SeedDespesa(ctx, ana, 200m, familiaId);
 
-        var balanco = await new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx))
+        var balanco = await new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx), new RateioService(ctx))
             .ObterBalancoAsync(familiaId, ana, 5, 2026);
 
         Assert.All(balanco.Saldos, s => Assert.Equal(100m, s.Cota)); // 200/2
@@ -281,11 +283,11 @@ public class RateioServiceTests
 
         var txId = SeedDespesa(ctx, ana, 100m, familiaId, ModoRateio.Personalizado);
         ctx.RateiosTransacao.AddRange(
-            new RateioTransacao { Id = Guid.NewGuid(), TransacaoId = txId, UsuarioId = ana, Percentual = 25m },
-            new RateioTransacao { Id = Guid.NewGuid(), TransacaoId = txId, UsuarioId = bia, Percentual = 75m });
+            new RateioTransacao { Id = Guid.NewGuid(), TransacaoId = txId, UsuarioId = ana, Percentual = 25m, Valor = 25m },
+            new RateioTransacao { Id = Guid.NewGuid(), TransacaoId = txId, UsuarioId = bia, Percentual = 75m, Valor = 75m });
         ctx.SaveChanges();
 
-        var balanco = await new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx))
+        var balanco = await new DespesaCompartilhadaService(ctx, TestHelpers.Notif(ctx), new RateioService(ctx))
             .ObterBalancoAsync(familiaId, ana, 5, 2026);
 
         Assert.Equal(25m, balanco.Saldos.First(s => s.UsuarioId == ana).Cota);

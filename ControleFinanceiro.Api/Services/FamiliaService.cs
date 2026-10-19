@@ -161,7 +161,9 @@ public class FamiliaService
             throw new InvalidOperationException(
                 "O dono não pode sair da família. Dissolva a família.");
 
+        // Fica no histórico: as despesas que dividiu continuam com as partes gravadas ("saiu em…").
         membro.Ativo = false;
+        membro.SaiuEm = DateTime.UtcNow;
         await _context.SaveChangesAsync();
     }
 

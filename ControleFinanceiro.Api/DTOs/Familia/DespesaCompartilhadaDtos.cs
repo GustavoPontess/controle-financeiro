@@ -18,14 +18,18 @@ public record DespesaCompartilhadaDto(
     StatusAprovacaoDespesa StatusAprovacao,
     string? AprovadoPorNome,
     Guid? ResponsavelUsuarioId,
-    string? ResponsavelNome);
+    string? ResponsavelNome,
+    /// <summary>A parte gravada de quem pediu a lista (null quando não entra na divisão).</summary>
+    decimal? MinhaParte = null);
 
 public record SaldoMembroDto(
     Guid UsuarioId,
     string Nome,
     decimal Pagou,
     decimal Cota,
-    decimal Saldo);
+    decimal Saldo,
+    /// <summary>Saiu da família (continua no equilíbrio dos meses em que dividiu).</summary>
+    DateTime? SaiuEm = null);
 
 public record BalancoFamiliaDto(
     int Mes,

@@ -31,6 +31,7 @@ import Marcar from "../componentes/Marcar"
 import type { Periodo } from "../componentes/NavegadorMes"
 import Selecao from "../componentes/Selecao"
 import { APROVACAO, MAX_PAPEL, MODOS_RATEIO, PAPEL_PERMISSAO, fraseSaldo, primeiroNome, rotuloTipoDependente, sugerirEquilibrio } from "../dominio/familia"
+import { mesAnoCurto } from "../dominio/meta"
 import { dataBR, diaDeInstante } from "../utils/dateTime"
 import { moneyParaCampo, parseMoney } from "../utils/money"
 import styles from "./Familia.module.css"
@@ -110,7 +111,7 @@ export function Saldos({ balanco, meuId, fotos }: { balanco: BalancoFamilia; meu
           <li key={s.usuarioId}>
             <InicialFicha texto={s.nome} destaque={s.usuarioId === meuId} foto={fotos?.[s.usuarioId]} />
             <span className={styles.saldoTexto}>
-              <span className={styles.saldoNome}>{primeiroNome(s.nome)}{s.usuarioId === meuId && <span className={styles.voce}> você</span>}</span>
+              <span className={styles.saldoNome}>{primeiroNome(s.nome)}{s.usuarioId === meuId && <span className={styles.voce}> você</span>}{s.saiuEm && <span className={styles.voce}> saiu em {mesAnoCurto(s.saiuEm)}</span>}</span>
               <span className={styles.saldoDetalhe}>pagou <Dinheiro valor={s.pagou} /> · a parte é <Dinheiro valor={s.cota} /></span>
             </span>
             <span className={styles.saldoValor} data-tom={f.tom}>{f.tom === "neutro" ? "Equilibrado" : <>{f.texto} <Dinheiro valor={Math.abs(s.saldo)} /></>}</span>
@@ -330,7 +331,7 @@ export function Despesa({ d, familiaId, meuId, podeAgir, membros, voltarPara, ao
       marca={<InicialFicha texto={d.pagadorNome} destaque={minha} foto={foto} />}
       titulo={d.descricao}
       detalhe={<>{primeiroNome(d.pagadorNome)} pagou · {diaMes(d.data)}{d.categoriaNome ? ` · ${d.categoriaNome}` : ""}{d.responsavelNome ? ` · responsável: ${primeiroNome(d.responsavelNome)}` : ""}</>}
-      direita={<span className={styles.direita}>{etiqueta}<Dinheiro valor={d.valor} className={styles.valor} /></span>}>
+      direita={<span className={styles.direita}>{etiqueta}<span className={styles.valorComParte}><Dinheiro valor={d.valor} className={styles.valor} />{d.minhaParte != null && d.minhaParte !== d.valor && <span className={styles.parte}>sua parte <Dinheiro valor={d.minhaParte} /></span>}</span></span>}>
       <Alerta erro={erro} />
       <DadosFicha>
         <div><dt>Quem pagou</dt><dd>{d.pagadorNome}</dd></div>
@@ -471,6 +472,8 @@ export function Regras({ familia, aoMudar }: { familia: FamiliaDetalhe; aoMudar:
           <Selecao valor={String(familia.modoRateioPadrao)} desabilitado={ocupado} onChange={(v) => rodar(() => definirModoRateio(familia.id, Number(v) as ModoRateio))}
             opcoes={MODOS_RATEIO.map((m) => ({ valor: String(m.valor), rotulo: m.rotulo, detalhe: m.detalhe }))} />
         </Campo>
+        {/* A parte de cada um fica gravada ao dividir: mudar aqui não mexe no que já foi dividido. */}
+        <p className={styles.regraNota}>Vale pras próximas despesas. As já divididas ficam como estão.</p>
         <Interruptor ligado={pedirOk} desabilitado={ocupado} onChange={ligar}>Pedir OK pra despesa grande</Interruptor>
         {pedirOk && (
           <div className={styles.limite}>

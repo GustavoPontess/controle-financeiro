@@ -31,4 +31,7 @@ public class MembroFamilia
     public DateTime EntrouEm { get; set; } = DateTime.UtcNow;
 
     public bool Ativo { get; set; } = true;
+
+    /// <summary>Quando saiu (ou foi removido). Fica no histórico: as despesas que dividiu continuam ("saiu em…").</summary>
+    public DateTime? SaiuEm { get; set; }
 }
