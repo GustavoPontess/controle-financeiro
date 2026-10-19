@@ -12,6 +12,7 @@
 /* Barra da lista: busca à esquerda, Filtros à direita (pedido do Gustavo, 2026-10-14) */
 .toolbar { display: flex; align-items: center; gap: 12px; padding: 16px 24px 10px; }
 .controles { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: 1 1 320px; }
+.direita { display: flex; align-items: center; gap: 8px; }
 .filtrosWrap { position: relative; }
 .contador { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--v2-tinta); color: var(--v2-sobre-tinta); font-size: var(--v2-fs-xs); font-weight: 700; }
 
@@ -36,7 +37,10 @@
   .numero { flex-direction: row; align-items: baseline; justify-content: space-between; gap: 12px; }
   .numeroValor { font-size: var(--v2-fs-lg); }
   .toolbar { padding: 14px 16px 8px; }
-  .controles { flex-basis: 100%; }
+  /* Celular: a busca ocupa a linha; a visão (Saldo | Gastos) e o Filtros vão embaixo, nas pontas. */
+  .controles { flex-basis: 100%; flex-wrap: wrap; }
+  .controles > :first-child { flex: 1 1 100%; }
+  .direita { flex: 1 1 100%; justify-content: space-between; }
   .filtrosWrap { position: static; }
   .painel { left: 16px; right: 16px; width: auto; }
 }

@@ -126,12 +126,12 @@ function FormCategoria({ c, aoSair, aoExcluir }: {
 function FormSub({ c, aoSair, aoExcluir }: {
   c: Extract<Carga, { tipo: "sub" }>; aoSair: () => void; aoExcluir: () => void
 }) {
-  const usada = c.uso.lancamentos + c.uso.contasFixas > 0
+  const usada = c.uso.lancamentos + c.uso.contasFixas + (c.uso.parcelamentos ?? 0) > 0
   const [destinoId, setDestinoId] = useState("")
   const [erro, setErro] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
   const destino = c.irmas.find((s) => s.id === destinoId)
-  const quanto = descreverUso({ ...c.uso, parcelamentos: 0, limites: 0, metas: 0, subcategorias: 0 })
+  const quanto = descreverUso({ ...c.uso, parcelamentos: c.uso.parcelamentos ?? 0, limites: 0, metas: 0, subcategorias: 0 })
 
   const enviar = async () => {
     setErro(null); setOcupado(true)

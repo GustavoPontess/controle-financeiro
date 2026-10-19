@@ -29,6 +29,8 @@ export type ListTransactionsFilter = {
   apenasCaixa?: boolean
   /** Natureza do lançamento: entrada | saida | transferencia | fatura. */
   natureza?: string
+  /** "gastos": o que a pessoa gastou, na data em que gastou (conta e cartão; compra parcelada uma vez, com o total). */
+  visao?: "gastos"
 }
 
 export type TransacaoStats = {
@@ -83,6 +85,7 @@ export const listTransactionsPage = async (
   if (filter.ordenacao) params.ordenacao = filter.ordenacao
   if (filter.apenasCaixa) params.apenasCaixa = true
   if (filter.natureza) params.natureza = filter.natureza
+  if (filter.visao) params.visao = filter.visao
   const res = await api.get("/transacoes", { params })
   return res.data
 }

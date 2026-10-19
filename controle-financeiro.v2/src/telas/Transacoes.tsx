@@ -1,6 +1,9 @@
-// Transações do v2 — extrato de caixa da conta: só o que mexe no saldo (receita/despesa de conta,
-// pagamento de fatura e transferências). Compra no crédito vive em Cartões. Busca, filtros e
-// paginação rodam no servidor (mesmos endpoints do app atual). Nada de enfeite: cada controle filtra.
+// Transações do v2, em duas visões (como o Organizze; decisão do Gustavo 2026-10-19):
+// - Saldo: o extrato de caixa, só o que mexe no saldo (receita/despesa de conta, pagamento de fatura e
+//   transferências). Compra no crédito não entra: o dinheiro sai quando a fatura é paga.
+// - Gastos: o que a pessoa gastou, na data em que gastou, em conta e no cartão; compra parcelada uma vez só,
+//   com o total (abre o parcelamento). Sem pagamento de fatura nem transferência, senão contaria duas vezes.
+// Busca, filtros e paginação rodam no servidor. Nada de enfeite: cada controle filtra.
 // Sem período escolhido, a lista vai até HOJE, o mais recente em cima: as previsões das contas fixas
 // (geradas meses pra frente) empurravam o dia de hoje pro fim. Os previstos aparecem pelo filtro de status
 // (do mais perto pro mais longe) ou escolhendo as datas.
@@ -17,6 +20,7 @@ import { Dinheiro } from "../componentes/Dinheiro"
 import ListaPorDia from "../componentes/ListaPorDia"
 import Paginacao, { TAMANHOS } from "../componentes/Paginacao"
 import Selecao from "../componentes/Selecao"
+import Segmentos from "../componentes/Segmentos"
 import Botao from "../componentes/Botao"
 import Busca from "../componentes/Busca"
 import Campo from "../componentes/Campo"
@@ -32,6 +36,14 @@ import styles from "./Transacoes.module.css"
 const CHAVE_POR_PAGINA = "v2:porPagina:transacoes"
 const porPaginaSalvo = (): number => {
   try { const n = Number(localStorage.getItem(CHAVE_POR_PAGINA)); return (TAMANHOS as readonly number[]).includes(n) ? n : 25 } catch { return 25 }
+}
+
+type Visao = "saldo" | "gastos"
+const VISOES: { valor: Visao; rotulo: string }[] = [{ valor: "saldo", rotulo: "Saldo" }, { valor: "gastos", rotulo: "Gastos" }]
+// A visão também fica lembrada neste navegador (mesma conveniência das linhas por página).
+const CHAVE_VISAO = "v2:visao:transacoes"
+const visaoSalva = (): Visao => {
+  try { return localStorage.getItem(CHAVE_VISAO) === "gastos" ? "gastos" : "saldo" } catch { return "saldo" }
 }
 
 type Natureza = "" | "entrada" | "saida" | "transferencia" | "fatura"
@@ -59,6 +71,8 @@ export default function Transacoes() {
     try { localStorage.setItem(CHAVE_POR_PAGINA, String(n)) } catch { /* sem armazenamento: só não lembra */ }
   }
   const [erro, setErro] = useState(false)
+  const [visao, setVisao] = useState<Visao>(visaoSalva)
+  const gastos = visao === "gastos"
   const [stats, setStats] = useState<{ entradas: number; saidas: number } | null>(null)
   const [contas, setContas] = useState<Conta[]>([])
   const [categorias, setCategorias] = useState<Record<string, string>>({})
@@ -72,7 +86,13 @@ export default function Transacoes() {
   const [painel, setPainel] = useState(false)
   const painelRef = useRef<HTMLDivElement | null>(null)
 
-  useEffect(() => { setPagina(1) }, [buscaAplicada, filtros])
+  useEffect(() => { setPagina(1) }, [buscaAplicada, filtros, visao])
+  // Gastos não tem "tipo de lançamento" (é tudo saída): o filtro sai junto pra não ficar valendo escondido.
+  const mudarVisao = (v: Visao) => {
+    setVisao(v)
+    if (v === "gastos") { setFiltros((f) => ({ ...f, natureza: "" })); setRascunho((r) => ({ ...r, natureza: "" })) }
+    try { localStorage.setItem(CHAVE_VISAO, v) } catch { /* sem armazenamento: só não lembra */ }
+  }
 
   // Painel: abre com o rascunho = o que está valendo; fecha com Esc ou clique fora (sem aplicar).
   const abrirPainel = () => { setRascunho(filtros); setPainel(true) }
@@ -105,7 +125,7 @@ export default function Transacoes() {
     setErro(false)
     listTransactionsPage(pagina, porPagina, {
       q: buscaAplicada || undefined,
-      natureza: filtros.natureza || undefined,
+      natureza: gastos ? undefined : filtros.natureza || undefined,
       contaId: filtros.contaId || undefined,
       status: filtros.status !== "" ? Number(filtros.status) : undefined,
       valorMin: filtros.valorMin !== "" ? parseMoney(filtros.valorMin) : undefined,
@@ -115,12 +135,13 @@ export default function Transacoes() {
       to: filtros.ate ? diaSeguinte(filtros.ate) : soPrevistos || filtros.de ? undefined : diaSeguinte(dataLocalISO()),
       // Previstos: o próximo primeiro.
       ordenacao: soPrevistos ? "data_asc" : undefined,
-      apenasCaixa: true,
+      apenasCaixa: !gastos,
+      visao: gastos ? "gastos" : undefined,
     })
       .then((r) => { if (vivo) { setItens(r.items); setTotal(r.total) } })
       .catch(() => { if (vivo) { setErro(true); setItens([]) } })
     return () => { vivo = false }
-  }, [pagina, porPagina, buscaAplicada, filtros])
+  }, [pagina, porPagina, buscaAplicada, filtros, gastos])
 
   const saldoEmConta = useMemo(() => contas.reduce((s, c) => s + (c.saldoAtual ?? 0), 0), [contas])
   const ativos = ativosEm(filtros)
@@ -147,55 +168,60 @@ export default function Transacoes() {
       </Bloco>
 
       <Bloco semRespiro>
-        {/* Barra: busca + "Filtros". Os filtros avançados abrem num painel ancorado no botão e só valem
-            no "Aplicar". Sem título — o topo da página já diz que é Transações. */}
+        {/* Barra: busca + visão (Saldo | Gastos) + "Filtros". Os filtros avançados abrem num painel ancorado no
+            botão e só valem no "Aplicar". Sem título — o topo da página já diz que é Transações. */}
         <div className={styles.toolbar}>
           <div className={styles.controles}>
             <Busca valor={busca} onChange={setBusca} placeholder="Buscar lançamento" />
-            <div className={styles.filtrosWrap} ref={painelRef}>
-              <Botao ativo={painel || ativos > 0} aria-expanded={painel} aria-haspopup="dialog"
-                onClick={() => (painel ? setPainel(false) : abrirPainel())}
-                icone={<SlidersHorizontal size={15} strokeWidth={2.2} aria-hidden="true" />}>
-                Filtros
-                {ativos > 0 && <span className={styles.contador}>{ativos}</span>}
-              </Botao>
-              {painel && (
-                <div className={styles.painel} role="dialog" aria-label="Filtros">
-                  <Campo rotulo="Tipo de lançamento">
-                    <Selecao tamanho="sm" valor={rascunho.natureza}
-                      onChange={(v) => setRascunho((r) => ({ ...r, natureza: v as Natureza }))}
-                      opcoes={NATUREZAS.map((n) => ({ valor: n.valor, rotulo: n.rotulo }))} />
-                  </Campo>
-                  <Campo rotulo="Conta">
-                    <Selecao tamanho="sm" valor={rascunho.contaId}
-                      onChange={(v) => setRascunho((r) => ({ ...r, contaId: v }))}
-                      opcoes={[{ valor: "", rotulo: "Todas as contas" }, ...contas.map((c) => ({ valor: c.id, rotulo: c.nome }))]} />
-                  </Campo>
-                  <Campo rotulo="Status">
-                    <Selecao tamanho="sm" valor={rascunho.status}
-                      onChange={(v) => setRascunho((r) => ({ ...r, status: v }))}
-                      opcoes={[{ valor: "", rotulo: "Qualquer status" }, { valor: "1", rotulo: "Efetivado" }, { valor: "0", rotulo: "Previsto" }]} />
-                  </Campo>
-                  <Campo rotulo="Valor" grupo>
-                    <div className={styles.faixa}>
-                      <Entrada tamanho="sm" prefixo="R$" inputMode="numeric" autoComplete="off" placeholder="0,00" aria-label="Valor mínimo" value={rascunho.valorMin} onChange={editaValor("valorMin")} />
-                      <span className={styles.ate}>até</span>
-                      <Entrada tamanho="sm" prefixo="R$" inputMode="numeric" autoComplete="off" placeholder="0,00" aria-label="Valor máximo" value={rascunho.valorMax} onChange={editaValor("valorMax")} />
+            <div className={styles.direita}>
+              <Segmentos ariaLabel="Visão" valor={visao} onChange={mudarVisao} opcoes={VISOES} />
+              <div className={styles.filtrosWrap} ref={painelRef}>
+                <Botao ativo={painel || ativos > 0} aria-expanded={painel} aria-haspopup="dialog"
+                  onClick={() => (painel ? setPainel(false) : abrirPainel())}
+                  icone={<SlidersHorizontal size={15} strokeWidth={2.2} aria-hidden="true" />}>
+                  Filtros
+                  {ativos > 0 && <span className={styles.contador}>{ativos}</span>}
+                </Botao>
+                {painel && (
+                  <div className={styles.painel} role="dialog" aria-label="Filtros">
+                    {!gastos && (
+                      <Campo rotulo="Tipo de lançamento">
+                        <Selecao tamanho="sm" valor={rascunho.natureza}
+                          onChange={(v) => setRascunho((r) => ({ ...r, natureza: v as Natureza }))}
+                          opcoes={NATUREZAS.map((n) => ({ valor: n.valor, rotulo: n.rotulo }))} />
+                      </Campo>
+                    )}
+                    <Campo rotulo="Conta">
+                      <Selecao tamanho="sm" valor={rascunho.contaId}
+                        onChange={(v) => setRascunho((r) => ({ ...r, contaId: v }))}
+                        opcoes={[{ valor: "", rotulo: "Todas as contas" }, ...contas.map((c) => ({ valor: c.id, rotulo: c.nome }))]} />
+                    </Campo>
+                    <Campo rotulo="Status">
+                      <Selecao tamanho="sm" valor={rascunho.status}
+                        onChange={(v) => setRascunho((r) => ({ ...r, status: v }))}
+                        opcoes={[{ valor: "", rotulo: "Qualquer status" }, { valor: "1", rotulo: "Efetivado" }, { valor: "0", rotulo: "Previsto" }]} />
+                    </Campo>
+                    <Campo rotulo="Valor" grupo>
+                      <div className={styles.faixa}>
+                        <Entrada tamanho="sm" prefixo="R$" inputMode="numeric" autoComplete="off" placeholder="0,00" aria-label="Valor mínimo" value={rascunho.valorMin} onChange={editaValor("valorMin")} />
+                        <span className={styles.ate}>até</span>
+                        <Entrada tamanho="sm" prefixo="R$" inputMode="numeric" autoComplete="off" placeholder="0,00" aria-label="Valor máximo" value={rascunho.valorMax} onChange={editaValor("valorMax")} />
+                      </div>
+                    </Campo>
+                    <Campo rotulo="Período" grupo>
+                      <div className={styles.faixa}>
+                        <SeletorData tamanho="sm" limpavel placeholder="Início" ariaLabel="De" valor={rascunho.de} max={rascunho.ate || undefined} onChange={edita("de")} />
+                        <span className={styles.ate}>até</span>
+                        <SeletorData tamanho="sm" limpavel placeholder="Fim" ariaLabel="Até" valor={rascunho.ate} min={rascunho.de || undefined} onChange={edita("ate")} />
+                      </div>
+                    </Campo>
+                    <div className={styles.painelRodape}>
+                      <Botao variante="texto" className={styles.limparTudo} onClick={limparTudo}>Limpar tudo</Botao>
+                      <Botao variante="primario" onClick={aplicar}>Aplicar</Botao>
                     </div>
-                  </Campo>
-                  <Campo rotulo="Período" grupo>
-                    <div className={styles.faixa}>
-                      <SeletorData tamanho="sm" limpavel placeholder="Início" ariaLabel="De" valor={rascunho.de} max={rascunho.ate || undefined} onChange={edita("de")} />
-                      <span className={styles.ate}>até</span>
-                      <SeletorData tamanho="sm" limpavel placeholder="Fim" ariaLabel="Até" valor={rascunho.ate} min={rascunho.de || undefined} onChange={edita("ate")} />
-                    </div>
-                  </Campo>
-                  <div className={styles.painelRodape}>
-                    <Botao variante="texto" className={styles.limparTudo} onClick={limparTudo}>Limpar tudo</Botao>
-                    <Botao variante="primario" onClick={aplicar}>Aplicar</Botao>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -205,7 +231,7 @@ export default function Transacoes() {
         ) : erro ? (
           <p className={styles.vazio}>Não deu pra carregar as transações.</p>
         ) : itens.length === 0 ? (
-          <p className={styles.vazio}>{temFiltro ? "Nada com esses filtros." : "Nenhum lançamento ainda."}</p>
+          <p className={styles.vazio}>{temFiltro ? "Nada com esses filtros." : gastos ? "Nenhum gasto ainda." : "Nenhum lançamento ainda."}</p>
         ) : (
           <ListaPorDia itens={itens.map((t) => linhaDoLancamento(t, categorias[t.categoriaId ?? ""]))} />
         )}

@@ -12,6 +12,8 @@ export type ItemDoDia = {
   dia: string
   /** Destino do clique; sem ele a linha não é link. */
   para?: string
+  /** state do link (ex.: { voltarPara }). */
+  estado?: unknown
   /** Inicial ("M") ou um ícone. */
   icone: ReactNode
   tomIcone?: "positivo" | "neutro"
@@ -69,7 +71,7 @@ export default function ListaPorDia({ itens }: { itens: ItemDoDia[] }) {
               )
               return (
                 <li key={i.id}>
-                  {i.para ? <Link to={i.para} className={styles.linha}>{miolo}</Link> : <div className={styles.linha}>{miolo}</div>}
+                  {i.para ? <Link to={i.para} state={i.estado} className={styles.linha}>{miolo}</Link> : <div className={styles.linha}>{miolo}</div>}
                 </li>
               )
             })}

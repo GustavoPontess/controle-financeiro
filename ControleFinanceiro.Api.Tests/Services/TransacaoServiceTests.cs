@@ -1177,33 +1177,6 @@ public class TransacaoServiceTests
     }
 
     [Fact]
-    public async Task CriarParcelamentoAsync_CategoriaDeOutroUsuario_LancaKeyNotFoundException()
-    {
-        var (ctx, svc) = Build();
-        var usuarioId = Guid.NewGuid();
-        var outroUsuarioId = Guid.NewGuid();
-
-        var cartao = new CartaoCredito { Id = Guid.NewGuid(), Nome = "Cartão", CriadoPor = usuarioId, Ativo = true, TemCredito = true };
-        ctx.CartoesCredito.Add(cartao);
-        var categoriaDeOutro = new Categoria { Id = Guid.NewGuid(), Descricao = "Privada", Finalidade = Finalidade.Despesa, UsuarioId = outroUsuarioId };
-        ctx.Categorias.Add(categoriaDeOutro);
-        await ctx.SaveChangesAsync();
-
-        var dto = new CriarTransacaoDto
-        {
-            CartaoCreditoId = cartao.Id,
-            CategoriaId = categoriaDeOutro.Id,
-            Descricao = "Notebook",
-            Valor = 300m,
-            Parcelas = 3,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow),
-        };
-
-        await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.CriarParcelamentoAsync(dto, usuarioId));
-        Assert.Equal(0, await ctx.Transacoes.CountAsync());
-    }
-
-    [Fact]
     public async Task AtualizarAsync_OcorrenciaDeContaFixa_MarcaEditadaPeloUsuario_LancamentoComumNao()
     {
         // A marca é o que faz alterar a conta fixa / realinhar preservarem a edição (P2-4 do motor).

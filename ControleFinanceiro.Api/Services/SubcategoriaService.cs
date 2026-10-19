@@ -85,7 +85,7 @@ public partial class SubcategoriaService
         return sub;
     }
 
-    /// <summary>Quantos lançamentos (vivos) e contas fixas usam a subcategoria.</summary>
+    /// <summary>Quantos lançamentos (vivos), contas fixas e parcelamentos (vivos) usam a subcategoria.</summary>
     public async Task<UsoSubcategoriaDto> UsoAsync(Guid id, Guid usuarioId)
     {
         if (await BuscarPorIdAsync(id, usuarioId) == null)
@@ -94,11 +94,12 @@ public partial class SubcategoriaService
         {
             Lancamentos = await _context.Transacoes.CountAsync(t => t.SubcategoriaId == id),
             ContasFixas = await _context.Recorrentes.CountAsync(r => r.SubcategoriaId == id && r.ExcluidoEm == null),
+            Parcelamentos = await _context.Parcelamentos.CountAsync(p => p.SubcategoriaId == id && p.Ativo),
         };
     }
 
     /// <summary>
-    /// Exclui. Com <paramref name="moverPara"/>, os lançamentos (inclusive os excluídos) e as contas fixas passam
+    /// Exclui. Com <paramref name="moverPara"/>, os lançamentos (inclusive os excluídos), as contas fixas e os parcelamentos passam
     /// pra ela — tem que ser da mesma categoria. Sem, ficam só com a categoria (a FK é SetNull).
     /// </summary>
     public async Task DeletarAsync(Guid id, Guid usuarioId, Guid? moverPara = null)
@@ -118,6 +119,8 @@ public partial class SubcategoriaService
                 t.SubcategoriaId = destinoId;
             foreach (var r in await _context.Recorrentes.Where(r => r.SubcategoriaId == id).ToListAsync())
                 r.SubcategoriaId = destinoId;
+            foreach (var p in await _context.Parcelamentos.Where(p => p.SubcategoriaId == id).ToListAsync())
+                p.SubcategoriaId = destinoId;
         }
 
         _context.Subcategorias.Remove(sub);

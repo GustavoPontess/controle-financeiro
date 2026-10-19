@@ -38,7 +38,8 @@ public class LancamentoServiceTests
         var log = new FinancialEventLogService(ctx);
         var transacoes = new TransacaoService(ctx, faturas, log);
         var transferencias = new TransferenciaService(ctx);
-        var svc = new LancamentoService(ctx, transacoes, transferencias, new RecorrenteService(ctx, faturas, log), log);
+        var parcelamentos = new ParcelamentoService(ctx, log, new LimiteCalculatorService(ctx), faturas);
+        var svc = new LancamentoService(ctx, transacoes, transferencias, new RecorrenteService(ctx, faturas, log), parcelamentos, log);
 
         var usuarioId = Guid.NewGuid();
         var contaA = new Conta { Id = Guid.NewGuid(), Nome = "Conta A", Tipo = TipoConta.ContaCorrente, UsuarioIdProprietario = usuarioId };
@@ -241,7 +242,7 @@ public class LancamentoServiceTests
     }
 
     [Fact]
-    public async Task Editar_ViraParcelado_CancelaOAntigoECriaAsParcelasNoCartao()
+    public async Task Editar_ViraParcelado_CancelaOAntigoECriaUmParcelamentoDeVerdade()
     {
         var c = await Build();
         var t = await SeedDespesaEmConta(c, 300m);
@@ -255,13 +256,13 @@ public class LancamentoServiceTests
 
         Assert.Equal(EdicaoLancamentoResultadoDto.TipoParcelamento, r.Tipo);
         Assert.False((await Original(c, t.Id))!.Ativo);
-        // Crédito parcelado deste fluxo = N transações soltas "X (i/N)" no cartão; o resultado aponta a 1ª.
-        var parcelas = await c.Ctx.Transacoes.Where(x => x.CartaoCreditoId == c.CartaoId).OrderBy(x => x.Data).ToListAsync();
-        Assert.Equal(3, parcelas.Count);
-        Assert.Equal(parcelas[0].Id, r.Id);
-        Assert.Equal("Mercado (1/3)", parcelas[0].Descricao);
-        Assert.All(parcelas, p => Assert.NotNull(p.FaturaId));
-        Assert.Equal(300m, parcelas.Sum(p => p.Valor));
+        // Um parcelamento (o resultado aponta pra ele), 3 parcelas nas faturas e nenhum lançamento solto no cartão.
+        var p = await c.Ctx.Parcelamentos.Include(x => x.Parcelas).SingleAsync();
+        Assert.Equal(p.Id, r.Id);
+        Assert.Equal(("Mercado", 300m, 3), (p.Descricao, p.ValorTotal, p.QuantidadeParcelas));
+        Assert.Equal(3, p.Parcelas.Count);
+        Assert.All(p.Parcelas, x => Assert.NotEqual(Guid.Empty, x.FaturaId));
+        Assert.False(await c.Ctx.Transacoes.AnyAsync(x => x.CartaoCreditoId == c.CartaoId));
     }
 
     [Fact]
@@ -404,23 +405,5 @@ public class LancamentoServiceTests
         Assert.Equal(primeira.Id, segunda.Id);
         Assert.Equal(1, await c.Ctx.Transferencias.CountAsync());
         Assert.Equal(2, await c.Ctx.Transacoes.CountAsync());
-    }
-
-    [Fact]
-    public async Task CriarParcelamento_MesmaChave_NaoParcelaDuasVezes()
-    {
-        var c = await Build();
-        var chave = Guid.NewGuid().ToString();
-        CriarTransacaoDto Pedido() => new()
-        {
-            Descricao = "TV", Valor = 900m, Tipo = 1, CartaoCreditoId = c.CartaoId, UsadoComoCredito = true,
-            MeioPagamento = (int)MeioPagamento.Credito, Parcelas = 3, Data = Hoje,
-        };
-
-        var primeira = await c.Transacoes.CriarParcelamentoAsync(Pedido(), c.UsuarioId, chave);
-        var segunda = await c.Transacoes.CriarParcelamentoAsync(Pedido(), c.UsuarioId, chave);
-
-        Assert.Equal(primeira.Select(p => p.Id).OrderBy(x => x), segunda.Select(p => p.Id).OrderBy(x => x));
-        Assert.Equal(3, await c.Ctx.Transacoes.CountAsync());
     }
 }

@@ -21,6 +21,11 @@ namespace ControleFinanceiro.Api.DTOs.Transacao
         public Guid? RecorrenteOrigemId { get; set; }
         public Guid? ParcelamentoId { get; set; }
         public Guid? ParcelaTransacaoId { get; set; }
+        // Linha da visão Gastos que é uma compra parcelada inteira (Id = ParcelamentoId = o parcelamento):
+        // Valor = total, Parcelas = quantas, ValorParcela = total ÷ parcelas (pra "5x de R$ 300").
+        public bool EhCompraParcelada { get; set; }
+        public int? Parcelas { get; set; }
+        public decimal? ValorParcela { get; set; }
         public bool EhPagamentoFatura { get; set; }
         // Perna de transferência entre contas próprias — no extrato aparece
         // neutra (não conta como entrada/saída, só troca de bolso).

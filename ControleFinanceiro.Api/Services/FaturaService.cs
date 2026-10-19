@@ -159,63 +159,6 @@ public class FaturaService
         return fatura;
     }
 
-    // ── Parcelamento ──────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Cria N transações distribuídas em N faturas consecutivas (parcelamento).
-    /// A primeira parcela cai na fatura da data informada; as demais, nos meses seguintes.
-    /// </summary>
-    public async Task<List<Transacao>> CriarParcelamentoAsync(
-        Guid cartaoCreditoId,
-        Guid? categoriaId,
-        string descricaoBase,
-        decimal valorTotal,
-        int numParcelas,
-        DateOnly dataBase,
-        Guid usuarioId,
-        Guid? subcategoriaId = null)
-    {
-        if (numParcelas < 2)
-            throw new ArgumentException("Parcelamento requer no mínimo 2 parcelas.");
-
-        var valorParcela = Math.Round(valorTotal / numParcelas, 2);
-        var resto = valorTotal - valorParcela * numParcelas; // centavos residuais vão para a última parcela
-
-        var transacoes = new List<Transacao>();
-        Guid primeiraTransacaoId = Guid.NewGuid();
-
-        for (int i = 1; i <= numParcelas; i++)
-        {
-            var dataTransacao = dataBase.AddMonths(i - 1);
-            var fatura = await ObterOuCriarFaturaAsync(cartaoCreditoId, dataTransacao, usuarioId);
-
-            decimal valorDaParcela = (i == numParcelas) ? valorParcela + resto : valorParcela;
-
-            var transacao = new Transacao
-            {
-                Id = i == 1 ? primeiraTransacaoId : Guid.NewGuid(),
-                Descricao = $"{descricaoBase} ({i}/{numParcelas})",
-                Valor = valorDaParcela,
-                Tipo = TipoTransacao.Despesa,
-                CategoriaId = categoriaId,
-                SubcategoriaId = subcategoriaId,
-                CartaoCreditoId = cartaoCreditoId,
-                FaturaId = fatura.Id,
-                UsadoComoCredito = true,
-                MeioPagamento = MeioPagamento.Credito,
-                Data = dataTransacao,
-                Hora = null, // parcela de crédito não tem hora real — cai na fatura pela data
-                CriadoPor = usuarioId,
-            };
-
-            _context.Transacoes.Add(transacao);
-            transacoes.Add(transacao);
-        }
-
-        await _context.SaveChangesAsync();
-        return transacoes;
-    }
-
     // ── Pagamento de fatura ───────────────────────────────────────────────────
 
     /// <summary>Operação no <see cref="RegistroIdempotencia"/> (espaço de chaves do pagamento de fatura).</summary>

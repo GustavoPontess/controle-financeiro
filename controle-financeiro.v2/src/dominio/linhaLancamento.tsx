@@ -1,10 +1,12 @@
 // Como um lançamento vira uma linha da ListaPorDia — o mesmo em Transações e no extrato da conta
 // (Bancos). Transferência e pagamento de fatura são neutros: mexem no caixa, não são ganho nem gasto.
+// Compra parcelada (Transações › Gastos) é uma linha só, com o total, e abre a página do parcelamento.
 import { ArrowLeftRight, CreditCard } from "lucide-react"
 import type { Transaction } from "../types/Transaction"
 import type { TomDinheiro } from "../componentes/Dinheiro"
 import type { ItemDoDia } from "../componentes/ListaPorDia"
 import Etiqueta from "../componentes/Etiqueta"
+import { formatMoney } from "../utils/money"
 
 export type NaturezaLancamento = "entrada" | "saida" | "transferencia" | "fatura"
 
@@ -18,14 +20,20 @@ export function linhaDoLancamento(t: Transaction, categoria?: string, opcoes: { 
   const icone = n === "transferencia" ? <ArrowLeftRight size={16} strokeWidth={2} aria-hidden="true" />
     : n === "fatura" ? <CreditCard size={16} strokeWidth={2} aria-hidden="true" />
     : t.descricao.trim().charAt(0).toUpperCase() || "•"
+  const parcelada = !!t.ehCompraParcelada && !!t.cartaoCreditoId
+  const deOnde = opcoes.semConta ? null : t.contaNome ?? t.cartaoCreditoNome
+  const comoPagou = parcelada && t.parcelas && t.valorParcela != null
+    ? `${t.parcelas}x de ${formatMoney(t.valorParcela)}`
+    : t.meioPagamentoDescricao
   return {
     id: t.id,
     dia: t.data,
-    para: `/transacoes/${t.id}`,
+    para: parcelada ? `/cartoes/${t.cartaoCreditoId}/parcelamentos/${t.id}` : `/transacoes/${t.id}`,
+    estado: parcelada ? { voltarPara: "/transacoes" } : undefined,
     icone,
     tomIcone: n === "entrada" ? "positivo" : n === "saida" ? undefined : "neutro",
     nome: t.descricao,
-    sub: [opcoes.semConta ? null : t.contaNome, categoria, t.meioPagamentoDescricao].filter(Boolean).join(" · ") || undefined,
+    sub: [deOnde, categoria, comoPagou].filter(Boolean).join(" · ") || undefined,
     hora: t.hora ? t.hora.slice(0, 5) : null,
     etiqueta: t.statusTransacao === 0 ? <Etiqueta tom="alerta">Previsto</Etiqueta> : undefined,
     valor: t.valor,
