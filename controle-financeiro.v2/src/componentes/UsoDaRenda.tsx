@@ -1,10 +1,14 @@
 // Uso da renda (docs/features/respostas/visao.md, ideia do Gustavo a partir do medidor de contexto do Claude Code):
 // o total da barra é a renda do mês e cada pedaço é o que come ela, uma cor por categoria; o que ainda vem (conta
 // fixa prevista) fica listrado; o vazio no fim é o que sobra. Passou da renda: a barra cresce além da marca "sua
-// renda". Embaixo, a legenda (já saiu · ainda vem · livre ou passou) e a resposta do mês com as ações. Só mostra:
+// renda". Embaixo, a legenda (já saiu · ainda vem · livre ou passou), as faturas de cartão a pagar no mês (à parte:
+// é quando o dinheiro sai da conta, e as compras delas já contaram no mês em que foram feitas; nunca somam no gasto
+// nem no livre) e a resposta do mês com as ações. Só mostra:
 // a conta toda vem pronta do servidor (DinheiroDoMesService). Usado no Início, na Renda e em Relatórios.
-import type { DinheiroDoMes, ParteDoMes } from "../types/DinheiroDoMes"
+import { Link } from "react-router-dom"
+import type { DinheiroDoMes, FaturaDoMes, ParteDoMes } from "../types/DinheiroDoMes"
 import { Dinheiro } from "./Dinheiro"
+import Etiqueta from "./Etiqueta"
 import ListaAindaVem from "./ListaAindaVem"
 import Resposta from "./Resposta"
 import styles from "./UsoDaRenda.module.css"
@@ -81,9 +85,43 @@ export default function UsoDaRenda({ dados }: { dados: DinheiroDoMes }) {
         </div>
       )}
 
+      {dados.faturas.length > 0 && (
+        <>
+          <span className={styles.grupo}>
+            Faturas a pagar este mês <Dinheiro valor={dados.faturasAPagar} className={styles.grupoTotal} />
+          </span>
+          <ul className={styles.faturas} aria-label="Faturas a pagar este mês">
+            {dados.faturas.map((f) => <LinhaFatura key={f.faturaId} f={f} />)}
+          </ul>
+        </>
+      )}
+
       <div className={styles.respostaLugar}>
         <Resposta tom={dados.resposta.tom} texto={dados.resposta.texto} acoes={dados.resposta.acoes} />
       </div>
     </div>
+  )
+}
+
+/** "3/9" a partir de "2026-09-03..." */
+const diaMes = (iso: string) => `${Number(iso.slice(8, 10))}/${Number(iso.slice(5, 7))}`
+
+/** Uma fatura: cartão, quando vence e de quando são as compras; o que falta pagar (e de quanto, se já pagou parte). */
+function LinhaFatura({ f }: { f: FaturaDoMes }) {
+  return (
+    <li>
+      <Link className={styles.faturaNome} to={`/cartoes/${f.cartaoId}`}>
+        {f.cartao}
+        <span className={styles.mudo}>
+          {" · "}{f.atrasada ? `venceu ${diaMes(f.dataVencimento)}` : `vence dia ${Number(f.dataVencimento.slice(8, 10))}`}
+          {" · compras de "}{diaMes(f.dataInicio)} a {diaMes(f.dataFechamento)}
+        </span>
+      </Link>
+      {f.atrasada && <Etiqueta tom="negativo">Atrasada</Etiqueta>}
+      <span className={styles.faturaValor}>
+        <Dinheiro valor={f.restante} />
+        {f.pago > 0 && <span className={styles.mudo}> de <Dinheiro valor={f.total} /></span>}
+      </span>
+    </li>
   )
 }

@@ -31,6 +31,10 @@ public class DinheiroDoMesService
         var renda = await _renda.ObterMesAsync(usuarioId, ano, mes);
         var gastos = await RegrasFinanceiras.GastosPorCategoriaDoMesAsync(_context, usuarioId, ano, mes);
         var previstos = await RegrasFinanceiras.PrevistosDoMesAsync(_context, usuarioId, ano, mes);
+        var faturas = (await RegrasFinanceiras.FaturasAPagarNoMesAsync(_context, usuarioId, ano, mes))
+            .Select(f => new FaturaDoMesDto(f.FaturaId, f.CartaoId, f.Cartao, f.DataInicio, f.DataFechamento, f.DataVencimento,
+                f.Total, f.Pago, f.Restante, f.Atrasada))
+            .ToList();
 
         var ids = gastos.Keys.Concat(previstos.Where(p => p.CategoriaId.HasValue).Select(p => p.CategoriaId!.Value)).Distinct().ToList();
         var nomes = await _context.Categorias.AsNoTracking().Where(c => ids.Contains(c.Id)).ToDictionaryAsync(c => c.Id, c => c.Descricao);
@@ -53,7 +57,8 @@ public class DinheiroDoMesService
         var livre = baseRenda - jaSaiu - vem;
 
         return new DinheiroDoMesDto(ano, mes, renda.Previsto, renda.Recebido, baseRenda, jaSaiu, vem, livre, Pct(jaSaiu + vem),
-            partes, aindaVem, Responder(baseRenda, jaSaiu, vem, livre, porCategoria.Count > 0 ? (Nome(porCategoria[0].Id), porCategoria[0].Valor, porCategoria[0].Id is null) : null));
+            partes, aindaVem, Responder(baseRenda, jaSaiu, vem, livre, porCategoria.Count > 0 ? (Nome(porCategoria[0].Id), porCategoria[0].Valor, porCategoria[0].Id is null) : null),
+            faturas, faturas.Sum(f => f.Restante));
     }
 
     /// <summary>A pergunta do mês: "vai dar?". Uma frase com o número e o que dá pra fazer.</summary>
