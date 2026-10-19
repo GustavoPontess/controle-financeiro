@@ -2622,4 +2622,42 @@ public class EmprestimoServiceTests
         IdempotencyKey = Guid.NewGuid().ToString(),
     };
 
+    // ── Lado do dinheiro no registro sem vínculo (achado 2026-10-19) ─────────
+
+    [Fact]
+    public async Task PegueiSemVinculo_RegistrarODevolvido_LancaDespesa_EBaixaOQueFalta()
+    {
+        // Empréstimo de banco (ou de alguém sem conta no app): quem pegou registra o que devolveu. O dinheiro SAI da
+        // conta dela. Antes virava receita "Recebimento empréstimo" e o saldo subia.
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var u = SeedUsuario(ctx, "u@x.com");
+        var (contaId, categoriaId) = SeedContaECategoria(ctx, u);
+        var dto = DtoValido();
+        dto.Tipo = TipoEmprestimo.PeguiEmprestado;
+        var criado = await svc.CriarAsync(dto, u);
+
+        await svc.SolicitarPagamentoAsync(criado.Id, SolicitarDtoValido(contaId, categoriaId), u);
+
+        var t = await ctx.Transacoes.SingleAsync();
+        Assert.Equal((TipoTransacao.Despesa, 100m, "Pagamento empréstimo: Empréstimo para João"), (t.Tipo, t.Valor, t.Descricao));
+        var e = await ctx.Emprestimos.SingleAsync();
+        Assert.Equal(100m, e.ValorPago); // registro solo: já conta
+    }
+
+    [Fact]
+    public async Task EmpresteiSemVinculo_RegistrarOQueVoltou_LancaReceita()
+    {
+        var ctx = CreateContext();
+        var svc = NewSvc(ctx);
+        var u = SeedUsuario(ctx, "u@x.com");
+        var (contaId, categoriaId) = SeedContaECategoriaReceita(ctx, u);
+        var criado = await svc.CriarAsync(DtoValido(), u);
+
+        await svc.SolicitarPagamentoAsync(criado.Id, SolicitarDtoValido(contaId, categoriaId), u);
+
+        var t = await ctx.Transacoes.SingleAsync();
+        Assert.Equal((TipoTransacao.Receita, "Recebimento empréstimo: Empréstimo para João"), (t.Tipo, t.Descricao));
+        Assert.Equal(100m, (await ctx.Emprestimos.SingleAsync()).ValorPago);
+    }
 }

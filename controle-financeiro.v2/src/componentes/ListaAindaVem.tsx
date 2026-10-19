@@ -10,13 +10,14 @@ import styles from "./ListaAindaVem.module.css"
 
 const pct = (v: number) => `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(v)}%`
 
-/** "dia 25" no mês de hoje; "5/11" em outro mês; "não passou" quando o dia já foi (cobrança que o app tenta de novo). */
-const quandoCom = (iso: string, hoje: string) =>
-  iso < hoje ? "não passou"
+/** "dia 25" no mês de hoje; "5/11" em outro mês; quando o dia já foi, `vencido` (padrão: "não passou", a cobrança
+ *  de conta fixa que o app tenta de novo; em empréstimo, "venceu 10/9"). */
+const quandoCom = (iso: string, hoje: string, vencido: (iso: string) => string) =>
+  iso.slice(0, 10) < hoje ? vencido(iso)
   : iso.slice(0, 7) === hoje.slice(0, 7) ? `dia ${Number(iso.slice(8, 10))}`
   : `${Number(iso.slice(8, 10))}/${Number(iso.slice(5, 7))}`
 
-export default function ListaAindaVem({ itens, base, semCategoria, semLink, comMes, rotulo = "Ainda vem este mês" }: {
+export default function ListaAindaVem({ itens, base, semCategoria, semLink, comMes, vencido = () => "não passou", rotulo = "Ainda vem este mês" }: {
   itens: AindaVem[]
   /** Renda do mês: mostra a coluna de % (no cartão da renda). */
   base?: number
@@ -26,6 +27,8 @@ export default function ListaAindaVem({ itens, base, semCategoria, semLink, comM
   semLink?: boolean
   /** Itens de mais de um mês: "5/11" fora do mês de hoje. */
   comMes?: boolean
+  /** Com `comMes`: o rótulo de quando o dia já passou. */
+  vencido?: (iso: string) => string
   rotulo?: string
 }) {
   const hoje = dataLocalISO()
@@ -33,7 +36,7 @@ export default function ListaAindaVem({ itens, base, semCategoria, semLink, comM
     <ul className={styles.lista} data-com-pct={base ? "true" : undefined} aria-label={rotulo}>
       {itens.map((a) => {
         const nome = (
-          <>{a.descricao}<span className={styles.mudo}> · {comMes ? quandoCom(a.data, hoje) : `dia ${Number(a.data.slice(8, 10))}`}{semCategoria ? "" : ` · ${a.categoria}`}</span></>
+          <>{a.descricao}<span className={styles.mudo}> · {comMes ? quandoCom(a.data, hoje, vencido) : `dia ${Number(a.data.slice(8, 10))}`}{semCategoria ? "" : ` · ${a.categoria}`}</span></>
         )
         return (
           <li key={a.transacaoId}>

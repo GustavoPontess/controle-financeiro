@@ -144,10 +144,8 @@ public class EmprestimoService(
         // sempre no restante (com multa/juros quando houver). Mesma regra pros dois lados.
         decimal SomaVencido(List<Emprestimo> lista) => lista.Sum(e => e.FormaPagamento == FormaPagamentoEmprestimo.Parcelado
             ? e.Parcelas.Where(p => p.Status == StatusParcelaEmprestimo.Pendente && p.DataVencimento.Date < hoje)
-                .Sum(p => (p.ValorComMulta ?? p.ValorComJuros ?? p.Valor) - p.ValorPago)
-            : (e.DataVencimento.HasValue && e.DataVencimento.Value.Date < hoje
-                ? (e.ValorComMulta ?? e.ValorComJuros ?? e.ValorTotal) - e.ValorPago
-                : 0m));
+                .Sum(RestanteDaParcela)
+            : (e.DataVencimento.HasValue && e.DataVencimento.Value.Date < hoje ? RestanteAVista(e) : 0m));
         var totalAReceberVencido = SomaVencido(aReceberAtivos);
         var totalAPagarVencido = SomaVencido(aPagarAtivos);
 
@@ -180,6 +178,12 @@ public class EmprestimoService(
 
         if (string.IsNullOrWhiteSpace(dto.IdempotencyKey))
             throw new ArgumentException("idempotencyKey é obrigatório.");
+
+        // Juros e multa em % (front e back): nunca negativo; juros até 100% ao mês, multa até 100%.
+        if (dto.TaxaJuroMensal is < 0 or > 100)
+            throw new ArgumentException("Juros: de 0 a 100% ao mês.");
+        if (dto.PercentualMultaAtraso is < 0 or > 100)
+            throw new ArgumentException("Multa: de 0 a 100%.");
 
         if (dto.FormaPagamento == FormaPagamentoEmprestimo.Parcelado)
         {
@@ -656,10 +660,17 @@ public class EmprestimoService(
         // só existe depois de aceito) — logo souCredor é sempre true nesse caso, mesmo raciocínio
         // de "registro solo, sem contraparte pra avisar" já usado no resto do módulo.
         var souCredor = EhCredor(emprestimo, usuarioId);
+        // O lado do DINHEIRO é outro: quem emprestou recebe (receita), quem pegou devolve (despesa). Sem vínculo, o
+        // criador controla tudo (souCredor) mesmo quando pegou emprestado, e o lançamento tem que ser a saída dele.
+        // Antes o tipo seguia o souCredor: devolver um "Peguei" sem vínculo (empréstimo de banco, por exemplo) virava
+        // RECEITA "Recebimento empréstimo" e o saldo subia em vez de descer (achado 2026-10-19).
+        var euEmprestei = emprestimo.CriadoPor == usuarioId
+            ? emprestimo.Tipo == TipoEmprestimo.Emprestei
+            : emprestimo.Tipo == TipoEmprestimo.PeguiEmprestado;
 
         Transacao transacao;
         decimal valor;
-        var tipoEsperado = souCredor ? TipoTransacao.Receita : TipoTransacao.Despesa;
+        var tipoEsperado = euEmprestei ? TipoTransacao.Receita : TipoTransacao.Despesa;
 
         if (dto.TransacaoExistenteId.HasValue)
         {
@@ -670,7 +681,7 @@ public class EmprestimoService(
                 ?? throw new KeyNotFoundException("Transação não encontrada.");
 
             if (transacao.Tipo != tipoEsperado)
-                throw new ArgumentException(souCredor
+                throw new ArgumentException(euEmprestei
                     ? "A transação vinculada precisa ser uma receita."
                     : "A transação vinculada precisa ser uma despesa.");
 
@@ -693,7 +704,7 @@ public class EmprestimoService(
             transacao = await _transacaoService.CriarTransacaoAsync(new Transacao
             {
                 Id = Guid.NewGuid(),
-                Descricao = souCredor
+                Descricao = euEmprestei
                     ? $"Recebimento empréstimo: {emprestimo.Descricao}"
                     : $"Pagamento empréstimo: {emprestimo.Descricao}",
                 Valor = dto.Valor,
@@ -1778,6 +1789,13 @@ public class EmprestimoService(
 
         return parcelas;
     }
+
+    /// <summary>O que falta de uma parcela (com multa, se já tiver o snapshot; senão com juros; senão o valor). Regra
+    /// única: o vencido do topo e os próximos 30 dias (<see cref="ProximosEmprestimosService"/>) usam esta.</summary>
+    public static decimal RestanteDaParcela(EmprestimoParcela p) => (p.ValorComMulta ?? p.ValorComJuros ?? p.Valor) - p.ValorPago;
+
+    /// <summary>O que falta de um empréstimo à vista (mesma regra da parcela).</summary>
+    public static decimal RestanteAVista(Emprestimo e) => (e.ValorComMulta ?? e.ValorComJuros ?? e.ValorTotal) - e.ValorPago;
 
     /// <summary>Snapshot único de multa na primeira leitura após o vencimento — não recalcula
     /// depois. Retorna true se alterou (pra saber se precisa SaveChanges).</summary>

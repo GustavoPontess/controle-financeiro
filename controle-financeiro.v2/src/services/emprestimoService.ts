@@ -3,6 +3,7 @@ import type {
   Emprestimo, CriarEmprestimo, EmprestimoConviteResultado, EmprestimoConvitePendente,
   SolicitarPagamentoEmprestimo, AprovarPagamentoEmprestimo, EmprestimoPagamentoSolicitacao,
   EmprestimoParcela, EmprestimoConsolidacaoCandidato, ProporConsolidacao, EmprestimoConsolidacaoProposta,
+  ProximosEmprestimos,
 } from "../types/Emprestimo"
 import type { PagedResult } from "../types/Paged"
 
@@ -49,6 +50,12 @@ export type EmprestimoStats = {
   qtdTotal: number
   totalAReceberVencido: number
   totalAPagarVencido: number
+}
+
+/** O topo da tela: o que vence nos próximos 30 dias dos dois lados, se o saldo nas contas cobre, e a frase. */
+export const getProximosEmprestimos = async (): Promise<ProximosEmprestimos> => {
+  const res = await api.get("/emprestimos/proximos")
+  return res.data
 }
 
 /** KPIs agregados — a receber, a pagar, ativos, total. */

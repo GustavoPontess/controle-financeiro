@@ -30,6 +30,16 @@ public class EmprestimosController(EmprestimoService service) : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// O topo da tela: o que vence nos próximos 30 dias dos dois lados (inclui o que já venceu e ainda falta), se o
+    /// saldo nas contas cobre o que a pessoa devolve, e a frase. Só leitura.
+    /// </summary>
+    [HttpGet("proximos")]
+    [ProducesResponseType(typeof(ProximosEmprestimosDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Proximos([FromServices] ProximosEmprestimosService proximos) =>
+        // "Hoje" no Brasil (UTC-3): o dia em que a pessoa está olhando.
+        Ok(await proximos.CalcularAsync(UserId, DateOnly.FromDateTime(DateTime.UtcNow.AddHours(-3))));
+
     /// <summary>KPIs agregados — a receber, a pagar, ativos e total.</summary>
     [HttpGet("stats")]
     [ProducesResponseType(typeof(EmprestimoStatsDto), StatusCodes.Status200OK)]

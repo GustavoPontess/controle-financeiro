@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.DTOs.CartaoCredito;
 using ControleFinanceiro.Api.DTOs.Conta;
+using ControleFinanceiro.Api.DTOs.Emprestimo;
 using ControleFinanceiro.Api.DTOs.Parcelamento;
 using ControleFinanceiro.Api.DTOs.Recorrente;
 using ControleFinanceiro.Api.DTOs.Familia;
@@ -50,6 +51,81 @@ public static class DemoSeeder
         await RendaAsync(context, dev.Id, hoje);
         await MetasAsync(sp, context, dev.Id, corrente.Id, poupanca.Id, hoje);
         await LimitesAsync(sp, context, dev.Id, hoje);
+        await EmprestimosAsync(sp, context, dev.Id, corrente.Id, Cat, hoje);
+    }
+
+    // ── Empréstimos: os dois lados e todos os estados. Emprestei: João em 6x (2 parcelas voltaram), Carla de uma vez
+    //    (venceu e não voltou), Bia (quitado), Marina acompanhando junto (ela registrou R$ 200 pro Gabriel confirmar,
+    //    aparece em "Pra responder"). Peguei: Itaú em 12x com juros (3 devolvidas) e Rafa de uma vez (vence em 10 dias).
+    //    E um convite da Marina pra acompanhar junto o que ela pegou com o Gabriel (também em "Pra responder").
+    private static async Task EmprestimosAsync(IServiceProvider sp, AppDbContext context, Guid dev, Guid corrente,
+        Func<string, Guid> Cat, DateTime hoje)
+    {
+        if (await context.Emprestimos.AnyAsync(e => e.CriadoPor == dev))
+            return;
+        var svc = sp.GetRequiredService<EmprestimoService>();
+        var bancos = await context.Bancos.ToListAsync();
+        Guid? Banco(string codigo) => bancos.FirstOrDefault(b => b.CodigoBanco == codigo)?.Id;
+        DateTime D(int dias) => Utc(hoje.AddDays(dias)).AddHours(12);
+        var outros = Cat("Outros");
+        var volta = Cat("Dinheiro que volta");
+        async Task<Guid> Criar(Guid quem, CriarEmprestimoDto dto)
+        {
+            dto.IdempotencyKey = Guid.NewGuid().ToString();
+            return (await svc.CriarAsync(dto, quem)).Id;
+        }
+        Task Registrar(Guid quem, Guid id, decimal valor, int dias, Guid conta, Guid categoria) =>
+            svc.SolicitarPagamentoAsync(id, new SolicitarPagamentoEmprestimoDto
+            {
+                Valor = valor, ContaId = conta, CategoriaId = categoria, Data = D(dias), IdempotencyKey = Guid.NewGuid().ToString(),
+            }, quem);
+
+        var joao = await Criar(dev, new CriarEmprestimoDto
+        {
+            Descricao = "Conserto do carro", Pessoa = "João", ValorTotal = 1800m, Tipo = TipoEmprestimo.Emprestei, DataInicio = D(-75),
+            FormaPagamento = FormaPagamentoEmprestimo.Parcelado, QuantidadeParcelas = 6, PrimeiroVencimento = D(-60),
+            ContaId = corrente, CategoriaId = outros,
+        });
+        await Registrar(dev, joao, 600m, -30, corrente, volta);
+        await Criar(dev, new CriarEmprestimoDto
+        {
+            Descricao = "Passagem", Pessoa = "Carla", ValorTotal = 400m, Tipo = TipoEmprestimo.Emprestei, DataInicio = D(-60), DataVencimento = D(-20),
+        });
+        var bia = await Criar(dev, new CriarEmprestimoDto
+        {
+            Descricao = "Almoço", Pessoa = "Bia", ValorTotal = 80m, Tipo = TipoEmprestimo.Emprestei, DataInicio = D(-40),
+        });
+        await svc.QuitarAsync(bia, dev);
+        var itau = await Criar(dev, new CriarEmprestimoDto
+        {
+            Descricao = "Empréstimo pessoal", Pessoa = "Itaú", BancoId = Banco("341"), ValorTotal = 6000m, Tipo = TipoEmprestimo.PeguiEmprestado,
+            DataInicio = D(-100), FormaPagamento = FormaPagamentoEmprestimo.Parcelado, QuantidadeParcelas = 12, PrimeiroVencimento = D(-70),
+            TaxaJuroMensal = 1.5m, ContaId = corrente, CategoriaId = outros,
+        });
+        await Registrar(dev, itau, 507.50m * 3, -10, corrente, outros); // 3 parcelas de R$ 500 com 1,5% de juros
+        await Criar(dev, new CriarEmprestimoDto
+        {
+            Descricao = "Ingresso do show", Pessoa = "Rafa", ValorTotal = 300m, Tipo = TipoEmprestimo.PeguiEmprestado, DataInicio = D(-15), DataVencimento = D(10),
+        });
+
+        // Com a Marina (tem conta no app): acompanhando junto, e um convite dela ainda sem resposta.
+        var marina = await context.Usuarios.FirstOrDefaultAsync(u => u.Email == "conjuge@controle.test");
+        var contaMarina = marina is null ? null : await context.Contas
+            .FirstOrDefaultAsync(c => c.UsuarioIdProprietario == marina.Id && c.Tipo != TipoConta.Caixinha && c.EncerradaEm == null);
+        if (marina is null || contaMarina is null)
+            return;
+        var junto = await Criar(dev, new CriarEmprestimoDto
+        {
+            Descricao = "Curso de inglês", Pessoa = "Marina", ValorTotal = 500m, Tipo = TipoEmprestimo.Emprestei, DataInicio = D(-25), DataVencimento = D(35),
+        });
+        var link = await svc.VincularAsync(junto, new VincularEmprestimoDto(marina.Email), dev);
+        await svc.AceitarVinculoAsync(link.LinkConvite.Split('/').Last(), marina.Id);
+        await Registrar(marina.Id, junto, 200m, -2, contaMarina.Id, outros);
+        var convite = await Criar(marina.Id, new CriarEmprestimoDto
+        {
+            Descricao = "Presente da mãe", Pessoa = "Gabriel", ValorTotal = 150m, Tipo = TipoEmprestimo.PeguiEmprestado, DataInicio = D(-3),
+        });
+        await svc.VincularAsync(convite, new VincularEmprestimoDto(DevDataSeeder.DevEmail), marina.Id);
     }
 
     // ── Limites: em cima do gasto real do mês (o seeder não inventa gasto). A categoria que mais gastou passou do
