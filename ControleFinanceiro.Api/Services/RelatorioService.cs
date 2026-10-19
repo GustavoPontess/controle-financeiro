@@ -62,8 +62,6 @@ public class RelatorioService
 
         var transacoes = await query.OrderBy(t => t.Data).ToListAsync();
 
-        var cultura = new CultureInfo("pt-BR");
-
         var totalDespesas = transacoes.Where(t => t.Tipo == TipoTransacao.Despesa).Sum(t => t.Valor);
         var totalReceitas = transacoes.Where(t => t.Tipo == TipoTransacao.Receita).Sum(t => t.Valor);
 
@@ -195,8 +193,6 @@ public class RelatorioService
             .AsNoTracking()
             .ToListAsync();
 
-        var cultura = new CultureInfo("pt-BR");
-        var mesesNomes = cultura.DateTimeFormat.AbbreviatedMonthNames;
         var saldosFimDoMes = await RegrasFinanceiras.SaldosNoFimDeCadaMesAsync(_context, usuarioId, ano);
 
         var evolucaoMensal = Enumerable.Range(1, 12).Select(mes =>
@@ -210,7 +206,8 @@ public class RelatorioService
             {
                 Ano = ano,
                 Mes = mes,
-                MesLabel = char.ToUpper(mesesNomes[mes - 1][0]) + mesesNomes[mes - 1][1..],
+                // Rótulo fixo: a cultura pt-BR não existe na imagem alpine (o construtor lançava erro).
+                MesLabel = MesesPt.Curtos[mes - 1],
                 Receitas = receitas,
                 Despesas = despesas,
                 Saldo = receitasCaixa - despesasCaixa,

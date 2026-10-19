@@ -12,9 +12,6 @@ namespace ControleFinanceiro.Api.Infrastructure.Jobs;
 /// </summary>
 public class AlertaLimitesJob
 {
-    private static readonly string[] Meses = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho",
-        "agosto", "setembro", "outubro", "novembro", "dezembro"];
-
     private readonly AppDbContext _context;
     private readonly OrcamentoService _limites;
     private readonly NotificacaoService _notificacoes;
@@ -50,7 +47,7 @@ public class AlertaLimitesJob
     private async Task AvisarAsync(Guid usuarioId, int ano, int mes)
     {
         var doMes = await _limites.DoMesAsync(usuarioId, ano, mes);
-        var nomeMes = Meses[mes - 1];
+        var nomeMes = MesesPt.Nome(mes);
         foreach (var l in doMes.Limites.Where(l => l.Situacao is "perto" or "passou"))
         {
             var chave = $"limite:{l.CategoriaId?.ToString() ?? "todos"}:{ano:D4}-{mes:D2}:{l.Situacao}";
