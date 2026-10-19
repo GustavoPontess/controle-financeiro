@@ -76,6 +76,31 @@ public class RateioCongeladoTests
     }
 
     [Fact]
+    public async Task FamiliaDoMeuJeito_DividirSemDizerAsPartes_ComecaIgual()
+    {
+        var c = await Build(ModoRateio.Personalizado);
+        var luz = Despesa(c, c.Gustavo, 100m, new DateOnly(2026, 10, 19));
+
+        await Despesas(c).CompartilharAsync(luz.Id, c.FamiliaId, c.Gustavo);
+
+        var t = await c.Ctx.Transacoes.Include(x => x.Rateios).SingleAsync(x => x.Id == luz.Id);
+        Assert.Equal(ModoRateio.Igualitario, t.ModoRateio);
+        Assert.Equal(50m, t.Rateios.Single(r => r.UsuarioId == c.Gustavo).Valor);
+        Assert.Equal(50m, t.Rateios.Single(r => r.UsuarioId == c.Gabriel).Valor);
+    }
+
+    [Fact]
+    public async Task ExigirPodeDividir_RecusaReceita_EQuemSoVe()
+    {
+        var c = await Build();
+        var salario = new Transacao { Id = Guid.NewGuid(), Descricao = "Salário", Valor = 10m, Tipo = TipoTransacao.Receita, CriadoPor = c.Gustavo, Data = new DateOnly(2026, 10, 1) };
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Despesas(c).ExigirPodeDividirAsync(c.FamiliaId, c.Gustavo, salario));
+        var luz = new Transacao { Id = Guid.NewGuid(), Descricao = "Luz", Valor = 10m, Tipo = TipoTransacao.Despesa, CriadoPor = c.Marina, Data = new DateOnly(2026, 10, 1) };
+        await Assert.ThrowsAnyAsync<Exception>(() => Despesas(c).ExigirPodeDividirAsync(c.FamiliaId, c.Marina, luz));
+        await Despesas(c).ExigirPodeDividirAsync(c.FamiliaId, c.Gabriel, luz); // quem lança pode
+    }
+
+    [Fact]
     public async Task MudarARegraDaFamilia_NaoMexeNoQueJaFoiDividido()
     {
         var c = await Build();

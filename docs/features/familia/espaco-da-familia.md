@@ -162,7 +162,13 @@ Na página da despesa, abaixo dos dados:
    `MembroFamilia.SaiuEm`), gasto do mês = a sua parte (`GastosPorCategoriaDoMesAsync`, inclusive nas despesas dos
    outros), migration `AddRateioCongelado` (as já divididas ganham as partes pela regra que a tela mostrava), aviso
    em Regras, "sua parte" na lista e "saiu em" no equilíbrio.
-2. **Bloco Família na transação** + interruptor no formulário (v2).
+2. ✅ **Bloco Família na transação** + interruptor no formulário (2026-10-19): página da despesa com o quadro
+   Família (`TransacaoFamilia.tsx`): só sua → "Dividir com {família}"; dividida → situação, Como divide (Igual · Pela
+   renda · Do meu jeito com % que somam 100; muda só esta despesa), parte de cada um gravada (você primeiro, quem saiu
+   com a data, quem só vê fora), Quem cuida dessa conta, Pra quem (dependente; também sem dividir) e Parar de dividir.
+   Nova despesa: interruptor "Dividir com {família}" (`POST /transacoes` com `familiaId`, divide no mesmo pedido);
+   parcelada ainda não divide (400). Família "Do meu jeito" dividindo sem partes começa igual
+   (`RateioService.ModoAoDividir`).
 3. **Acerto vira lançamento** (passa / confirma), etiqueta no extrato, Entre vocês com os dois lados.
 4. **Abas Transações e Contas fixas da família** + resposta na Visão geral + Membros com os dependentes dentro.
 5. **Gasto de cada um = sua parte** (se aprovado em 4.2): regra única do gasto + cartão da renda + limites.

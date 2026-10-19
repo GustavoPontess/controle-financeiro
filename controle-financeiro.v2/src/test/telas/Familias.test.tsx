@@ -48,7 +48,7 @@ describe("Famílias (lista)", () => {
 
     await userEvent.click(within(screen.getByRole("list", { name: "Famílias" })).getByRole("button", { name: /Casa Dev/ }))
     expect(await screen.findByText("Gabriel, Marina")).toBeInTheDocument()
-    expect(screen.getByText("Proporcional à renda")).toBeInTheDocument()
+    expect(screen.getByText("Pela renda")).toBeInTheDocument()
     expect(screen.getByText(/pagou a menos/)).toHaveTextContent("350,00")
     await userEvent.click(screen.getByRole("button", { name: "Abrir família" }))
     expect(screen.getByText("página da família")).toBeInTheDocument()

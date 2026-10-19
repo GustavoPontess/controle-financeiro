@@ -28,6 +28,7 @@ import Etiqueta from "../componentes/Etiqueta"
 import { Dinheiro, type TomDinheiro } from "../componentes/Dinheiro"
 import { formatMoney } from "../utils/money"
 import FormularioTransacao from "./FormularioTransacao"
+import TransacaoFamilia from "./TransacaoFamilia"
 import styles from "./Transacao.module.css"
 
 const naturezaDe = (t: Transaction) =>
@@ -93,14 +94,16 @@ export default function Transacao() {
 
   return <Ver t={t} categorias={categorias} subcategorias={subcategorias} editavel={editavel}
     aoEditar={() => navigate(`/transacoes/${t.id}/editar`, { replace: true, state: location.state })}
-    aoSair={() => navigate(voltarPara, { replace: true })} />
+    aoSair={() => navigate(voltarPara, { replace: true })}
+    // Ação do quadro Família (dividir, parar, pra quem): relê o que ficou gravado, sem sair da página.
+    aoMudar={() => { getTransaction(id).then(setT).catch(() => { /* fica com o que estava */ }) }} />
 }
 
 // ─────────────────────────────────────────────────────────────────────────────── ver
 
-function Ver({ t, categorias, subcategorias, editavel, aoEditar, aoSair }: {
+function Ver({ t, categorias, subcategorias, editavel, aoEditar, aoSair, aoMudar }: {
   t: Transaction; categorias: Category[]; subcategorias: Subcategory[]
-  editavel: boolean; aoEditar: () => void; aoSair: () => void
+  editavel: boolean; aoEditar: () => void; aoSair: () => void; aoMudar: () => void
 }) {
   const [excluindo, setExcluindo] = useState(false)
   const [estornando, setEstornando] = useState(false)
@@ -165,6 +168,9 @@ function Ver({ t, categorias, subcategorias, editavel, aoEditar, aoSair }: {
           ))}
         </dl>
       </Bloco>
+
+      {/* Só despesa entra no equilíbrio da família (receita, transferência, pagamento de fatura e empréstimo não). */}
+      {t.tipo !== 2 && !neutro && !t.ehEmprestimo && <TransacaoFamilia t={t} aoMudar={aoMudar} />}
 
       {/* Ações no pé, à direita — o mesmo lugar dos botões de Nova e Editar (destrutiva à esquerda, principal à direita). */}
       <RodapeFormulario>

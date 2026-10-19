@@ -27,6 +27,12 @@ namespace ControleFinanceiro.Api.DTOs.Transacao
         public int? Parcelas { get; set; }
         public decimal? ValorParcela { get; set; }
         public bool EhPagamentoFatura { get; set; }
+        // Família: dividida com qual, situação da aprovação (0 não precisa · 1 esperando · 2 aprovada · 3 recusada),
+        // pra quem (dependente) e quem cuida (responsável). O bloco "Família" da página da transação lê daqui.
+        public Guid? FamiliaId { get; set; }
+        public int StatusAprovacao { get; set; }
+        public Guid? DependenteId { get; set; }
+        public Guid? ResponsavelUsuarioId { get; set; }
         // Perna de transferência entre contas próprias — no extrato aparece
         // neutra (não conta como entrada/saída, só troca de bolso).
         public bool EhTransferencia { get; set; }

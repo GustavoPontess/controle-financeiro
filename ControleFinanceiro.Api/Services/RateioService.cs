@@ -75,6 +75,11 @@ public class RateioService
     }
 
     /// <summary>Troca as partes gravadas da despesa pelas calculadas agora (a transação vem com <c>Rateios</c>). Não salva.</summary>
+    /// <summary>O jeito com que uma despesa nasce dividida (ou volta ao padrão): o da família, mas "Do meu jeito" sem
+    /// as partes ditas começa igual (a pessoa ajusta na página da despesa).</summary>
+    public static ModoRateio ModoAoDividir(ModoRateio padraoDaFamilia) =>
+        padraoDaFamilia == ModoRateio.Personalizado ? ModoRateio.Igualitario : padraoDaFamilia;
+
     public async Task AplicarPartesAsync(Transacao transacao, Guid familiaId, ModoRateio modo, List<RateioItemDto>? itens)
     {
         var novas = await CalcularPartesAsync(familiaId, transacao, modo, itens);
@@ -122,7 +127,7 @@ public class RateioService
 
         var familia = await _context.Familias.FirstOrDefaultAsync(f => f.Id == familiaId && f.Ativa)
             ?? throw new KeyNotFoundException("Família não encontrada.");
-        await AplicarPartesAsync(transacao, familiaId, familia.ModoRateioPadrao, null);
+        await AplicarPartesAsync(transacao, familiaId, ModoAoDividir(familia.ModoRateioPadrao), null);
         await _context.SaveChangesAsync();
     }
 

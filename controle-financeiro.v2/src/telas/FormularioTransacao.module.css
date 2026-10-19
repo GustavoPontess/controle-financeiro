@@ -11,3 +11,5 @@
 
 /* Opções: "Já paguei" */
 .opcoes { gap: 12px; }
+.dividir { display: flex; flex-direction: column; gap: 8px; }
+.dividirNota { margin: 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }

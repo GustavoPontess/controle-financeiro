@@ -37,4 +37,13 @@ export interface Transaction {
   data: string
   /** Hora do lançamento, "HH:MM:SS" — ou null/ausente quando não tem hora. */
   hora?: string | null
+  // ── Família (despesa dividida) ──
+  /** Família com quem está dividida (null = só sua). Na criação: dividir já ao salvar. */
+  familiaId?: string | null
+  /** 0 não precisa · 1 esperando aprovação · 2 aprovada · 3 recusada. */
+  statusAprovacao?: 0 | 1 | 2 | 3
+  /** Pra quem foi o gasto (dependente da família), mesmo sem dividir. */
+  dependenteId?: string | null
+  /** Quem cuida dessa conta na família (só rótulo/filtro; não muda a divisão). */
+  responsavelUsuarioId?: string | null
 }

@@ -24,5 +24,8 @@ namespace ControleFinanceiro.Api.DTOs.Transacao
         public DateOnly Data { get; set; }
         /// <summary>Hora do lançamento ("HH:mm:ss") — time puro, sem fuso. Null = sem hora.</summary>
         public TimeOnly? Hora { get; set; }
+        /// <summary>Despesa que já nasce dividida com esta família ("Dividir com a família" na nova despesa). Só despesa à
+        /// vista; a parte de cada um é gravada na hora pela regra da família.</summary>
+        public Guid? FamiliaId { get; set; }
     }
 }
