@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from "react"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import {
-  ArrowLeft, ArrowLeftRight, Baby, BarChart3, Bell, Check, ChevronsUpDown, CreditCard, Gauge, Handshake, Landmark, LayoutDashboard, LogOut, Mail,
+  ArrowLeft, ArrowLeftRight, BarChart3, Bell, Check, ChevronsUpDown, CreditCard, Gauge, Handshake, Landmark, LayoutDashboard, LogOut, Mail,
   PanelLeftClose, PanelLeftOpen, Plus, Receipt, Repeat, Scale, Settings, SlidersHorizontal, Tags, Target, Upload, Users, Eye, EyeOff, Wallet,
 } from "lucide-react"
 import Avatar, { urlFoto } from "../componentes/Avatar"
@@ -45,12 +45,12 @@ const GERENCIAR: ItemMenu[] = [
 ]
 const FAMILIA = (id: string): ItemMenu[] => [
   { para: `/familias/${id}`, rotulo: "Visão geral", icone: LayoutDashboard, exato: true },
-  { para: `/familias/${id}/despesas`, rotulo: "Despesas compartilhadas", icone: Receipt },
+  { para: `/familias/${id}/transacoes`, rotulo: "Transações", icone: Receipt },
+  { para: `/familias/${id}/contas-fixas`, rotulo: "Contas fixas", icone: Repeat },
   { para: `/familias/${id}/entre-voces`, rotulo: "Entre vocês", icone: ArrowLeftRight },
 ]
 const FAMILIA_GERENCIAR = (id: string): ItemMenu[] => [
   { para: `/familias/${id}/membros`, rotulo: "Membros", icone: Users },
-  { para: `/familias/${id}/dependentes`, rotulo: "Dependentes", icone: Baby },
   { para: `/familias/${id}/regras`, rotulo: "Regras", icone: SlidersHorizontal },
 ]
 const CHAVE_MENU = "v2:menu"
@@ -64,6 +64,7 @@ function secaoDaRota(pathname: string): Secao | undefined {
     ? [
       ...FAMILIA(familiaId), ...FAMILIA_GERENCIAR(familiaId),
       { para: `/familias/${familiaId}/convidar`, rotulo: "Membros", raiz: `/familias/${familiaId}/membros` },
+      { para: `/familias/${familiaId}/dependentes`, rotulo: "Membros", raiz: `/familias/${familiaId}/membros` },
       { para: `/familias/${familiaId}/acertos`, rotulo: "Entre vocês", raiz: `/familias/${familiaId}/entre-voces` },
     ]
     : [

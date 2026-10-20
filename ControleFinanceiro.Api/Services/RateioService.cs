@@ -27,6 +27,16 @@ public class RateioService
             ?? throw new KeyNotFoundException("Família não encontrada.");
 
         familia.ModoRateioPadrao = modo;
+
+        // As cobranças PREVISTAS das contas fixas da casa ainda não aconteceram: seguem a regra nova (o que já
+        // aconteceu fica como está). A que a pessoa dividiu "do meu jeito" fica como ela deixou.
+        var previstas = await _context.Transacoes
+            .Include(t => t.Rateios)
+            .Where(t => t.FamiliaId == familiaId && t.Ativo && t.StatusTransacao == StatusTransacao.Previsao
+                        && t.RecorrenteOrigemId != null && t.ModoRateio != ModoRateio.Personalizado)
+            .ToListAsync();
+        foreach (var t in previstas)
+            await AplicarPartesAsync(t, familiaId, ModoAoDividir(modo), null);
         await _context.SaveChangesAsync();
     }
 
@@ -89,6 +99,22 @@ public class RateioService
         // O EF já encaixa cada item em transacao.Rateios (fixup); adicionar de novo duplicava.
         _context.RateiosTransacao.AddRange(novas);
         transacao.ModoRateio = modo;
+    }
+
+    /// <summary>O VALOR da despesa dividida mudou (editou o lançamento, a próxima cobrança da conta fixa): as mesmas
+    /// pessoas com o mesmo % de antes, em reais pelo valor novo, com o resto dos centavos em quem pagou. Nunca
+    /// recalcula pela regra de hoje (quem entrou ou saiu depois não muda a divisão). Sem partes, nada a fazer.</summary>
+    public async Task RegravarPeloValorAsync(Transacao transacao)
+    {
+        if (transacao.FamiliaId is null) return;
+        await _context.Entry(transacao).Collection(t => t.Rateios).LoadAsync();
+        var partes = transacao.Rateios.OrderBy(r => r.UsuarioId).ToList();
+        if (partes.Count == 0) return;
+        foreach (var r in partes)
+            r.Valor = Math.Round(transacao.Valor * r.Percentual / 100m, 2); // o mesmo arredondamento do CalcularPartesAsync
+        var resto = transacao.Valor - partes.Sum(r => r.Valor);
+        if (resto != 0)
+            (partes.FirstOrDefault(r => r.UsuarioId == transacao.CriadoPor) ?? partes[0]).Valor += resto;
     }
 
     /// <summary>Muda o jeito de dividir SÓ desta despesa (e regrava as partes).</summary>

@@ -98,7 +98,7 @@ export default function FamiliaVisaoGeral() {
       {pendentes.length > 0 && (
         <Bloco semRespiro>
           <ListaFicha rotulo="Despesas compartilhadas">
-            <GrupoFicha rotulo="Aguardando aprovação" extra={<Link to={`${aqui}/despesas`} className={styles.linkFicha}>Ver todas</Link>}>
+            <GrupoFicha rotulo="Aguardando aprovação" extra={<Link to={`${aqui}/transacoes`} className={styles.linkFicha}>Ver todas</Link>}>
               {pendentes.map((d) => <Despesa key={d.id} d={d} familiaId={detalhe.id} meuId={meuId} podeAgir={podeAgir} membros={membrosOpcoes} voltarPara={aqui} aoMudar={recarregar} foto={fotos[d.pagadorUsuarioId]} />)}
             </GrupoFicha>
           </ListaFicha>

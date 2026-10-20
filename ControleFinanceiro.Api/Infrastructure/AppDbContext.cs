@@ -926,5 +926,13 @@ public class AppDbContext : DbContext
             .HasForeignKey(r => r.SubcategoriaId)
             .IsRequired(false)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // Conta fixa da casa → Familia (SetNull: a família some, a conta fixa continua da pessoa)
+        modelBuilder.Entity<Recorrente>()
+            .HasOne(r => r.Familia)
+            .WithMany()
+            .HasForeignKey(r => r.FamiliaId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

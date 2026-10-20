@@ -5,9 +5,15 @@
 // - no cartão o meio é sempre Crédito (o servidor grava sozinho); numa conta, qualquer meio menos Crédito;
 // - criar leva Idempotency-Key (nasce ao abrir a tela e vale pra toda tentativa: reenviar não cria duas);
 // - começo entre 12 meses atrás e 5 anos à frente ao criar (o servidor valida igual); na edição o começo
-//   antigo continua valendo.
-import { useMemo, useState } from "react"
+//   antigo continua valendo;
+// - conta a pagar pode ser DA CASA ("Dividir com {família}"): cada cobrança nasce dividida pela regra da família;
+//   ligar/desligar vale pras próximas cobranças.
+import { useEffect, useMemo, useState } from "react"
 import { createRecorrente, updateRecorrente } from "../services/recorrenteService"
+import { getFamilias } from "../services/familiaService"
+import type { Familia } from "../types/Familia"
+import Bloco from "../componentes/Bloco"
+import Interruptor from "../componentes/Interruptor"
 import { mensagemDeErro } from "../api/cliente"
 import type { Recorrente } from "../types/Recorrente"
 import type { Conta } from "../types/Conta"
@@ -36,9 +42,11 @@ const NATUREZAS: { valor: Natureza; rotulo: string }[] = [
   { valor: "receita", rotulo: "Receita" },
 ]
 
-export default function FormularioContaFixa({ recorrente, contas = [], cartoes = [], categorias, subcategorias = [], aoSair, aoSalvo }: {
+export default function FormularioContaFixa({ recorrente, contas = [], cartoes = [], categorias, subcategorias = [], familiaInicial, aoSair, aoSalvo }: {
   /** Com conta fixa = editar a regra dela; sem = nova. */
   recorrente?: Recorrente
+  /** Nova conta fixa aberta pela aba Contas fixas da família: já nasce dividida com ela. */
+  familiaInicial?: string
   contas?: Conta[]
   cartoes?: CartaoCredito[]
   categorias: Category[]
@@ -73,6 +81,14 @@ export default function FormularioContaFixa({ recorrente, contas = [], cartoes =
   const [erros, setErros] = useState<Record<string, string>>({})
   const [erro, setErro] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
+  // Da casa: as famílias da pessoa e com qual dividir (null = só sua).
+  const [familias, setFamilias] = useState<Familia[]>([])
+  const [familiaId, setFamiliaId] = useState<string | null>(r?.familiaId ?? familiaInicial ?? null)
+  useEffect(() => {
+    let vivo = true
+    getFamilias().then((f) => { if (vivo) setFamilias(f) }).catch(() => { /* sem família, sem o interruptor */ })
+    return () => { vivo = false }
+  }, [])
   // Idempotency-Key: uma por abertura da tela, reusada em toda tentativa de criar.
   const [chaveEnvio] = useState(() => crypto.randomUUID())
 
@@ -145,6 +161,7 @@ export default function FormularioContaFixa({ recorrente, contas = [], cartoes =
           dia: Number(data.slice(8, 10)),
           dataInicio: data,
           dataFim: dataFim || undefined,
+          familiaId: receita ? null : familiaId,
         })
         id = r.id
       } else {
@@ -159,6 +176,7 @@ export default function FormularioContaFixa({ recorrente, contas = [], cartoes =
           dia: Number(data.slice(8, 10)),
           dataInicio: data,
           dataFim: dataFim || undefined,
+          familiaId: receita ? null : familiaId,
         }, chaveEnvio)
         id = criada.id
       }
@@ -183,6 +201,8 @@ export default function FormularioContaFixa({ recorrente, contas = [], cartoes =
       : ""}`
     : null
   const rotuloSalvar = salvando ? "Salvando…" : editando ? "Salvar" : "Criar conta fixa"
+  const podeDividir = !receita && familias.length > 0
+  const nomeFamilia = (familias.find((f) => f.id === familiaId) ?? familias[0])?.nome
 
   return (
     <Formulario layout="lateral" onSubmit={() => { void enviar() }}>
@@ -250,6 +270,18 @@ export default function FormularioContaFixa({ recorrente, contas = [], cartoes =
       <Lado>
         <PreviaLancamento descricao={descricao} valor={v} tom={tom} detalhe={detalhe} efeito={efeito}
           etiquetas={<Etiqueta>Conta fixa</Etiqueta>} />
+
+        {podeDividir && (
+          <Bloco titulo="Opções" className={styles.opcoes}>
+            <Interruptor ligado={!!familiaId} onChange={(on) => setFamiliaId(on ? (familiaId ?? familias[0].id) : null)}>
+              Dividir com {familias.length > 1 && !familiaId ? "a família" : nomeFamilia}
+            </Interruptor>
+            {familiaId && familias.length > 1 && (
+              <Selecao tamanho="sm" ariaLabel="Família" valor={familiaId} onChange={setFamiliaId}
+                opcoes={familias.map((f) => ({ valor: f.id, rotulo: f.nome }))} />
+            )}
+          </Bloco>
+        )}
 
         <RodapeFormulario>
           <Botao onClick={aoSair} disabled={salvando}>Cancelar</Botao>

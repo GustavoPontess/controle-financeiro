@@ -175,7 +175,7 @@ public class AcertoService
 
     /// <summary>Lista os acertos ativos da família (opcionalmente filtrados por mês/ano).</summary>
     public async Task<List<AcertoContasDto>> ListarAsync(
-        Guid familiaId, Guid usuarioId, int? mes, int? ano)
+        Guid familiaId, Guid usuarioId, int? mes, int? ano, Guid? deUsuarioId = null)
     {
         await ExigirMembroAsync(familiaId, usuarioId);
 
@@ -186,6 +186,9 @@ public class AcertoService
             query = query.Where(a => a.Mes == mes);
         if (ano is not null)
             query = query.Where(a => a.Ano == ano);
+        // Filtro "quem pagou" das Transações da família: no acerto, é quem passou o dinheiro.
+        if (deUsuarioId is { } de)
+            query = query.Where(a => a.DeUsuarioId == de);
 
         var acertos = await query
             .OrderByDescending(a => a.CriadoEm)

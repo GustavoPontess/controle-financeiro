@@ -177,7 +177,17 @@ Na página da despesa, abaixo dos dados:
    se editam nem excluem por Transações; "Acerto com Gabriel · Casa Pontes", etiqueta "Acerto"); Desfazer cancela os
    dois. `AcertoService` (idempotência nova `RegistroIdempotencia`, xmin no confirmar/lançar), migration
    `AddAcertoLancamento` (os acertos de antes ficam confirmados).
-4. **Abas Transações e Contas fixas da família** + resposta na Visão geral + Membros com os dependentes dentro.
+4. ✅ **Abas Transações e Contas fixas da família** + Membros com os dependentes dentro (2026-10-19). Menu: Visão geral ·
+   Transações · Contas fixas · Entre vocês · Membros · Regras (`/despesas` e `/dependentes` levam pras páginas novas).
+   **Transações:** despesas divididas + dinheiro entre vocês numa lista só, mais recente primeiro (aguardando
+   aprovação no topo), filtros no servidor (quem pagou, categoria, situação; com categoria ou situação o dinheiro entre
+   vocês sai) com o mesmo painel "Filtros" das Transações pessoais (`componentes/PainelFiltros`). **Contas fixas:**
+   `Recorrente.FamiliaId` ("Dividir com {família}" no formulário da conta fixa, só conta a pagar); cada cobrança nasce
+   dividida no molde único `RecorrenteService.GerarOcorrenciasAsync` (parte gravada, sem passar de novo pela aprovação);
+   mudar a regra da família regrava só as cobranças PREVISTAS; a aba mostra quem paga, o dia, "Saiu dia / Vem dia" e a
+   sua parte (`GET /familias/{id}/contas-fixas`). Prevista não entra em Transações nem no equilíbrio (só o que
+   aconteceu). Mudar o valor de despesa dividida regrava as partes com o mesmo % (`RateioService.RegravarPeloValorAsync`).
+   **Fica pra depois:** "o que ainda vem da casa este mês" na Visão geral.
 5. **Gasto de cada um = sua parte** (se aprovado em 4.2): regra única do gasto + cartão da renda + limites.
 6. **Contas da casa** (4.5).
 7. **Sair / excluir conta** (4.6), com a checagem de conformidade.

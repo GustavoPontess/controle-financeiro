@@ -13,16 +13,9 @@
 .toolbar { display: flex; align-items: center; gap: 12px; padding: 16px 24px 10px; }
 .controles { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: 1 1 320px; }
 .direita { display: flex; align-items: center; gap: 8px; }
-.filtrosWrap { position: relative; }
-.contador { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--v2-tinta); color: var(--v2-sobre-tinta); font-size: var(--v2-fs-xs); font-weight: 700; }
 
-/* Painel de filtros: ancorado no botão, campos empilhados, rodapé Limpar/Aplicar. */
-.painel { position: absolute; top: calc(100% + 8px); right: 0; z-index: 20; width: 320px; display: flex; flex-direction: column; gap: 14px; padding: 16px; border: 1px solid var(--v2-linha); border-radius: var(--v2-r-md); background: var(--v2-superficie); box-shadow: var(--v2-sombra-palco); }
 .faixa { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; }
 .ate { font-size: var(--v2-fs-xs); font-weight: 500; color: var(--v2-texto-3); }
-/* "Limpar tudo" é botão de texto: puxa o respiro pra letra alinhar com os campos. */
-.limparTudo { margin-left: -6px; }
-.painelRodape { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 4px; }
 
 .respiro { padding: 8px 24px 20px; }
 .vazio { margin: 0; padding: 20px 24px 28px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
@@ -41,6 +34,4 @@
   .controles { flex-basis: 100%; flex-wrap: wrap; }
   .controles > :first-child { flex: 1 1 100%; }
   .direita { flex: 1 1 100%; justify-content: space-between; }
-  .filtrosWrap { position: static; }
-  .painel { left: 16px; right: 16px; width: auto; }
 }

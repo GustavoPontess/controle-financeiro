@@ -32,6 +32,8 @@ export interface Recorrente {
    * ser retomada; cancelada (definitiva) e encerrada (data fim passou) vão pra "Encerradas".
    */
   situacao: SituacaoRecorrente
+  /** Conta fixa da casa: cada cobrança nasce dividida com essa família. */
+  familiaId?: string | null
 }
 
 export type SituacaoRecorrente = "ativa" | "pausada" | "cancelada" | "encerrada"
@@ -64,4 +66,6 @@ export interface CriarRecorrente {
   dia: number
   dataInicio: string
   dataFim?: string
+  /** Conta fixa da casa (só conta a pagar): cada cobrança nasce dividida com essa família. */
+  familiaId?: string | null
 }

@@ -56,10 +56,9 @@ vi.mock("../../services/familiaService", () => ({
 import { aprovarDespesa, dissolverFamilia, editarPermissao, rejeitarDespesa, removerMembro } from "../../services/familiaService"
 import { definirVisibilidadeRenda } from "../../services/rendaService"
 import FamiliaVisaoGeral from "../../telas/FamiliaVisaoGeral"
-import FamiliaDespesas from "../../telas/FamiliaDespesas"
+import FamiliaTransacoes from "../../telas/FamiliaTransacoes"
 import FamiliaEntreVoces from "../../telas/FamiliaEntreVoces"
 import FamiliaMembros from "../../telas/FamiliaMembros"
-import FamiliaDependentes from "../../telas/FamiliaDependentes"
 import FamiliaRegras from "../../telas/FamiliaRegras"
 
 const Acerto = () => { const { state } = useLocation(); return <p>novo acerto {JSON.stringify(state)}</p> }
@@ -68,10 +67,9 @@ const renderizar = (inicio = "/familias/f1") => render(
     <Routes>
       <Route path="/dashboard" element={<p>painel pessoal</p>} />
       <Route path="/familias/:id" element={<FamiliaVisaoGeral />} />
-      <Route path="/familias/:id/despesas" element={<FamiliaDespesas />} />
+      <Route path="/familias/:id/transacoes" element={<FamiliaTransacoes />} />
       <Route path="/familias/:id/entre-voces" element={<FamiliaEntreVoces />} />
       <Route path="/familias/:id/membros" element={<FamiliaMembros />} />
-      <Route path="/familias/:id/dependentes" element={<FamiliaDependentes />} />
       <Route path="/familias/:id/regras" element={<FamiliaRegras />} />
       <Route path="/familias/:id/convidar" element={<p>convidar</p>} />
       <Route path="/familias/:id/acertos/novo" element={<Acerto />} />
@@ -84,7 +82,7 @@ const linha = (lista: string, nome: RegExp) => within(screen.getByRole("list", {
 
 describe("Espaço da família: a parte de cada um fica gravada", () => {
   it("a despesa mostra a sua parte; quem saiu continua no equilíbrio com a data que saiu", async () => {
-    renderizar("/familias/f1/despesas")
+    renderizar("/familias/f1/transacoes")
     expect(await screen.findByText("Supermercado")).toBeInTheDocument()
     expect(screen.getAllByText(/sua parte/).length).toBe(2)
 
@@ -126,7 +124,7 @@ describe("Espaço da família (páginas)", () => {
     const aguardando = await screen.findByRole("list", { name: "Aguardando aprovação" })
     expect(aguardando).toHaveTextContent("Sofá novo")
     expect(aguardando).not.toHaveTextContent("Supermercado")
-    expect(screen.getByRole("link", { name: "Ver todas" })).toHaveAttribute("href", "/familias/f1/despesas")
+    expect(screen.getByRole("link", { name: "Ver todas" })).toHaveAttribute("href", "/familias/f1/transacoes")
     // Sem cabeçalho repetindo o nome, sem contador, sem abas: o espaço já diz onde a pessoa está.
     expect(screen.queryByRole("heading", { name: "Casa Dev" })).not.toBeInTheDocument()
     expect(screen.queryByText(/pessoas/)).not.toBeInTheDocument()
@@ -136,9 +134,10 @@ describe("Espaço da família (páginas)", () => {
     expect(screen.getByText(/novo acerto/)).toHaveTextContent('"de":"u2","para":"u1","valor":300')
   })
 
-  it("Despesas compartilhadas: aguardando aprovação primeiro; aprova ou recusa na própria linha; a minha abre o lançamento", async () => {
-    renderizar("/familias/f1/despesas")
-    const lista = await screen.findByRole("list", { name: "Despesas compartilhadas" })
+  it("Transações da família: aguardando aprovação primeiro; o dinheiro entre vocês junto; aprova ou recusa na própria linha", async () => {
+    renderizar("/familias/f1/transacoes")
+    const lista = await screen.findByRole("list", { name: "Transações da família" })
+    expect(within(lista).getByRole("list", { name: "Outubro de 2026" })).toHaveTextContent("Pix")
     expect(within(lista).getByRole("list", { name: "Aguardando aprovação" })).toHaveTextContent("Sofá novo")
     expect(within(lista).getByRole("list", { name: "Outubro de 2026" })).toHaveTextContent("Supermercado")
     await userEvent.click(screen.getByRole("button", { name: /Sofá novo/ }))
@@ -203,8 +202,8 @@ describe("Espaço da família (páginas)", () => {
     expect(screen.queryByText(/Renda da casa/)).not.toBeInTheDocument()
   })
 
-  it("Dependentes: idade na linha e o gasto do mês na ficha", async () => {
-    renderizar("/familias/f1/dependentes")
+  it("Membros: os dependentes moram aqui, com a idade na linha e o gasto do mês na ficha", async () => {
+    renderizar("/familias/f1/membros")
     const lista = await screen.findByRole("list", { name: "Dependentes" })
     expect(lista).toHaveTextContent("Theo")
     expect(lista).toHaveTextContent("Criança")
@@ -228,7 +227,7 @@ describe("Espaço da família (páginas)", () => {
     await userEvent.click(linha("Quem está", /Gabriel Dev/))
     expect(screen.queryByRole("group", { name: "Quem vê a sua renda" })).not.toBeInTheDocument()
 
-    renderizar("/familias/f1/dependentes")
+    renderizar("/familias/f1/membros")
     await screen.findByRole("list", { name: "Dependentes" })
     expect(screen.queryByRole("button", { name: /Adicionar/ })).not.toBeInTheDocument()
 

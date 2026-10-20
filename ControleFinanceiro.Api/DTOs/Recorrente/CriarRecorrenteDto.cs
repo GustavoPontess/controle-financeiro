@@ -36,4 +36,7 @@ public class CriarRecorrenteDto
     public DateTime DataInicio { get; set; }
 
     public DateTime? DataFim { get; set; }
+
+    /// <summary>Conta fixa da casa: cada cobrança nasce dividida com essa família (só conta a pagar). Null = só sua.</summary>
+    public Guid? FamiliaId { get; set; }
 }

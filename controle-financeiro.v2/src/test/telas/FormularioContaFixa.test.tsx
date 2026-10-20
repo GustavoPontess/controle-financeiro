@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { render, screen, within } from "@testing-library/react"
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 vi.mock("../../services/recorrenteService", () => ({ createRecorrente: vi.fn(async () => ({ id: "r-nova" })), updateRecorrente: vi.fn(async () => {}) }))
+vi.mock("../../services/familiaService", () => ({ getFamilias: vi.fn(async () => []) }))
 import { createRecorrente, updateRecorrente } from "../../services/recorrenteService"
+import { getFamilias } from "../../services/familiaService"
 import FormularioContaFixa from "../../telas/FormularioContaFixa"
 import { descreverRegra, limitesDoInicio } from "../../dominio/contaFixa"
 import { dataLocalISO } from "../../utils/dateTime"
@@ -182,5 +184,26 @@ describe("regra por extenso", () => {
   })
   it("limites do começo: 12 meses atrás e 5 anos à frente", () => {
     expect(limitesDoInicio("2026-10-15")).toEqual({ min: "2025-10-15", max: "2031-10-15" })
+  })
+
+  it("conta da casa: 'Dividir com a família' manda a família; desligar manda null; receita não divide", async () => {
+    vi.mocked(getFamilias).mockResolvedValue([{ id: "f1", nome: "Casa Pontes", criadoPorUsuarioId: "u1", criadoEm: "", ehAdmin: true, totalMembros: 2 }])
+    renderizar({ recorrente: regra({ familiaId: "f1" }) })
+    const interruptor = await screen.findByRole("switch", { name: "Dividir com Casa Pontes" })
+    expect(interruptor).toHaveAttribute("aria-checked", "true")
+    await userEvent.click(screen.getByRole("button", { name: "Salvar" }))
+    expect(updateRecorrente).toHaveBeenLastCalledWith("r1", expect.objectContaining({ familiaId: "f1" }))
+
+    cleanup()
+    renderizar({ recorrente: regra({ familiaId: "f1" }) })
+    await userEvent.click(await screen.findByRole("switch", { name: "Dividir com Casa Pontes" }))
+    await userEvent.click(screen.getByRole("button", { name: "Salvar" }))
+    expect(updateRecorrente).toHaveBeenLastCalledWith("r1", expect.objectContaining({ familiaId: null }))
+
+    cleanup()
+    renderizar({ recorrente: regra({ tipo: 2, categoriaId: "cat2", meioPagamento: 4 }) })
+    await waitFor(() => expect(getFamilias).toHaveBeenCalled())
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument()
+    vi.mocked(getFamilias).mockResolvedValue([])
   })
 })

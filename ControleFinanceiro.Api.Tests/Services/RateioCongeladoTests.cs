@@ -101,6 +101,38 @@ public class RateioCongeladoTests
     }
 
     [Fact]
+    public async Task TransacoesDaFamilia_FiltramNoBanco_PorQuemPagou_Categoria_ESituacao()
+    {
+        var c = await Build();
+        var mercado = new Categoria { Id = Guid.NewGuid(), Descricao = "Mercado", Finalidade = Finalidade.Despesa };
+        c.Ctx.Categorias.Add(mercado);
+        c.Ctx.SaveChanges();
+        var dia = new DateOnly(2026, 10, 10);
+        var luz = Despesa(c, c.Gustavo, 180m, dia, "Luz");
+        var feira = Despesa(c, c.Gabriel, 90m, dia, "Feira");
+        feira.CategoriaId = mercado.Id;
+        var sofa = Despesa(c, c.Gabriel, 2000m, dia, "Sofá");
+        c.Ctx.SaveChanges();
+        foreach (var (t, quem) in new[] { (luz, c.Gustavo), (feira, c.Gabriel), (sofa, c.Gabriel) })
+            await Despesas(c).CompartilharAsync(t.Id, c.FamiliaId, quem);
+        (await c.Ctx.Transacoes.SingleAsync(t => t.Id == sofa.Id)).StatusAprovacao = StatusAprovacaoDespesa.Pendente;
+        c.Ctx.SaveChanges();
+
+        async Task<List<string>> Nomes(Guid? pagador = null, Guid? categoria = null, string? situacao = null) =>
+            (await Despesas(c).ListarDespesasAsync(c.FamiliaId, c.Gustavo, 10, 2026, null, pagador, categoria, situacao))
+                .Select(d => d.Descricao).OrderBy(n => n).ToList();
+
+        Assert.Equal(new[] { "Feira", "Luz", "Sofá" }, await Nomes());
+        Assert.Equal(new[] { "Feira", "Sofá" }, await Nomes(pagador: c.Gabriel));
+        Assert.Equal(new[] { "Feira" }, await Nomes(categoria: mercado.Id));
+        Assert.Equal(new[] { "Sofá" }, await Nomes(situacao: "esperando"));
+        Assert.Equal(new[] { "Feira", "Luz" }, await Nomes(situacao: "dividida"));
+        Assert.Empty(await Nomes(situacao: "recusada"));
+        await Assert.ThrowsAsync<ArgumentException>(() => Nomes(situacao: "qualquer"));
+        Assert.Equal(mercado.Id, (await Despesas(c).ListarDespesasAsync(c.FamiliaId, c.Gustavo, 10, 2026)).Single(d => d.Descricao == "Feira").CategoriaId);
+    }
+
+    [Fact]
     public async Task MudarARegraDaFamilia_NaoMexeNoQueJaFoiDividido()
     {
         var c = await Build();

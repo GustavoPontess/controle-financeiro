@@ -579,6 +579,9 @@ namespace ControleFinanceiro.Api.Services
             // não desfazem mais a edição. A competência (o mês que ela cobre) não muda com a data.
             if (transacao.RecorrenteOrigemId != null)
                 transacao.EditadaPeloUsuario = true;
+            // Despesa dividida com valor novo: as partes acompanham (mesmo % de cada um), senão não somam o valor.
+            if (dados.Valor != valorAntes)
+                await new RateioService(_context).RegravarPeloValorAsync(transacao);
 
             var correlationId = Guid.NewGuid();
             // Troca de fatura: grava a compra no destino ANTES de reconciliar a antiga, numa transação (atômico).

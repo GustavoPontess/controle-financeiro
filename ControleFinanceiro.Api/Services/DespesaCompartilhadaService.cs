@@ -141,20 +141,35 @@ public class DespesaCompartilhadaService
 
     /// <summary>Feed de despesas compartilhadas da família no mês/ano.
     /// Feature 2.1 — opcionalmente filtra por membro responsável.</summary>
+    /// <summary>Despesas divididas do mês (Transações da família), com os filtros no banco: quem pagou, categoria e
+    /// situação (<c>esperando</c> aprovação, <c>dividida</c> = no equilíbrio, <c>recusada</c>).</summary>
     public async Task<List<DespesaCompartilhadaDto>> ListarDespesasAsync(
-        Guid familiaId, Guid usuarioId, int mes, int ano, Guid? responsavelId = null)
+        Guid familiaId, Guid usuarioId, int mes, int ano, Guid? responsavelId = null,
+        Guid? pagadorId = null, Guid? categoriaId = null, string? situacao = null)
     {
         await ExigirMembroAsync(familiaId, usuarioId);
 
         var query = QueryDespesasDoMes(familiaId, mes, ano);
         if (responsavelId is { } rid)
             query = query.Where(t => t.ResponsavelUsuarioId == rid);
+        if (pagadorId is { } pid)
+            query = query.Where(t => t.CriadoPor == pid);
+        if (categoriaId is { } cid)
+            query = query.Where(t => t.CategoriaId == cid);
+        query = situacao switch
+        {
+            null or "" => query,
+            "esperando" => query.Where(t => t.StatusAprovacao == StatusAprovacaoDespesa.Pendente),
+            "dividida" => query.Where(t => t.StatusAprovacao == StatusAprovacaoDespesa.NaoRequerida || t.StatusAprovacao == StatusAprovacaoDespesa.Aprovada),
+            "recusada" => query.Where(t => t.StatusAprovacao == StatusAprovacaoDespesa.Rejeitada),
+            _ => throw new ArgumentException("Situação inválida: use esperando, dividida ou recusada."),
+        };
 
         var despesas = await query
             .Select(t => new
             {
                 t.Id, t.Descricao, t.Valor, t.Data, t.Hora,
-                CategoriaNome = t.Categoria != null ? t.Categoria.Descricao : null,
+                CategoriaNome = t.Categoria != null ? t.Categoria.Descricao : null, t.CategoriaId,
                 t.CriadoPor, t.StatusAprovacao, t.AprovadoPorUsuarioId, t.ResponsavelUsuarioId,
                 MinhaParte = t.Rateios.Where(r => r.UsuarioId == usuarioId).Select(r => (decimal?)r.Valor).FirstOrDefault(),
             })
@@ -177,7 +192,53 @@ public class DespesaCompartilhadaService
                 d.AprovadoPorUsuarioId is { } aid ? nomes.GetValueOrDefault(aid) : null,
                 d.ResponsavelUsuarioId,
                 d.ResponsavelUsuarioId is { } rid2 ? nomes.GetValueOrDefault(rid2) : null,
-                d.MinhaParte))
+                d.MinhaParte, d.CategoriaId))
+            .ToList();
+    }
+
+    /// <summary>Contas fixas da casa (aba Contas fixas da família): as ativas de quem ainda lança na família, com a
+    /// cobrança do mês (paga ou prevista) e a parte de quem olha. Ordem: o dia do mês.</summary>
+    public async Task<List<ContaFixaDaCasaDto>> ListarContasFixasAsync(Guid familiaId, Guid usuarioId, int mes, int ano)
+    {
+        await ExigirMembroAsync(familiaId, usuarioId);
+        var quemLanca = _context.MembrosFamilia
+            .Where(m => m.FamiliaId == familiaId && m.Ativo && m.PapelPermissao != PapelFamilia.Dependente)
+            .Select(m => m.UsuarioId);
+        var contas = await _context.Recorrentes
+            .Where(r => r.FamiliaId == familiaId && r.Ativo && r.CanceladoEm == null && r.ExcluidoEm == null
+                        && quemLanca.Contains(r.CriadoPor))
+            .Select(r => new
+            {
+                r.Id, r.Descricao, r.Valor, r.Dia, r.CriadoPor,
+                CategoriaNome = r.Categoria != null ? r.Categoria.Descricao : null,
+            })
+            .ToListAsync();
+        if (contas.Count == 0) return [];
+
+        var ids = contas.Select(c => c.Id).ToList();
+        var de = new DateOnly(ano, mes, 1);
+        var ate = de.AddMonths(1);
+        var cobrancas = await _context.Transacoes
+            .Where(t => t.RecorrenteOrigemId != null && ids.Contains(t.RecorrenteOrigemId.Value) && t.Data >= de && t.Data < ate)
+            .Select(t => new
+            {
+                RecorrenteId = t.RecorrenteOrigemId!.Value, t.Data, Paga = t.StatusTransacao == StatusTransacao.Executado,
+                MinhaParte = t.Rateios.Where(r => r.UsuarioId == usuarioId).Select(r => (decimal?)r.Valor).FirstOrDefault(),
+            })
+            .ToListAsync();
+        var nomes = await _context.Usuarios.Where(u => contas.Select(c => c.CriadoPor).Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.Nome);
+
+        return contas
+            .Select(c =>
+            {
+                var cobranca = cobrancas.Where(x => x.RecorrenteId == c.Id).OrderBy(x => x.Data).FirstOrDefault();
+                return new ContaFixaDaCasaDto(
+                    c.Id, c.Descricao, c.Valor, c.Dia, c.CriadoPor, nomes.GetValueOrDefault(c.CriadoPor, "Membro"),
+                    c.CategoriaNome, c.CriadoPor == usuarioId, cobranca?.Data, cobranca?.Paga, cobranca?.MinhaParte);
+            })
+            .OrderBy(c => c.CobrancaData ?? new DateOnly(ano, mes, Math.Min(c.Dia, DateTime.DaysInMonth(ano, mes))))
+            .ThenBy(c => c.Descricao)
             .ToList();
     }
 

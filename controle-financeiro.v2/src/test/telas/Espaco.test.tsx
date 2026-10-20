@@ -45,8 +45,8 @@ describe("Espaços (Pessoal | família) no menu da conta", () => {
     const conta = await screen.findByRole("button", { name: "Gabriel Dev" })
     await waitFor(() => expect(conta).toHaveTextContent("Casa Dev"))
     expect(within(menu()).getByRole("link", { name: "Membros" })).toHaveAttribute("href", "/familias/f1/membros")
-    expect(within(menu()).getByRole("link", { name: "Despesas compartilhadas" })).toBeInTheDocument()
-    expect(within(menu()).queryByRole("link", { name: "Transações" })).not.toBeInTheDocument()
+    // As Transações do menu são as da família (as pessoais não aparecem aqui).
+    expect(within(menu()).getByRole("link", { name: "Transações" })).toHaveAttribute("href", "/familias/f1/transacoes")
     expect(within(menu()).queryByRole("link", { name: "Famílias" })).not.toBeInTheDocument()
     expect(screen.getByRole("heading", { level: 1, name: "Visão geral" })).toBeInTheDocument()
 
