@@ -156,18 +156,33 @@ public class AdminLgpdServiceTests
         Assert.Empty(await svc.DetectarVinculosAsync(u.Id));
     }
 
+    private static void SeedRelacionamento(AppDbContext ctx, Guid usuarioId)
+    {
+        var outro = SeedUsuario(ctx);
+        ctx.Relacionamentos.Add(new Relacionamento { Id = Guid.NewGuid(), UsuarioId1 = usuarioId, UsuarioId2 = outro.Id, CriadoPor = usuarioId });
+        ctx.SaveChanges();
+    }
+
     [Fact]
-    public async Task DetectarVinculos_comRateio_acusaVinculo()
+    public async Task DetectarVinculos_comRelacionamento_acusaVinculo()
     {
         using var ctx = CreateContext();
         var u = SeedUsuario(ctx);
-        var transacaoDeOutro = Guid.NewGuid();
-        ctx.RateiosTransacao.Add(new RateioTransacao { Id = Guid.NewGuid(), TransacaoId = transacaoDeOutro, UsuarioId = u.Id, Percentual = 50 });
-        ctx.SaveChanges();
+        SeedRelacionamento(ctx, u.Id);
         var svc = CreateService(ctx);
 
         var vinculos = await svc.DetectarVinculosAsync(u.Id);
         Assert.NotEmpty(vinculos);
+    }
+
+    [Fact]
+    public async Task DetectarVinculos_familiaNaoTravaMais()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        ctx.RateiosTransacao.Add(new RateioTransacao { Id = Guid.NewGuid(), TransacaoId = Guid.NewGuid(), UsuarioId = u.Id, Percentual = 50 });
+        ctx.SaveChanges();
+        Assert.Empty(await CreateService(ctx).DetectarVinculosAsync(u.Id)); // a purga desvincula (FamiliaAoExcluirConta)
     }
 
     // ── Purgar (guardas) ──────────────────────────────────────────────────────────────────
@@ -204,8 +219,7 @@ public class AdminLgpdServiceTests
     {
         using var ctx = CreateContext();
         var u = SeedUsuario(ctx, StatusUsuario.MarcadoParaExclusao, DateTime.UtcNow);
-        ctx.RateiosTransacao.Add(new RateioTransacao { Id = Guid.NewGuid(), TransacaoId = Guid.NewGuid(), UsuarioId = u.Id, Percentual = 50 });
-        ctx.SaveChanges();
+        SeedRelacionamento(ctx, u.Id);
         var svc = CreateService(ctx);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => svc.PurgarAsync(u.Id, Guid.NewGuid(), "admin@t.com", u.Email));
@@ -243,8 +257,7 @@ public class AdminLgpdServiceTests
         var vencida = SeedUsuario(ctx, StatusUsuario.MarcadoParaExclusao, DateTime.UtcNow.AddDays(-31));
         var recente = SeedUsuario(ctx, StatusUsuario.MarcadoParaExclusao, DateTime.UtcNow.AddDays(-1));
         var vencidaComVinculo = SeedUsuario(ctx, StatusUsuario.MarcadoParaExclusao, DateTime.UtcNow.AddDays(-40));
-        ctx.RateiosTransacao.Add(new RateioTransacao { Id = Guid.NewGuid(), TransacaoId = Guid.NewGuid(), UsuarioId = vencidaComVinculo.Id, Percentual = 50 });
-        ctx.SaveChanges();
+        SeedRelacionamento(ctx, vencidaComVinculo.Id);
         var svc = CreateService(ctx);
 
         var purgadas = await svc.PurgarExpiradasAsync();

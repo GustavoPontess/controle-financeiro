@@ -221,7 +221,13 @@ Na página da despesa, abaixo dos dados:
    põe na conta da casa é "Dinheiro entre vocês" (a conta é de quem a cadastrou). **Fica pra depois:** aviso pro
    outro membro a cada despesa da casa (hoje só aparece em Transações/aguardando aprovação), parcelada no cartão da
    casa, lançamento movido pra conta da casa na edição.
-7. **Sair / excluir conta** (4.6), com a checagem de conformidade.
+7. ✅ **Sair / excluir conta** (4.6; 2026-10-19, decisão do Gustavo: a família guarda só os números). Sair: nada se
+   apaga, e Membros ganhou "Saíram" (nome e "saiu em out/2026"; `FamiliaDetalheDto.QuemSaiu`). Excluir a conta: a
+   purga não trava mais por vínculo de família; `FamiliaAoExcluirConta` (na transação da purga) põe as despesas
+   divididas que aconteceram, as partes e o dinheiro entre vocês em nome de um "Membro que saiu"
+   (`StatusUsuario.Removido`), só com valor, data, categoria padrão e partes; a família criada por ela passa pro
+   membro mais antigo que lança (vira admin), sem ninguém é dissolvida; convites dela somem. A tela "Excluir a conta"
+   avisa isso a quem é de família. Base legal registrada em `docs/CONFORMIDADE_BR.md`.
 8. **Relatórios da família** (junto com o Relatórios pessoal, a última tela).
 
 ## 7. Decisões pro Gustavo (uma por vez)
