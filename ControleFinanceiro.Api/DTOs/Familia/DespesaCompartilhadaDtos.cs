@@ -39,6 +39,9 @@ public record ContaFixaDaCasaDto(
     bool? CobrancaPaga,
     decimal? MinhaParte);
 
+/// <summary>Marcar conta/cartão da casa: a família (null = deixa de ser da casa).</summary>
+public record DaCasaDto(Guid? FamiliaId);
+
 public record SaldoMembroDto(
     Guid UsuarioId,
     string Nome,

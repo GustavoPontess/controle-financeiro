@@ -927,6 +927,20 @@ public class AppDbContext : DbContext
             .IsRequired(false)
             .OnDelete(DeleteBehavior.SetNull);
 
+        // Conta e cartão da casa → Familia (SetNull: a família some, a conta/o cartão continua da pessoa)
+        modelBuilder.Entity<Conta>()
+            .HasOne(c => c.Familia)
+            .WithMany()
+            .HasForeignKey(c => c.FamiliaId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<CartaoCredito>()
+            .HasOne(c => c.Familia)
+            .WithMany()
+            .HasForeignKey(c => c.FamiliaId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
         // Conta fixa da casa → Familia (SetNull: a família some, a conta fixa continua da pessoa)
         modelBuilder.Entity<Recorrente>()
             .HasOne(r => r.Familia)

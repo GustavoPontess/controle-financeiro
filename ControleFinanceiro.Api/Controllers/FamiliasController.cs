@@ -139,6 +139,25 @@ public class FamiliasController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>Marca (ou desmarca, com <c>familiaId</c> null) uma conta sua como da casa: as despesas que nascem nela
+    /// daqui pra frente já nascem divididas com a família.</summary>
+    [HttpPut("contas/{contaId:guid}/casa")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> MarcarContaDaCasa(Guid contaId, [FromBody] DaCasaDto dto)
+    {
+        await _despesaCompartilhada.MarcarContaDaCasaAsync(contaId, GetUserId(), dto.FamiliaId);
+        return NoContent();
+    }
+
+    /// <summary>Marca (ou desmarca) um cartão seu como da casa: as compras à vista nele já nascem divididas.</summary>
+    [HttpPut("cartoes/{cartaoId:guid}/casa")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> MarcarCartaoDaCasa(Guid cartaoId, [FromBody] DaCasaDto dto)
+    {
+        await _despesaCompartilhada.MarcarCartaoDaCasaAsync(cartaoId, GetUserId(), dto.FamiliaId);
+        return NoContent();
+    }
+
     /// <summary>Contas fixas da casa no mês: quem paga, o dia, a cobrança do mês e a sua parte.</summary>
     [HttpGet("{id:guid}/contas-fixas")]
     [ProducesResponseType(typeof(List<ContaFixaDaCasaDto>), StatusCodes.Status200OK)]

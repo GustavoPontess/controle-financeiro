@@ -25,6 +25,8 @@ import Paginacao, { TAMANHOS } from "../componentes/Paginacao"
 import Selecao from "../componentes/Selecao"
 import { useAtrasado } from "../utils/useAtrasado"
 import { NOME_BANDEIRA, diaMes, estadoDaFatura, indiceMes, indiceMesDeHoje, mesCurto, montarCiclos, rotuloMesFatura, type Ciclo } from "../dominio/fatura"
+import { marcarCartaoDaCasa } from "../services/familiaService"
+import DaCasa from "./DaCasa"
 import styles from "./Cartao.module.css"
 
 export default function Cartao() {
@@ -130,6 +132,8 @@ export default function Cartao() {
               )}
             </Bloco>
           )}
+          {/* Cartão da casa: as compras à vista daqui pra frente já nascem divididas. */}
+          {cartao.temCredito && <DaCasa tipo="cartao" emBloco familiaId={cartao.familiaId} aoMudar={(fid) => marcarCartaoDaCasa(cartao.id, fid)} />}
           <RodapeFormulario>
             <Botao perigo onClick={() => { setErro(null); setExcluindo(true) }} icone={<Trash2 size={15} strokeWidth={2.25} aria-hidden="true" />}>Excluir</Botao>
             <Botao onClick={() => navigate(`/cartoes/${cartao.id}/editar`, { state: { voltarPara: `/cartoes/${cartao.id}` } })} icone={<Pencil size={15} strokeWidth={2.25} aria-hidden="true" />}>Editar cartão</Botao>

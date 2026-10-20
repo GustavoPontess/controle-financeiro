@@ -132,6 +132,8 @@ namespace ControleFinanceiro.Api.Services
             }
 
             transacao.CriadoPor = usuarioId;
+            // Conta/cartão da casa: a despesa já nasce dividida com a família (regra única, também no extrato).
+            await new RateioService(_context).DividirSeForDaCasaAsync(transacao);
             _context.Transacoes.Add(transacao);
             // Chave no MESMO SaveChanges da transação: a 2ª requisição concorrente estoura o índice e vira replay.
             if (!string.IsNullOrWhiteSpace(idempotencyKey))

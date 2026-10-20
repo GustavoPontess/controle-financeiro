@@ -22,6 +22,8 @@ import Confirmar from "../componentes/Confirmar"
 import { Dinheiro } from "../componentes/Dinheiro"
 import FaceCartao from "../componentes/FaceCartao"
 import { AcoesFicha, DadosFicha, GrupoFicha, ItemFicha, ListaFicha } from "../componentes/ListaFicha"
+import { marcarContaDaCasa } from "../services/familiaService"
+import DaCasa from "./DaCasa"
 import LogoMarca from "../componentes/LogoMarca"
 import Segmentos from "../componentes/Segmentos"
 import { descreverConta, ehCaixinha, ehDinheiro, ehGuardado, rotuloTipo, temDadosBancarios, TIPO_CONTA } from "../dominio/conta"
@@ -200,6 +202,10 @@ function Linha({ c, cartoes, aberta, aoAbrir, aoMudar }: {
             )}
             {encerrada && <div><dt>Encerrada em</dt><dd>{dataBR(c.encerradaEm!)}</dd></div>}
           </DadosFicha>
+          {/* Conta da casa: o que nasce nela daqui pra frente já nasce dividido. Caixinha e encerrada, não. */}
+          {!encerrada && !ehCaixinha(c) && (
+            <DaCasa tipo="conta" className={styles.daCasa} familiaId={c.familiaId} aoMudar={(fid) => marcarContaDaCasa(c.id, fid)} />
+          )}
           {cartoes.length > 0 && (
             <div className={styles.cartoes}>
               <span className={styles.cartoesTitulo}>Cartões</span>

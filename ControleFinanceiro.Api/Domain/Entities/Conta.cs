@@ -39,6 +39,12 @@ public class Conta
     public Guid UsuarioIdProprietario { get; set; }
     public Usuario? UsuarioProprietario { get; set; }
 
+    /// <summary>Conta/cartão DA CASA (passo 5 do espaço da família, 2026-10-19, modelo Honeydue/Monarch): toda despesa
+    /// que nasce aqui (lançamento, extrato importado, cobrança de conta fixa) já nasce dividida com essa família.
+    /// Continua sendo da pessoa (saldo, extrato, edição). Null = só dela.</summary>
+    public Guid? FamiliaId { get; set; }
+    public Familia? Familia { get; set; }
+
     public ICollection<Transacao> Transacoes { get; set; } = new List<Transacao>();
     public ICollection<CompartilhamentoConta> CompartilhamentosContas { get; set; } = new List<CompartilhamentoConta>();
 }

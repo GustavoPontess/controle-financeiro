@@ -204,7 +204,7 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
           efetivado: credito ? true : efetivado,
           data,
           hora: horaEnvio,
-          familiaId: podeDividir && dividir && familiaId ? familiaId : undefined,
+          familiaId: podeDividir && !daCasa && dividir && familiaId ? familiaId : undefined,
         }, chaveEnvio)
       }
     } catch (e) {
@@ -267,6 +267,8 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
     getFamilia(familiaId).then((d) => { if (vivo) setFamiliaDetalhe(d) }).catch(() => { /* a frase fica sem os nomes */ })
     return () => { vivo = false }
   }, [familiaId])
+  // Conta/cartão da casa: a despesa já nasce dividida no servidor (o interruptor só mostra, ligado).
+  const daCasa = (credito ? cartoesCredito.find((c) => c.id === cartaoId)?.familiaId : contas.find((c) => c.id === contaId)?.familiaId) ?? null
   // Parcelada ainda não divide (o servidor recusa).
   const podeDividir = !editando && !transferencia && !receita && !parcelado && familias.length > 0
   const familiaNome = familias.find((f) => f.id === familiaId)?.nome ?? "a família"
@@ -392,12 +394,18 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
             )}
             {podeDividir && (
               <div className={styles.dividir}>
-                <Interruptor ligado={dividir} onChange={setDividir}>Dividir com {familias.length > 1 ? "a família" : familiaNome}</Interruptor>
-                {dividir && familias.length > 1 && (
+                {daCasa ? (
+                  <Interruptor ligado desabilitado onChange={() => { /* conta da casa: sempre divide */ }}>
+                    Dividir com {familias.find((f) => f.id === daCasa)?.nome ?? "a família"} ({credito ? "cartão" : "conta"} da casa)
+                  </Interruptor>
+                ) : (
+                  <Interruptor ligado={dividir} onChange={setDividir}>Dividir com {familias.length > 1 ? "a família" : familiaNome}</Interruptor>
+                )}
+                {!daCasa && dividir && familias.length > 1 && (
                   <Selecao tamanho="sm" ariaLabel="Família" valor={familiaId} onChange={setFamiliaId}
                     opcoes={familias.map((f) => ({ valor: f.id, rotulo: f.nome }))} />
                 )}
-                {dividir && comoDivide && <p className={styles.dividirNota}>{comoDivide}</p>}
+                {(dividir || daCasa) && comoDivide && <p className={styles.dividirNota}>{comoDivide}</p>}
               </div>
             )}
           </Bloco>

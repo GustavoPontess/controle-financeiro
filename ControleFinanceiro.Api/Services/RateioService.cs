@@ -117,6 +117,38 @@ public class RateioService
             (partes.FirstOrDefault(r => r.UsuarioId == transacao.CriadoPor) ?? partes[0]).Valor += resto;
     }
 
+    /// <summary>
+    /// Conta/cartão da casa (passo 5): a despesa que NASCE ali já nasce dividida com a família, pela regra dela e com o
+    /// limite de aprovação de sempre (regra única: lançamento, extrato importado, cobrança de conta fixa). Fica de fora o
+    /// que não é gasto (transferência, pagamento de fatura, acerto, empréstimo, saldo inicial, ajuste: <c>EntraNoResultado</c>),
+    /// a compra parcelada (parcelamento ainda não divide) e quem não lança mais na família. Não salva.
+    /// </summary>
+    public async Task DividirSeForDaCasaAsync(Transacao transacao)
+    {
+        if (transacao.FamiliaId != null || transacao.Tipo != TipoTransacao.Despesa
+            || transacao.ParcelamentoId != null || transacao.ParcelaTransacaoId != null
+            || !RegrasFinanceiras.EntraNoResultadoEmMemoria(transacao))
+            return;
+        var familiaId = transacao.ContaId is { } contaId
+            ? await _context.Contas.Where(c => c.Id == contaId).Select(c => c.FamiliaId).FirstOrDefaultAsync()
+            : transacao.CartaoCreditoId is { } cartaoId
+                ? await _context.CartoesCredito.Where(c => c.Id == cartaoId).Select(c => c.FamiliaId).FirstOrDefaultAsync()
+                : null;
+        if (familiaId is not { } fid) return;
+        var familia = await _context.Familias.Where(f => f.Id == fid && f.Ativa)
+            .Select(f => new { f.ModoRateioPadrao, f.LimiteAprovacao }).FirstOrDefaultAsync();
+        if (familia is null) return;
+        var lanca = await _context.MembrosFamilia.AnyAsync(m => m.FamiliaId == fid && m.UsuarioId == transacao.CriadoPor
+            && m.Ativo && m.PapelPermissao != PapelFamilia.Dependente);
+        if (!lanca) return;
+
+        transacao.FamiliaId = fid;
+        transacao.StatusAprovacao = familia.LimiteAprovacao is { } limite && transacao.Valor >= limite
+            ? StatusAprovacaoDespesa.Pendente
+            : StatusAprovacaoDespesa.NaoRequerida;
+        await AplicarPartesAsync(transacao, fid, ModoAoDividir(familia.ModoRateioPadrao), null);
+    }
+
     /// <summary>Muda o jeito de dividir SÓ desta despesa (e regrava as partes).</summary>
     public async Task DefinirRateioTransacaoAsync(
         Guid transacaoId, Guid usuarioId, DefinirRateioTransacaoDto dto)

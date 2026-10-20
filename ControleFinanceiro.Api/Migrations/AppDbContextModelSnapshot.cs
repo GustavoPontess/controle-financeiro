@@ -209,6 +209,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<bool>("EhPrePago")
                         .HasColumnType("boolean");
 
+                    b.Property<Guid?>("FamiliaId")
+                        .HasColumnType("uuid");
+
                     b.Property<decimal?>("LimiteTotal")
                         .HasColumnType("numeric");
 
@@ -230,6 +233,8 @@ namespace ControleFinanceiro.Api.Migrations
                     b.HasIndex("BancoId");
 
                     b.HasIndex("ContaId");
+
+                    b.HasIndex("FamiliaId");
 
                     b.ToTable("CartoesCredito");
                 });
@@ -311,6 +316,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<DateTime?>("EncerradaEm")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<Guid?>("FamiliaId")
+                        .HasColumnType("uuid");
+
                     b.Property<bool>("IsCarteira")
                         .HasColumnType("boolean");
 
@@ -335,6 +343,8 @@ namespace ControleFinanceiro.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BancoId");
+
+                    b.HasIndex("FamiliaId");
 
                     b.HasIndex("UsuarioIdProprietario");
 
@@ -2252,9 +2262,16 @@ namespace ControleFinanceiro.Api.Migrations
                         .WithMany()
                         .HasForeignKey("ContaId");
 
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Familia", "Familia")
+                        .WithMany()
+                        .HasForeignKey("FamiliaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Banco");
 
                     b.Navigation("Conta");
+
+                    b.Navigation("Familia");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.CompartilhamentoConta", b =>
@@ -2289,6 +2306,11 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasForeignKey("BancoId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Familia", "Familia")
+                        .WithMany()
+                        .HasForeignKey("FamiliaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "UsuarioProprietario")
                         .WithMany("Contas")
                         .HasForeignKey("UsuarioIdProprietario")
@@ -2296,6 +2318,8 @@ namespace ControleFinanceiro.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Banco");
+
+                    b.Navigation("Familia");
 
                     b.Navigation("UsuarioProprietario");
                 });

@@ -242,6 +242,41 @@ public class DespesaCompartilhadaService
             .ToList();
     }
 
+    /// <summary>Marca (ou desmarca, <paramref name="familiaId"/> null) a conta da pessoa como DA CASA: as despesas que
+    /// nascem nela daqui pra frente já nascem divididas. O que já existe não muda. Caixinha e conta encerrada, não.</summary>
+    public async Task MarcarContaDaCasaAsync(Guid contaId, Guid usuarioId, Guid? familiaId)
+    {
+        if (familiaId is { } fid)
+        {
+            await DonoRecursos.ExigirContaAbertaAsync(_context, contaId, usuarioId);
+            await ExigirFamiliaParaCasaAsync(fid, usuarioId);
+        }
+        else
+            await DonoRecursos.ExigirContaAsync(_context, contaId, usuarioId);
+        var conta = await _context.Contas.FirstAsync(c => c.Id == contaId);
+        conta.FamiliaId = familiaId;
+        await _context.SaveChangesAsync();
+    }
+
+    /// <summary>Marca (ou desmarca) o cartão da pessoa como DA CASA: as compras à vista que nascem nele daqui pra
+    /// frente já nascem divididas. O que já existe não muda.</summary>
+    public async Task MarcarCartaoDaCasaAsync(Guid cartaoId, Guid usuarioId, Guid? familiaId)
+    {
+        await DonoRecursos.ExigirCartaoAsync(_context, cartaoId, usuarioId);
+        if (familiaId is { } fid)
+            await ExigirFamiliaParaCasaAsync(fid, usuarioId);
+        var cartao = await _context.CartoesCredito.FirstAsync(c => c.Id == cartaoId);
+        cartao.FamiliaId = familiaId;
+        await _context.SaveChangesAsync();
+    }
+
+    private async Task ExigirFamiliaParaCasaAsync(Guid familiaId, Guid usuarioId)
+    {
+        await ExigirEscritaAsync(familiaId, usuarioId);
+        if (!await _context.Familias.AnyAsync(f => f.Id == familiaId && f.Ativa))
+            throw new KeyNotFoundException("Família não encontrada.");
+    }
+
     /// <summary>Feature 2.1 — atribui (ou limpa) o membro responsável por uma despesa
     /// compartilhada. Qualquer membro ativo pode atribuir; o responsável deve ser membro ativo.</summary>
     public async Task AtribuirResponsavelAsync(

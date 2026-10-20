@@ -220,6 +220,16 @@ export const cancelarAcerto = async (
   await api.delete(`/familias/${familiaId}/acertos/${acertoId}`)
 }
 
+/** Conta da casa: as despesas que nascem nela daqui pra frente já nascem divididas (null = deixa de ser). */
+export const marcarContaDaCasa = async (contaId: string, familiaId: string | null): Promise<void> => {
+  await api.put(`/familias/contas/${contaId}/casa`, { familiaId })
+}
+
+/** Cartão da casa: as compras à vista nele daqui pra frente já nascem divididas (null = deixa de ser). */
+export const marcarCartaoDaCasa = async (cartaoId: string, familiaId: string | null): Promise<void> => {
+  await api.put(`/familias/cartoes/${cartaoId}/casa`, { familiaId })
+}
+
 /** Contas fixas da casa no mês: quem paga, o dia, a cobrança do mês e a sua parte. */
 export const getContasFixasFamilia = async (familiaId: string, mes: number, ano: number): Promise<ContaFixaDaCasa[]> => {
   const res = await api.get(`/familias/${familiaId}/contas-fixas`, { params: { mes, ano } })

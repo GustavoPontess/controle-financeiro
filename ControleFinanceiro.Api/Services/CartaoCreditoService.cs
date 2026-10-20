@@ -210,6 +210,7 @@ public class CartaoCreditoService(AppDbContext context)
             BancoLogoUrl = c.Banco?.LogoUrl,
             BancoCor = c.Banco?.Cor,
             Ativo = c.Ativo,
+            FamiliaId = c.FamiliaId,
         };
     }
 }

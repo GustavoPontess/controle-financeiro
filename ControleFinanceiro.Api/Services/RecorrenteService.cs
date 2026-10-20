@@ -149,6 +149,9 @@ public class RecorrenteService
                     ocorrencia.StatusAprovacao = StatusAprovacaoDespesa.NaoRequerida;
                     await new RateioService(_context).AplicarPartesAsync(ocorrencia, c.FamiliaId, c.Modo, null);
                 }
+                else
+                    // Conta fixa só da pessoa, mas paga numa conta/cartão da casa: a cobrança nasce dividida mesmo assim.
+                    await new RateioService(_context).DividirSeForDaCasaAsync(ocorrencia);
                 ocupadas.Add(competencia);
                 criadas++;
             }
