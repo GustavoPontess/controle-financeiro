@@ -117,6 +117,13 @@ export interface ContaFixaDaCasa {
   minhaParte: number | null
 }
 
+/** O que ainda vem da casa no mês (Visão geral): total e a sua parte calculados no servidor. */
+export interface AindaVemDaCasa {
+  total: number
+  minhaParte: number
+  itens: ContaFixaDaCasa[]
+}
+
 export interface SaldoMembro {
   usuarioId: string
   nome: string

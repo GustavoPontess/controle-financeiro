@@ -39,6 +39,10 @@ public record ContaFixaDaCasaDto(
     bool? CobrancaPaga,
     decimal? MinhaParte);
 
+/// <summary>O que ainda vem da casa no mês (Visão geral da família): as cobranças das contas fixas da casa que ainda
+/// não saíram, o total e a parte de quem olha. A conta mora no servidor; a tela só mostra.</summary>
+public record AindaVemDaCasaDto(decimal Total, decimal MinhaParte, List<ContaFixaDaCasaDto> Itens);
+
 /// <summary>Marcar conta/cartão da casa: a família (null = deixa de ser da casa).</summary>
 public record DaCasaDto(Guid? FamiliaId);
 

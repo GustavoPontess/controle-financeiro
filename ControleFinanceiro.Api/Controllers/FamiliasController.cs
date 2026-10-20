@@ -158,6 +158,15 @@ public class FamiliasController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>O que ainda vem da casa no mês: cobranças previstas das contas fixas da casa, total e a sua parte.</summary>
+    [HttpGet("{id:guid}/ainda-vem")]
+    [ProducesResponseType(typeof(AindaVemDaCasaDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> AindaVemDaCasa(Guid id, [FromQuery] int? mes = null, [FromQuery] int? ano = null)
+    {
+        var agora = DateTime.UtcNow;
+        return Ok(await _despesaCompartilhada.AindaVemDaCasaAsync(id, GetUserId(), mes ?? agora.Month, ano ?? agora.Year));
+    }
+
     /// <summary>Contas fixas da casa no mês: quem paga, o dia, a cobrança do mês e a sua parte.</summary>
     [HttpGet("{id:guid}/contas-fixas")]
     [ProducesResponseType(typeof(List<ContaFixaDaCasaDto>), StatusCodes.Status200OK)]

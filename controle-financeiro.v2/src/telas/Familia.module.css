@@ -81,3 +81,6 @@ dd > .linkFicha { margin-left: 8px; }
 /* Transações da família: o mês à esquerda e o Filtros na mesma linha. */
 .barraMes { display: flex; align-items: center; gap: 12px; }
 .barraMesNav { flex: 1 1 auto; min-width: 0; }
+
+/* Visão geral: o total do que ainda vem da casa no topo do grupo. */
+.aindaVemTotal { font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-texto-2); font-variant-numeric: tabular-nums; }

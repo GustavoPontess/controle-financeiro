@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom"
-import type { AcertoContas, BalancoFamilia, Dependente, DespesaCompartilhada, FamiliaDetalhe } from "../../types/Familia"
+import type { AcertoContas, AindaVemDaCasa, BalancoFamilia, Dependente, DespesaCompartilhada, FamiliaDetalhe } from "../../types/Familia"
 import type { RendaFamilia } from "../../types/Renda"
 
 const EU = { id: "u1", nome: "Gabriel Dev", email: "dev@pontes.app" }
@@ -26,6 +26,7 @@ const despesas: DespesaCompartilhada[] = [
   { id: "t2", descricao: "Sofá novo", valor: 2500, data: "2026-10-09", categoriaNome: "Casa", pagadorUsuarioId: "u2", pagadorNome: "Marina Dev", statusAprovacao: 1, aprovadoPorNome: null, responsavelUsuarioId: null, responsavelNome: null, minhaParte: 1250 },
 ]
 const acertos: AcertoContas[] = [{ id: "a1", deUsuarioId: "u2", deNome: "Marina Dev", paraUsuarioId: "u1", paraNome: "Gabriel Dev", valor: 150, mes: 10, ano: 2026, observacao: "Pix", criadoEm: "2026-10-10", data: "2026-10-10", confirmadoEm: "2026-10-10T12:00:00", minhaTransacaoId: null }]
+let aindaVem: AindaVemDaCasa = { total: 0, minhaParte: 0, itens: [] }
 const dependentes: Dependente[] = [{ id: "d1", familiaId: "f1", nome: "Theo", apelido: null, dataNascimento: "2021-03-10", tipo: 1, ativo: true }]
 
 let familia = detalhe()
@@ -40,6 +41,7 @@ vi.mock("../../services/familiaService", () => ({
   getBalancoFamilia: vi.fn(async () => balanco),
   getDespesasFamilia: vi.fn(async () => despesas),
   getAcertos: vi.fn(async () => acertos),
+  getAindaVemFamilia: vi.fn(async () => aindaVem),
   aprovarDespesa: vi.fn(async () => {}),
   rejeitarDespesa: vi.fn(async () => {}),
   atribuirResponsavel: vi.fn(async () => {}),
@@ -210,6 +212,21 @@ describe("Espaço da família (páginas)", () => {
     await userEvent.click(within(lista).getByRole("button", { name: /Theo/ }))
     await waitFor(() => expect(lista).toHaveTextContent("320,00"))
     expect(screen.getByRole("button", { name: /Adicionar/ })).toBeInTheDocument()
+  })
+
+  it("Visão geral: o que ainda vem da casa no mês, com o total e a sua parte do servidor", async () => {
+    aindaVem = { total: 220, minhaParte: 110, itens: [
+      { recorrenteId: "r1", descricao: "Internet", valor: 100, dia: 20, pagadorUsuarioId: "u2", pagadorNome: "Marina Dev", categoriaNome: "Casa", ehMinha: false, cobrancaData: "2026-10-20", cobrancaPaga: false, minhaParte: 50 },
+      { recorrenteId: "r2", descricao: "Luz", valor: 120, dia: 25, pagadorUsuarioId: "u1", pagadorNome: "Gabriel Dev", categoriaNome: "Moradia", ehMinha: true, cobrancaData: "2026-10-25", cobrancaPaga: false, minhaParte: 60 },
+    ] }
+    try {
+      renderizar()
+      const lista = await screen.findByRole("list", { name: /Ainda vem da casa em/ })
+      expect(lista).toHaveTextContent("Internet")
+      expect(lista).toHaveTextContent("Vem dia 20/10")
+      const grupo = lista.closest("li")!
+      expect(within(grupo).getByRole("heading").textContent?.replace(/ /g, " ")).toContain("R$ 220,00 · sua parte R$ 110,00")
+    } finally { aindaVem = { total: 0, minhaParte: 0, itens: [] } }
   })
 
   it("Membros: quem saiu (ou excluiu a conta) continua em Saíram, com a data", async () => {
