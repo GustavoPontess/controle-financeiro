@@ -12,6 +12,9 @@ aqui, no `FamiliaPermissoes` e no teste, juntos.
 
 ## Os perfis
 
+Na tela (desde 2026-10-19, `docs/features/familia/membros-e-permissoes.md`): Admin aparece como **Responsável**,
+Membro como **Adulto**, Dependente como **Só vê**. No código os nomes seguem os do enum `PapelFamilia`.
+
 | Perfil | Quem é | No código |
 |---|---|---|
 | **Dono** | quem cadastrou a conta, o cartão, a categoria, o lançamento | `DonoRecursos`, `CriadoPor` / `UsuarioIdProprietario` |

@@ -5,7 +5,20 @@ import type { VisibilidadeRenda } from "../types/Renda"
 import { VISIBILIDADE_RENDA } from "../types/Renda"
 
 export const PAPEL_PERMISSAO = { admin: 1, membro: 2, dependente: 3 } as const satisfies Record<string, PapelFamilia>
-export const ROTULO_PERMISSAO: Record<PapelFamilia, string> = { 1: "Admin", 2: "Membro", 3: "Só vê" }
+/** Perfil na casa (docs/features/familia/membros-e-permissoes.md): Responsável = Admin, Adulto = Membro, Só vê = Dependente. */
+export const ROTULO_PERMISSAO: Record<PapelFamilia, string> = { 1: "Responsável", 2: "Adulto", 3: "Só vê" }
+
+/** O que cada perfil pode nesta casa, em frases (espelha docs/PERMISSOES.md; quem decide é o servidor). */
+export function oQuePode(papel: PapelFamilia): { texto: string; pode: boolean }[] {
+  const lanca = papel !== PAPEL_PERMISSAO.dependente
+  return [
+    { texto: "Vê as despesas da casa, o equilíbrio e as contas fixas", pode: true },
+    { texto: "Divide as contas da casa e passa dinheiro entre vocês", pode: lanca },
+    { texto: "Aprova despesas acima do limite da casa", pode: lanca },
+    { texto: "Vê a renda que os outros liberarem", pode: lanca },
+    { texto: "Muda as regras, convida e cuida dos membros", pode: papel === PAPEL_PERMISSAO.admin },
+  ]
+}
 
 /** Relação com a família (texto livre no servidor, até 30): os mais comuns prontos, "Outro" digita. */
 export const PAPEIS_RELACAO = ["Cônjuge", "Companheiro(a)", "Namorado(a)", "Pai/Mãe", "Filho(a)", "Irmão/Irmã", "Sócio(a)", "Amigo(a)"] as const

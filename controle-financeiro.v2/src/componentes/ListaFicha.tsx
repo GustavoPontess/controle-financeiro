@@ -2,7 +2,8 @@
 // são botões e, aberta, a ficha logo embaixo com os dados e as ações. A tela só passa o conteúdo; medida, cor e
 // o abre/fecha moram aqui (memória "tela só do seu assunto": nada de página de detalhe pra cadastro).
 import type { ReactNode } from "react"
-import { ChevronDown } from "lucide-react"
+import { Link } from "react-router-dom"
+import { ChevronDown, ChevronRight } from "lucide-react"
 import Avatar from "./Avatar"
 import { RodapeFormulario } from "./Formulario"
 import styles from "./ListaFicha.module.css"
@@ -51,6 +52,40 @@ export function ItemFicha({ id, aberto, aoAbrir, marca, titulo, detalhe, direita
         <ChevronDown size={18} strokeWidth={2} aria-hidden="true" className={styles.seta} />
       </button>
       {aberto && <div id={ficha} className={styles.ficha} data-sem-marca={marca ? undefined : "true"}>{children}</div>}
+    </li>
+  )
+}
+
+/** Uma linha que não abre ficha: com `para`, leva pra página da coisa (seta pro lado); sem, só mostra (ex.: quem
+ *  saiu). `acao` fica à direita, fora do link (ex.: "Cancelar convite"). Mesma anatomia do ItemFicha. */
+export function LinhaFicha({ para, estado, marca, titulo, detalhe, direita, acao, apagado }: {
+  para?: string
+  /** `state` da navegação (ex.: voltarPara). */
+  estado?: unknown
+  marca?: ReactNode
+  titulo: ReactNode
+  detalhe?: ReactNode
+  direita?: ReactNode
+  acao?: ReactNode
+  apagado?: boolean
+}) {
+  const miolo = (
+    <>
+      {marca}
+      <span className={styles.texto}>
+        <span className={styles.nome}>{titulo}</span>
+        {detalhe && <span className={styles.sub}>{detalhe}</span>}
+      </span>
+      {direita ?? <span />}
+      {para ? <ChevronRight size={18} strokeWidth={2} aria-hidden="true" className={styles.seta} /> : <span />}
+    </>
+  )
+  return (
+    <li className={styles.item} data-apagado={apagado || undefined} data-com-acao={acao ? "true" : undefined}>
+      {para
+        ? <Link to={para} state={estado} className={styles.linha} data-sem-marca={marca ? undefined : "true"}>{miolo}</Link>
+        : <div className={styles.linha} data-estatica="true" data-sem-marca={marca ? undefined : "true"}>{miolo}</div>}
+      {acao && <span className={styles.acaoLinha}>{acao}</span>}
     </li>
   )
 }

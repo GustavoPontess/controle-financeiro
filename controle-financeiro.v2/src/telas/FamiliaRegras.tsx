@@ -1,4 +1,5 @@
-// Regras da família (/familias/:id/regras): como divide, se pede OK pra despesa grande, e sair ou dissolver.
+// Regras da família (/familias/:id/regras): como divide, se pede OK pra despesa grande e, pra quem criou, dissolver.
+// Sair fica na página da própria pessoa (Membros).
 import { useState } from "react"
 import { useParams } from "react-router-dom"
 import { useAuth } from "../auth/useAuth"
@@ -20,7 +21,7 @@ export default function FamiliaRegras() {
   return (
     <div className={styles.pagina}>
       <Regras familia={detalhe} aoMudar={() => setVersao((v) => v + 1)} />
-      <SairOuDissolver familia={detalhe} eu={eu} souCriador={souCriador} />
+      {souCriador && <SairOuDissolver familia={detalhe} eu={eu} souCriador />}
     </div>
   )
 }
