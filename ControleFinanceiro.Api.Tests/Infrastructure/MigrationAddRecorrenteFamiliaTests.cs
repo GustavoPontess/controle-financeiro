@@ -15,12 +15,13 @@ public class MigrationAddRecorrenteFamiliaTests
         new(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql("Host=unused").Options);
 
     [Fact]
-    public void Migration_EstaRegistrada_EEhAMaisRecente()
+    public void Migration_EstaRegistrada_DepoisDoAcerto()
     {
         using var ctx = ContextoNpgsqlSemBanco();
         var ids = ctx.Database.GetMigrations().ToList();
-        Assert.EndsWith("_AddRecorrenteFamilia", ids[^1]); // nada gerado por cima sem querer
-        Assert.EndsWith("_AddAcertoLancamento", ids[^2]);
+        var i = ids.FindIndex(id => id.EndsWith("_AddRecorrenteFamilia"));
+        Assert.True(i > 0);
+        Assert.EndsWith("_AddAcertoLancamento", ids[i - 1]);
     }
 
     [Fact]

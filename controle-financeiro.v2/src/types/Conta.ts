@@ -21,4 +21,6 @@ export interface Conta {
   encerradaEm?: string | null
   /** Caixinha de meta (tipo 7): a meta dona dela. Só vem com `incluirCaixinhas` (Bancos). */
   metaId?: string | null
+  /** Conta da casa: as despesas que nascem nela já nascem divididas com essa família. */
+  familiaId?: string | null
 }

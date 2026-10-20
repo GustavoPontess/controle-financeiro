@@ -24,5 +24,7 @@ namespace ControleFinanceiro.Api.DTOs.Conta
         public DateTime? EncerradaEm { get; set; }
         /// <summary>Conta-caixinha (tipo 7): a meta dona dela, pra Bancos levar à página da meta. Null nas outras.</summary>
         public Guid? MetaId { get; set; }
+        /// <summary>Conta da casa: as despesas que nascem nela já nascem divididas com essa família.</summary>
+        public Guid? FamiliaId { get; set; }
     }
 }

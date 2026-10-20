@@ -189,7 +189,16 @@ Na página da despesa, abaixo dos dados:
    aconteceu). Mudar o valor de despesa dividida regrava as partes com o mesmo % (`RateioService.RegravarPeloValorAsync`).
    **Fica pra depois:** "o que ainda vem da casa este mês" na Visão geral.
 5. **Gasto de cada um = sua parte** (se aprovado em 4.2): regra única do gasto + cartão da renda + limites.
-6. **Contas da casa** (4.5).
+6. ✅ **Contas da casa** (4.5; 2026-10-19). `Conta.FamiliaId` e `CartaoCredito.FamiliaId` (migration
+   `AddContaCartaoDaCasa`), marcados por "Dividir com {família}" na ficha da conta (Bancos) e no bloco Família da
+   página do cartão (`PUT /familias/contas/{id}/casa`, `PUT /familias/cartoes/{id}/casa`; só o dono, só quem lança na
+   família, caixinha e conta encerrada não). Regra única `RateioService.DividirSeForDaCasaAsync`: a despesa que NASCE
+   ali (lançamento, extrato importado, cobrança de conta fixa) já nasce dividida, com o limite de aprovação de sempre;
+   fora o que não é gasto (`EntraNoResultado`), a compra parcelada e quem não lança mais. Marcar/desmarcar vale pras
+   próximas. No formulário da despesa, conta/cartão da casa mostra o interruptor ligado e travado. Dinheiro que o outro
+   põe na conta da casa é "Dinheiro entre vocês" (a conta é de quem a cadastrou). **Fica pra depois:** aviso pro
+   outro membro a cada despesa da casa (hoje só aparece em Transações/aguardando aprovação), parcelada no cartão da
+   casa, lançamento movido pra conta da casa na edição.
 7. **Sair / excluir conta** (4.6), com a checagem de conformidade.
 8. **Relatórios da família** (junto com o Relatórios pessoal, a última tela).
 

@@ -62,6 +62,7 @@ namespace ControleFinanceiro.Api.Controllers
             BancoLogoUrl = c.Banco?.LogoUrl,
             BancoCor = c.Banco?.Cor,
             EncerradaEm = c.EncerradaEm,
+            FamiliaId = c.FamiliaId,
         };
 
         private static void ValidarCartao(CriarContaDto dto)

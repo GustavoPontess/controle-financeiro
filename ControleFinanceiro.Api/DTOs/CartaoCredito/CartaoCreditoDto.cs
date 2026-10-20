@@ -29,4 +29,6 @@ public class CartaoCreditoDto
     public string? BancoLogoUrl { get; set; }
     public string? BancoCor { get; set; }
     public bool Ativo { get; set; }
+    /// <summary>Cartão da casa: as compras à vista nele já nascem divididas com essa família.</summary>
+    public Guid? FamiliaId { get; set; }
 }

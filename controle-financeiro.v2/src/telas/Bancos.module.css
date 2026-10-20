@@ -40,3 +40,4 @@
   .numeroValor { font-size: var(--v2-fs-lg); }
   .toolbar { padding: 14px 16px 4px; }
 }
+.daCasa { padding-top: 12px; border-top: 1px solid var(--v2-linha); }

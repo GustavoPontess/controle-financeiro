@@ -1,0 +1,2 @@
+.daCasa { display: flex; flex-direction: column; gap: 10px; }
+.erro { margin: 0; font-size: var(--v2-fs-sm); color: var(--v2-negativo); }
