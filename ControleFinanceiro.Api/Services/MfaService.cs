@@ -49,7 +49,7 @@ public class MfaService
             ?? throw new KeyNotFoundException("Usuário não encontrado");
 
         if (string.IsNullOrEmpty(usuario.MfaSecretoPendenteCriptografado))
-            throw new ArgumentException("Nenhuma ativação de MFA pendente — comece de novo.");
+            throw new ArgumentException("Nenhuma ativação de MFA pendente. Comece de novo.");
 
         var base32 = MfaCrypto.Decrypt(usuario.MfaSecretoPendenteCriptografado);
         var secret = MfaTotpHelper.DeBase32(base32);

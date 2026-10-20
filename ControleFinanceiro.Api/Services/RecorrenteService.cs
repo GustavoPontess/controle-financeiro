@@ -627,8 +627,6 @@ public class RecorrenteService
             await ExigirReferenciasDoUsuarioAsync(dto.ContaId, dto.CartaoCreditoId, dto.CategoriaId, dto.SubcategoriaId, usuarioId);
             var familiaId = await FamiliaDoCadastroAsync(dto, usuarioId);
 
-            // Criar recorrente com janela de 3 meses
-            var dataFimJanela = dataInicio.AddMonths(3);
             var recorrente = new Recorrente
             {
                 Id = recorrenteId,
@@ -669,8 +667,21 @@ public class RecorrenteService
                 });
             await _context.SaveChangesAsync();
 
-            // Materializar 3 meses de previsões, no compasso do Dia (AgendaRecorrente)
-            await GerarOcorrenciasAsync(recorrente, DateOnly.FromDateTime(dataFimJanela), StatusTransacao.Previsao);
+            // O que já venceu (início no passado) entra EFETIVADO, como o "lançar o que passou" da edição e o
+            // GerarPendentesAsync; a de hoje fica prevista (o ExecutarRecorrentesJob efetiva). No cartão nasce
+            // prevista e passa pela regra do limite. Antes tudo nascia previsto e o saldo ficava errado até o job
+            // rodar. Depois, 3 meses de previsões a contar do início (o ExpandirRecorrentesJob estende).
+            var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
+            await GerarOcorrenciasAsync(recorrente, hoje,
+                recorrente.CartaoCreditoId.HasValue ? StatusTransacao.Previsao : StatusTransacao.Executado);
+            var vencidasNoCartao = _context.ChangeTracker.Entries<Transacao>()
+                .Where(e => e.State == EntityState.Added).Select(e => e.Entity)
+                .Where(t => t.RecorrenteOrigemId == recorrente.Id && t.CartaoCreditoId != null
+                            && t.StatusTransacao == StatusTransacao.Previsao && t.Data < hoje)
+                .ToList();
+            if (vencidasNoCartao.Count > 0)
+                await RegrasFinanceiras.CobrarOcorrenciasAsync(_context, vencidasNoCartao);
+            await GerarOcorrenciasAsync(recorrente, DateOnly.FromDateTime(dataInicio.AddMonths(3)), StatusTransacao.Previsao);
 
             await _context.SaveChangesAsync();
 

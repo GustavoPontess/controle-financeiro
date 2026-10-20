@@ -1462,4 +1462,27 @@ public class RecorrenteContaFixaMotorTests
         Assert.True((await TodasAsync(ctx, r.Id)).Single(t => t.Id == movida.Id).Ativo);
         Assert.NotNull((await LinhaAsync(ctx, r.Id)).RealinhadoEm);
     }
+
+    [Fact]
+    public async Task CriarAsync_InicioNoPassado_OQueJaVenceuNasceEfetivado_AdeHojeEmDiantePrevista()
+    {
+        // Validação da conta pessoal (2026-10-20): "Aluguel desde agosto" criado em outubro nascia com agosto,
+        // setembro e outubro PREVISTOS: o saldo ficava errado até o job diário rodar. Igual à edição e ao
+        // GerarPendentes: o que já venceu entra efetivado; a de hoje fica prevista (o job efetiva).
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var conta = SeedConta(ctx, u);
+        var inicio = new DateOnly(Hoje.Year, Hoje.Month, 1).AddMonths(-2);
+
+        var dto = await CreateService(ctx).CriarAsync(new CriarRecorrenteDto
+        {
+            Descricao = "Aluguel", Valor = 1800m, Tipo = (int)TipoTransacao.Despesa, ContaId = conta,
+            Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 1, DataInicio = Utc(inicio),
+        }, u);
+
+        var vivas = await VivasAsync(ctx, dto.Id);
+        Assert.Equal(3, vivas.Count);
+        Assert.All(vivas, t => Assert.Equal(t.Data < Hoje ? StatusTransacao.Executado : StatusTransacao.Previsao, t.StatusTransacao));
+        Assert.Contains(vivas, t => t.StatusTransacao == StatusTransacao.Executado);
+    }
 }

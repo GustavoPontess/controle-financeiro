@@ -187,7 +187,7 @@ public class DespesaCompartilhadaService
         return despesas
             .Select(d => new DespesaCompartilhadaDto(
                 d.Id, d.Descricao, d.Valor, d.Data.ToDateTime(d.Hora ?? TimeOnly.MinValue), d.CategoriaNome,
-                d.CriadoPor, nomes.GetValueOrDefault(d.CriadoPor, "—"),
+                d.CriadoPor, nomes.GetValueOrDefault(d.CriadoPor, "Alguém"),
                 d.StatusAprovacao,
                 d.AprovadoPorUsuarioId is { } aid ? nomes.GetValueOrDefault(aid) : null,
                 d.ResponsavelUsuarioId,

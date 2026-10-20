@@ -312,10 +312,13 @@ public static class DemoSeeder
         async Task Criar(Domain.Entities.CartaoCredito cartao, string desc, decimal valor, int parcelas, int jaPagas,
             string cat, TipoParcelamento tipo = TipoParcelamento.CompraParcelada, decimal? juros = null)
         {
-            var (_, fechAberta) = FaturaService.CalcularPeriodo(hoje, cartao.DiaFechamento);
+            // "Hoje" igual ao do servidor (o dia mais cedo no Brasil, UTC-5): com o dia UTC, das 21h à meia-noite
+            // de Brasília no dia do fechamento, a fatura aberta daqui era a seguinte e o servidor recusava.
+            var hojeBr = DateTime.UtcNow.AddHours(-5).Date;
+            var (_, fechAberta) = FaturaService.CalcularPeriodo(hojeBr, cartao.DiaFechamento);
             var primeira = new DateTime(fechAberta.Year, fechAberta.Month, 1).AddMonths(-jaPagas);
-            var compra = jaPagas == 0 ? hoje : fechAberta.AddMonths(-jaPagas).AddDays(-5);
-            if (compra > hoje) compra = hoje;
+            var compra = jaPagas == 0 ? hojeBr : fechAberta.AddMonths(-jaPagas).AddDays(-5);
+            if (compra > hojeBr) compra = hojeBr;
             await svc.CriarAsync(new CriarParcelamentoDto
             {
                 Descricao = desc, Valor = valor, Tipo = tipo, CartaoCreditoId = cartao.Id, DataCompra = Utc(compra),
@@ -493,7 +496,7 @@ public static class DemoSeeder
         await svc.CriarAsync(dev, TipoNotificacao.FaturaVencendo, "Fatura do Nubank vence em 3 dias",
             "Confira o valor e pague antes do vencimento pra não pagar juros.", $"/cartoes/{nubank}");
         await svc.CriarAsync(dev, TipoNotificacao.DespesaCompartilhada, "Marina lançou uma despesa da casa",
-            "Supermercado — R$ 312,40, dividido igualmente na Casa Dev.", "/transacoes");
+            "Supermercado: R$ 312,40, dividido igualmente na Casa Dev.", "/transacoes");
         await svc.CriarAsync(dev, TipoNotificacao.OrcamentoEstourado, "Alimentação passou de 80% do limite",
             "Você já usou R$ 1.640,00 dos R$ 2.000,00 do mês.", "/limites");
         var antiga = await context.Notificacoes.Where(n => n.UsuarioId == dev).OrderBy(n => n.CriadoEm).FirstAsync();

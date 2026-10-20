@@ -166,7 +166,7 @@ public class ParcelamentoService
         var jaPagas = dto.ParcelasJaPagas;
         if (jaPagas < 0 || jaPagas >= dto.Parcelas)
             throw new InvalidOperationException(
-                "Parcelas já pagas deve ficar entre 0 e o total menos 1 — precisa sobrar pelo menos uma.");
+                "Parcelas já pagas deve ficar entre 0 e o total menos 1: precisa sobrar pelo menos uma.");
 
         var agoraUtc = _relogio.GetUtcNow().UtcDateTime;
         if (dto.DataCompra.Date > agoraUtc.Date)
@@ -225,14 +225,14 @@ public class ParcelamentoService
                     ? $"A primeira parcela não pode ser antes da fatura de {RotuloMesFatura(piso)}, em que a compra cai."
                     : $"A próxima parcela não pode ser antes da fatura de {RotuloMesFatura(piso)}: com {jaPagas} já " +
                       $"{(jaPagas == 1 ? "paga" : "pagas")}, a primeira cairia antes da fatura da compra."
-                : $"{qualParcela} não pode ser antes da fatura de {RotuloMesFatura(piso)} — as anteriores já venceram.");
+                : $"{qualParcela} não pode ser antes da fatura de {RotuloMesFatura(piso)}: as anteriores já venceram.");
         }
 
         // Teto da compra em andamento: a última já paga é da fatura anterior à próxima, e parcela paga é
         // de fatura que já fechou — a próxima vai no máximo na fatura aberta hoje.
         if (jaPagas > 0 && mesPrimeiraRegistrada > meses.Aberta)
             throw new InvalidOperationException(
-                $"A próxima parcela não pode passar da fatura de {RotuloMesFatura(meses.Aberta)} — " +
+                $"A próxima parcela não pode passar da fatura de {RotuloMesFatura(meses.Aberta)}: " +
                 "a última já paga cairia numa fatura que ainda não fechou.");
 
         // 5. Categoria (opcional) — valida posse e Finalidade compatível com despesa

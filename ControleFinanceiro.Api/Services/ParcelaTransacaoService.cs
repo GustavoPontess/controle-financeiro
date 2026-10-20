@@ -117,7 +117,7 @@ public class ParcelaTransacaoService
         var restanteFatura = RegrasFinanceiras.ValorRestanteFatura(fatura);
         if (restanteFatura <= 0)
             throw new InvalidOperationException(
-                "A fatura desta parcela já está coberta pelos pagamentos feitos — não há o que antecipar.");
+                "A fatura desta parcela já está coberta pelos pagamentos feitos. Não há o que antecipar.");
         if (restanteFatura < valorParcela)
             throw new InvalidOperationException(
                 $"A fatura desta parcela já foi paga em parte e resta {Reais.Formatar(restanteFatura)}, menos que a parcela " +
@@ -148,7 +148,7 @@ public class ParcelaTransacaoService
             {
                 Id = Guid.NewGuid(),
                 Descricao = $"Pagamento parcela {parcela.Numero}/{parcela.QuantidadeTotal}" +
-                            $" — {parcela.Parcelamento.Descricao}",
+                            $" · {parcela.Parcelamento.Descricao}",
                 Valor = valorParcela,
                 Tipo = TipoTransacao.Despesa,
                 ContaId = dto.ContaPagamentoId,
@@ -300,14 +300,14 @@ public class ParcelaTransacaoService
 
         if (!parcela.Parcelamento!.Ativo)
             throw new InvalidOperationException(
-                "Parcelamento já cancelado — todas as parcelas Pendentes já foram canceladas junto com ele.");
+                "Parcelamento já cancelado: todas as parcelas Pendentes já foram canceladas junto com ele.");
 
         // Pendente numa fatura coberta pelo pagamento já foi paga (invariante em RegrasFinanceiras):
         // cancelar tiraria do total um valor já pago e o dinheiro sumiria. Mesma recusa da parcela Paga.
         // Cobertura, não rótulo: parcela que caiu numa fatura já Pago segue devida e pode ser cancelada.
         if (RegrasFinanceiras.ParcelaQuitadaPelaFatura(_context, parcela))
             throw new InvalidOperationException(
-                "A fatura desta parcela já foi paga — a parcela conta como paga e não pode ser cancelada individualmente.");
+                "A fatura desta parcela já foi paga: a parcela conta como paga e não pode ser cancelada individualmente.");
 
         var valorParcela = parcela.ValorComJuros ?? parcela.Valor;
         var correlationId = Guid.NewGuid();

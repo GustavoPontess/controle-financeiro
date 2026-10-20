@@ -38,10 +38,10 @@ namespace ControleFinanceiro.Api.Services
         {
             if (transacao.EhPagamentoFatura)
                 throw new InvalidOperationException(
-                    "Pagamento de fatura não pode ser editado nem excluído por aqui — ele está ligado ao que a fatura já recebeu. Para desfazer, use Estornar pagamento.");
+                    "Pagamento de fatura não pode ser editado nem excluído por aqui: ele está ligado ao que a fatura já recebeu. Para desfazer, use Estornar pagamento.");
             if (transacao.EhTransferencia)
                 throw new InvalidOperationException(
-                    "Transferência não se edita por aqui — exclua e lance de novo.");
+                    "Transferência não se edita por aqui. Exclua e lance de novo.");
             if (transacao.EhAcerto)
                 throw new InvalidOperationException(
                     "Esse lançamento é dinheiro que passou entre vocês na família. Pra desfazer, use Desfazer em Entre vocês.");
@@ -81,6 +81,13 @@ namespace ControleFinanceiro.Api.Services
             // seguia mexendo no saldo (e não estava em fatura nenhuma).
             if (transacao.UsadoComoCredito && !transacao.CartaoCreditoId.HasValue)
                 throw new ArgumentException("Compra no crédito precisa de um cartão.");
+            // E no cartão é sempre crédito (débito é na conta, com a forma Débito), a mesma regra da edição. Sem a
+            // flag, a compra ficava sem conta e sem fatura: sumia do saldo e da fatura e escapava da trava de limite.
+            if (transacao.CartaoCreditoId.HasValue)
+            {
+                transacao.UsadoComoCredito = true;
+                transacao.MeioPagamento = MeioPagamento.Credito;
+            }
 
             if (transacao.CategoriaId.HasValue)
             {

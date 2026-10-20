@@ -574,7 +574,7 @@ public class AuthService
                 // pode ser silencioso; no comprometido, MesmoIp/MesmoUserAgent dizem se foi outro
                 // dispositivo ou só fora da janela. Sem token, sem IP/UA em claro.
                 _logger.LogWarning(
-                    "Segurança/refresh: token já rotacionado reapresentado — {Desfecho}. UsuarioId={UsuarioId} FamiliaId={FamiliaId} IdadeRotacaoSegundos={IdadeRotacaoSegundos} MesmoIp={MesmoIp} MesmoUserAgent={MesmoUserAgent}",
+                    "Segurança/refresh: token já rotacionado reapresentado: {Desfecho}. UsuarioId={UsuarioId} FamiliaId={FamiliaId} IdadeRotacaoSegundos={IdadeRotacaoSegundos} MesmoIp={MesmoIp} MesmoUserAgent={MesmoUserAgent}",
                     avaliacao.EmCorrida ? "tolerado como corrida do cliente (sem revogar)" : "família comprometida",
                     rt.UsuarioId, rt.FamiliaId, avaliacao.IdadeRotacaoSegundos, avaliacao.MesmoIp, avaliacao.MesmoUserAgent);
 
