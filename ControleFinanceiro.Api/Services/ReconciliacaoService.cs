@@ -73,7 +73,11 @@ public class ReconciliacaoService(AppDbContext context, FinancialEventLogService
             .OrderByDescending(r => r.DataHora)
             .ThenByDescending(r => r.CriadoEm)
             .ToListAsync();
-        var dtos = marcos.Select(ToDto).ToList();
+        // A diferença de AGORA (não só a do dia em que conferiu): um lançamento criado, editado ou excluído
+        // depois, com data até o marco, muda o saldo do app naquele dia. A tela diz "Bateu" só se ainda bate.
+        var dtos = new List<ReconciliacaoSaldoDto>(marcos.Count);
+        foreach (var r in marcos)
+            dtos.Add(ToDto(r, await CalcularSaldoAteAsync(usuarioId, contaId, r.DataHora)));
 
         // Saldo inicial da conta = o baseline. Se ainda não há um marco baseline real, expõe o saldo
         // inicial como um marco DERIVADO (não removível) — pra o calendário/"confere até" refletirem o
@@ -437,7 +441,9 @@ public class ReconciliacaoService(AppDbContext context, FinancialEventLogService
         await _context.SaveChangesAsync();
     }
 
-    private static ReconciliacaoSaldoDto ToDto(ReconciliacaoSaldo r) => new()
+    private static ReconciliacaoSaldoDto ToDto(ReconciliacaoSaldo r) => ToDto(r, null);
+
+    private static ReconciliacaoSaldoDto ToDto(ReconciliacaoSaldo r, decimal? calculadoAgora) => new()
     {
         Id = r.Id,
         ContaId = r.ContaId,
@@ -447,6 +453,8 @@ public class ReconciliacaoService(AppDbContext context, FinancialEventLogService
         Diferenca = r.Diferenca,
         Tipo = (int)r.Tipo,
         TemAjuste = r.AjusteTransacaoId.HasValue,
+        SaldoCalculadoAgora = calculadoAgora,
+        DiferencaAgora = calculadoAgora.HasValue ? r.SaldoDeclarado - calculadoAgora.Value : null,
         Observacao = r.Observacao,
         CriadoEm = r.CriadoEm,
     };

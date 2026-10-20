@@ -14,6 +14,11 @@ public class ReconciliacaoSaldoDto
     public int Tipo { get; init; }
     /// <summary>Houve lançamento de ajuste pra fechar a diferença.</summary>
     public bool TemAjuste { get; init; }
+    /// <summary>Saldo do app até a data do marco, calculado AGORA (na listagem). Muda se alguém lançou, editou
+    /// ou excluiu algo com data até o marco depois da conferência. Null fora da listagem e no marco derivado.</summary>
+    public decimal? SaldoCalculadoAgora { get; init; }
+    /// <summary>Declarado − <see cref="SaldoCalculadoAgora"/>. 0 = ainda bate.</summary>
+    public decimal? DiferencaAgora { get; init; }
     /// <summary>Marco DERIVADO (sintético) do saldo inicial da conta — não é um registro removível;
     /// pra mudar, edita-se o saldo inicial da conta. Baseline padrão quando ainda não há marco real.</summary>
     public bool Derivado { get; init; }
