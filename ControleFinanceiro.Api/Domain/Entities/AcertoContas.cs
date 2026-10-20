@@ -2,8 +2,9 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ControleFinanceiro.Api.Domain.Entities;
 
-/// <summary>Issue #26 — registro interno de que um membro pagou a outro o que
-/// devia dentro da família. Não mexe no saldo de contas bancárias reais.</summary>
+/// <summary>Dinheiro que passou de um membro pra outro pra equilibrar o mês da família (Issue #26; passo 3 do espaço
+/// da família, 2026-10-19). Quem passou registra → espera quem recebeu confirmar (só aí entra no equilíbrio); quem
+/// recebeu registra → já vale. Cada lado pode ter o seu lançamento na conta (fora do resultado, <c>EhAcerto</c>).</summary>
 public class AcertoContas
 {
     public Guid Id { get; set; }
@@ -29,6 +30,23 @@ public class AcertoContas
     public string? Observacao { get; set; }
 
     public Guid CriadoPor { get; set; }
+
+    /// <summary>Dia em que o dinheiro passou (o dos lançamentos).</summary>
+    public DateOnly? Data { get; set; }
+
+    /// <summary>Quando quem recebeu confirmou (ou registrou). Null = esperando confirmar: fora do equilíbrio.</summary>
+    public DateTime? ConfirmadoEm { get; set; }
+
+    /// <summary>A saída na conta de quem passou (null = não lançou em conta).</summary>
+    public Guid? TransacaoSaidaId { get; set; }
+    public Transacao? TransacaoSaida { get; set; }
+
+    /// <summary>A entrada na conta de quem recebeu (null = não lançou em conta).</summary>
+    public Guid? TransacaoEntradaId { get; set; }
+    public Transacao? TransacaoEntrada { get; set; }
+
+    /// <summary>xmin: confirmar/lançar duas vezes ao mesmo tempo → a segunda dá 409 (não cria dois lançamentos).</summary>
+    public uint Versao { get; set; }
 
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 

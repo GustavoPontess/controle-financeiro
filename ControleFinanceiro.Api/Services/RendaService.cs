@@ -31,7 +31,7 @@ public class RendaService
     /// ajuste, Pix no Crédito, empréstimo) e não é "dinheiro que volta" (cashback, reembolso, estorno: categoria padrão).</summary>
     public static readonly Expression<Func<Transacao, bool>> EhRenda = t =>
         t.Tipo == TipoTransacao.Receita && t.Ativo && t.StatusTransacao != StatusTransacao.Cancelado
-        && !t.EhTransferencia && !t.EhPagamentoFatura && !t.EhSaldoInicial && !t.EhAjusteReconciliacao && !t.EhPixNoCredito && !t.EhEmprestimo
+        && !t.EhTransferencia && !t.EhPagamentoFatura && !t.EhSaldoInicial && !t.EhAjusteReconciliacao && !t.EhPixNoCredito && !t.EhEmprestimo && !t.EhAcerto
         && (t.Categoria == null || t.Categoria.UsuarioId != null || t.Categoria.Descricao != CategoriaDinheiroQueVolta);
 
     // ── Pessoa ───────────────────────────────────────────────────────────────────────────────────

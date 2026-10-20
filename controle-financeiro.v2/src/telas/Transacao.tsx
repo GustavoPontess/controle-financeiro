@@ -32,7 +32,7 @@ import TransacaoFamilia from "./TransacaoFamilia"
 import styles from "./Transacao.module.css"
 
 const naturezaDe = (t: Transaction) =>
-  t.ehTransferencia ? "Transferência" : t.ehPagamentoFatura ? "Pagamento de fatura" : t.tipo === 2 ? "Receita" : "Despesa"
+  t.ehTransferencia ? "Transferência" : t.ehPagamentoFatura ? "Pagamento de fatura" : t.ehAcerto ? "Acerto da família" : t.tipo === 2 ? "Receita" : "Despesa"
 const fmtData = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`
 
 export default function Transacao() {
@@ -83,7 +83,8 @@ export default function Transacao() {
     )
   if (!t) return <div className={styles.pagina}><Bloco><Esqueleto linhas={5} altura={16} /></Bloco></div>
 
-  const editavel = !t.ehPagamentoFatura && !t.ehTransferencia
+  // Acerto da família também não: desfaz em Entre vocês (o outro lado está ligado a ele).
+  const editavel = !t.ehPagamentoFatura && !t.ehTransferencia && !t.ehAcerto
   if (editando && editavel)
     return <Editar t={t} categorias={categorias} subcategorias={subcategorias} contas={contas} cartoes={cartoes}
       // Virou transferência/parcelado: o id antigo não existe mais, volta pra lista.
@@ -113,7 +114,7 @@ function Ver({ t, categorias, subcategorias, editavel, aoEditar, aoSair, aoMudar
   // cair depois de o servidor estornar, confirmar de novo devolve o mesmo estorno em vez de estornar 2x.
   const chaveEstorno = useRef("")
 
-  const neutro = !!(t.ehTransferencia || t.ehPagamentoFatura)
+  const neutro = !!(t.ehTransferencia || t.ehPagamentoFatura || t.ehAcerto)
   const tom: TomDinheiro | undefined = neutro ? "neutro" : t.tipo === 2 ? "positivo" : "negativo"
   const cat = categorias.find((c) => c.id === t.categoriaId)
   const sub = subcategorias.find((s) => s.id === t.subcategoriaId)
@@ -174,7 +175,7 @@ function Ver({ t, categorias, subcategorias, editavel, aoEditar, aoSair, aoMudar
 
       {/* Ações no pé, à direita — o mesmo lugar dos botões de Nova e Editar (destrutiva à esquerda, principal à direita). */}
       <RodapeFormulario>
-        {t.ehPagamentoFatura ? (
+        {t.ehAcerto ? null : t.ehPagamentoFatura ? (
           <Botao onClick={abrirEstorno} icone={<Undo2 size={15} strokeWidth={2.25} aria-hidden="true" />}>Estornar pagamento</Botao>
         ) : (
           <Botao perigo onClick={() => { setErro(null); setExcluindo(true) }}

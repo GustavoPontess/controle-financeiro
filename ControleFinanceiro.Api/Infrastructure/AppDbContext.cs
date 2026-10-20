@@ -670,6 +670,23 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<AcertoContas>()
             .HasIndex(a => new { a.FamiliaId, a.Ano, a.Mes });
 
+        // Lançamentos do acerto nas contas (SetNull: a purga LGPD apaga transações da pessoa e o acerto fica).
+        modelBuilder.Entity<AcertoContas>()
+            .HasOne(a => a.TransacaoSaida)
+            .WithMany()
+            .HasForeignKey(a => a.TransacaoSaidaId)
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<AcertoContas>()
+            .HasOne(a => a.TransacaoEntrada)
+            .WithMany()
+            .HasForeignKey(a => a.TransacaoEntradaId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Confirmar e lançar mexem na mesma linha: concorrência otimista via xmin (como Fatura).
+        modelBuilder.Entity<AcertoContas>()
+            .Property(a => a.Versao)
+            .IsRowVersion();
+
         // ── Empréstimo compartilhado (docs/features/emprestimo-compartilhado/spec.md) ──
 
         // Emprestimo → ContraparteUsuario (Restrict: não deletar usuário com vínculo ativo)

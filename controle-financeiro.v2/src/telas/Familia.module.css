@@ -74,3 +74,6 @@ dd > .linkFicha { margin-left: 8px; }
   .equilibrioLista li { flex-wrap: wrap; }
   .entreVoces :global(ul[aria-label="Entre vocês"]) { margin: 0 -16px; }
 }
+
+/* Dinheiro entre vocês: "Esperando confirmar" ao lado do valor */
+.acertoDireita { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }

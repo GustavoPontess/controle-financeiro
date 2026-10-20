@@ -139,6 +139,11 @@ public class Transacao
     /// resultado (<c>RegrasFinanceiras.EntraNoResultado</c>): gasto do mês, limites, renda, Entrou/Saiu.</summary>
     public bool EhEmprestimo { get; set; }
 
+    /// <summary>true se esta Transacao é o dinheiro que passou entre membros da família pra equilibrar o mês
+    /// (<c>AcertoService</c>): a saída de quem passou ou a entrada de quem recebeu. Mexe no saldo, mas NÃO é
+    /// receita/despesa (o gasto foi a parte de cada um nas despesas divididas). Fora do resultado.</summary>
+    public bool EhAcerto { get; set; }
+
     /// <summary>Soft delete: true=ativa, false=cancelada (preserva histórico).</summary>
     public bool Ativo { get; set; } = true;
 

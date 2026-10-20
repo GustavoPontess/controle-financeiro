@@ -288,4 +288,20 @@ public class FamiliasController : ControllerBase
         await _acertoService.CancelarAsync(id, acertoId, GetUserId());
         return NoContent();
     }
+
+    /// <summary>Quem recebeu confirma (e, com conta, nasce a entrada). Só aí o acerto entra no equilíbrio.</summary>
+    [HttpPost("{id:guid}/acertos/{acertoId:guid}/confirmar")]
+    [ProducesResponseType(typeof(AcertoContasDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ConfirmarAcerto(Guid id, Guid acertoId, [FromBody] ContaDoAcertoDto dto)
+    {
+        return Ok(await _acertoService.ConfirmarAsync(id, acertoId, GetUserId(), dto));
+    }
+
+    /// <summary>Lança o seu lado do acerto numa conta sua (a saída de quem passou ou a entrada de quem recebeu).</summary>
+    [HttpPost("{id:guid}/acertos/{acertoId:guid}/lancar")]
+    [ProducesResponseType(typeof(AcertoContasDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> LancarAcerto(Guid id, Guid acertoId, [FromBody] ContaDoAcertoDto dto)
+    {
+        return Ok(await _acertoService.LancarNaMinhaContaAsync(id, acertoId, GetUserId(), dto));
+    }
 }

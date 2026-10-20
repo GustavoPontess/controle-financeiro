@@ -7,11 +7,14 @@ import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { ArrowRight, Check, ExternalLink, LogOut, Pencil, Trash2, X } from "lucide-react"
 import {
-  aprovarDespesa, atribuirResponsavel, cancelarAcerto, definirLimiteAprovacao, definirModoRateio, dissolverFamilia,
+  aprovarDespesa, atribuirResponsavel, cancelarAcerto, confirmarAcerto, lancarAcerto, definirLimiteAprovacao, definirModoRateio, dissolverFamilia,
   editarPapel, editarPermissao, getFamilia, getGastoDependente, inativarDependente, rejeitarDespesa, removerMembro, revogarConvite,
 } from "../services/familiaService"
 import { definirVisibilidadeRenda } from "../services/rendaService"
 import { mensagemDeErro } from "../api/cliente"
+import { useAuth } from "../auth/useAuth"
+import { getContas } from "../services/contaService"
+import type { Conta } from "../types/Conta"
 import { recarregarEspacos } from "../estado/espaco"
 import type { AcertoContas, BalancoFamilia, ConviteFamilia, Dependente, DespesaCompartilhada, FamiliaDetalhe, MembroFamilia, ModoRateio } from "../types/Familia"
 import type { RendaFamilia, VisibilidadeRenda } from "../types/Renda"
@@ -33,7 +36,7 @@ import Selecao from "../componentes/Selecao"
 import { APROVACAO, MAX_PAPEL, MODOS_RATEIO, PAPEL_PERMISSAO, fraseSaldo, primeiroNome, rotuloTipoDependente, sugerirEquilibrio } from "../dominio/familia"
 import { mesAnoCurto } from "../dominio/meta"
 import { dataBR, diaDeInstante } from "../utils/dateTime"
-import { moneyParaCampo, parseMoney } from "../utils/money"
+import { formatMoney, moneyParaCampo, parseMoney } from "../utils/money"
 import styles from "./Familia.module.css"
 
 export const diaMes = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
@@ -124,6 +127,7 @@ export function Saldos({ balanco, meuId, fotos }: { balanco: BalancoFamilia; meu
 
 export function Equilibrio({ balanco, familiaId, podeAgir, voltarPara }: { balanco: BalancoFamilia; familiaId: string; podeAgir: boolean; voltarPara: string }) {
   const navigate = useNavigate()
+  const { usuario } = useAuth()
   const equilibrio = sugerirEquilibrio(balanco.saldos)
   return (
     <div className={styles.equilibrio} data-ok={equilibrio.length === 0 || undefined}>
@@ -136,7 +140,8 @@ export function Equilibrio({ balanco, familiaId, podeAgir, voltarPara }: { balan
             {equilibrio.map((e) => (
               <li key={`${e.deUsuarioId}-${e.paraUsuarioId}`}>
                 <span className={styles.equilibrioTexto}>{e.de} <ArrowRight size={14} strokeWidth={2.5} aria-hidden="true" /> {e.para} <Dinheiro valor={e.valor} className={styles.equilibrioValor} /></span>
-                {podeAgir && <Botao onClick={() => navigate(`/familias/${familiaId}/acertos/novo`, { state: { de: e.deUsuarioId, para: e.paraUsuarioId, valor: e.valor, voltarPara } })}>Marcar como feito</Botao>}
+                {/* Só quem passa ou recebe registra (o fato é dos dois). */}
+                {podeAgir && (e.deUsuarioId === usuario?.id || e.paraUsuarioId === usuario?.id) && <Botao onClick={() => navigate(`/familias/${familiaId}/acertos/novo`, { state: { de: e.deUsuarioId, para: e.paraUsuarioId, valor: e.valor, voltarPara } })}>Marcar como feito</Botao>}
               </li>
             ))}
           </ul>
@@ -362,27 +367,89 @@ export function Despesa({ d, familiaId, meuId, podeAgir, membros, voltarPara, ao
   )
 }
 
+/** Dinheiro entre vocês (passo 3): quem passou → esperando quem recebeu confirmar; quem recebeu confirma (e diz em
+ *  qual conta entrou) ou "Não recebi"; cada um lança o SEU lado numa conta sua quando quiser. */
 export function Acerto({ a, familiaId, podeAgir, aoMudar, foto }: { a: AcertoContas; familiaId: string; podeAgir: boolean; aoMudar: () => void; foto?: string }) {
+  const { usuario } = useAuth()
   const [aberto, setAberto] = useState(false)
-  const [confirmando, setConfirmando] = useState(false)
+  const [dialogo, setDialogo] = useState<null | "desfazer" | "naoRecebi" | "confirmar" | "lancar">(null)
+  const [contas, setContas] = useState<Conta[] | null>(null)
+  const [contaId, setContaId] = useState("")
   const [erro, setErro] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
-  const cancelar = async () => {
-    setOcupado(true); setErro(null); setConfirmando(false)
-    try { await cancelarAcerto(familiaId, a.id); aoMudar() } catch (e) { setErro(mensagemDeErro(e)); setOcupado(false) }
+  const souDe = usuario?.id === a.deUsuarioId
+  const souPara = usuario?.id === a.paraUsuarioId
+  const pendente = !a.confirmadoEm
+  const de = primeiroNome(a.deNome), para = primeiroNome(a.paraNome)
+  // O meu lado ainda sem lançamento: quem passou lança quando quiser; quem recebeu, depois de confirmar.
+  const possoLancar = podeAgir && !a.minhaTransacaoId && (souDe || (souPara && !pendente))
+
+  useEffect(() => {
+    if ((dialogo !== "confirmar" && dialogo !== "lancar") || contas) return
+    let vivo = true
+    getContas().then((c) => { if (vivo) { setContas(c); setContaId((x) => x || (c.find((k) => k.isCarteira) ?? c[0])?.id || "") } }).catch(() => { if (vivo) setContas([]) })
+    return () => { vivo = false }
+  }, [dialogo, contas])
+
+  const rodar = async (acao: () => Promise<unknown>) => {
+    setOcupado(true); setErro(null)
+    try { await acao(); setDialogo(null); aoMudar() } catch (e) { setErro(mensagemDeErro(e)); setDialogo(null) }
+    setOcupado(false)
   }
+  const opcoesConta = (comSemConta: boolean) => [
+    ...(contas ?? []).map((c) => ({ valor: c.id, rotulo: c.nome })),
+    ...(comSemConta ? [{ valor: "", rotulo: "Não registrar em conta" }] : []),
+  ]
+  const escolherConta = (rotulo: string, comSemConta: boolean) => (
+    <Campo rotulo={rotulo}>
+      <Selecao valor={contaId} desabilitado={contas === null} placeholder={contas === null ? "Carregando…" : "Escolha a conta"}
+        opcoes={opcoesConta(comSemConta)} onChange={setContaId} />
+    </Campo>
+  )
+
   return (
     <>
       <ItemFicha id={`acerto-${a.id}`} aberto={aberto} aoAbrir={() => setAberto((act) => !act)}
         marca={<InicialFicha texto={a.deNome} foto={foto} />}
-        titulo={<>{primeiroNome(a.deNome)} <ArrowRight size={14} strokeWidth={2.5} aria-hidden="true" className={styles.seta} /> {primeiroNome(a.paraNome)}</>}
-        detalhe={`${diaDeInstante(a.criadoEm)}${a.observacao ? ` · ${a.observacao}` : ""}`}
-        direita={<Dinheiro valor={a.valor} className={styles.valor} />}>
+        titulo={<>{de} <ArrowRight size={14} strokeWidth={2.5} aria-hidden="true" className={styles.seta} /> {para}</>}
+        detalhe={`${a.data ? dataBR(a.data) : diaDeInstante(a.criadoEm)}${a.observacao ? ` · ${a.observacao}` : ""}`}
+        direita={<span className={styles.acertoDireita}>
+          {pendente && <Etiqueta tom="alerta">{souPara ? "Esperando você confirmar" : `Esperando ${para} confirmar`}</Etiqueta>}
+          <Dinheiro valor={a.valor} className={styles.valor} />
+        </span>}>
         <Alerta erro={erro} />
-        {podeAgir ? <AcoesFicha><Botao variante="texto" perigo disabled={ocupado} onClick={() => setConfirmando(true)}>Desfazer</Botao></AcoesFicha> : <p className={styles.dica}>Registrado por quem lança.</p>}
+        {podeAgir ? (
+          <AcoesFicha>
+            {a.minhaTransacaoId && <Link to={`/transacoes/${a.minhaTransacaoId}`} className={styles.linkFicha}>Ver na minha conta</Link>}
+            {pendente && souPara ? (
+              <>
+                <Botao variante="texto" perigo disabled={ocupado} onClick={() => setDialogo("naoRecebi")}>Não recebi</Botao>
+                <Botao variante="primario" disabled={ocupado} onClick={() => setDialogo("confirmar")}>Confirmar</Botao>
+              </>
+            ) : (
+              <>
+                {(souDe || souPara) && <Botao variante="texto" perigo disabled={ocupado} onClick={() => setDialogo("desfazer")}>Desfazer</Botao>}
+                {possoLancar && <Botao disabled={ocupado} onClick={() => setDialogo("lancar")}>Lançar na minha conta</Botao>}
+              </>
+            )}
+          </AcoesFicha>
+        ) : <p className={styles.dica}>Registrado por quem lança.</p>}
       </ItemFicha>
-      <Confirmar aberto={confirmando} perigo ocupado={ocupado} titulo="Desfazer este registro?" texto="O valor volta a contar no equilíbrio do mês."
-        rotuloConfirmar="Desfazer" rotuloCancelar="Manter" onConfirmar={cancelar} onCancelar={() => setConfirmando(false)} />
+
+      <Confirmar aberto={dialogo === "desfazer"} perigo ocupado={ocupado} titulo="Desfazer este registro?"
+        texto={a.confirmadoEm ? "O valor volta a contar no equilíbrio do mês e os lançamentos dele nas contas saem." : "O registro sai, e a saída lançada na conta também."}
+        rotuloConfirmar="Desfazer" rotuloCancelar="Manter" onConfirmar={() => { void rodar(() => cancelarAcerto(familiaId, a.id)) }} onCancelar={() => setDialogo(null)} />
+      <Confirmar aberto={dialogo === "naoRecebi"} perigo ocupado={ocupado} titulo={`Não recebeu de ${de}?`}
+        texto={`O registro sai, e a saída lançada na conta de ${de} também.`}
+        rotuloConfirmar="Não recebi" rotuloCancelar="Voltar" onConfirmar={() => { void rodar(() => cancelarAcerto(familiaId, a.id)) }} onCancelar={() => setDialogo(null)} />
+      <Confirmar aberto={dialogo === "confirmar"} ocupado={ocupado} titulo={`${de} passou ${formatMoney(a.valor)} pra você`}
+        rotuloConfirmar="Confirmar" onConfirmar={() => { void rodar(() => confirmarAcerto(familiaId, a.id, contaId || null, a.data)) }} onCancelar={() => setDialogo(null)}>
+        {escolherConta("Em qual conta entrou", true)}
+      </Confirmar>
+      <Confirmar aberto={dialogo === "lancar"} ocupado={ocupado} titulo={souDe ? `De qual conta saíram os ${formatMoney(a.valor)}?` : `Em qual conta entraram os ${formatMoney(a.valor)}?`}
+        rotuloConfirmar="Lançar" onConfirmar={() => { if (contaId) void rodar(() => lancarAcerto(familiaId, a.id, contaId, a.data)) }} onCancelar={() => setDialogo(null)}>
+        {escolherConta("Conta", false)}
+      </Confirmar>
     </>
   )
 }

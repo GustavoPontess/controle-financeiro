@@ -29,6 +29,8 @@ export interface Transaction {
   ehTransferencia?: boolean
   // Dinheiro de empréstimo (emprestei, peguei, voltou, devolvi): mexe no saldo, fora do resultado do mês.
   ehEmprestimo?: boolean
+  // Dinheiro que passou entre membros da família (acerto): mexe no saldo, fora do resultado; desfaz em Entre vocês.
+  ehAcerto?: boolean
   // 0 = Previsao, 1 = Executado, 2 = Cancelado (resposta).
   statusTransacao?: number
   // Envio na criação: true = já recebido/pago (Executado); false = previsão.

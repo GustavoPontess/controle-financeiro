@@ -17,12 +17,13 @@ public class MigrationAddRateioCongeladoTests
         new(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql("Host=unused").Options);
 
     [Fact]
-    public void Migration_EstaRegistrada_EEhAMaisRecente()
+    public void Migration_EstaRegistrada_DepoisDoEmprestimoForaDoResultado()
     {
         using var ctx = ContextoNpgsqlSemBanco();
         var ids = ctx.Database.GetMigrations().ToList();
-        Assert.EndsWith("_AddRateioCongelado", ids[^1]); // nada gerado por cima sem querer
-        Assert.EndsWith("_AddTransacaoEhEmprestimo", ids[^2]);
+        var i = ids.FindIndex(id => id.EndsWith("_AddRateioCongelado"));
+        Assert.True(i > 0);
+        Assert.EndsWith("_AddTransacaoEhEmprestimo", ids[i - 1]);
     }
 
     [Fact]
