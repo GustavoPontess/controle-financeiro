@@ -90,10 +90,7 @@ public class FotoPerfilService
     {
         if (quemPede != donoId)
         {
-            var divideFamilia = await _context.MembrosFamilia.AnyAsync(m =>
-                m.UsuarioId == quemPede && m.Ativo && m.Familia!.Ativa &&
-                m.Familia.Membros.Any(o => o.UsuarioId == donoId && o.Ativo));
-            if (!divideFamilia)
+            if (!await FamiliaPermissoes.DividemFamiliaAsync(_context, quemPede, donoId))
                 return null;
         }
         return await _context.FotosPerfil.AsNoTracking()

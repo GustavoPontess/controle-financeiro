@@ -117,8 +117,8 @@ public class RendaService
         if (dto.Visibilidade == VisibilidadeRenda.ValorParaAlguns)
         {
             var pedidos = (dto.Para ?? new List<Guid>()).Where(id => id != usuarioId).Distinct().ToList();
-            var membrosDaFamilia = await _context.MembrosFamilia
-                .Where(m => m.FamiliaId == familiaId && m.Ativo && pedidos.Contains(m.UsuarioId))
+            var membrosDaFamilia = await FamiliaPermissoes.MembrosAtivos(_context, familiaId)
+                .Where(m => pedidos.Contains(m.UsuarioId))
                 .Select(m => m.UsuarioId)
                 .ToListAsync();
             if (membrosDaFamilia.Count != pedidos.Count)
@@ -146,7 +146,7 @@ public class RendaService
         var saida = new List<RendaMembroDto>();
         foreach (var m in membros)
         {
-            var mostrada = m.UsuarioId == usuarioId || (papel != PapelFamilia.Dependente && (
+            var mostrada = m.UsuarioId == usuarioId || (FamiliaPermissoes.VeRendaDosOutros(papel) && (
                 m.VisibilidadeRenda == VisibilidadeRenda.ValorParaTodos
                 || (m.VisibilidadeRenda == VisibilidadeRenda.ValorParaAlguns && m.RendaVisivelPara.Contains(usuarioId))));
             if (!mostrada)
@@ -169,8 +169,7 @@ public class RendaService
     /// Quem "só vê" (Dependente) não paga e nem entra.</summary>
     public async Task<Dictionary<Guid, decimal>> PesosAsync(Guid familiaId, int ano, int mes)
     {
-        var membros = await _context.MembrosFamilia
-            .Where(m => m.FamiliaId == familiaId && m.Ativo && m.PapelPermissao != PapelFamilia.Dependente)
+        var membros = await FamiliaPermissoes.QuemLanca(_context, familiaId)
             .Select(m => new { m.UsuarioId, m.VisibilidadeRenda })
             .ToListAsync();
         var pesos = new Dictionary<Guid, decimal>();

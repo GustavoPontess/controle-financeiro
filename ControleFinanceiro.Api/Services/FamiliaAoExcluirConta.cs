@@ -105,9 +105,8 @@ public static class FamiliaAoExcluirConta
         // Família que a pessoa criou passa pro membro mais antigo que lança (vira admin); sem ninguém, é dissolvida.
         foreach (var f in criadas)
         {
-            var herdeiro = await ctx.MembrosFamilia
-                .Where(m => m.FamiliaId == f.Id && m.Ativo && m.UsuarioId != usuarioId && m.UsuarioId != anonimo.Id
-                            && m.PapelPermissao != PapelFamilia.Dependente)
+            var herdeiro = await FamiliaPermissoes.QuemLanca(ctx, f.Id)
+                .Where(m => m.UsuarioId != usuarioId && m.UsuarioId != anonimo.Id)
                 .OrderBy(m => m.EntrouEm)
                 .FirstOrDefaultAsync();
             if (herdeiro is null)

@@ -170,9 +170,8 @@ public class RecorrenteService
         var familia = await _context.Familias.Where(f => f.Id == fid && f.Ativa)
             .Select(f => new { f.ModoRateioPadrao }).FirstOrDefaultAsync();
         if (familia is null) return null;
-        var lanca = await _context.MembrosFamilia.AnyAsync(m => m.FamiliaId == fid && m.UsuarioId == r.CriadoPor
-            && m.Ativo && m.PapelPermissao != PapelFamilia.Dependente);
-        return lanca ? (fid, RateioService.ModoAoDividir(familia.ModoRateioPadrao)) : null;
+        return await FamiliaPermissoes.LancaNaFamiliaAsync(_context, fid, r.CriadoPor)
+            ? (fid, RateioService.ModoAoDividir(familia.ModoRateioPadrao)) : null;
     }
 
     /// <summary>A família pedida no cadastro da conta fixa (conta da casa): só conta a pagar, de família ativa em que
@@ -182,7 +181,7 @@ public class RecorrenteService
         if (dto.FamiliaId is not { } fid) return null;
         if ((TipoTransacao)dto.Tipo != TipoTransacao.Despesa)
             throw new ArgumentException("Só conta a pagar se divide com a família.");
-        await FamiliaPermissoes.ExigirPapelAsync(_context, fid, usuarioId, PapelFamilia.Membro);
+        await FamiliaPermissoes.ExigirLancarAsync(_context, fid, usuarioId);
         if (!await _context.Familias.AnyAsync(f => f.Id == fid && f.Ativa))
             throw new KeyNotFoundException("Família não encontrada.");
         return fid;
