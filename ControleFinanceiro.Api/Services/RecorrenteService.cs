@@ -670,7 +670,9 @@ public class RecorrenteService
             // O que já venceu (início no passado) entra EFETIVADO, como o "lançar o que passou" da edição e o
             // GerarPendentesAsync; a de hoje fica prevista (o ExecutarRecorrentesJob efetiva). No cartão nasce
             // prevista e passa pela regra do limite. Antes tudo nascia previsto e o saldo ficava errado até o job
-            // rodar. Depois, 3 meses de previsões a contar do início (o ExpandirRecorrentesJob estende).
+            // rodar. Depois, as previsões até o horizonte da edição e do ExpandirRecorrentesJob (1º de janeiro do
+            // ano que vem), ou 3 meses a contar do início, se for mais longe (início no futuro). Só os 3 meses do
+            // início deixavam "Aluguel desde agosto" sem as cobranças de novembro em diante até o job da madrugada.
             var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
             await GerarOcorrenciasAsync(recorrente, hoje,
                 recorrente.CartaoCreditoId.HasValue ? StatusTransacao.Previsao : StatusTransacao.Executado);
@@ -681,7 +683,9 @@ public class RecorrenteService
                 .ToList();
             if (vencidasNoCartao.Count > 0)
                 await RegrasFinanceiras.CobrarOcorrenciasAsync(_context, vencidasNoCartao);
-            await GerarOcorrenciasAsync(recorrente, DateOnly.FromDateTime(dataInicio.AddMonths(3)), StatusTransacao.Previsao);
+            var tresMeses = DateOnly.FromDateTime(dataInicio.AddMonths(3));
+            var horizonte = AgendaRecorrente.HorizonteExpansao(hoje);
+            await GerarOcorrenciasAsync(recorrente, tresMeses > horizonte ? tresMeses : horizonte, StatusTransacao.Previsao);
 
             await _context.SaveChangesAsync();
 

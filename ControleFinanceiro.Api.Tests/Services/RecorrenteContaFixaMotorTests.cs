@@ -1481,8 +1481,9 @@ public class RecorrenteContaFixaMotorTests
         }, u);
 
         var vivas = await VivasAsync(ctx, dto.Id);
-        Assert.Equal(3, vivas.Count);
         Assert.All(vivas, t => Assert.Equal(t.Data < Hoje ? StatusTransacao.Executado : StatusTransacao.Previsao, t.StatusTransacao));
-        Assert.Contains(vivas, t => t.StatusTransacao == StatusTransacao.Executado);
+        Assert.True(vivas.Count(t => t.StatusTransacao == StatusTransacao.Executado) >= 2);
+        // E as próximas até o horizonte (1º de janeiro do ano que vem), não só 3 meses a contar do início.
+        Assert.Equal(DatasMensaisAteFimDoAno(Hoje, 1), vivas.Where(t => t.Data >= Hoje).Select(t => t.Data).OrderBy(d => d).ToList());
     }
 }

@@ -416,11 +416,13 @@ public class LimiteCartaoRegraUnicaTests
         var c = await SeedAsync(ctx);
         var hoje = DateTime.UtcNow.Date;
 
-        await CriarRecorrenteNoCartaoAsync(ctx, c, hoje.AddMonths(-6)); // previsões de -6 a -4 meses
+        await CriarRecorrenteNoCartaoAsync(ctx, c, hoje.AddMonths(-6)); // vencidas cobradas na criação; previsões até o horizonte
         await Recorrentes(ctx).GerarPendentesAsync(c.UsuarioId);       // efetivadas de -3 meses a hoje
         await new ExecutarRecorrentesJob(ctx, new NotificacaoService(ctx, NullLogger<NotificacaoService>.Instance)).ExecuteAsync();           // efetiva as previsões vencidas
 
-        var ocorrencias = await ctx.Transacoes.AsNoTracking().Where(t => t.Descricao == "Streaming").ToListAsync();
+        // As vencidas (de -6 meses a hoje); as previsões pra frente (até o horizonte) ficam de fora desta conta.
+        var hojeData = DateOnly.FromDateTime(hoje);
+        var ocorrencias = await ctx.Transacoes.AsNoTracking().Where(t => t.Descricao == "Streaming" && t.Data <= hojeData).ToListAsync();
         Assert.Equal(7, ocorrencias.Count);
         Assert.All(ocorrencias, t =>
         {
