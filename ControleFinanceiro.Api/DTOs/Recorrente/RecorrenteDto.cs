@@ -37,6 +37,9 @@ public class RecorrenteDto
     /// "cancelada" ou "encerrada". A tela só exibe — não recalcula a regra.
     /// </summary>
     public string Situacao { get; set; } = string.Empty;
+
+    /// <summary>Conta fixa da casa (dividida com essa família); null = só sua.</summary>
+    public Guid? FamiliaId { get; set; }
 }
 
 /// <summary>

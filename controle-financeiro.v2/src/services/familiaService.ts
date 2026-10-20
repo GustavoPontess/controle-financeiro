@@ -4,7 +4,7 @@ import type {
   DespesaCompartilhada, BalancoFamilia,
   Dependente, GastoDependente, TipoDependente,
   ModoRateio, RateioItem, RateioTransacao,
-  AcertoContas,
+  AcertoContas, ContaFixaDaCasa,
 } from "../types/Familia"
 
 export interface DependenteInput {
@@ -88,11 +88,13 @@ export const descompartilharTransacao = async (transacaoId: string): Promise<voi
   await api.delete(`/transacoes/${transacaoId}/compartilhamento`)
 }
 
+/** Despesas divididas do mês. Filtros no servidor: quem pagou, categoria, situação (esperando | dividida | recusada). */
 export const getDespesasFamilia = async (
-  familiaId: string, mes: number, ano: number, responsavelId?: string,
+  familiaId: string, mes: number, ano: number,
+  filtros: { responsavelId?: string; pagadorId?: string; categoriaId?: string; situacao?: "esperando" | "dividida" | "recusada" } = {},
 ): Promise<DespesaCompartilhada[]> => {
   const res = await api.get(`/familias/${familiaId}/despesas`, {
-    params: { mes, ano, responsavelId },
+    params: { mes, ano, ...filtros },
   })
   return res.data
 }
@@ -204,10 +206,11 @@ export const registrarAcerto = async (
   return res.data
 }
 
+/** `deUsuarioId`: o filtro "quem pagou" (no acerto, quem passou o dinheiro). */
 export const getAcertos = async (
-  familiaId: string, mes?: number, ano?: number,
+  familiaId: string, mes?: number, ano?: number, deUsuarioId?: string,
 ): Promise<AcertoContas[]> => {
-  const res = await api.get(`/familias/${familiaId}/acertos`, { params: { mes, ano } })
+  const res = await api.get(`/familias/${familiaId}/acertos`, { params: { mes, ano, deUsuarioId } })
   return res.data
 }
 
@@ -215,6 +218,12 @@ export const cancelarAcerto = async (
   familiaId: string, acertoId: string,
 ): Promise<void> => {
   await api.delete(`/familias/${familiaId}/acertos/${acertoId}`)
+}
+
+/** Contas fixas da casa no mês: quem paga, o dia, a cobrança do mês e a sua parte. */
+export const getContasFixasFamilia = async (familiaId: string, mes: number, ano: number): Promise<ContaFixaDaCasa[]> => {
+  const res = await api.get(`/familias/${familiaId}/contas-fixas`, { params: { mes, ano } })
+  return res.data
 }
 
 /** Quem recebeu confirma (só aí entra no equilíbrio); com conta, nasce a entrada. */

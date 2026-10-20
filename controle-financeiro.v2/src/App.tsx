@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom"
+import { Navigate, Route, Routes, useParams } from "react-router-dom"
 import Protegido from "./auth/Protegido"
 import V2Layout from "./layout/V2Layout"
 import Entrar from "./telas/Entrar"
@@ -32,10 +32,10 @@ import Renda from "./telas/Renda"
 import Familias from "./telas/Familias"
 import NovaFamilia from "./telas/NovaFamilia"
 import FamiliaVisaoGeral from "./telas/FamiliaVisaoGeral"
-import FamiliaDespesas from "./telas/FamiliaDespesas"
+import FamiliaTransacoes from "./telas/FamiliaTransacoes"
+import FamiliaContasFixas from "./telas/FamiliaContasFixas"
 import FamiliaEntreVoces from "./telas/FamiliaEntreVoces"
 import FamiliaMembros from "./telas/FamiliaMembros"
-import FamiliaDependentes from "./telas/FamiliaDependentes"
 import FamiliaRegras from "./telas/FamiliaRegras"
 import Metas from "./telas/Metas"
 import MetaFormulario from "./telas/MetaFormulario"
@@ -111,10 +111,13 @@ export default function App() {
         <Route path="/familias/nova" element={<NovaFamilia />} />
         {/* Espaço da família: cada item do menu é uma página (modelo Notion/Slack, 2026-10-18). */}
         <Route path="/familias/:id" element={<FamiliaVisaoGeral />} />
-        <Route path="/familias/:id/despesas" element={<FamiliaDespesas />} />
+        <Route path="/familias/:id/transacoes" element={<FamiliaTransacoes />} />
+        <Route path="/familias/:id/contas-fixas" element={<FamiliaContasFixas />} />
+        <Route path="/familias/:id/despesas" element={<ParaFamilia pagina="transacoes" />} />
         <Route path="/familias/:id/entre-voces" element={<FamiliaEntreVoces />} />
         <Route path="/familias/:id/membros" element={<FamiliaMembros />} />
-        <Route path="/familias/:id/dependentes" element={<FamiliaDependentes />} />
+        {/* Dependentes moram em Membros desde 2026-10-19: o endereço antigo leva pra lá. */}
+        <Route path="/familias/:id/dependentes" element={<ParaFamilia pagina="membros" />} />
         <Route path="/familias/:id/regras" element={<FamiliaRegras />} />
         <Route path="/familias/:id/convidar" element={<ConvidarMembro />} />
         <Route path="/familias/:id/dependentes/novo" element={<Dependente />} />
@@ -145,4 +148,10 @@ export default function App() {
       </Route>
     </Routes>
   )
+}
+
+/** Endereço antigo da família → a página de agora (despesas → Transações; dependentes → Membros). */
+function ParaFamilia({ pagina }: { pagina: string }) {
+  const { id = "" } = useParams<{ id: string }>()
+  return <Navigate to={`/familias/${id}/${pagina}`} replace />
 }

@@ -20,7 +20,24 @@ public record DespesaCompartilhadaDto(
     Guid? ResponsavelUsuarioId,
     string? ResponsavelNome,
     /// <summary>A parte gravada de quem pediu a lista (null quando não entra na divisão).</summary>
-    decimal? MinhaParte = null);
+    decimal? MinhaParte = null,
+    /// <summary>Pro filtro de categoria das Transações da família.</summary>
+    Guid? CategoriaId = null);
+
+/// <summary>Conta fixa da casa na aba Contas fixas da família: quem paga, o dia e a cobrança do mês (paga ou prevista)
+/// com a parte de quem olha. A conta de onde sai não aparece pros outros (é da pessoa).</summary>
+public record ContaFixaDaCasaDto(
+    Guid RecorrenteId,
+    string Descricao,
+    decimal Valor,
+    int Dia,
+    Guid PagadorUsuarioId,
+    string PagadorNome,
+    string? CategoriaNome,
+    bool EhMinha,
+    DateOnly? CobrancaData,
+    bool? CobrancaPaga,
+    decimal? MinhaParte);
 
 public record SaldoMembroDto(
     Guid UsuarioId,

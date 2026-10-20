@@ -96,6 +96,23 @@ export interface DespesaCompartilhada {
   responsavelNome: string | null
   /** A parte gravada de quem olha (null quando não entra na divisão). */
   minhaParte: number | null
+  categoriaId?: string | null
+}
+
+/** Conta fixa da casa (aba Contas fixas da família). A conta de onde sai não vem pros outros. */
+export interface ContaFixaDaCasa {
+  recorrenteId: string
+  descricao: string
+  valor: number
+  dia: number
+  pagadorUsuarioId: string
+  pagadorNome: string
+  categoriaNome: string | null
+  ehMinha: boolean
+  /** A cobrança do mês ("YYYY-MM-DD"); null = sem cobrança neste mês. */
+  cobrancaData: string | null
+  cobrancaPaga: boolean | null
+  minhaParte: number | null
 }
 
 export interface SaldoMembro {

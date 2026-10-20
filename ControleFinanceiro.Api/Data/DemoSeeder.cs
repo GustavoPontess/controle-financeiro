@@ -453,6 +453,23 @@ public static class DemoSeeder
             await sp.GetRequiredService<AcertoService>().RegistrarAsync(familia.Id, conjuge, new RegistrarAcertoDto(
                 conjuge, dev, 80m, hoje.Month, hoje.Year, "Pix da farmácia", Guid.NewGuid().ToString()));
         }
+        // Conta fixa da casa (aba Contas fixas da família): cada cobrança nasce dividida.
+        if (!await context.Recorrentes.AnyAsync(r => r.FamiliaId == familia.Id))
+        {
+            var conta = await context.Contas.Where(c => c.UsuarioIdProprietario == dev && c.EncerradaEm == null && c.Tipo == TipoConta.ContaCorrente)
+                .Select(c => (Guid?)c.Id).FirstOrDefaultAsync();
+            var moradia = await context.Categorias.Where(c => c.UsuarioId == null && c.Descricao == "Moradia").Select(c => (Guid?)c.Id).FirstOrDefaultAsync();
+            if (conta is { } contaId && moradia is { } catId)
+            {
+                var inicio = Utc(new DateTime(hoje.Year, hoje.Month, 1).AddMonths(hoje.Day >= 10 ? 1 : 0).AddDays(9));
+                await sp.GetRequiredService<RecorrenteService>().CriarAsync(new CriarRecorrenteDto
+                {
+                    Descricao = "Condomínio", Valor = 640m, Tipo = (int)TipoTransacao.Despesa, CategoriaId = catId, ContaId = contaId,
+                    MeioPagamento = (int)MeioPagamento.Boleto, Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = inicio.Day,
+                    DataInicio = inicio, FamiliaId = familia.Id,
+                }, dev, Guid.NewGuid().ToString());
+            }
+        }
         // Marina: benefício fixo + bico, e libera o valor só pro Gabriel (quem entrar depois não vê). É o que faz
         // a "Renda da casa" aparecer na aba Mês quando o Gabriel olha.
         var marina = await context.MembrosFamilia.FirstAsync(m => m.FamiliaId == familia.Id && m.UsuarioId != dev);

@@ -1596,6 +1596,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<DateTime?>("ExcluidoEm")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<Guid?>("FamiliaId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("Frequencia")
                         .HasColumnType("integer");
 
@@ -1631,6 +1634,8 @@ namespace ControleFinanceiro.Api.Migrations
                     b.HasIndex("CategoriaId");
 
                     b.HasIndex("ContaId");
+
+                    b.HasIndex("FamiliaId");
 
                     b.HasIndex("SubcategoriaId");
 
@@ -2718,6 +2723,11 @@ namespace ControleFinanceiro.Api.Migrations
                         .WithMany()
                         .HasForeignKey("ContaId");
 
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Familia", "Familia")
+                        .WithMany()
+                        .HasForeignKey("FamiliaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("ControleFinanceiro.Api.Domain.Entities.Subcategoria", "Subcategoria")
                         .WithMany()
                         .HasForeignKey("SubcategoriaId")
@@ -2728,6 +2738,8 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Navigation("Categoria");
 
                     b.Navigation("Conta");
+
+                    b.Navigation("Familia");
 
                     b.Navigation("Subcategoria");
                 });

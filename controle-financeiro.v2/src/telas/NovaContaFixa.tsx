@@ -16,7 +16,8 @@ import FormularioContaFixa from "./FormularioContaFixa"
 export default function NovaContaFixa() {
   const navigate = useNavigate()
   const location = useLocation()
-  const voltarPara = (location.state as { voltarPara?: string } | null)?.voltarPara ?? "/contas-fixas"
+  const estado = location.state as { voltarPara?: string; familiaId?: string } | null
+  const voltarPara = estado?.voltarPara ?? "/contas-fixas"
 
   const [contas, setContas] = useState<Conta[]>([])
   const [cartoes, setCartoes] = useState<CartaoCredito[]>([])
@@ -38,6 +39,7 @@ export default function NovaContaFixa() {
     <PaginaFormulario titulo="Nova conta fixa" carregando={carregando}
       erroCarga={erroCarga ? "Não foi possível carregar suas contas e categorias. Recarregue a página." : null}>
       <FormularioContaFixa contas={contas} cartoes={cartoes} categorias={categorias} subcategorias={subcategorias}
+        familiaInicial={estado?.familiaId}
         aoSair={() => navigate(voltarPara, { replace: true })} aoSalvo={() => navigate(voltarPara, { replace: true })} />
     </PaginaFormulario>
   )

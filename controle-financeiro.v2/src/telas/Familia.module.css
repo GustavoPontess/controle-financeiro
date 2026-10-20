@@ -77,3 +77,7 @@ dd > .linkFicha { margin-left: 8px; }
 
 /* Dinheiro entre vocês: "Esperando confirmar" ao lado do valor */
 .acertoDireita { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+
+/* Transações da família: o mês à esquerda e o Filtros na mesma linha. */
+.barraMes { display: flex; align-items: center; gap: 12px; }
+.barraMesNav { flex: 1 1 auto; min-width: 0; }

@@ -7,9 +7,8 @@
 // Sem período escolhido, a lista vai até HOJE, o mais recente em cima: as previsões das contas fixas
 // (geradas meses pra frente) empurravam o dia de hoje pro fim. Os previstos aparecem pelo filtro de status
 // (do mais perto pro mais longe) ou escolhendo as datas.
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useLocation } from "react-router-dom"
-import { SlidersHorizontal } from "lucide-react"
 import { listTransactionsPage, getTransactionStats } from "../services/transactionService"
 import { getContas } from "../services/contaService"
 import { getCategories } from "../services/categoryService"
@@ -21,7 +20,7 @@ import ListaPorDia from "../componentes/ListaPorDia"
 import Paginacao, { TAMANHOS } from "../componentes/Paginacao"
 import Selecao from "../componentes/Selecao"
 import Segmentos from "../componentes/Segmentos"
-import Botao from "../componentes/Botao"
+import PainelFiltros from "../componentes/PainelFiltros"
 import Busca from "../componentes/Busca"
 import Campo from "../componentes/Campo"
 import Entrada from "../componentes/Entrada"
@@ -84,7 +83,6 @@ export default function Transacoes() {
   const [filtros, setFiltros] = useState<Filtros>(() => ({ ...SEM_FILTRO, ...((state as { filtros?: Partial<Filtros> } | null)?.filtros ?? {}) }))
   const [rascunho, setRascunho] = useState<Filtros>(filtros)      // o que está no painel
   const [painel, setPainel] = useState(false)
-  const painelRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => { setPagina(1) }, [buscaAplicada, filtros, visao])
   // Gastos não tem "tipo de lançamento" (é tudo saída): o filtro sai junto pra não ficar valendo escondido.
@@ -96,14 +94,6 @@ export default function Transacoes() {
 
   // Painel: abre com o rascunho = o que está valendo; fecha com Esc ou clique fora (sem aplicar).
   const abrirPainel = () => { setRascunho(filtros); setPainel(true) }
-  useEffect(() => {
-    if (!painel) return
-    const fora = (e: MouseEvent) => { if (!painelRef.current?.contains(e.target as Node)) setPainel(false) }
-    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setPainel(false) }
-    document.addEventListener("mousedown", fora)
-    document.addEventListener("keydown", esc)
-    return () => { document.removeEventListener("mousedown", fora); document.removeEventListener("keydown", esc) }
-  }, [painel])
   const aplicar = () => { setFiltros(rascunho); setPainel(false) }
   const limparTudo = () => { setRascunho(SEM_FILTRO); setFiltros(SEM_FILTRO); setPainel(false) }
   const edita = <K extends keyof Filtros>(k: K) => (valor: string) => setRascunho((r) => ({ ...r, [k]: valor }))
@@ -175,53 +165,40 @@ export default function Transacoes() {
             <Busca valor={busca} onChange={setBusca} placeholder="Buscar lançamento" />
             <div className={styles.direita}>
               <Segmentos ariaLabel="Visão" valor={visao} onChange={mudarVisao} opcoes={VISOES} />
-              <div className={styles.filtrosWrap} ref={painelRef}>
-                <Botao ativo={painel || ativos > 0} aria-expanded={painel} aria-haspopup="dialog"
-                  onClick={() => (painel ? setPainel(false) : abrirPainel())}
-                  icone={<SlidersHorizontal size={15} strokeWidth={2.2} aria-hidden="true" />}>
-                  Filtros
-                  {ativos > 0 && <span className={styles.contador}>{ativos}</span>}
-                </Botao>
-                {painel && (
-                  <div className={styles.painel} role="dialog" aria-label="Filtros">
-                    {!gastos && (
-                      <Campo rotulo="Tipo de lançamento">
-                        <Selecao tamanho="sm" valor={rascunho.natureza}
-                          onChange={(v) => setRascunho((r) => ({ ...r, natureza: v as Natureza }))}
-                          opcoes={NATUREZAS.map((n) => ({ valor: n.valor, rotulo: n.rotulo }))} />
-                      </Campo>
-                    )}
-                    <Campo rotulo="Conta">
-                      <Selecao tamanho="sm" valor={rascunho.contaId}
-                        onChange={(v) => setRascunho((r) => ({ ...r, contaId: v }))}
-                        opcoes={[{ valor: "", rotulo: "Todas as contas" }, ...contas.map((c) => ({ valor: c.id, rotulo: c.nome }))]} />
-                    </Campo>
-                    <Campo rotulo="Status">
-                      <Selecao tamanho="sm" valor={rascunho.status}
-                        onChange={(v) => setRascunho((r) => ({ ...r, status: v }))}
-                        opcoes={[{ valor: "", rotulo: "Qualquer status" }, { valor: "1", rotulo: "Efetivado" }, { valor: "0", rotulo: "Previsto" }]} />
-                    </Campo>
-                    <Campo rotulo="Valor" grupo>
-                      <div className={styles.faixa}>
-                        <Entrada tamanho="sm" prefixo="R$" inputMode="numeric" autoComplete="off" placeholder="0,00" aria-label="Valor mínimo" value={rascunho.valorMin} onChange={editaValor("valorMin")} />
-                        <span className={styles.ate}>até</span>
-                        <Entrada tamanho="sm" prefixo="R$" inputMode="numeric" autoComplete="off" placeholder="0,00" aria-label="Valor máximo" value={rascunho.valorMax} onChange={editaValor("valorMax")} />
-                      </div>
-                    </Campo>
-                    <Campo rotulo="Período" grupo>
-                      <div className={styles.faixa}>
-                        <SeletorData tamanho="sm" limpavel placeholder="Início" ariaLabel="De" valor={rascunho.de} max={rascunho.ate || undefined} onChange={edita("de")} />
-                        <span className={styles.ate}>até</span>
-                        <SeletorData tamanho="sm" limpavel placeholder="Fim" ariaLabel="Até" valor={rascunho.ate} min={rascunho.de || undefined} onChange={edita("ate")} />
-                      </div>
-                    </Campo>
-                    <div className={styles.painelRodape}>
-                      <Botao variante="texto" className={styles.limparTudo} onClick={limparTudo}>Limpar tudo</Botao>
-                      <Botao variante="primario" onClick={aplicar}>Aplicar</Botao>
-                    </div>
-                  </div>
+              <PainelFiltros ativos={ativos} aberto={painel} aoAbrir={abrirPainel} aoFechar={() => setPainel(false)}
+                aoAplicar={aplicar} aoLimpar={limparTudo}>
+                {!gastos && (
+                  <Campo rotulo="Tipo de lançamento">
+                    <Selecao tamanho="sm" valor={rascunho.natureza}
+                      onChange={(v) => setRascunho((r) => ({ ...r, natureza: v as Natureza }))}
+                      opcoes={NATUREZAS.map((n) => ({ valor: n.valor, rotulo: n.rotulo }))} />
+                  </Campo>
                 )}
-              </div>
+                <Campo rotulo="Conta">
+                  <Selecao tamanho="sm" valor={rascunho.contaId}
+                    onChange={(v) => setRascunho((r) => ({ ...r, contaId: v }))}
+                    opcoes={[{ valor: "", rotulo: "Todas as contas" }, ...contas.map((c) => ({ valor: c.id, rotulo: c.nome }))]} />
+                </Campo>
+                <Campo rotulo="Status">
+                  <Selecao tamanho="sm" valor={rascunho.status}
+                    onChange={(v) => setRascunho((r) => ({ ...r, status: v }))}
+                    opcoes={[{ valor: "", rotulo: "Qualquer status" }, { valor: "1", rotulo: "Efetivado" }, { valor: "0", rotulo: "Previsto" }]} />
+                </Campo>
+                <Campo rotulo="Valor" grupo>
+                  <div className={styles.faixa}>
+                    <Entrada tamanho="sm" prefixo="R$" inputMode="numeric" autoComplete="off" placeholder="0,00" aria-label="Valor mínimo" value={rascunho.valorMin} onChange={editaValor("valorMin")} />
+                    <span className={styles.ate}>até</span>
+                    <Entrada tamanho="sm" prefixo="R$" inputMode="numeric" autoComplete="off" placeholder="0,00" aria-label="Valor máximo" value={rascunho.valorMax} onChange={editaValor("valorMax")} />
+                  </div>
+                </Campo>
+                <Campo rotulo="Período" grupo>
+                  <div className={styles.faixa}>
+                    <SeletorData tamanho="sm" limpavel placeholder="Início" ariaLabel="De" valor={rascunho.de} max={rascunho.ate || undefined} onChange={edita("de")} />
+                    <span className={styles.ate}>até</span>
+                    <SeletorData tamanho="sm" limpavel placeholder="Fim" ariaLabel="Até" valor={rascunho.ate} min={rascunho.de || undefined} onChange={edita("ate")} />
+                  </div>
+                </Campo>
+              </PainelFiltros>
             </div>
           </div>
         </div>

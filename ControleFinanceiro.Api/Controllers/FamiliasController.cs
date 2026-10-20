@@ -124,17 +124,28 @@ public class FamiliasController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>Feed de despesas compartilhadas da família no mês/ano.</summary>
+    /// <summary>Despesas divididas da família no mês/ano (Transações da família). Filtros: responsável, quem pagou,
+    /// categoria e situação (esperando | dividida | recusada).</summary>
     [HttpGet("{id:guid}/despesas")]
     [ProducesResponseType(typeof(List<DespesaCompartilhadaDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListarDespesas(
         Guid id, [FromQuery] int? mes = null, [FromQuery] int? ano = null,
-        [FromQuery] Guid? responsavelId = null)
+        [FromQuery] Guid? responsavelId = null, [FromQuery] Guid? pagadorId = null,
+        [FromQuery] Guid? categoriaId = null, [FromQuery] string? situacao = null)
     {
         var agora = DateTime.UtcNow;
         var result = await _despesaCompartilhada.ListarDespesasAsync(
-            id, GetUserId(), mes ?? agora.Month, ano ?? agora.Year, responsavelId);
+            id, GetUserId(), mes ?? agora.Month, ano ?? agora.Year, responsavelId, pagadorId, categoriaId, situacao);
         return Ok(result);
+    }
+
+    /// <summary>Contas fixas da casa no mês: quem paga, o dia, a cobrança do mês e a sua parte.</summary>
+    [HttpGet("{id:guid}/contas-fixas")]
+    [ProducesResponseType(typeof(List<ContaFixaDaCasaDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListarContasFixas(Guid id, [FromQuery] int? mes = null, [FromQuery] int? ano = null)
+    {
+        var agora = DateTime.UtcNow;
+        return Ok(await _despesaCompartilhada.ListarContasFixasAsync(id, GetUserId(), mes ?? agora.Month, ano ?? agora.Year));
     }
 
     /// <summary>Balanço mensal da família, respeitando o modo de rateio.</summary>
@@ -275,9 +286,9 @@ public class FamiliasController : ControllerBase
     [HttpGet("{id:guid}/acertos")]
     [ProducesResponseType(typeof(List<AcertoContasDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListarAcertos(
-        Guid id, [FromQuery] int? mes = null, [FromQuery] int? ano = null)
+        Guid id, [FromQuery] int? mes = null, [FromQuery] int? ano = null, [FromQuery] Guid? deUsuarioId = null)
     {
-        return Ok(await _acertoService.ListarAsync(id, GetUserId(), mes, ano));
+        return Ok(await _acertoService.ListarAsync(id, GetUserId(), mes, ano, deUsuarioId));
     }
 
     /// <summary>Cancela um acerto (soft delete — preserva o histórico).</summary>

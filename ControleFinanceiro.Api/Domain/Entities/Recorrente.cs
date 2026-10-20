@@ -75,6 +75,11 @@ public class Recorrente
     /// <summary>Timestamp de criação (auditoria).</summary>
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 
+    /// <summary>Conta fixa DA CASA (passo 4 do espaço da família, 2026-10-19): cada cobrança nasce dividida com essa
+    /// família, com a parte de cada um gravada pela regra da família naquele mês. Null = só da pessoa.</summary>
+    public Guid? FamiliaId { get; set; }
+    public Familia? Familia { get; set; }
+
     /// <summary>Token de concorrência otimista — coluna de sistema <c>xmin</c> do Postgres (igual à
     /// <c>Fatura.Versao</c>). Duas operações simultâneas na mesma conta fixa (duplo clique em Retomar/Salvar,
     /// job × requisição): a segunda afeta 0 linhas → 409, em vez de gerar as previsões 2×.</summary>

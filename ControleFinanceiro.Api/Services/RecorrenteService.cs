@@ -104,6 +104,9 @@ public class RecorrenteService
             .Select(t => t.Competencia ?? AgendaRecorrente.Competencia(t.Data, inicio, r.Frequencia))
             .ToHashSet();
 
+        // Conta fixa da casa: cada cobrança nasce dividida (parte gravada pela regra da família). Quem saiu da
+        // família (ou virou "só vê"), ou família dissolvida: a cobrança sai só da pessoa.
+        var casa = await FamiliaParaDividirAsync(r);
         var criadas = 0;
         var percorridas = 0;
         while (proxima < ateExclusivo && (fim == null || proxima <= fim)
@@ -116,7 +119,7 @@ public class RecorrenteService
                 if (r.CartaoCreditoId.HasValue)
                     faturaId = (await _faturaService.ObterOuCriarFaturaAsync(r.CartaoCreditoId.Value, proxima, r.CriadoPor)).Id;
 
-                _context.Transacoes.Add(new Transacao
+                var ocorrencia = new Transacao
                 {
                     Id = Guid.NewGuid(),
                     Descricao = r.Descricao,
@@ -137,7 +140,15 @@ public class RecorrenteService
                     RecorrenteOrigemId = r.Id,
                     Competencia = competencia,
                     CriadoEm = DateTime.UtcNow
-                });
+                };
+                _context.Transacoes.Add(ocorrencia);
+                if (casa is { } c)
+                {
+                    // Combinada uma vez ao marcar a conta fixa: a cobrança não passa de novo pela aprovação.
+                    ocorrencia.FamiliaId = c.FamiliaId;
+                    ocorrencia.StatusAprovacao = StatusAprovacaoDespesa.NaoRequerida;
+                    await new RateioService(_context).AplicarPartesAsync(ocorrencia, c.FamiliaId, c.Modo, null);
+                }
                 ocupadas.Add(competencia);
                 criadas++;
             }
@@ -146,6 +157,32 @@ public class RecorrenteService
 
         r.DataProximaGeracao = proxima.ToDateTime(TimeOnly.MinValue);
         return criadas;
+    }
+
+    /// <summary>A família com quem a cobrança nasce dividida, e o jeito (o padrão dela; "Do meu jeito" começa igual):
+    /// só se a conta fixa é da casa, é conta a pagar, a família está ativa e quem criou ainda lança nela.</summary>
+    private async Task<(Guid FamiliaId, ModoRateio Modo)?> FamiliaParaDividirAsync(Recorrente r)
+    {
+        if (r.FamiliaId is not { } fid || r.Tipo != TipoTransacao.Despesa) return null;
+        var familia = await _context.Familias.Where(f => f.Id == fid && f.Ativa)
+            .Select(f => new { f.ModoRateioPadrao }).FirstOrDefaultAsync();
+        if (familia is null) return null;
+        var lanca = await _context.MembrosFamilia.AnyAsync(m => m.FamiliaId == fid && m.UsuarioId == r.CriadoPor
+            && m.Ativo && m.PapelPermissao != PapelFamilia.Dependente);
+        return lanca ? (fid, RateioService.ModoAoDividir(familia.ModoRateioPadrao)) : null;
+    }
+
+    /// <summary>A família pedida no cadastro da conta fixa (conta da casa): só conta a pagar, de família ativa em que
+    /// a pessoa lança. Null = só dela.</summary>
+    private async Task<Guid?> FamiliaDoCadastroAsync(CriarRecorrenteDto dto, Guid usuarioId)
+    {
+        if (dto.FamiliaId is not { } fid) return null;
+        if ((TipoTransacao)dto.Tipo != TipoTransacao.Despesa)
+            throw new ArgumentException("Só conta a pagar se divide com a família.");
+        await FamiliaPermissoes.ExigirPapelAsync(_context, fid, usuarioId, PapelFamilia.Membro);
+        if (!await _context.Familias.AnyAsync(f => f.Id == fid && f.Ativa))
+            throw new KeyNotFoundException("Família não encontrada.");
+        return fid;
     }
 
     // Cancela (exclusão lógica) as previsões dessa conta fixa que ainda não viraram cobrança — todas, ou só as
@@ -534,7 +571,8 @@ public class RecorrenteService
         ProximaCobranca = r.Ativo && r.CanceladoEm == null && proximaPorId.TryGetValue(r.Id, out var pc) ? pc : null,
         CanceladoEm = r.CanceladoEm,
         MotivoCancelamento = r.MotivoCancelamento,
-        Situacao = CalcularSituacao(r, emVigor)
+        Situacao = CalcularSituacao(r, emVigor),
+        FamiliaId = r.FamiliaId,
     };
 
     /// <summary>Operação no <see cref="RegistroIdempotencia"/> (espaço de chaves da criação de conta fixa).</summary>
@@ -585,6 +623,7 @@ public class RecorrenteService
         {
             // Origem (conta/cartão) e categoria vêm do cliente — todas têm que ser do usuário.
             await ExigirReferenciasDoUsuarioAsync(dto.ContaId, dto.CartaoCreditoId, dto.CategoriaId, dto.SubcategoriaId, usuarioId);
+            var familiaId = await FamiliaDoCadastroAsync(dto, usuarioId);
 
             // Criar recorrente com janela de 3 meses
             var dataFimJanela = dataInicio.AddMonths(3);
@@ -607,7 +646,8 @@ public class RecorrenteService
                 CriadoPor = usuarioId,
                 DataProximaGeracao = null, // sem cursor: a geração abaixo começa do início, no Dia
                 RealinhadoEm = DateTime.UtcNow, // nasce no motor novo: não tem legado pra consertar
-                CriadoEm = DateTime.UtcNow
+                CriadoEm = DateTime.UtcNow,
+                FamiliaId = familiaId,
             };
 
             _context.Recorrentes.Add(recorrente);
@@ -750,6 +790,8 @@ public class RecorrenteService
             if (dto.Valor.Value <= 0)
                 throw new ArgumentException("Valor deve ser positivo.");
             proxima.Valor = dto.Valor.Value;
+            // Cobrança da casa: as partes acompanham o valor novo (mesmo % de cada um).
+            await new RateioService(_context).RegravarPeloValorAsync(proxima);
         }
         if (dto.Descricao != null)
             proxima.Descricao = dto.Descricao;
@@ -830,6 +872,8 @@ public class RecorrenteService
             (dto.ContaId != null && dto.CartaoCreditoId != null))
             throw new ArgumentException("Recorrente deve ter exatamente uma origem: ContaId OU CartaoCreditoId.");
         await ExigirReferenciasDoUsuarioAsync(dto.ContaId, dto.CartaoCreditoId, dto.CategoriaId, dto.SubcategoriaId, usuarioId);
+        // Marcar/desmarcar da casa vale pras PRÓXIMAS cobranças (as previsões são geradas de novo abaixo).
+        r.FamiliaId = await FamiliaDoCadastroAsync(dto, usuarioId);
         // O início não muda na edição (fica o do cadastro); só o fim é conferido contra ele.
         AgendaRecorrente.ValidarPeriodo(
             DateOnly.FromDateTime(r.DataInicio),
