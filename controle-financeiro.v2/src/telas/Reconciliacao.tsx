@@ -39,9 +39,13 @@ const diaDoMarco = (m: ReconciliacaoMarco) => m.dataHora.slice(0, 10)
 /** Hora do corte: hoje é agora; dia passado é o fim do dia. */
 const corteDoDia = (dia: string) => combinarDataHora(dia, dia === dataLocalISO() ? horaLocalHHMM() : "23:59")
 
+/** A diferença que vale é a de AGORA (o servidor recalcula na lista): um lançamento com data até o marco, criado,
+ *  editado ou excluído depois da conferência, faz o marco deixar de bater. Sem ela, a do dia da conferência. */
+const diferencaDe = (m: ReconciliacaoMarco) => m.diferencaAgora ?? (m.temAjuste ? 0 : m.diferenca)
+
 type Situacao = "inicial" | "bateu" | "ajustado" | "diferenca"
 const situacaoDoMarco = (m: ReconciliacaoMarco): Situacao =>
-  m.tipo === TIPO_MARCO.Baseline ? "inicial" : m.temAjuste ? "ajustado" : bate(m.diferenca) ? "bateu" : "diferenca"
+  m.tipo === TIPO_MARCO.Baseline ? "inicial" : !bate(diferencaDe(m)) ? "diferenca" : m.temAjuste ? "ajustado" : "bateu"
 
 export default function Reconciliacao() {
   const [contas, setContas] = useState<Conta[] | null>(null)
@@ -220,20 +224,13 @@ function Marco({ m, conta, anterior, aberto, aoAbrir, aoMudar }: {
   const [erro, setErro] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
   const [removendo, setRemovendo] = useState(false)
-  // Marco gravado com diferença: o app recalcula até a data dele ao abrir. A pessoa pode ter lançado o que
-  // faltava depois de salvar: então a diferença de agora é a que vale (e pode ter virado zero).
-  const [calcAgora, setCalcAgora] = useState<number | null>(null)
   const [chave] = useState(() => crypto.randomUUID())
-  useEffect(() => {
-    if (!aberto || !real || m.temAjuste) return
-    let vivo = true
-    getSaldoCalculado(conta.id, m.dataHora).then((v) => { if (vivo) setCalcAgora(v) }).catch(() => { /* fica a do marco */ })
-    return () => { vivo = false }
-  }, [aberto, real, m.temAjuste, m.dataHora, conta.id])
-
-  const calculado = m.temAjuste ? m.saldoCalculado : calcAgora ?? m.saldoCalculado
-  const diferenca = m.temAjuste ? 0 : m.saldoDeclarado - calculado
+  // O app até a data do marco, como está AGORA (lançar o que faltava faz bater; lançar algo antigo depois desfaz).
+  const calculado = m.saldoCalculadoAgora ?? m.saldoCalculado
+  const diferenca = diferencaDe(m)
   const pendente = real && !m.temAjuste && !bate(diferenca)
+  // Já tinha ajuste e mudou depois: um ajuste por marco; resolve lançando ou corrigindo o que mudou.
+  const mudouDepoisDoAjuste = real && m.temAjuste && !bate(diferenca)
   // Salvou com diferença, lançou o que faltava: agora bate; só confirmar (o marco atualiza).
   const passouABater = real && !m.temAjuste && bate(diferenca) && !bate(m.diferenca)
 
@@ -260,7 +257,7 @@ function Marco({ m, conta, anterior, aberto, aoAbrir, aoMudar }: {
           {situacao === "inicial" ? <Flag size={16} strokeWidth={2.25} /> : situacao === "diferenca" ? <TriangleAlert size={16} strokeWidth={2.25} /> : <Check size={16} strokeWidth={2.5} />}
         </span>}
         titulo={dataBR(diaDoMarco(m))}
-        detalhe={situacao === "inicial" ? "Saldo inicial da conta" : situacao === "diferenca" ? <>Banco <Dinheiro valor={m.saldoDeclarado} /> · app <Dinheiro valor={m.saldoCalculado} /></> : <>Banco <Dinheiro valor={m.saldoDeclarado} /></>}
+        detalhe={situacao === "inicial" ? "Saldo inicial da conta" : situacao === "diferenca" ? <>Banco <Dinheiro valor={m.saldoDeclarado} /> · app <Dinheiro valor={calculado} /></> : <>Banco <Dinheiro valor={m.saldoDeclarado} /></>}
         direita={etiqueta}>
         {erro && <p className={styles.alerta} role="alert">{erro}</p>}
         <DadosFicha>
@@ -275,7 +272,7 @@ function Marco({ m, conta, anterior, aberto, aoAbrir, aoMudar }: {
           {real && <Botao variante="texto" perigo disabled={ocupado} onClick={() => setRemovendo(true)} icone={<Trash2 size={15} strokeWidth={2.25} aria-hidden="true" />}>Remover</Botao>}
           {m.derivado && <Botao variante="texto" onClick={() => navigate(`/bancos/${conta.id}/editar`, { state: { voltarPara: "/reconciliacao" } })} icone={<Pencil size={15} strokeWidth={2.25} aria-hidden="true" />}>Editar saldo inicial</Botao>}
           {situacao !== "inicial" && <Botao onClick={verLancamentos} icone={<List size={15} strokeWidth={2.25} aria-hidden="true" />}>Ver lançamentos</Botao>}
-          {pendente && <Botao onClick={() => navigate("/transacoes/nova", { state: { voltarPara: "/reconciliacao" } })} icone={<Plus size={15} strokeWidth={2.5} aria-hidden="true" />}>Lançar o que falta</Botao>}
+          {(pendente || mudouDepoisDoAjuste) && <Botao onClick={() => navigate("/transacoes/nova", { state: { voltarPara: "/reconciliacao" } })} icone={<Plus size={15} strokeWidth={2.5} aria-hidden="true" />}>Lançar o que falta</Botao>}
           {pendente && <Botao variante="primario" disabled={ocupado} onClick={fechar} icone={<Scale size={15} strokeWidth={2.25} aria-hidden="true" />}>{ocupado ? "Ajustando…" : "Ajustar"}</Botao>}
           {passouABater && <Botao variante="primario" disabled={ocupado} onClick={fechar} icone={<Check size={15} strokeWidth={2.5} aria-hidden="true" />}>{ocupado ? "Confirmando…" : "Agora bate: confirmar"}</Botao>}
         </AcoesFicha>

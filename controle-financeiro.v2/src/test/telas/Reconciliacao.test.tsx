@@ -107,14 +107,24 @@ describe("Reconciliação", () => {
   })
 
   it("marco salvo com diferença que passou a bater (lançou o que faltava): só confirmar", async () => {
-    marcos = [marco("m1", "2026-10-10", { saldoDeclarado: 1080, saldoCalculado: 1200, diferenca: -120 })]
-    calculado = 1080
+    marcos = [marco("m1", "2026-10-10", { saldoDeclarado: 1080, saldoCalculado: 1200, diferenca: -120, saldoCalculadoAgora: 1080, diferencaAgora: 0 })]
     renderizar()
     await screen.findByRole("list", { name: "Conferências" })
     await userEvent.click(linha(/10\/10\/2026/))
     await userEvent.click(await screen.findByRole("button", { name: "Agora bate: confirmar" }))
     expect(fecharDiferenca).toHaveBeenCalledWith("m1", expect.any(String))
     expect(screen.queryByRole("button", { name: "Ajustar" })).not.toBeInTheDocument()
+  })
+
+  it("marco que bateu e deixou de bater (lançaram algo com data antes dele): a linha diz Diferença, não Bateu", async () => {
+    marcos = [marco("m1", "2026-10-08", { saldoDeclarado: 1139.96, saldoCalculado: 1139.96, diferenca: 0, saldoCalculadoAgora: 539.96, diferencaAgora: 600 })]
+    renderizar()
+    await screen.findByRole("list", { name: "Conferências" })
+    expect(linha(/08\/10\/2026/)).toHaveTextContent("Diferença")
+    expect(linha(/08\/10\/2026/)).not.toHaveTextContent("Bateu")
+    await userEvent.click(linha(/08\/10\/2026/))
+    expect(screen.getByText("No app").nextSibling).toHaveTextContent("539,96")
+    expect(await screen.findByRole("button", { name: "Ajustar" })).toBeInTheDocument()
   })
 
   it("ponto de partida (saldo inicial): sem Remover, com Editar saldo inicial", async () => {
