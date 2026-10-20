@@ -1,5 +1,6 @@
 .linha { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.texto { margin: 0; font-size: var(--v2-fs-sm); line-height: 1.55; color: var(--v2-texto-2); max-width: 520px; }
+/* O texto ocupa a largura da caixa; o botão fica na ponta direita (no celular, embaixo). */
+.texto { margin: 0; flex: 1 1 320px; min-width: 0; font-size: var(--v2-fs-sm); line-height: 1.55; color: var(--v2-texto-2); }
 .form { display: flex; flex-direction: column; gap: 14px; }
 /* Um campo por passo: o campo à esquerda (até 420px) e os botões na mesma linha, alinhados com a caixa de texto. */
 .formLinha { display: flex; align-items: flex-start; gap: 12px; }
