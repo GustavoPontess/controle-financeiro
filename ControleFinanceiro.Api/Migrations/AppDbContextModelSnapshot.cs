@@ -35,11 +35,17 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<bool>("Ativo")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime?>("ConfirmadoEm")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("timestamp without time zone");
 
                     b.Property<Guid>("CriadoPor")
                         .HasColumnType("uuid");
+
+                    b.Property<DateOnly?>("Data")
+                        .HasColumnType("date");
 
                     b.Property<Guid>("DeUsuarioId")
                         .HasColumnType("uuid");
@@ -57,14 +63,30 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<Guid>("ParaUsuarioId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("TransacaoEntradaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TransacaoSaidaId")
+                        .HasColumnType("uuid");
+
                     b.Property<decimal>("Valor")
                         .HasColumnType("numeric");
+
+                    b.Property<uint>("Versao")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
                     b.HasIndex("DeUsuarioId");
 
                     b.HasIndex("ParaUsuarioId");
+
+                    b.HasIndex("TransacaoEntradaId");
+
+                    b.HasIndex("TransacaoSaidaId");
 
                     b.HasIndex("FamiliaId", "Ano", "Mes");
 
@@ -1884,6 +1906,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<bool>("EditadaPeloUsuario")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("EhAcerto")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("EhAjusteReconciliacao")
                         .HasColumnType("boolean");
 
@@ -2191,11 +2216,25 @@ namespace ControleFinanceiro.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Transacao", "TransacaoEntrada")
+                        .WithMany()
+                        .HasForeignKey("TransacaoEntradaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Transacao", "TransacaoSaida")
+                        .WithMany()
+                        .HasForeignKey("TransacaoSaidaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("DeUsuario");
 
                     b.Navigation("Familia");
 
                     b.Navigation("ParaUsuario");
+
+                    b.Navigation("TransacaoEntrada");
+
+                    b.Navigation("TransacaoSaida");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.CartaoCredito", b =>

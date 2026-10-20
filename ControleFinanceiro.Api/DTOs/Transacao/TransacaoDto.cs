@@ -38,6 +38,8 @@ namespace ControleFinanceiro.Api.DTOs.Transacao
         public bool EhTransferencia { get; set; }
         // Dinheiro de empréstimo (emprestei, peguei, voltou, devolvi): mexe no saldo, fora do resultado.
         public bool EhEmprestimo { get; set; }
+        /// <summary>Dinheiro que passou entre membros da família (acerto): fora do resultado.</summary>
+        public bool EhAcerto { get; set; }
         // 0 = Previsao, 1 = Executado, 2 = Cancelado.
         public int StatusTransacao { get; set; }
         /// <summary>Dia do lançamento ("yyyy-MM-dd") — date puro, sem fuso.</summary>

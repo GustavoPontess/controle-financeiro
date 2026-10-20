@@ -43,7 +43,7 @@ public static class RegrasFinanceiras
     /// </summary>
     public static readonly Expression<Func<Transacao, bool>> EntraNoResultado =
         t => !t.EhTransferencia && !t.EhPagamentoFatura && !t.EhSaldoInicial
-             && !t.EhAjusteReconciliacao && !t.EhPixNoCredito && !t.EhEmprestimo;
+             && !t.EhAjusteReconciliacao && !t.EhPixNoCredito && !t.EhEmprestimo && !t.EhAcerto;
 
     /// <summary><see cref="EntraNoResultado"/> pra lista já carregada em memória.</summary>
     public static readonly Func<Transacao, bool> EntraNoResultadoEmMemoria = EntraNoResultado.Compile();

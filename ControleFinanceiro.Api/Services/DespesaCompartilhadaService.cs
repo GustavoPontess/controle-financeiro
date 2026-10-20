@@ -266,10 +266,10 @@ public class DespesaCompartilhadaService
         var total = despesas.Sum(d => d.Valor);
         var cotaIgualitaria = ativos.Count > 0 ? total / ativos.Count : 0m;
 
-        // Acertos ativos do mês (Issue #26): o acerto entra no saldo de quem passou (soma) e de quem
-        // recebeu (subtrai); as contas de cada um não mudam.
+        // Acertos do mês CONFIRMADOS por quem recebeu (passo 3): entram no saldo de quem passou (soma) e de quem
+        // recebeu (subtrai). O que ainda espera confirmar não mexe no equilíbrio.
         var acertos = await _context.AcertosContas
-            .Where(a => a.FamiliaId == familiaId && a.Ativo && a.Mes == mes && a.Ano == ano)
+            .Where(a => a.FamiliaId == familiaId && a.Ativo && a.ConfirmadoEm != null && a.Mes == mes && a.Ano == ano)
             .Select(a => new { a.DeUsuarioId, a.ParaUsuarioId, a.Valor })
             .ToListAsync();
 

@@ -42,6 +42,9 @@ namespace ControleFinanceiro.Api.Services
             if (transacao.EhTransferencia)
                 throw new InvalidOperationException(
                     "Transferência não se edita por aqui — exclua e lance de novo.");
+            if (transacao.EhAcerto)
+                throw new InvalidOperationException(
+                    "Esse lançamento é dinheiro que passou entre vocês na família. Pra desfazer, use Desfazer em Entre vocês.");
         }
 
         /// <summary>
@@ -635,7 +638,7 @@ namespace ControleFinanceiro.Api.Services
 
             if (transacao is null) return false;
 
-            if (transacao.EhPagamentoFatura)
+            if (transacao.EhPagamentoFatura || transacao.EhAcerto)
                 ExigirEditavel(transacao); // recusa (409) — ver ExigirEditavel
 
             // Perna de transferência: exclui a transferência inteira (as DUAS pernas), não só a clicada.

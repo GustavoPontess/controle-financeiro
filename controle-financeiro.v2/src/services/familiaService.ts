@@ -189,6 +189,10 @@ export interface RegistrarAcertoInput {
   // Idempotência: UUID estável por tentativa de quitação. Reusar no retry pra
   // não duplicar o acerto no servidor (o backend exige e deduplica por ele).
   idempotencyKey: string
+  /** De qual conta saiu (passei) ou em qual entrou (recebi); null = não lança em conta. */
+  contaId?: string | null
+  /** Dia em que o dinheiro passou ("YYYY-MM-DD"). */
+  data?: string | null
 }
 
 export const registrarAcerto = async (
@@ -211,6 +215,22 @@ export const cancelarAcerto = async (
   familiaId: string, acertoId: string,
 ): Promise<void> => {
   await api.delete(`/familias/${familiaId}/acertos/${acertoId}`)
+}
+
+/** Quem recebeu confirma (só aí entra no equilíbrio); com conta, nasce a entrada. */
+export const confirmarAcerto = async (
+  familiaId: string, acertoId: string, contaId: string | null, data?: string | null,
+): Promise<AcertoContas> => {
+  const res = await api.post(`/familias/${familiaId}/acertos/${acertoId}/confirmar`, { contaId, data: data ?? null })
+  return res.data
+}
+
+/** Lança o SEU lado depois (a saída de quem passou ou a entrada de quem recebeu). */
+export const lancarAcerto = async (
+  familiaId: string, acertoId: string, contaId: string, data?: string | null,
+): Promise<AcertoContas> => {
+  const res = await api.post(`/familias/${familiaId}/acertos/${acertoId}/lancar`, { contaId, data: data ?? null })
+  return res.data
 }
 
 // ── Aprovação de despesa (2.4) ──

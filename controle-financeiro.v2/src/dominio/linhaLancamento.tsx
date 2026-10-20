@@ -36,7 +36,7 @@ export function linhaDoLancamento(t: Transaction, categoria?: string, opcoes: { 
     nome: t.descricao,
     sub: [deOnde, categoria, comoPagou].filter(Boolean).join(" · ") || undefined,
     hora: t.hora ? t.hora.slice(0, 5) : null,
-    etiqueta: t.statusTransacao === 0 ? <Etiqueta tom="alerta">Previsto</Etiqueta> : t.ehEmprestimo ? <Etiqueta>Empréstimo</Etiqueta> : undefined,
+    etiqueta: t.statusTransacao === 0 ? <Etiqueta tom="alerta">Previsto</Etiqueta> : t.ehEmprestimo ? <Etiqueta>Empréstimo</Etiqueta> : t.ehAcerto ? <Etiqueta>Acerto</Etiqueta> : undefined,
     valor: t.valor,
     tom,
   }

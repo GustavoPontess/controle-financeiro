@@ -169,7 +169,14 @@ Na página da despesa, abaixo dos dados:
    Nova despesa: interruptor "Dividir com {família}" (`POST /transacoes` com `familiaId`, divide no mesmo pedido);
    parcelada ainda não divide (400). Família "Do meu jeito" dividindo sem partes começa igual
    (`RateioService.ModoAoDividir`).
-3. **Acerto vira lançamento** (passa / confirma), etiqueta no extrato, Entre vocês com os dois lados.
+3. ✅ **Acerto vira lançamento** (2026-10-19; decisão do Gustavo: espera quem recebeu confirmar, como o pagamento
+   de empréstimo). Só quem passou ou quem recebeu registra ("Eu passei" / "Eu recebi", o dia e a conta). Quem passou
+   registra → "Esperando {fulano} confirmar", fora do equilíbrio; quem recebeu confirma dizendo em qual conta entrou
+   (ou "Não recebi", que desfaz). Quem recebeu registra → já vale. Cada um lança o SEU lado ("Lançar na minha conta")
+   quando quiser; "Não registrar em conta" continua. Os lançamentos levam `Transacao.EhAcerto` (fora do resultado, não
+   se editam nem excluem por Transações; "Acerto com Gabriel · Casa Pontes", etiqueta "Acerto"); Desfazer cancela os
+   dois. `AcertoService` (idempotência nova `RegistroIdempotencia`, xmin no confirmar/lançar), migration
+   `AddAcertoLancamento` (os acertos de antes ficam confirmados).
 4. **Abas Transações e Contas fixas da família** + resposta na Visão geral + Membros com os dependentes dentro.
 5. **Gasto de cada um = sua parte** (se aprovado em 4.2): regra única do gasto + cartão da renda + limites.
 6. **Contas da casa** (4.5).

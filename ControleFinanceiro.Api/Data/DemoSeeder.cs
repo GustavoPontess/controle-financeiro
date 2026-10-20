@@ -449,6 +449,9 @@ public static class DemoSeeder
             var conjuge = await context.MembrosFamilia.Where(m => m.FamiliaId == familia.Id && m.UsuarioId != dev).Select(m => m.UsuarioId).FirstAsync();
             await sp.GetRequiredService<AcertoService>().RegistrarAsync(familia.Id, dev, new RegistrarAcertoDto(
                 conjuge, dev, 150m, hoje.Month, hoje.Year, "Pix do mercado", Guid.NewGuid().ToString()));
+            // Quem passou registra → fica "Esperando você confirmar" pro Gabriel (Confirmar / Não recebi).
+            await sp.GetRequiredService<AcertoService>().RegistrarAsync(familia.Id, conjuge, new RegistrarAcertoDto(
+                conjuge, dev, 80m, hoje.Month, hoje.Year, "Pix da farmácia", Guid.NewGuid().ToString()));
         }
         // Marina: benefício fixo + bico, e libera o valor só pro Gabriel (quem entrar depois não vê). É o que faz
         // a "Renda da casa" aparecer na aba Mês quando o Gabriel olha.

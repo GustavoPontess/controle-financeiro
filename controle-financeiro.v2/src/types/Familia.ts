@@ -152,4 +152,10 @@ export interface AcertoContas {
   ano: number
   observacao: string | null
   criadoEm: string
+  /** Dia em que o dinheiro passou ("YYYY-MM-DD"). */
+  data: string | null
+  /** Null = esperando quem recebeu confirmar (fora do equilíbrio). */
+  confirmadoEm: string | null
+  /** O SEU lançamento desse dinheiro (saída se passou, entrada se recebeu); null = não lançou em conta. */
+  minhaTransacaoId: string | null
 }
