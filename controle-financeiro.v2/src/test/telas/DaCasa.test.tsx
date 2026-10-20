@@ -18,8 +18,8 @@ beforeEach(() => { vi.clearAllMocks(); vi.mocked(getFamilias).mockResolvedValue(
 describe("Conta/cartão da casa", () => {
   it("ligar marca a família; desligar manda null", async () => {
     const aoMudar = vi.fn(async () => {})
-    render(<DaCasa familiaId={null} aoMudar={aoMudar} />)
-    const interruptor = await screen.findByRole("switch", { name: "Dividir com Casa Pontes" })
+    render(<DaCasa tipo="cartao" familiaId={null} aoMudar={aoMudar} />)
+    const interruptor = await screen.findByRole("switch", { name: "Cartão da casa: as compras já entram divididas com Casa Pontes" })
     await userEvent.click(interruptor)
     expect(aoMudar).toHaveBeenLastCalledWith("f1")
     await waitFor(() => expect(interruptor).toHaveAttribute("aria-checked", "true"))
@@ -29,7 +29,7 @@ describe("Conta/cartão da casa", () => {
 
   it("sem família não aparece (nem o bloco)", async () => {
     vi.mocked(getFamilias).mockResolvedValue([])
-    const { container } = render(<DaCasa emBloco familiaId={null} aoMudar={vi.fn()} />)
+    const { container } = render(<DaCasa tipo="conta" emBloco familiaId={null} aoMudar={vi.fn()} />)
     await waitFor(() => expect(getFamilias).toHaveBeenCalled())
     expect(container).toBeEmptyDOMElement()
   })

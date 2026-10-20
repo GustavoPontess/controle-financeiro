@@ -10,7 +10,9 @@ import Interruptor from "../componentes/Interruptor"
 import Selecao from "../componentes/Selecao"
 import styles from "./DaCasa.module.css"
 
-export default function DaCasa({ familiaId, aoMudar, emBloco, className }: {
+export default function DaCasa({ tipo, familiaId, aoMudar, emBloco, className }: {
+  /** O rótulo diz o que é: "Cartão da casa: as compras já entram divididas…" / "Conta da casa: as despesas…". */
+  tipo: "conta" | "cartao"
   familiaId: string | null | undefined
   /** Dentro de um Bloco "Família" (página do cartão); sem família, nem o Bloco aparece. */
   emBloco?: boolean
@@ -40,7 +42,8 @@ export default function DaCasa({ familiaId, aoMudar, emBloco, className }: {
   const conteudo = (
     <div className={className ? `${styles.daCasa} ${className}` : styles.daCasa}>
       <Interruptor ligado={!!atual} desabilitado={ocupado} onChange={(on) => { void gravar(on ? (atual ?? familias[0].id) : null) }}>
-        Dividir com {familias.length > 1 && !atual ? "a família" : nome}
+        {tipo === "cartao" ? "Cartão da casa: as compras já entram divididas" : "Conta da casa: as despesas já entram divididas"}
+        {familias.length > 1 && !atual ? "" : ` com ${nome}`}
       </Interruptor>
       {atual && familias.length > 1 && (
         <Selecao tamanho="sm" ariaLabel="Família" valor={atual} desabilitado={ocupado} onChange={(v) => { void gravar(v) }}

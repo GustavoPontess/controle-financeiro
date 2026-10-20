@@ -204,7 +204,7 @@ function Linha({ c, cartoes, aberta, aoAbrir, aoMudar }: {
           </DadosFicha>
           {/* Conta da casa: o que nasce nela daqui pra frente já nasce dividido. Caixinha e encerrada, não. */}
           {!encerrada && !ehCaixinha(c) && (
-            <DaCasa className={styles.daCasa} familiaId={c.familiaId} aoMudar={(fid) => marcarContaDaCasa(c.id, fid)} />
+            <DaCasa tipo="conta" className={styles.daCasa} familiaId={c.familiaId} aoMudar={(fid) => marcarContaDaCasa(c.id, fid)} />
           )}
           {cartoes.length > 0 && (
             <div className={styles.cartoes}>

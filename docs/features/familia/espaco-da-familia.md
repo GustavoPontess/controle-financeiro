@@ -143,6 +143,28 @@ do Honeydue por enquanto.
   financeiro nessas despesas; guardar só o mínimo (valor e data, sem identificar) atende a minimização. Confirmar
   em `docs/CONFORMIDADE_BR.md` antes de implementar (dado de terceiro em registro de outro titular).
 
+### 4.7 Cartão compartilhado (ideia do Gustavo, 2026-10-19; proposta, nada feito)
+
+> "Se eu compartilhar o cartão com a família as pessoas conseguem usar o cartão, ou eu compartilho com uma em
+> específico se quiser mais controle. Quando a pessoa fizer um lançamento, cai no meu cartão mostrando que foi gasto da
+> pessoa, e na família já separa o que a pessoa usou do cartão."
+
+É o **cartão adicional** da vida real (o banco dá um cartão pro cônjuge/filho na mesma fatura). Esboço:
+
+- O dono do cartão escolhe **com quem compartilha**: a família toda (quem lança) ou pessoas específicas. Quem "só vê"
+  nunca usa.
+- Quem recebeu vê o cartão no formulário da despesa dele ("Cartão do Gustavo") e lança a compra ali. A compra entra na
+  **fatura do dono** (limite e fatura são do dono) marcada **"Usado por Gabriel"**.
+- A compra é do Gabriel no gasto do mês dele (ele que gastou); o dono pagou a fatura → no equilíbrio da família o dono
+  "pagou" e o Gabriel "usou". Na família, uma seção mostra **o que cada um usou do cartão** no mês.
+- Controle: o dono pode tirar o acesso a qualquer hora (as compras ficam), e talvez um **limite por pessoa** no mês.
+- Segurança: hoje ninguém escreve em cartão de outro usuário (`DonoRecursos`). Isso abre uma escrita cruzada, então
+  precisa de permissão explícita por cartão e pessoa, trava de limite do dono, e o dono vê/edita tudo; quem usou só
+  edita/exclui o que ele mesmo lançou.
+
+Decisões em aberto (uma por vez, antes de desenhar a tela): quem usou "deve" ao dono ou entra no equilíbrio da casa;
+limite por pessoa; se a compra do adicional pode ser parcelada.
+
 ## 5. A tela da transação (bloco "Família")
 
 Na página da despesa, abaixo dos dados:
