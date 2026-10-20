@@ -137,6 +137,21 @@ reabrir essa pesquisa só se o item de roadmap "Conexão com Open Finance" sair 
   da conta); **sem User-Agent** (minimização, Art. 6º III). Reconfirmado na fonte primária em
   2026-09-12: Art. 5, VIII define o registro como "informações referentes à data e hora de uso de uma
   determinada aplicação de internet a partir de um determinado endereço IP".
+- **Exclusão de conta de quem é de uma família (pesquisado 2026-10-19, texto da LGPD na cópia oficial da Câmara;
+  o site do Planalto recusou conexão):** antes a purga era RECUSADA pra sempre se a pessoa tinha vínculo de família,
+  o que deixava o pedido de eliminação sem atender (Art. 18, VI; Art. 16 caput: eliminar após o término do
+  tratamento). **Decisão do Gustavo (2026-10-19): a família guarda só os números.** Na purga
+  (`FamiliaAoExcluirConta`), as despesas divididas que aconteceram ficam com valor, data, categoria padrão e a parte de
+  cada um, e o dinheiro entre eles fica com o valor, tudo em nome de um "Membro que saiu" (usuário `Removido`, sem
+  e-mail real nem senha, fora do admin); somem nome, e-mail, foto, descrição, conta, cartão, categoria própria, nota do
+  acerto e a regra de renda dela. **Não é dado anonimizado** (Art. 5º III/XI, Art. 12): quem conhece a pessoa sabe
+  quem era, então segue sendo dado pessoal mínimo. **Base:** interesse legítimo de TERCEIRO (Art. 7º, IX), os outros
+  membros, cujo histórico financeiro próprio (o que pagaram, a parte deles, o equilíbrio dos meses passados) depende
+  desses números; balanceamento (Art. 10): retenção mínima, sem identificação direta, só visível pra quem dividiu
+  junto; minimização (Art. 6º, III). A pessoa é avisada antes de excluir (tela "Excluir a conta": transparência,
+  Art. 6º VI e Art. 9º). Vínculos que AINDA travam a purga: relacionamento, empréstimo com contraparte, proposta de
+  consolidação e conta compartilhada (fora deste passo). **Risco residual:** zona cinzenta parecida com a do
+  empréstimo de terceiro; reavaliar com o público (RIPD se crescer).
 - **Zona cinzenta sem resposta fechada:** o que acontece se a pessoa citada num empréstimo (sem
   conta) pedir exclusão dos dados dela guardados por outro usuário — nenhuma fonte primária cobre
   esse caso específico. Cataloga como P2 pro público, não bloqueia o beta (poucos testadores

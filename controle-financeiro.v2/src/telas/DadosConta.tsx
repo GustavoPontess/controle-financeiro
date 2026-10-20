@@ -2,12 +2,13 @@
 // portabilidade) e excluir a conta em dois passos (senha atual + código por e-mail ou do autenticador; a API
 // faz o soft delete com carência de 30 dias e encerra a sessão). Depois de excluir, sai de todas as contas
 // deste navegador e volta pro login com o aviso de como reativar.
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Download } from "lucide-react"
 import { useAuth } from "../auth/useAuth"
 import { mensagemDeErro } from "../api/cliente"
 import contaService, { type MetodoExclusao } from "../services/minhaContaService"
+import { getFamilias } from "../services/familiaService"
 import Bloco from "../componentes/Bloco"
 import Botao from "../componentes/Botao"
 import Campo from "../componentes/Campo"
@@ -56,6 +57,13 @@ function BaixarDados() {
 function ExcluirConta() {
   const navigate = useNavigate()
   const { sair } = useAuth()
+  // Quem está numa família precisa saber o que fica lá (LGPD, transparência): só os números, como "Membro que saiu".
+  const [temFamilia, setTemFamilia] = useState(false)
+  useEffect(() => {
+    let vivo = true
+    getFamilias().then((f) => { if (vivo) setTemFamilia(f.length > 0) }).catch(() => { /* sem o aviso */ })
+    return () => { vivo = false }
+  }, [])
   const [fase, setFase] = useState<Fase>("inicio")
   const [senha, setSenha] = useState("")
   const [metodo, setMetodo] = useState<MetodoExclusao>("email")
@@ -89,7 +97,10 @@ function ExcluirConta() {
       {erro && <p className={styles.alerta} role="alert">{erro}</p>}
       {fase === "inicio" && (
         <div className={styles.linha}>
-          <p className={styles.texto}>A conta fica 30 dias esperando: nesse prazo, entrar de novo reativa. Depois disso, apaga de vez.</p>
+          <p className={styles.texto}>
+            A conta fica 30 dias esperando: nesse prazo, entrar de novo reativa. Depois disso, apaga de vez.
+            {temFamilia && " Na família, as despesas que você dividiu e o dinheiro que passou entre vocês ficam só com valor, data e categoria, como \"Membro que saiu\", pra conta dos outros não mudar."}
+          </p>
           <Botao perigo onClick={() => { setErro(null); setFase("senha") }}>Excluir minha conta</Botao>
         </div>
       )}

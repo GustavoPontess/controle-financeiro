@@ -201,16 +201,8 @@ public class AdminLgpdService
 
         if (await _context.Relacionamentos.AnyAsync(r => r.UsuarioId1 == usuarioId || r.UsuarioId2 == usuarioId))
             v.Add("relacionamento com outro usuário");
-        if (await _context.MembrosFamilia.AnyAsync(m => m.UsuarioId == usuarioId))
-            v.Add("membro de uma família");
-        if (await _context.Familias.AnyAsync(f => f.CriadoPorUsuarioId == usuarioId))
-            v.Add("criador de uma família");
-        if (await _context.ConvitesFamilia.AnyAsync(c => c.CriadoPorUsuarioId == usuarioId))
-            v.Add("autor de convite de família");
-        if (await _context.RateiosTransacao.AnyAsync(r => r.UsuarioId == usuarioId))
-            v.Add("participante de rateio de despesa");
-        if (await _context.AcertosContas.AnyAsync(a => a.DeUsuarioId == usuarioId || a.ParaUsuarioId == usuarioId))
-            v.Add("parte em acerto de contas");
+        // Família (membro, criador, convite, rateio, acerto) NÃO trava mais: a purga desvincula e a família fica só com
+        // os números, em nome de um "Membro que saiu" (FamiliaAoExcluirConta; passo 7, decisão do Gustavo 2026-10-19).
         if (await _context.Emprestimos.AnyAsync(e => e.ContraparteUsuarioId == usuarioId))
             v.Add("contraparte em empréstimo");
         if (await _context.EmprestimoConsolidacaoPropostas.AnyAsync(p => p.CredorUsuarioId == usuarioId || p.DevedorUsuarioId == usuarioId))
@@ -300,6 +292,11 @@ public class AdminLgpdService
         // com pessoa identificável (Guid do dono → vazio). Sem FK, não bloqueia; só deixaria órfão.
         var logs = await _context.FinancialEventLogs.Where(e => e.CriadoPor == id).ToListAsync();
         foreach (var l in logs) l.CriadoPor = Guid.Empty;
+        await _context.SaveChangesAsync();
+
+        // Família: só os números das despesas divididas e do dinheiro entre eles ficam, em nome de "Membro que saiu"
+        // (sai do CriadoPor da pessoa, então o passo 2 não apaga). O resto da pessoa vai embora abaixo.
+        await FamiliaAoExcluirConta.DesvincularAsync(_context, id);
         await _context.SaveChangesAsync();
 
         var contaIds = await _context.Contas.Where(c => c.UsuarioIdProprietario == id).Select(c => c.Id).ToListAsync();

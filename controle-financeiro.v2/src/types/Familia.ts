@@ -76,6 +76,8 @@ export interface FamiliaDetalhe {
   membros: MembroFamilia[]
   convitesPendentes: ConviteFamilia[]
   limiteAprovacao: number | null
+  /** Quem já esteve e saiu (ou excluiu a conta: "Membro que saiu"), com a data. Continua no histórico. */
+  quemSaiu?: { usuarioId: string; nome: string; saiuEm: string | null }[]
 }
 
 // ── Aprovação de despesa (2.4) ──

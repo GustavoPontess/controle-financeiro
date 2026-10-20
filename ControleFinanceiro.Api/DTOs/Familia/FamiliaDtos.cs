@@ -59,4 +59,8 @@ public record FamiliaDetalheDto(
     ModoRateio ModoRateioPadrao,
     List<MembroFamiliaDto> Membros,
     List<ConviteFamiliaDto> ConvitesPendentes,
-    decimal? LimiteAprovacao);
+    decimal? LimiteAprovacao,
+    /// <summary>Quem já esteve e saiu (ou excluiu a conta: "Membro que saiu"), com a data. Continua no histórico.</summary>
+    List<ExMembroDto>? QuemSaiu = null);
+
+public record ExMembroDto(Guid UsuarioId, string Nome, DateTime? SaiuEm);

@@ -212,6 +212,18 @@ describe("Espaço da família (páginas)", () => {
     expect(screen.getByRole("button", { name: /Adicionar/ })).toBeInTheDocument()
   })
 
+  it("Membros: quem saiu (ou excluiu a conta) continua em Saíram, com a data", async () => {
+    familia = detalhe({ quemSaiu: [
+      { usuarioId: "u9", nome: "Membro que saiu", saiuEm: "2026-10-15T10:00:00" },
+      { usuarioId: "u8", nome: "Ana Antiga", saiuEm: "2026-09-02T10:00:00" },
+    ] })
+    renderizar("/familias/f1/membros")
+    const saiu = await screen.findByRole("list", { name: "Saíram" })
+    expect(saiu).toHaveTextContent("Membro que saiu")
+    expect(saiu).toHaveTextContent("saiu em out/2026")
+    expect(saiu).toHaveTextContent("Ana Antiga")
+  })
+
   it("quem só vê não tem ações em página nenhuma; quem não criou vê Sair em vez de Dissolver", async () => {
     familia = detalhe({ ehAdmin: false, criadoPorUsuarioId: "u2", membros: detalhe().membros.map((m) => (m.usuarioId === "u1" ? { ...m, papelPermissao: 3 } : { ...m, papelPermissao: 1 })) })
     renderizar()

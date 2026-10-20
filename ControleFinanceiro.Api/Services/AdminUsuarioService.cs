@@ -88,6 +88,7 @@ public class AdminUsuarioService
 
         // Uma passada agregando por status — evita N queries de Count separadas.
         var porStatus = await _context.Usuarios
+            .Where(u => u.Status != StatusUsuario.Removido)
             .GroupBy(u => u.Status)
             .Select(g => new { Status = g.Key, Qtd = g.Count() })
             .ToDictionaryAsync(x => x.Status, x => x.Qtd);
@@ -102,7 +103,7 @@ public class AdminUsuarioService
             Recusados = Contar(StatusUsuario.Recusado),
             Bloqueados = Contar(StatusUsuario.Bloqueado),
             MarcadosParaExclusao = Contar(StatusUsuario.MarcadoParaExclusao),
-            CadastrosUltimos7Dias = await _context.Usuarios.CountAsync(u => u.CriadoEm >= seteDiasAtras),
+            CadastrosUltimos7Dias = await _context.Usuarios.CountAsync(u => u.CriadoEm >= seteDiasAtras && u.Status != StatusUsuario.Removido),
             AtivosUltimos7Dias = await _context.Usuarios.CountAsync(
                 u => u.Status == StatusUsuario.Ativo && u.UltimoAcessoEm != null && u.UltimoAcessoEm >= seteDiasAtras),
         };
@@ -119,7 +120,8 @@ public class AdminUsuarioService
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);
 
-        var q = _context.Usuarios.AsQueryable();
+        // "Membro que saiu" (conta excluída que ficou só no histórico da família) não é usuário de verdade.
+        var q = _context.Usuarios.Where(u => u.Status != StatusUsuario.Removido);
 
         if (!string.IsNullOrWhiteSpace(busca))
         {

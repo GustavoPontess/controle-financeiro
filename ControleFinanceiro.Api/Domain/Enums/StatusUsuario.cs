@@ -28,4 +28,9 @@ public enum StatusUsuario
 
     /// <summary>Marcada para exclusão (LGPD) — em carência antes do hard delete. NÃO loga. Módulo C.</summary>
     MarcadoParaExclusao = 4,
+
+    /// <summary>"Membro que saiu": quem ficou no lugar de uma conta EXCLUÍDA no histórico da família (só os números
+    /// das despesas divididas e do dinheiro entre eles; ver <c>FamiliaAoExcluirConta</c>). Sem e-mail real, sem senha.
+    /// NUNCA loga e não aparece no admin.</summary>
+    Removido = 5,
 }

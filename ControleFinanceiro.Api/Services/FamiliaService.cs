@@ -78,7 +78,8 @@ public class FamiliaService
         if (familia == null || !familia.Membros.Any(m => m.UsuarioId == usuarioId && m.Ativo))
             throw new KeyNotFoundException("Família não encontrada.");
 
-        var membros = familia.Membros
+        // Where de novo: membro já rastreado no contexto entra na navegação mesmo fora do Include filtrado.
+        var membros = familia.Membros.Where(m => m.Ativo)
             .Select(m => ParaDto(m, usuarioId))
             .ToList();
 
@@ -92,9 +93,21 @@ public class FamiliaService
         var ehAdmin = familia.Membros
             .First(m => m.UsuarioId == usuarioId && m.Ativo).PapelPermissao == PapelFamilia.Admin;
 
+        // Quem saiu continua no histórico (passo 7): aparece em Membros com a data. Quem voltou não conta.
+        var ativosIds = familia.Membros.Where(m => m.Ativo).Select(m => m.UsuarioId).ToList();
+        var quemSaiu = (await _context.MembrosFamilia
+                .Where(m => m.FamiliaId == familiaId && !m.Ativo && !ativosIds.Contains(m.UsuarioId))
+                .Select(m => new { m.UsuarioId, m.Usuario!.Nome, m.SaiuEm })
+                .ToListAsync())
+            .GroupBy(m => m.UsuarioId)
+            .Select(g => g.OrderByDescending(m => m.SaiuEm).First())
+            .OrderByDescending(m => m.SaiuEm)
+            .Select(m => new ExMembroDto(m.UsuarioId, m.Nome, m.SaiuEm))
+            .ToList();
+
         return new FamiliaDetalheDto(familia.Id, familia.Nome, familia.CriadoPorUsuarioId,
             familia.CriadoEm, ehAdmin,
-            familia.ModoRateioPadrao, membros, convites, familia.LimiteAprovacao);
+            familia.ModoRateioPadrao, membros, convites, familia.LimiteAprovacao, quemSaiu);
     }
 
     /// <summary>Feature 2.4 — define/limpa o limite de aprovação (só admin). Valor negativo é inválido.</summary>
