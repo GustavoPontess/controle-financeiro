@@ -139,7 +139,7 @@ public class DependenteService
         => FamiliaPermissoes.ExigirMembroAsync(_context, familiaId, usuarioId);
 
     private Task ExigirEscritaAsync(Guid familiaId, Guid usuarioId)
-        => FamiliaPermissoes.ExigirPapelAsync(_context, familiaId, usuarioId, PapelFamilia.Membro);
+        => FamiliaPermissoes.ExigirLancarAsync(_context, familiaId, usuarioId);
 
     private static DependenteDto MapToDto(Dependente d) =>
         new(d.Id, d.FamiliaId, d.Nome, d.Apelido, d.DataNascimento, d.Tipo, d.Ativo);

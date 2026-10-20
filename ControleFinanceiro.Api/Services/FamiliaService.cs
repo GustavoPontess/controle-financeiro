@@ -117,7 +117,7 @@ public class FamiliaService
             throw new ArgumentException("O limite de aprovação não pode ser negativo.");
 
         var familia = await BuscarFamiliaAsync(familiaId);
-        await FamiliaPermissoes.ExigirPapelAsync(_context, familiaId, usuarioId, PapelFamilia.Admin);
+        await FamiliaPermissoes.ExigirAdminAsync(_context, familiaId, usuarioId);
 
         familia.LimiteAprovacao = limite;
         await _context.SaveChangesAsync();
@@ -126,7 +126,7 @@ public class FamiliaService
     public async Task DissolverAsync(Guid familiaId, Guid usuarioId)
     {
         var familia = await BuscarFamiliaAsync(familiaId);
-        ExigirCriador(familia, usuarioId); // só o dono dissolve
+        FamiliaPermissoes.ExigirCriador(familia, usuarioId); // só o dono dissolve
 
         familia.Ativa = false;
         await _context.SaveChangesAsync();
@@ -170,7 +170,7 @@ public class FamiliaService
             throw new ForbiddenAccessException("Você só pode remover a si mesmo.");
 
         // O criador não sai sem dissolver — caso contrário a família ficaria sem dono.
-        if (membro.UsuarioId == familia.CriadoPorUsuarioId)
+        if (FamiliaPermissoes.EhCriador(familia, membro.UsuarioId))
             throw new InvalidOperationException(
                 "O dono não pode sair da família. Dissolva a família.");
 
@@ -186,14 +186,14 @@ public class FamiliaService
         Guid familiaId, Guid membroId, EditarPermissaoDto dto, Guid usuarioId)
     {
         var familia = await BuscarFamiliaAsync(familiaId);
-        await FamiliaPermissoes.ExigirPapelAsync(_context, familiaId, usuarioId, PapelFamilia.Admin);
+        await FamiliaPermissoes.ExigirAdminAsync(_context, familiaId, usuarioId);
 
         var membro = await _context.MembrosFamilia
             .Include(m => m.Usuario)
             .FirstOrDefaultAsync(m => m.Id == membroId && m.FamiliaId == familiaId && m.Ativo)
             ?? throw new KeyNotFoundException("Membro não encontrado.");
 
-        if (membro.UsuarioId == familia.CriadoPorUsuarioId)
+        if (FamiliaPermissoes.EhCriador(familia, membro.UsuarioId))
             throw new InvalidOperationException("O dono da família é sempre Admin e não pode ser alterado.");
 
         membro.PapelPermissao = dto.PapelPermissao;
@@ -217,9 +217,4 @@ public class FamiliaService
             ?? throw new KeyNotFoundException("Família não encontrada.");
     }
 
-    private static void ExigirCriador(Familia familia, Guid usuarioId)
-    {
-        if (familia.CriadoPorUsuarioId != usuarioId)
-            throw new ForbiddenAccessException("Apenas o dono da família pode executar esta ação.");
-    }
 }

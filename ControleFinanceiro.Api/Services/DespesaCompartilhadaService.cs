@@ -201,9 +201,7 @@ public class DespesaCompartilhadaService
     public async Task<List<ContaFixaDaCasaDto>> ListarContasFixasAsync(Guid familiaId, Guid usuarioId, int mes, int ano)
     {
         await ExigirMembroAsync(familiaId, usuarioId);
-        var quemLanca = _context.MembrosFamilia
-            .Where(m => m.FamiliaId == familiaId && m.Ativo && m.PapelPermissao != PapelFamilia.Dependente)
-            .Select(m => m.UsuarioId);
+        var quemLanca = FamiliaPermissoes.QuemLanca(_context, familiaId).Select(m => m.UsuarioId);
         var contas = await _context.Recorrentes
             .Where(r => r.FamiliaId == familiaId && r.Ativo && r.CanceladoEm == null && r.ExcluidoEm == null
                         && quemLanca.Contains(r.CriadoPor))
@@ -290,9 +288,7 @@ public class DespesaCompartilhadaService
 
         if (responsavelUsuarioId is { } rid)
         {
-            var ehMembro = await _context.MembrosFamilia
-                .AnyAsync(m => m.FamiliaId == familiaId && m.UsuarioId == rid && m.Ativo);
-            if (!ehMembro)
+            if (!await FamiliaPermissoes.EhMembroAsync(_context, familiaId, rid))
                 throw new ArgumentException("O responsável deve ser um membro ativo da família.");
         }
 
@@ -317,7 +313,7 @@ public class DespesaCompartilhadaService
             .Where(m => m.FamiliaId == familiaId)
             .Select(m => new { m.UsuarioId, m.Usuario!.Nome, m.Ativo, m.SaiuEm, m.PapelPermissao })
             .ToListAsync();
-        var ativos = membrosFamilia.Where(m => m.Ativo && m.PapelPermissao != PapelFamilia.Dependente).ToList();
+        var ativos = membrosFamilia.Where(m => FamiliaPermissoes.Lanca(m.Ativo, m.PapelPermissao)).ToList();
 
         // Feature 2.4 — só despesas contabilizáveis entram no rateio (Pendente/Rejeitada fora).
         var despesas = await QueryDespesasDoMes(familiaId, mes, ano)
@@ -408,5 +404,5 @@ public class DespesaCompartilhadaService
         => FamiliaPermissoes.ExigirMembroAsync(_context, familiaId, usuarioId);
 
     private Task ExigirEscritaAsync(Guid familiaId, Guid usuarioId)
-        => FamiliaPermissoes.ExigirPapelAsync(_context, familiaId, usuarioId, PapelFamilia.Membro);
+        => FamiliaPermissoes.ExigirLancarAsync(_context, familiaId, usuarioId);
 }

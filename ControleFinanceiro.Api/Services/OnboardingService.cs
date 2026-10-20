@@ -32,8 +32,7 @@ public class OnboardingService
                 ((t.ContaId != null && t.Conta!.UsuarioIdProprietario == usuarioId)
                 || (t.CartaoCreditoId != null && t.CartaoCredito!.CriadoPor == usuarioId)));
 
-        var temFamilia = await _context.MembrosFamilia
-            .AnyAsync(m => m.UsuarioId == usuarioId && m.Ativo);
+        var temFamilia = await FamiliaPermissoes.EstaEmAlgumaFamiliaAsync(_context, usuarioId);
 
         return new OnboardingStatusDto(
             usuario.OnboardingConcluido, temConta, temCartao, temTransacao, temFamilia);

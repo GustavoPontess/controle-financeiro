@@ -365,14 +365,13 @@ public class AcertoService
         => FamiliaPermissoes.ExigirMembroAsync(_context, familiaId, usuarioId);
 
     private Task ExigirEscritaAsync(Guid familiaId, Guid usuarioId)
-        => FamiliaPermissoes.ExigirPapelAsync(_context, familiaId, usuarioId, PapelFamilia.Membro);
+        => FamiliaPermissoes.ExigirLancarAsync(_context, familiaId, usuarioId);
 
-    /// <summary>Valida que o pagador/recebedor é membro ativo (erro de input, não 404).</summary>
+    /// <summary>Quem passa e quem recebe têm que lançar na família (quem "só vê" não entra na divisão, então não
+    /// passa nem recebe dinheiro pra equilibrar). Erro de input, não 404.</summary>
     private async Task ExigirParticipanteMembroAsync(Guid familiaId, Guid usuarioId)
     {
-        var ehMembro = await _context.MembrosFamilia
-            .AnyAsync(m => m.FamiliaId == familiaId && m.UsuarioId == usuarioId && m.Ativo);
-        if (!ehMembro)
-            throw new ArgumentException("Pagador e recebedor devem ser membros ativos da família.");
+        if (!await FamiliaPermissoes.LancaNaFamiliaAsync(_context, familiaId, usuarioId))
+            throw new ArgumentException("Pagador e recebedor devem ser membros ativos da família que dividem as despesas.");
     }
 }

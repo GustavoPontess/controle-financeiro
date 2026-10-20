@@ -415,15 +415,14 @@ public class MetaService
             ?? throw new KeyNotFoundException("Meta não encontrada.");
         if (meta.UsuarioId == usuarioId)
             return meta;
-        if (meta.FamiliaId.HasValue && await _context.MembrosFamilia
-                .AnyAsync(m => m.FamiliaId == meta.FamiliaId && m.UsuarioId == usuarioId && m.Ativo))
+        if (meta.FamiliaId is { } fid && await FamiliaPermissoes.EhMembroAsync(_context, fid, usuarioId))
             return meta;
         throw new KeyNotFoundException("Meta não encontrada.");
     }
 
     private async Task ExigirMembroAsync(Guid familiaId, Guid usuarioId)
     {
-        if (!await _context.MembrosFamilia.AnyAsync(m => m.FamiliaId == familiaId && m.UsuarioId == usuarioId && m.Ativo))
+        if (!await FamiliaPermissoes.EhMembroAsync(_context, familiaId, usuarioId))
             throw new KeyNotFoundException("Família não encontrada ou sem permissão.");
     }
 }

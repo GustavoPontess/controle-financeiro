@@ -39,6 +39,7 @@ Arquivos que ficam na raiz porque são acessados a cada sessão:
 | [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) | Paleta, tipografia, biblioteca Pontes |
 | [GIT_WORKFLOW.md](./GIT_WORKFLOW.md) | Padrão de branches, commits, PR, squash merge |
 | [RELEASING.md](./RELEASING.md) | Como cortar uma versão (SemVer 0.x, CHANGELOG, tag, release) |
+| [PERMISSOES.md](./PERMISSOES.md) | 🔐 Quem pode o quê (família e recursos da pessoa); regra só em `FamiliaPermissoes` + `DonoRecursos` |
 | [CONFORMIDADE_BR.md](./CONFORMIDADE_BR.md) | ⚖️ Índice das fontes autoritativas (OWASP/NIST + LGPD/ANPD/BACEN) — consultar sempre |
 | [SEGURANCA_BEST_PRACTICES.md](./SEGURANCA_BEST_PRACTICES.md) | Spec técnico de segurança (OWASP/NIST, verificado) + plano de hardening |
 | [AUDITORIA_CODIGO_HERDADO.md](./AUDITORIA_CODIGO_HERDADO.md) | Auditoria do código herdado (3 🔴 + altos) |

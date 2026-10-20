@@ -33,7 +33,7 @@ public class ConviteService
         var familia = await _context.Familias.FirstOrDefaultAsync(f => f.Id == familiaId && f.Ativa)
             ?? throw new KeyNotFoundException("Família não encontrada.");
 
-        await FamiliaPermissoes.ExigirPapelAsync(_context, familiaId, usuarioId, PapelFamilia.Admin);
+        await FamiliaPermissoes.ExigirAdminAsync(_context, familiaId, usuarioId);
 
         // 2.3 — convida-se como Membro (default) ou Dependente; nunca direto como Admin.
         var papelConvite = dto.PapelPermissao == 0 ? PapelFamilia.Membro : dto.PapelPermissao;
@@ -41,8 +41,8 @@ public class ConviteService
             throw new ArgumentException("Convidado deve ser Membro ou Dependente (Admin se promove depois).");
 
         // E-mail já é membro ativo?
-        var jaMembro = await _context.MembrosFamilia
-            .AnyAsync(m => m.FamiliaId == familiaId && m.Ativo && m.Usuario!.Email.ToLower() == email);
+        var jaMembro = await FamiliaPermissoes.MembrosAtivos(_context, familiaId)
+            .AnyAsync(m => m.Usuario!.Email.ToLower() == email);
         if (jaMembro)
             throw new InvalidOperationException("Esta pessoa já é membro da família.");
 
@@ -98,7 +98,7 @@ public class ConviteService
         _ = await _context.Familias.FirstOrDefaultAsync(f => f.Id == familiaId && f.Ativa)
             ?? throw new KeyNotFoundException("Família não encontrada.");
 
-        await FamiliaPermissoes.ExigirPapelAsync(_context, familiaId, usuarioId, PapelFamilia.Admin);
+        await FamiliaPermissoes.ExigirAdminAsync(_context, familiaId, usuarioId);
 
         var convite = await _context.ConvitesFamilia
             .FirstOrDefaultAsync(c => c.Id == conviteId && c.FamiliaId == familiaId)

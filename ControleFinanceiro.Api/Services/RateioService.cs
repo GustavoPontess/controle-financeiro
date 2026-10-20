@@ -20,7 +20,7 @@ public class RateioService
     public async Task DefinirModoFamiliaAsync(Guid familiaId, Guid usuarioId, ModoRateio modo)
     {
         // 2.3 — modo de rateio é config da família: só Admin.
-        await FamiliaPermissoes.ExigirPapelAsync(_context, familiaId, usuarioId, PapelFamilia.Admin);
+        await FamiliaPermissoes.ExigirAdminAsync(_context, familiaId, usuarioId);
 
         var familia = await _context.Familias
             .FirstOrDefaultAsync(f => f.Id == familiaId && f.Ativa)
@@ -57,8 +57,7 @@ public class RateioService
         }
         else
         {
-            var membros = await _context.MembrosFamilia
-                .Where(m => m.FamiliaId == familiaId && m.Ativo && m.PapelPermissao != PapelFamilia.Dependente)
+            var membros = await FamiliaPermissoes.QuemLanca(_context, familiaId)
                 .Select(m => m.UsuarioId)
                 .OrderBy(id => id)
                 .ToListAsync();
@@ -138,9 +137,7 @@ public class RateioService
         var familia = await _context.Familias.Where(f => f.Id == fid && f.Ativa)
             .Select(f => new { f.ModoRateioPadrao, f.LimiteAprovacao }).FirstOrDefaultAsync();
         if (familia is null) return;
-        var lanca = await _context.MembrosFamilia.AnyAsync(m => m.FamiliaId == fid && m.UsuarioId == transacao.CriadoPor
-            && m.Ativo && m.PapelPermissao != PapelFamilia.Dependente);
-        if (!lanca) return;
+        if (!await FamiliaPermissoes.LancaNaFamiliaAsync(_context, fid, transacao.CriadoPor)) return;
 
         transacao.FamiliaId = fid;
         transacao.StatusAprovacao = familia.LimiteAprovacao is { } limite && transacao.Valor >= limite
@@ -201,7 +198,7 @@ public class RateioService
         if (transacao.CriadoPor != usuarioId)
         {
             var ehMembro = transacao.FamiliaId is { } fid
-                && await _context.MembrosFamilia.AnyAsync(m => m.FamiliaId == fid && m.UsuarioId == usuarioId && m.Ativo);
+                && await FamiliaPermissoes.EhMembroAsync(_context, fid, usuarioId);
             if (!ehMembro)
                 throw new ForbiddenAccessException("Você só pode ver suas próprias transações.");
         }
@@ -216,7 +213,7 @@ public class RateioService
             var partes = transacao.Rateios.ToDictionary(r => r.UsuarioId);
             // Os que entram na divisão hoje (ativos que não são "só vê") mais quem tem parte gravada (inclusive quem saiu).
             membros = membrosFamilia
-                .Where(m => (m.Ativo && m.PapelPermissao != PapelFamilia.Dependente) || partes.ContainsKey(m.UsuarioId))
+                .Where(m => FamiliaPermissoes.Lanca(m.Ativo, m.PapelPermissao) || partes.ContainsKey(m.UsuarioId))
                 .Select(m => new RateioMembroDto(m.UsuarioId, m.Nome,
                     partes.TryGetValue(m.UsuarioId, out var p) ? p.Percentual : 0m,
                     partes.TryGetValue(m.UsuarioId, out var v) ? v.Valor : 0m,
@@ -243,12 +240,12 @@ public class RateioService
         if (usuarioIds.Count != usuarioIds.Distinct().Count())
             throw new ArgumentException("Há membros repetidos no rateio.");
 
-        var membrosValidos = await _context.MembrosFamilia
-            .Where(m => m.FamiliaId == familiaId && m.Ativo)
+        // Só quem lança tem parte (quem "só vê" fica fora da divisão, também no "Do meu jeito").
+        var membrosValidos = await FamiliaPermissoes.QuemLanca(_context, familiaId)
             .Select(m => m.UsuarioId)
             .ToListAsync();
 
         if (usuarioIds.Any(id => !membrosValidos.Contains(id)))
-            throw new ArgumentException("O rateio inclui alguém que não é membro ativo da família.");
+            throw new ArgumentException("O rateio inclui alguém que não divide nessa família (não é membro ativo ou só vê).");
     }
 }
