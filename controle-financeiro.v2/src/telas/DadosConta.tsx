@@ -47,7 +47,7 @@ function BaixarDados() {
     <Bloco titulo="Seus dados">
       {erro && <p className={styles.alerta} role="alert">{erro}</p>}
       <div className={styles.linha}>
-        <p className={styles.texto}>Uma cópia de tudo que é seu, em JSON: perfil, contas, cartões, lançamentos, metas e limites.</p>
+        <p className={styles.texto}>Uma cópia de tudo que é seu, em JSON: perfil, contas, cartões, lançamentos, contas fixas, compras parceladas, empréstimos, metas, limites, renda e categorias.</p>
         <Botao disabled={baixando} onClick={() => void baixar()} icone={<Download size={15} strokeWidth={2.25} aria-hidden="true" />}>{baixando ? "Preparando…" : "Baixar meus dados"}</Botao>
       </div>
     </Bloco>

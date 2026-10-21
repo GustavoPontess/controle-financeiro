@@ -12,7 +12,7 @@
 .numeroValor[data-tom="negativo"] { color: var(--v2-negativo); }
 .numeroEsqueleto { display: block; width: 140px; height: 28px; border-radius: 8px; background: var(--v2-superficie-2); }
 .semMarco { font-size: var(--v2-fs-md); color: var(--v2-texto-3); line-height: 28px; }
-.ultima { display: flex; align-items: center; gap: 10px; min-height: 28px; }
+.ultima { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-height: 28px; }
 .ultimaDia { font-size: var(--v2-fs-xl); font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
 .resumo .alerta { margin-top: 14px; }
 

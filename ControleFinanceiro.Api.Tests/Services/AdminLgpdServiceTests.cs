@@ -85,6 +85,75 @@ public class AdminLgpdServiceTests
         Assert.True(await ctx.AdminAuditLogs.AnyAsync(a => a.Acao == AcaoAdmin.ExportarDados && a.AlvoId == u.Id));
     }
 
+    [Fact]
+    public async Task Exportar_levaTudoQueEhDaPessoa_contasFixasParceladasEmprestimosRendaCategoriasConferenciasFamilia()
+    {
+        // Validação da conta pessoal (2026-10-20): a tela promete "uma cópia de tudo que é seu" e a exportação só
+        // tinha perfil, contas, cartões, lançamentos, metas e limites. Lançamento excluído sai marcado, não como real.
+        using var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var outro = SeedUsuario(ctx);
+        var conta = new Conta { Id = Guid.NewGuid(), Nome = "Itaú", Tipo = TipoConta.ContaCorrente, UsuarioIdProprietario = u.Id, Agencia = "0001" };
+        var cartao = new CartaoCredito { Id = Guid.NewGuid(), Nome = "Nubank", CriadoPor = u.Id, Ativo = true, DiaFechamento = 25, DiaVencimento = 5 };
+        var pets = new Categoria { Id = Guid.NewGuid(), Descricao = "Pets", Finalidade = Finalidade.Despesa, UsuarioId = u.Id };
+        ctx.AddRange(conta, cartao, pets);
+        ctx.Subcategorias.Add(new Subcategoria { Id = Guid.NewGuid(), Nome = "Ração", CategoriaId = pets.Id, UsuarioId = u.Id });
+        ctx.Transacoes.Add(new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "Excluída", Valor = 5, Tipo = TipoTransacao.Despesa, ContaId = conta.Id, Ativo = false,
+            StatusTransacao = StatusTransacao.Executado, Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = u.Id,
+        });
+        ctx.Recorrentes.Add(new Recorrente
+        {
+            Id = Guid.NewGuid(), Descricao = "Aluguel", Valor = 1800, Tipo = TipoTransacao.Despesa, ContaId = conta.Id, Ativo = true,
+            Frequencia = FrequenciaRecorrencia.Mensal, Dia = 10, DataInicio = DateTime.UtcNow.Date, CriadoPor = u.Id,
+        });
+        var parc = new Parcelamento
+        {
+            Id = Guid.NewGuid(), Descricao = "Geladeira", ValorTotal = 3000, QuantidadeParcelas = 10, CartaoCreditoId = cartao.Id,
+            DataCompra = DateTime.UtcNow.Date, CriadoPor = u.Id, Ativo = true,
+        };
+        ctx.Parcelamentos.Add(parc);
+        ctx.ParcelasTransacao.Add(new ParcelaTransacao
+        {
+            Id = Guid.NewGuid(), ParcelamentoId = parc.Id, Numero = 1, QuantidadeTotal = 10, Valor = 300, DataVencimento = DateTime.UtcNow.Date,
+            FaturaId = Guid.NewGuid(), CriadoPor = u.Id,
+        });
+        ctx.Emprestimos.Add(new Emprestimo
+        {
+            Id = Guid.NewGuid(), Descricao = "Conserto", Pessoa = "João", ValorTotal = 600, ValorPago = 200, Tipo = TipoEmprestimo.Emprestei,
+            DataInicio = DateTime.UtcNow.Date, CriadoPor = u.Id, Ativo = true,
+        });
+        ctx.Emprestimos.Add(new Emprestimo
+        {
+            Id = Guid.NewGuid(), Descricao = "De outra pessoa", Pessoa = "X", ValorTotal = 1, Tipo = TipoEmprestimo.Emprestei,
+            DataInicio = DateTime.UtcNow.Date, CriadoPor = outro.Id, Ativo = true,
+        });
+        ctx.RendasPrevistas.Add(new RendaPrevista { Id = Guid.NewGuid(), UsuarioId = u.Id, Ano = 2026, Mes = 10, FixaEsperada = 6000 });
+        ctx.ReconciliacoesSaldo.Add(new ReconciliacaoSaldo
+        {
+            Id = Guid.NewGuid(), ContaId = conta.Id, UsuarioId = u.Id, DataHora = DateTime.UtcNow, SaldoDeclarado = 10, SaldoCalculado = 10,
+            Tipo = TipoMarcoReconciliacao.Verificacao, Ativo = true, CriadoEm = DateTime.UtcNow,
+        });
+        var familia = new Familia { Id = Guid.NewGuid(), Nome = "Casa", CriadoPorUsuarioId = outro.Id };
+        ctx.Familias.Add(familia);
+        ctx.MembrosFamilia.Add(new MembroFamilia { Id = Guid.NewGuid(), FamiliaId = familia.Id, UsuarioId = u.Id, Papel = "Cônjuge", PapelPermissao = PapelFamilia.Membro, Ativo = true });
+        ctx.SaveChanges();
+
+        var export = await CreateService(ctx).MontarExportacaoAsync(u.Id);
+
+        Assert.True(Assert.Single(export.Transacoes).Excluido);
+        Assert.Equal("Itaú", export.Transacoes[0].Conta);
+        Assert.Equal("0001", Assert.Single(export.Contas).Agencia);
+        Assert.Equal("Aluguel", Assert.Single(export.ContasFixas).Descricao);
+        Assert.Single(Assert.Single(export.ComprasParceladas).Parcelas);
+        Assert.Equal("João", Assert.Single(export.Emprestimos).Pessoa);
+        Assert.Equal(6000, Assert.Single(export.RendaEsperada).FixaEsperada);
+        Assert.Equal(new[] { "Ração" }, Assert.Single(export.CategoriasProprias).Subcategorias);
+        Assert.Single(export.ConferenciasDeSaldo);
+        Assert.Equal(("Casa", "Cônjuge"), (Assert.Single(export.Familias).Nome, export.Familias[0].Relacao));
+    }
+
     // ── Marcar / cancelar ───────────────────────────────────────────────────────────────
 
     [Fact]

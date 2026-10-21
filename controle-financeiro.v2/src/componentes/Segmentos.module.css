@@ -1,4 +1,5 @@
-.segmentos { display: inline-flex; align-self: flex-start; gap: 2px; padding: 3px; border-radius: var(--v2-r-sm); background: var(--v2-superficie-2); }
+.segmentos { display: inline-flex; align-self: flex-start; gap: 2px; padding: 3px; border-radius: var(--v2-r-sm); background: var(--v2-superficie-2); max-width: 100%; }
+
 .segmentos[data-cheio="true"] { display: flex; align-self: stretch; }
 .segmentos[data-cheio="true"] .segmento { flex: 1; }
 .segmento { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 16px; border: 0; border-radius: 8px; background: transparent; color: var(--v2-texto-2); font: inherit; font-size: var(--v2-fs-sm); font-weight: 600; white-space: nowrap; cursor: pointer; transition: background 0.12s, color 0.12s; }
@@ -6,3 +7,8 @@
 /* Contorno igual nos 4 lados: a sombra de cartão (--v2-sombra) caía só pra baixo e o vão de baixo parecia menor. */
 .segmento[data-ativo="true"] { background: var(--v2-superficie); color: var(--v2-texto); box-shadow: 0 0 0 1px var(--v2-linha-forte); }
 .segmento svg { flex-shrink: 0; }
+/* Opção demais pra largura (celular): quebra em mais de uma linha, com todas à vista, sem empurrar a página. */
+@media (max-width: 900px) {
+  .segmentos { flex-wrap: wrap; }
+  .segmento { flex: 1 1 auto; padding: 0 12px; }
+}
