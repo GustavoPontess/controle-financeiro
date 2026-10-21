@@ -4,11 +4,12 @@ import { MemoryRouter } from "react-router-dom"
 
 vi.mock("../../services/transactionService", () => ({
   listTransactionsPage: vi.fn(async () => ({ items: [], total: 0 })),
-  getTransactionStats: vi.fn(async () => ({ entradasCaixa: 0, saidasCaixa: 0 })),
+  getTransactionStats: vi.fn(async () => ({ entradasCaixa: 6000, saidasCaixa: 2649.8 })),
+  getResumoGastos: vi.fn(async () => ({ total: 1630, emConta: 100, noCartao: 1530 })),
 }))
 vi.mock("../../services/contaService", () => ({ getContas: vi.fn(async () => []) }))
 vi.mock("../../services/categoryService", () => ({ getCategories: vi.fn(async () => []) }))
-import { listTransactionsPage } from "../../services/transactionService"
+import { getResumoGastos, listTransactionsPage } from "../../services/transactionService"
 import Transacoes from "../../telas/Transacoes"
 import { dataLocalISO, diaSeguinte } from "../../utils/dateTime"
 import { linhaDoLancamento } from "../../dominio/linhaLancamento"
@@ -53,6 +54,20 @@ describe("Transações: visões Saldo e Gastos", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Filtros/ }))
     expect(screen.queryByText("Tipo de lançamento")).toBeNull()
+  })
+
+  it("o topo muda com a visão: Saldo mostra Entrou/Saiu; Gastos mostra Gastos, Em conta e No cartão com a busca e os filtros da lista", async () => {
+    abrir({ contaId: "k1" })
+    expect(await screen.findByText("Entrou")).toBeInTheDocument()
+    expect(getResumoGastos).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole("radio", { name: "Gastos" }))
+    await waitFor(() => expect(getResumoGastos).toHaveBeenCalled())
+    expect(vi.mocked(getResumoGastos).mock.calls.at(-1)![0]).toMatchObject({ contaId: "k1", visao: "gastos", to: diaSeguinte(dataLocalISO()) })
+    expect(await screen.findByText("No cartão")).toBeInTheDocument()
+    expect(screen.getByText("Em conta")).toBeInTheDocument()
+    expect(screen.queryByText("Entrou")).toBeNull()
+    expect(screen.getByText("Gastos", { selector: "span" }).nextSibling).toHaveTextContent("1.630,00")
   })
 
   it("compra parcelada vira uma linha com o total, '5x de', o cartão e abre o parcelamento", () => {

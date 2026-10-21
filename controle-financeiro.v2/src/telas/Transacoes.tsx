@@ -9,7 +9,7 @@
 // (do mais perto pro mais longe) ou escolhendo as datas.
 import { useEffect, useMemo, useState } from "react"
 import { useLocation } from "react-router-dom"
-import { listTransactionsPage, getTransactionStats } from "../services/transactionService"
+import { listTransactionsPage, getResumoGastos, getTransactionStats, type ListTransactionsFilter, type ResumoGastos } from "../services/transactionService"
 import { getContas } from "../services/contaService"
 import { getCategories } from "../services/categoryService"
 import type { Transaction } from "../types/Transaction"
@@ -110,28 +110,41 @@ export default function Transacoes() {
   }, [])
 
   const soPrevistos = filtros.status === "0"
+  // O que a lista pede (busca + filtros); o topo da visão Gastos soma exatamente isso.
+  const pedido = useMemo((): ListTransactionsFilter => ({
+    q: buscaAplicada || undefined,
+    natureza: gastos ? undefined : filtros.natureza || undefined,
+    contaId: filtros.contaId || undefined,
+    status: filtros.status !== "" ? Number(filtros.status) : undefined,
+    valorMin: filtros.valorMin !== "" ? parseMoney(filtros.valorMin) : undefined,
+    valorMax: filtros.valorMax !== "" ? parseMoney(filtros.valorMax) : undefined,
+    from: filtros.de || undefined,
+    // "Até" inclui o dia escolhido; o back filtra Data < to. Sem período (e sem pedir os previstos): até hoje.
+    to: filtros.ate ? diaSeguinte(filtros.ate) : soPrevistos || filtros.de ? undefined : diaSeguinte(dataLocalISO()),
+    // Previstos: o próximo primeiro.
+    ordenacao: soPrevistos ? "data_asc" : undefined,
+    apenasCaixa: !gastos,
+    visao: gastos ? "gastos" : undefined,
+  }), [buscaAplicada, filtros, gastos, soPrevistos])
+
   useEffect(() => {
     let vivo = true
     setErro(false)
-    listTransactionsPage(pagina, porPagina, {
-      q: buscaAplicada || undefined,
-      natureza: gastos ? undefined : filtros.natureza || undefined,
-      contaId: filtros.contaId || undefined,
-      status: filtros.status !== "" ? Number(filtros.status) : undefined,
-      valorMin: filtros.valorMin !== "" ? parseMoney(filtros.valorMin) : undefined,
-      valorMax: filtros.valorMax !== "" ? parseMoney(filtros.valorMax) : undefined,
-      from: filtros.de || undefined,
-      // "Até" inclui o dia escolhido; o back filtra Data < to. Sem período (e sem pedir os previstos): até hoje.
-      to: filtros.ate ? diaSeguinte(filtros.ate) : soPrevistos || filtros.de ? undefined : diaSeguinte(dataLocalISO()),
-      // Previstos: o próximo primeiro.
-      ordenacao: soPrevistos ? "data_asc" : undefined,
-      apenasCaixa: !gastos,
-      visao: gastos ? "gastos" : undefined,
-    })
+    listTransactionsPage(pagina, porPagina, pedido)
       .then((r) => { if (vivo) { setItens(r.items); setTotal(r.total) } })
       .catch(() => { if (vivo) { setErro(true); setItens([]) } })
     return () => { vivo = false }
-  }, [pagina, porPagina, buscaAplicada, filtros, gastos])
+  }, [pagina, porPagina, pedido])
+
+  // Topo da visão Gastos (decisão do Gustavo, 2026-10-21): muda com a visão e acompanha a busca e os filtros.
+  const [resumoGastos, setResumoGastos] = useState<ResumoGastos | null>(null)
+  useEffect(() => {
+    if (!gastos) return
+    let vivo = true
+    setResumoGastos(null)
+    getResumoGastos(pedido).then((r) => { if (vivo) setResumoGastos(r) }).catch(() => { /* topo fica vazio */ })
+    return () => { vivo = false }
+  }, [gastos, pedido])
 
   const saldoEmConta = useMemo(() => contas.reduce((s, c) => s + (c.saldoAtual ?? 0), 0), [contas])
   const ativos = ativosEm(filtros)
@@ -139,8 +152,25 @@ export default function Transacoes() {
 
   return (
     <div className={styles.pagina}>
-      {/* Os 3 números: o dinheiro que tem hoje + o que entrou e saiu do caixa no período. */}
+      {/* Os 3 números. Saldo: o dinheiro que tem hoje + o que entrou e saiu do caixa. Gastos: quanto gastou no que a
+          lista mostra, em conta e no cartão. */}
       <Bloco className={styles.resumo}>
+        {gastos ? (
+          <div className={styles.numeros}>
+            <div className={styles.numero}>
+              <span className={styles.rotulo}>Gastos</span>
+              {resumoGastos ? <Dinheiro valor={resumoGastos.total} className={styles.numeroValor} /> : <span className={styles.numeroEsqueleto} aria-hidden="true" />}
+            </div>
+            <div className={styles.numero}>
+              <span className={styles.rotulo}>Em conta</span>
+              {resumoGastos ? <Dinheiro valor={resumoGastos.emConta} className={styles.numeroValor} /> : <span className={styles.numeroEsqueleto} aria-hidden="true" />}
+            </div>
+            <div className={styles.numero}>
+              <span className={styles.rotulo}>No cartão</span>
+              {resumoGastos ? <Dinheiro valor={resumoGastos.noCartao} className={styles.numeroValor} /> : <span className={styles.numeroEsqueleto} aria-hidden="true" />}
+            </div>
+          </div>
+        ) : (
         <div className={styles.numeros}>
           <div className={styles.numero}>
             <span className={styles.rotulo}>Saldo em conta</span>
@@ -155,6 +185,7 @@ export default function Transacoes() {
             {stats ? <Dinheiro valor={stats.saidas} className={styles.numeroValor} /> : <span className={styles.numeroEsqueleto} aria-hidden="true" />}
           </div>
         </div>
+        )}
       </Bloco>
 
       <Bloco semRespiro>
