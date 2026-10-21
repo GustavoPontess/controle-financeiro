@@ -158,9 +158,13 @@ public class DashboardService
 
         // Recentes = o que JÁ aconteceu: só efetivadas, até hoje, sem o saldo de abertura. Previsão
         // (recorrente gerada pra frente) tem data futura e furava a fila na frente de tudo.
+        // Caixinha de meta: o lado de dentro da meta não entra (a mesma regra da lista de Transações); guardar,
+        // resgatar e concluir aparecem uma vez só, na conta de onde o dinheiro saiu ou pra onde voltou.
+        var caixinhas = contas.Where(c => c.Tipo == TipoConta.Caixinha).Select(c => c.Id).ToHashSet();
         var recentes = todasTransacoes
             .Where(t => t.Ativo && t.StatusTransacao == StatusTransacao.Executado
-                        && !t.EhSaldoInicial && t.Data <= hojeDia)
+                        && !t.EhSaldoInicial && t.Data <= hojeDia
+                        && !(t.ContaId.HasValue && caixinhas.Contains(t.ContaId.Value)))
             .OrderByDescending(t => t.Data)
             .ThenByDescending(t => t.Hora ?? TimeOnly.MinValue)
             .ThenByDescending(t => t.CriadoEm)

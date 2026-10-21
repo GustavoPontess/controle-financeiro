@@ -22,7 +22,7 @@ public static class MfaCrypto
         var raw = Environment.GetEnvironmentVariable("MFA_ENCRYPTION_KEY");
         if (string.IsNullOrEmpty(raw))
             throw new InvalidOperationException(
-                "MFA_ENCRYPTION_KEY não configurada — obrigatória pra usar MFA (gerar com 'openssl rand -base64 32').");
+                "MFA_ENCRYPTION_KEY não configurada: obrigatória pra usar MFA (gerar com 'openssl rand -base64 32').");
 
         var key = Convert.FromBase64String(raw);
         if (key.Length != 32)

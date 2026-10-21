@@ -416,11 +416,13 @@ public class LimiteCartaoRegraUnicaTests
         var c = await SeedAsync(ctx);
         var hoje = DateTime.UtcNow.Date;
 
-        await CriarRecorrenteNoCartaoAsync(ctx, c, hoje.AddMonths(-6)); // previsões de -6 a -4 meses
+        await CriarRecorrenteNoCartaoAsync(ctx, c, hoje.AddMonths(-6)); // vencidas cobradas na criação; previsões até o horizonte
         await Recorrentes(ctx).GerarPendentesAsync(c.UsuarioId);       // efetivadas de -3 meses a hoje
         await new ExecutarRecorrentesJob(ctx, new NotificacaoService(ctx, NullLogger<NotificacaoService>.Instance)).ExecuteAsync();           // efetiva as previsões vencidas
 
-        var ocorrencias = await ctx.Transacoes.AsNoTracking().Where(t => t.Descricao == "Streaming").ToListAsync();
+        // As vencidas (de -6 meses a hoje); as previsões pra frente (até o horizonte) ficam de fora desta conta.
+        var hojeData = DateOnly.FromDateTime(hoje);
+        var ocorrencias = await ctx.Transacoes.AsNoTracking().Where(t => t.Descricao == "Streaming" && t.Data <= hojeData).ToListAsync();
         Assert.Equal(7, ocorrencias.Count);
         Assert.All(ocorrencias, t =>
         {
@@ -732,5 +734,30 @@ public class LimiteCartaoRegraUnicaTests
         Assert.Contains("GROUP BY", semFatura, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("SUM(", semFatura, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("\"CriadoPor\"", semFatura);
+    }
+
+    [Fact]
+    public async Task CompraNoCartaoSemAFlagDeCredito_EntraComoCredito_NaFatura_EPassaPelaTravaDeLimite()
+    {
+        // Validação da conta pessoal (2026-10-20): pela API, cartão sem UsadoComoCredito virava lançamento sem conta e
+        // sem fatura (sumia do saldo e da fatura) e escapava da trava (uma compra de R$ 9.000 num limite de R$ 6.000
+        // passou). No cartão é sempre crédito, como na edição.
+        var ctx = CreateContext();
+        var c = await SeedAsync(ctx);
+        Transacao Compra(decimal valor) => new()
+        {
+            Descricao = "Compra", Valor = valor, Tipo = TipoTransacao.Despesa, CartaoCreditoId = c.CartaoId,
+            UsadoComoCredito = false, MeioPagamento = MeioPagamento.Pix, StatusTransacao = StatusTransacao.Executado,
+            Data = DateOnly.FromDateTime(DateTime.UtcNow),
+        };
+        var svc = new TransacaoService(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx));
+
+        var t = await svc.CriarTransacaoAsync(Compra(100m), c.UsuarioId);
+
+        Assert.True(t.UsadoComoCredito);
+        Assert.Equal(MeioPagamento.Credito, t.MeioPagamento);
+        Assert.NotNull(t.FaturaId);
+        Assert.Equal(100m, await UsadoAsync(ctx, c));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.CriarTransacaoAsync(Compra(9_000m), c.UsuarioId));
     }
 }

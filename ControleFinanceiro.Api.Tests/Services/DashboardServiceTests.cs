@@ -1158,4 +1158,27 @@ public class DashboardServiceTests
         Assert.Equal(new[] { "Recente", "Parcela", "Antiga" }, r.ComprasCartaoMes.Select(c => c.Descricao));
         Assert.Equal(60m, r.GastoCartaoMes);
     }
+
+    [Fact]
+    public async Task Recentes_GuardarNaMeta_AparecemSoOLadoDaContaReal()
+    {
+        // Validação da conta pessoal (2026-10-20): "Meta concluída: Fone" aparecia duas vezes nas recentes (a perna da
+        // conta e a da caixinha). A lista de Transações já esconde o lado de dentro da caixinha; aqui também.
+        var ctx = CreateContext();
+        var u = Guid.NewGuid();
+        var conta = NovaConta(ctx, u, "Itaú");
+        var caixinha = new Conta { Id = Guid.NewGuid(), Nome = "Viagem", Tipo = TipoConta.Caixinha, UsuarioIdProprietario = u };
+        ctx.Contas.Add(caixinha);
+        var hoje = Hoje.ToDateTime(TimeOnly.MinValue);
+        var saida = Tx(conta.Id, TipoTransacao.Despesa, 300m, hoje); saida.EhTransferencia = true; saida.Descricao = "Guardado em Viagem";
+        var entrada = Tx(caixinha.Id, TipoTransacao.Receita, 300m, hoje); entrada.EhTransferencia = true; entrada.Descricao = "Guardado em Viagem";
+        ctx.Transacoes.AddRange(saida, entrada);
+        using (ctx.LiberarCaixinha()) // só Metas mexe na caixinha
+            await ctx.SaveChangesAsync();
+
+        var (ano, mes) = MesDe(Hoje);
+        var dto = await Servico(ctx).GetResumoAsync(u, ano, mes);
+
+        Assert.Equal(saida.Id, Assert.Single(dto.TransacoesRecentes).Id);
+    }
 }

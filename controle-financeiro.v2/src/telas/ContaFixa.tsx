@@ -49,10 +49,10 @@ export default function ContaFixa() {
     ["Repete", descreverRepeticao(r)],
     ["Começou em", dataBR(r.dataInicio)],
     ["Termina em", r.dataFim ? dataBR(r.dataFim) : "Sem fim"],
-    ["Categoria", r.categoriaNome ? (r.subcategoriaNome ? `${r.categoriaNome} › ${r.subcategoriaNome}` : r.categoriaNome) : "—"],
-    [r.cartaoCreditoId ? "Cartão" : "Conta", r.cartaoCreditoNome ?? r.contaNome ?? "—"],
-    [receita ? "Como recebe" : "Como paga", r.meioPagamentoDescricao ?? "—"],
-    ["Próxima cobrança", r.proximaCobranca ? dataBR(r.proximaCobranca) : "—"],
+    ["Categoria", r.categoriaNome ? (r.subcategoriaNome ? `${r.categoriaNome} › ${r.subcategoriaNome}` : r.categoriaNome) : "Sem categoria"],
+    [r.cartaoCreditoId ? "Cartão" : "Conta", r.cartaoCreditoNome ?? r.contaNome ?? "Não informada"],
+    [receita ? "Como recebe" : "Como paga", r.meioPagamentoDescricao ?? "Não informado"],
+    ["Próxima cobrança", r.proximaCobranca ? dataBR(r.proximaCobranca) : "Nenhuma"],
   ]
 
   const alternar = async () => {

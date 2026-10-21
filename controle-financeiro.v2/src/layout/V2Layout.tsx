@@ -172,7 +172,7 @@ export default function V2Layout() {
               aria-haspopup="menu" aria-expanded={menuUsuario} onClick={() => setMenuUsuario((v) => !v)}>
               <Avatar className={styles.avatar} foto={minhaFoto} texto={iniciais} />
               <span className={`${styles.usuarioTexto} ${styles.itemRotulo}`}>
-                <span className={styles.usuarioNome}>{usuario?.nome ?? "—"}</span>
+                <span className={styles.usuarioNome}>{usuario?.nome ?? ""}</span>
                 <span className={styles.usuarioPlano}>{nomeDoEspaco}</span>
               </span>
               <ChevronsUpDown size={15} strokeWidth={2} className={`${styles.usuarioSeta} ${styles.itemRotulo}`} aria-hidden="true" />

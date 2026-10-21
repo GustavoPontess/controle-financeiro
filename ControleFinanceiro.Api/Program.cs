@@ -411,7 +411,7 @@ builder.Services.AddSwaggerGen(options =>
     {
         Title = "Controle Financeiro API",
         Version = "v1",
-        Description = "API de gerenciamento financeiro pessoal — v1.",
+        Description = "API de gerenciamento financeiro pessoal, v1.",
         Contact = new Microsoft.OpenApi.OpenApiContact
         {
             Name = "Gustavo Pontes",
