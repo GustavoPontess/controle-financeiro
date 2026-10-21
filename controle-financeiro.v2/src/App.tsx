@@ -53,6 +53,7 @@ import NovaTransacao from "./telas/NovaTransacao"
 import NovaContaFixa from "./telas/NovaContaFixa"
 import Notificacoes from "./telas/Notificacoes"
 import Configuracoes from "./telas/Configuracoes"
+import Relatorios from "./telas/Relatorios"
 import EmConstrucao from "./telas/EmConstrucao"
 import Emprestimos from "./telas/Emprestimos"
 import EmprestimoFormulario from "./telas/EmprestimoFormulario"
@@ -140,6 +141,7 @@ export default function App() {
         <Route path="/cartoes/:id/parcelamentos/:pid/parcelas/:parcelaId/antecipar" element={<AnteciparParcela />} />
         <Route path="/cartoes/:id/faturas/:faturaId/pagar" element={<PagarFatura />} />
         <Route path="/notificacoes" element={<Notificacoes />} />
+        <Route path="/relatorios" element={<Relatorios />} />
         <Route path="/configuracoes" element={<Configuracoes />} />
         {PENDENTES.map(([rota, titulo, atual]) => (
           <Route key={rota} path={rota} element={<EmConstrucao titulo={titulo} atual={atual} />} />
