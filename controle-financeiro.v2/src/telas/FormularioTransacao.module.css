@@ -5,9 +5,10 @@
 .dataHora { display: flex; flex-wrap: wrap; gap: 16px; }
 .dataHora > :first-child { flex: 2 1 340px; }
 .dataHora > :nth-child(2) { flex: 1 1 120px; }
-.dataRapida { display: flex; gap: 6px; }
+.dataRapida { display: flex; flex-wrap: wrap; gap: 6px; }
 .dataRapida > button { flex-shrink: 0; }
-.dataRapida > :last-child { flex: 1; min-width: 0; }
+/* A data precisa caber inteira ("21/10/2026"): sem espaço ao lado de Hoje/Ontem (celular), desce pra linha de baixo. */
+.dataRapida > :last-child { flex: 1 1 150px; min-width: 0; }
 
 /* Opções: "Já paguei" */
 .opcoes { gap: 12px; }
