@@ -81,19 +81,20 @@ export default function TrocarSenha({ aoTrocar }: {
             <Campo rotulo="Senha nova" erro={erros.nova}>
               <Entrada type={mostrar ? "text" : "password"} autoComplete="new-password" maxLength={SENHA_MAX} value={nova}
                 onChange={(e) => { setNova(e.target.value); limpa("nova") }} />
+              {/* Os requisitos são da senha nova: ficam embaixo dela, não da linha toda. */}
+              {!erros.nova && (
+                <ul className={styles.requisitos} aria-label="Requisitos da senha">
+                  {requisitosSenha(nova).map((r) => (
+                    <li key={r.rotulo} data-ok={r.ok || undefined}><Check size={14} strokeWidth={3} aria-hidden="true" />{r.rotulo}</li>
+                  ))}
+                </ul>
+              )}
             </Campo>
             <Campo rotulo="Confirmar senha nova" erro={erros.confirmar}>
               <Entrada type={mostrar ? "text" : "password"} autoComplete="new-password" maxLength={SENHA_MAX} value={confirmar}
                 onChange={(e) => { setConfirmar(e.target.value); limpa("confirmar") }} />
             </Campo>
           </LinhaCampos>
-          {!erros.nova && (
-            <ul className={styles.requisitos} aria-label="Requisitos da senha">
-              {requisitosSenha(nova).map((r) => (
-                <li key={r.rotulo} data-ok={r.ok || undefined}><Check size={14} strokeWidth={3} aria-hidden="true" />{r.rotulo}</li>
-              ))}
-            </ul>
-          )}
           <div className={styles.rodape}>
             <label className={styles.marcar}>
               <input type="checkbox" checked={sairDosOutros} onChange={(e) => setSairDosOutros(e.target.checked)} /> Sair dos outros aparelhos
