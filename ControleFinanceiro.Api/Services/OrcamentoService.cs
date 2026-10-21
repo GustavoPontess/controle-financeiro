@@ -104,7 +104,7 @@ public class OrcamentoService
     {
         ValidarMes(dto.Ano, dto.Mes);
         if (dto.Valor <= 0 || dto.Valor > 999_999_999.99m)
-            throw new ArgumentException("Diga o limite.");
+            throw new ArgumentException("Diga quanto você planeja gastar.");
         ExigirEditavel(dto.Ano, dto.Mes, agora ?? HorarioBrasil.Agora());
         if (dto.CategoriaId.HasValue)
             await ExigirCategoriaDeGastoAsync(dto.CategoriaId.Value, usuarioId);
@@ -142,7 +142,7 @@ public class OrcamentoService
         var vigenteAntes = daCategoria.Where(o => Chave(o.Ano, o.Mes) < chave).MaxBy(o => Chave(o.Ano, o.Mes));
         var doMesEmDiante = daCategoria.Where(o => Chave(o.Ano, o.Mes) >= chave).ToList();
         if (doMesEmDiante.Count == 0 && (vigenteAntes is null || vigenteAntes.ValorLimite == 0))
-            throw new KeyNotFoundException("Essa categoria não tem limite neste mês.");
+            throw new KeyNotFoundException("Essa categoria não tem planejado neste mês.");
 
         _context.Orcamentos.RemoveRange(doMesEmDiante);
         // Vinha valendo de antes: grava "sem limite" a partir deste mês, pros passados continuarem com o limite.
@@ -178,8 +178,8 @@ public class OrcamentoService
         {
             "passou" when vemFrase is not null =>
                 $"Passou {Reais.Formatar(gasto - limite)}. {vemFrase} Pausar ou cancelar uma dessas contas alivia o mês.",
-            "passou" => $"Passou {Reais.Formatar(gasto - limite)} do limite.",
-            "vai-passar" => $"{vemFrase} Contando isso, passa {Reais.Formatar(gasto + totalVem - limite)} do limite.",
+            "passou" => $"Passou {Reais.Formatar(gasto - limite)} do planejado.",
+            "vai-passar" => $"{vemFrase} Contando isso, passa {Reais.Formatar(gasto + totalVem - limite)} do planejado.",
             _ when vemFrase is not null => $"{vemFrase} Contando isso, dá pra gastar mais {Reais.Formatar(limite - gasto - totalVem)} sem passar.",
             "perto" => $"Dá pra gastar mais {Reais.Formatar(limite - gasto)} sem passar.",
             _ => null,
@@ -211,7 +211,7 @@ public class OrcamentoService
     private static void ExigirEditavel(int ano, int mes, DateTime agora)
     {
         if (!Editavel(ano, mes, agora))
-            throw new InvalidOperationException("Mês que já passou fica como estava. Mude o limite a partir deste mês.");
+            throw new InvalidOperationException("Mês que já passou fica como estava. Mude o planejado a partir deste mês.");
     }
 
     private static void ValidarMes(int ano, int mes)
@@ -225,6 +225,6 @@ public class OrcamentoService
     {
         await DonoRecursos.ExigirCategoriaAsync(_context, categoriaId, usuarioId);
         if (await _context.Categorias.AnyAsync(c => c.Id == categoriaId && c.Finalidade == Finalidade.Receita))
-            throw new ArgumentException("Limite é pra categoria de gasto.");
+            throw new ArgumentException("O planejado é pra categoria de gasto.");
     }
 }

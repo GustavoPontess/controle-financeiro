@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from "react"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import {
-  ArrowLeft, ArrowLeftRight, BarChart3, Bell, Check, ChevronsUpDown, CreditCard, Gauge, Handshake, Landmark, LayoutDashboard, LogOut, Mail,
+  ArrowLeft, ArrowLeftRight, BarChart3, Bell, Check, ChevronsUpDown, CreditCard, Handshake, Landmark, LayoutDashboard, LogOut, Mail,
   PanelLeftClose, PanelLeftOpen, Plus, Receipt, Repeat, Scale, Settings, SlidersHorizontal, Tags, Target, Upload, Users, Eye, EyeOff, Wallet,
 } from "lucide-react"
 import Avatar, { urlFoto } from "../componentes/Avatar"
@@ -31,7 +31,7 @@ const PRINCIPAL: ItemMenu[] = [
   { para: "/transacoes", rotulo: "Transações", icone: Receipt },
   { para: "/cartoes", rotulo: "Cartões", icone: CreditCard },
   { para: "/contas-fixas", rotulo: "Contas fixas", icone: Repeat },
-  { para: "/renda", rotulo: "Renda", icone: Wallet },
+  { para: "/orcamento", rotulo: "Orçamento", icone: Wallet },
   { para: "/relatorios", rotulo: "Relatórios", icone: BarChart3 },
   { para: "/reconciliacao", rotulo: "Reconciliação", icone: Scale },
   { para: "/emprestimos", rotulo: "Empréstimos", icone: Handshake },
@@ -41,7 +41,6 @@ const GERENCIAR: ItemMenu[] = [
   { para: "/bancos", rotulo: "Bancos", icone: Landmark },
   { para: "/categorias", rotulo: "Categorias", icone: Tags },
   { para: "/metas", rotulo: "Metas", icone: Target },
-  { para: "/limites", rotulo: "Limites", icone: Gauge },
 ]
 const FAMILIA = (id: string): ItemMenu[] => [
   { para: `/familias/${id}`, rotulo: "Visão geral", icone: LayoutDashboard, exato: true },

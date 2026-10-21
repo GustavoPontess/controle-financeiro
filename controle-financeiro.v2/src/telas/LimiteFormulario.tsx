@@ -1,7 +1,7 @@
-// Novo limite (/limites/novo?ano&mes[&categoria]) e editar (/limites/editar?ano&mes&categoria): a categoria
-// (só as de gasto; no novo, só as que ainda não têm limite no mês) e quanto por mês. Vale do mês escolhido em
+// Planejar categoria (/orcamento/planejar?ano&mes[&categoria]) e editar (/orcamento/editar?ano&mes&categoria), da
+// seção Despesas do Orçamento: a categoria (só as de gasto; no novo, só as que ainda não têm planejado no mês) e quanto por mês. Vale do mês escolhido em
 // diante (vale todo mês até mudar). Ao escolher a categoria, mostra quanto ela gastou em média nos 3 meses antes,
-// com "Usar a média". Volta pra lista no mesmo mês, com a linha aberta.
+// com "Usar a média". Volta pro Orçamento no mesmo mês, com a linha aberta.
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { getCategories } from "../services/categoryService"
@@ -50,7 +50,7 @@ export default function LimiteFormulario({ modo }: { modo: "novo" | "editar" }) 
         setMesAtual(d)
         if (editar) {
           const atual = d.limites.find((l) => l.categoriaId === (busca.get("categoria") ?? null))
-          if (!atual) { setErroCarga("Essa categoria não tem limite neste mês."); setCarregando(false); return }
+          if (!atual) { setErroCarga("Essa categoria não tem planejado neste mês."); setCarregando(false); return }
           setValor(moneyParaCampo(atual.limite))
         }
         setCarregando(false)
@@ -67,7 +67,7 @@ export default function LimiteFormulario({ modo }: { modo: "novo" | "editar" }) 
     return () => { vivo = false }
   }, [categoriaId, ano, mes])
 
-  // No novo, só as categorias sem limite no mês (a que já tem se muda por Editar).
+  // No novo, só as categorias sem planejado no mês (a que já tem se muda por Editar).
   const opcoes = useMemo(() => {
     const comLimite = new Set((mesAtual?.limites ?? []).map((l) => l.categoriaId))
     return categorias.filter((c) => editar || !comLimite.has(c.id) || c.id === categoriaId)
@@ -75,14 +75,14 @@ export default function LimiteFormulario({ modo }: { modo: "novo" | "editar" }) 
   }, [categorias, mesAtual, editar, categoriaId])
   const nomeCategoria = categorias.find((c) => c.id === categoriaId)?.descricao
     ?? mesAtual?.limites.find((l) => l.categoriaId === (categoriaId || null))?.categoria ?? ""
-  const voltar = (abrir?: string | null) => navigate("/limites", { replace: true, state: { ano, mes, abrir: abrir === undefined ? undefined : `lim-${abrir || "todos"}` } })
+  const voltar = (abrir?: string | null) => navigate("/orcamento", { replace: true, state: { ano, mes, abrir: abrir === undefined ? undefined : `lim-${abrir || "todos"}` } })
 
   const enviar = async () => {
     setErro(null)
     const e: Erros = {}
     if (!editar && !categoriaId) e.categoria = "Escolha a categoria."
     const v = parseMoney(valor)
-    if (!(v > 0)) e.valor = "Diga o limite."
+    if (!(v > 0)) e.valor = "Diga quanto planeja gastar."
     setErros(e)
     if (Object.keys(e).length > 0) return
     setSalvando(true)
@@ -93,7 +93,7 @@ export default function LimiteFormulario({ modo }: { modo: "novo" | "editar" }) 
   }
 
   return (
-    <PaginaFormulario titulo={editar ? `Editar limite de ${nomeCategoria || "…"}` : "Novo limite"} carregando={carregando} erroCarga={erroCarga}>
+    <PaginaFormulario titulo={editar ? `Editar o planejado de ${nomeCategoria || "…"}` : "Planejar categoria"} carregando={carregando} erroCarga={erroCarga}>
       <Formulario onSubmit={() => { void enviar() }}>
         <Campos>
           {erro && <p className={styles.alerta} role="alert">{erro}</p>}
@@ -102,12 +102,12 @@ export default function LimiteFormulario({ modo }: { modo: "novo" | "editar" }) 
               <Campo rotulo="Categoria" estatico><ValorFixo>{nomeCategoria}</ValorFixo></Campo>
             ) : (
               <Campo rotulo="Categoria" erro={erros.categoria}>
-                <Selecao valor={categoriaId} placeholder={opcoes.length === 0 ? "Todas já têm limite" : "Escolha a categoria"}
+                <Selecao valor={categoriaId} placeholder={opcoes.length === 0 ? "Todas já têm planejado" : "Escolha a categoria"}
                   desabilitado={opcoes.length === 0} invalido={!!erros.categoria} opcoes={opcoes}
                   onChange={(x) => { setCategoriaId(x); limpa("categoria") }} />
               </Campo>
             )}
-            <Campo rotulo="Limite por mês" erro={erros.valor}>
+            <Campo rotulo="Planejado por mês" erro={erros.valor}>
               <EntradaValor compacto valor={valor} autoFocus={editar} onChange={(x) => { setValor(x); limpa("valor") }} />
             </Campo>
             <Campo rotulo="Vale a partir de" estatico><ValorFixo>{nomeDoPeriodo({ ano, mes }).toLowerCase()}</ValorFixo></Campo>
@@ -120,7 +120,7 @@ export default function LimiteFormulario({ modo }: { modo: "novo" | "editar" }) 
         </Campos>
         <RodapeFormulario>
           <Botao onClick={() => voltar(editar ? categoriaId : undefined)} disabled={salvando}>Cancelar</Botao>
-          <Botao variante="primario" type="submit" disabled={salvando}>{salvando ? "Salvando…" : editar ? "Salvar" : "Pôr limite"}</Botao>
+          <Botao variante="primario" type="submit" disabled={salvando}>{salvando ? "Salvando…" : editar ? "Salvar" : "Planejar"}</Botao>
         </RodapeFormulario>
       </Formulario>
     </PaginaFormulario>

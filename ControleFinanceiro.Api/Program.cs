@@ -131,6 +131,7 @@ builder.Services.AddScoped<CartaoCreditoService>();
 builder.Services.AddScoped<FaturaService>();
 builder.Services.AddScoped<OrcamentoService>();
 builder.Services.AddScoped<DinheiroDoMesService>();
+builder.Services.AddScoped<OrcamentoDoMesService>();
 builder.Services.AddScoped<AvisoDeCompraService>();
 builder.Services.AddScoped<ProximosEmprestimosService>();
 builder.Services.AddScoped<ViabilidadeMetaService>();

@@ -223,7 +223,7 @@ public class OrcamentoServiceTests
         Gasto(ctx, u, moradia, 50m, new DateOnly(2026, 5, 25), StatusTransacao.Previsao, t => t.Descricao = "Gás");
         l = Assert.Single((await svc.DoMesAsync(u, 2026, 5, Agora)).Limites);
         Assert.Equal("vai-passar", l.Situacao);
-        Assert.Equal("Ainda vêm 2 contas (R$ 149,90). Contando isso, passa R$ 14,90 do limite.", l.Resposta);
+        Assert.Equal("Ainda vêm 2 contas (R$ 149,90). Contando isso, passa R$ 14,90 do planejado.", l.Resposta);
 
         Gasto(ctx, u, moradia, 200m, new DateOnly(2026, 5, 9));
         l = Assert.Single((await svc.DoMesAsync(u, 2026, 5, Agora)).Limites);
