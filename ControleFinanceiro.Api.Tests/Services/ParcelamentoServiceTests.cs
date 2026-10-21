@@ -424,7 +424,7 @@ public class ParcelamentoServiceTests
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => CriarAsync(c, new DateTime(2026, 6, 15), mes, parcelas: 12));
 
-        Assert.Contains("outubro de 2026 — as anteriores já venceram", ex.Message);
+        Assert.Contains("outubro de 2026: as anteriores já venceram", ex.Message);
         Assert.Empty(c.Db.Parcelamentos);
         Assert.Empty(c.Db.ParcelasTransacao);
         Assert.Empty(c.Db.Faturas);
@@ -496,7 +496,7 @@ public class ParcelamentoServiceTests
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => CriarAsync(c, new DateTime(2026, 9, 24), "2026-09", parcelas: 2));
 
-        Assert.Contains("outubro de 2026 — as anteriores já venceram", ex.Message);
+        Assert.Contains("outubro de 2026: as anteriores já venceram", ex.Message);
     }
 
     [Fact]
@@ -724,7 +724,7 @@ public class ParcelamentoServiceTests
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => CriarAsync(c, new DateTime(2026, 7, 15), "2026-08", parcelas: 7, jaPagas: 2));
 
-        Assert.Equal("A próxima parcela não pode ser antes da fatura de novembro de 2026 — as anteriores já venceram.", ex.Message);
+        Assert.Equal("A próxima parcela não pode ser antes da fatura de novembro de 2026: as anteriores já venceram.", ex.Message);
         Assert.Empty(c.Db.Parcelamentos);
     }
 

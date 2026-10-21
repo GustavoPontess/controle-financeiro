@@ -353,8 +353,8 @@ public class AcertoService
 
         return new AcertoContasDto(
             acerto.Id,
-            acerto.DeUsuarioId, nomes.GetValueOrDefault(acerto.DeUsuarioId, "—"),
-            acerto.ParaUsuarioId, nomes.GetValueOrDefault(acerto.ParaUsuarioId, "—"),
+            acerto.DeUsuarioId, nomes.GetValueOrDefault(acerto.DeUsuarioId, "Alguém"),
+            acerto.ParaUsuarioId, nomes.GetValueOrDefault(acerto.ParaUsuarioId, "Alguém"),
             acerto.Valor, acerto.Mes, acerto.Ano, acerto.Observacao, acerto.CriadoEm,
             acerto.Data, acerto.ConfirmadoEm,
             MinhaTransacao(usuarioId, acerto.DeUsuarioId, acerto.ParaUsuarioId, acerto.TransacaoSaidaId, acerto.TransacaoEntradaId));

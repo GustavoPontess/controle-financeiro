@@ -196,8 +196,8 @@ function Linha({ c, cartoes, aberta, aoAbrir, aoMudar }: {
             {!c.isCarteira && temDadosBancarios(c.tipo) && (
               <>
                 <div><dt>Banco</dt><dd>{c.bancoNome || "Sem banco"}</dd></div>
-                <div><dt>Agência</dt><dd>{c.agencia || "—"}</dd></div>
-                <div><dt>Número</dt><dd>{c.numeroConta || "—"}</dd></div>
+                <div><dt>Agência</dt><dd>{c.agencia || "Não informada"}</dd></div>
+                <div><dt>Número</dt><dd>{c.numeroConta || "Não informado"}</dd></div>
               </>
             )}
             {encerrada && <div><dt>Encerrada em</dt><dd>{dataBR(c.encerradaEm!)}</dd></div>}

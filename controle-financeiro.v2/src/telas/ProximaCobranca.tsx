@@ -88,12 +88,12 @@ function FormularioProxima({ r, aoSair, aoSalvo }: { r: Recorrente; aoSair: () =
       <Lado>
         <Bloco titulo="Como vai ficar" className={styles.previa}>
           <span className={styles.previaTitulo}>{r.descricao}</span>
-          <span className={styles.muted}>próxima cobrança em {r.proximaCobranca ? dataBR(r.proximaCobranca) : "—"}</span>
+          <span className={styles.muted}>{r.proximaCobranca ? `próxima cobrança em ${dataBR(r.proximaCobranca)}` : "sem próxima cobrança"}</span>
           <dl className={styles.contas}>
             <div><dt>Esta cobrança</dt><dd><Dinheiro valor={v > 0 ? v : 0} tom={receita ? "positivo" : "negativo"} /></dd></div>
             <div className={styles.linhaFinal}><dt>As seguintes</dt><dd><Dinheiro valor={r.valor} tom="neutro" /></dd></div>
           </dl>
-          <p className={styles.efeito}>Só a cobrança de {r.proximaCobranca ? dataBR(r.proximaCobranca) : "—"} muda. As seguintes continuam {formatMoney(r.valor)}{descricao.trim() !== r.descricao ? ` como "${r.descricao}"` : ""}.</p>
+          <p className={styles.efeito}>Só {r.proximaCobranca ? `a cobrança de ${dataBR(r.proximaCobranca)}` : "a próxima cobrança"} muda. As seguintes continuam {formatMoney(r.valor)}{descricao.trim() !== r.descricao ? ` como "${r.descricao}"` : ""}.</p>
         </Bloco>
         <RodapeFormulario>
           <Botao onClick={aoSair} disabled={salvando}>Cancelar</Botao>

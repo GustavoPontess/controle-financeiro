@@ -193,7 +193,7 @@ function Faturas({ cartao, ciclos, mesHoje, hoje }: { cartao: CartaoCredito; cic
               className={styles.mes} data-ativo={c.id === ativo.id || undefined} data-futuro={i > mesHoje || undefined} data-hoje={i === mesHoje || undefined}
               onClick={() => setEscolhido(c.id)}>
               <span className={styles.mesNome}>{mesCurto(c.dataFechamento, hoje.getFullYear())}</span>
-              <span className={styles.mesValor}>{c.vazia || c.valorTotal === 0 ? "—" : <Dinheiro valor={c.valorTotal} />}</span>
+              <span className={styles.mesValor}>{c.vazia || c.valorTotal === 0 ? "Sem compras" : <Dinheiro valor={c.valorTotal} />}</span>
             </button>
           )
         })}

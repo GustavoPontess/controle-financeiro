@@ -426,7 +426,7 @@ public class EmprestimoService(
                 || await _context.EmprestimoPagamentoSolicitacoes.AnyAsync(s => s.EmprestimoId == e.Id);
             if (temAtividade)
                 throw new ForbiddenAccessException(
-                    "Não é possível apagar um empréstimo vinculado com pagamento registrado — quite-o em vez disso.");
+                    "Não é possível apagar um empréstimo vinculado com pagamento registrado. Quite em vez disso.");
         }
 
         e.Ativo = false;
@@ -456,7 +456,7 @@ public class EmprestimoService(
             throw new InvalidOperationException("Este empréstimo já está vinculado.");
         if (emprestimo.StatusVinculo == StatusVinculoEmprestimo.PendenteAceite)
             throw new InvalidOperationException(
-                "Já existe um convite pendente — aguarde a resposta ou aguarde expirar (7 dias) antes de reenviar.");
+                "Já existe um convite pendente. Espere a resposta ou espere ele expirar (7 dias) antes de reenviar.");
 
         var email = dto.Email.Trim().ToLowerInvariant();
         var tokenBruto = GerarTokenOpaco();
@@ -516,7 +516,7 @@ public class EmprestimoService(
                 e.Id,
                 e.Descricao,
                 e.ValorTotal,
-                nomes.GetValueOrDefault(e.CriadoPor, "—"),
+                nomes.GetValueOrDefault(e.CriadoPor, "Alguém"),
                 tipoEfetivo == TipoEmprestimo.Emprestei ? "Emprestei" : "Peguei emprestado");
         }).ToList();
     }
@@ -540,7 +540,7 @@ public class EmprestimoService(
             emprestimo.Id,
             emprestimo.Descricao,
             emprestimo.ValorTotal,
-            criador?.Nome ?? "—",
+            criador?.Nome ?? "Sem descrição",
             tipoEfetivo == TipoEmprestimo.Emprestei ? "Emprestei" : "Peguei emprestado");
     }
 
@@ -1119,7 +1119,7 @@ public class EmprestimoService(
         return grupos.Select(g => new EmprestimoConsolidacaoCandidatoDto
         {
             ContraparteUsuarioId = g.Key,
-            ContraparteNome = nomes.GetValueOrDefault(g.Key, "—"),
+            ContraparteNome = nomes.GetValueOrDefault(g.Key, "Alguém"),
             Itens = g.Select(e => new EmprestimoConsolidacaoItemDto
             {
                 EmprestimoOriginalId = e.Id,
@@ -1257,7 +1257,7 @@ public class EmprestimoService(
 
         if (originais.Any(e => !e.Ativo || e.Quitado || e.StatusVinculo != StatusVinculoEmprestimo.Vinculado))
             throw new InvalidOperationException(
-                "Um dos empréstimos incluídos mudou de estado desde a proposta — peça uma nova consolidação.");
+                "Um dos empréstimos incluídos mudou de estado desde a proposta. Peça uma nova consolidação.");
 
         var valorTotal = originais.Sum(e => e.ValorTotal - e.ValorPago);
         if (valorTotal <= 0)
@@ -1269,7 +1269,7 @@ public class EmprestimoService(
         {
             Id = Guid.NewGuid(),
             Descricao = proposta.Descricao,
-            Pessoa = devedor?.Nome ?? "—",
+            Pessoa = devedor?.Nome ?? "Sem descrição",
             ValorTotal = valorTotal,
             ValorPago = 0,
             Tipo = TipoEmprestimo.Emprestei,
@@ -1461,9 +1461,9 @@ public class EmprestimoService(
         {
             Id = p.Id,
             CredorUsuarioId = p.CredorUsuarioId,
-            CredorNome = nomes.GetValueOrDefault(p.CredorUsuarioId, "—"),
+            CredorNome = nomes.GetValueOrDefault(p.CredorUsuarioId, "Alguém"),
             DevedorUsuarioId = p.DevedorUsuarioId,
-            DevedorNome = nomes.GetValueOrDefault(p.DevedorUsuarioId, "—"),
+            DevedorNome = nomes.GetValueOrDefault(p.DevedorUsuarioId, "Alguém"),
             Descricao = p.Descricao,
             FormaPagamento = (int)p.FormaPagamento,
             QuantidadeParcelas = p.QuantidadeParcelas,
@@ -1489,7 +1489,7 @@ public class EmprestimoService(
             Itens = p.Itens.Select(i => new EmprestimoConsolidacaoItemDto
             {
                 EmprestimoOriginalId = i.EmprestimoOriginalId,
-                Descricao = i.EmprestimoOriginal?.Descricao ?? "—",
+                Descricao = i.EmprestimoOriginal?.Descricao ?? "Sem descrição",
                 ValorRestanteSnapshot = i.ValorRestanteSnapshot,
             }).ToList(),
         };
@@ -1604,7 +1604,7 @@ public class EmprestimoService(
                     _ => s.StatusAprovacao.ToString(),
                 },
                 SolicitadoPor = s.SolicitadoPor,
-                SolicitadoPorNome = nomes.GetValueOrDefault(s.SolicitadoPor, "—"),
+                SolicitadoPorNome = nomes.GetValueOrDefault(s.SolicitadoPor, "Alguém"),
                 CriadoEm = s.CriadoEm,
                 AprovadoEm = s.AprovadoEm,
                 TransacaoRecebimentoId = s.TransacaoRecebimentoId,

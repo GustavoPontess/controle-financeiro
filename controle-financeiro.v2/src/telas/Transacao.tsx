@@ -122,9 +122,9 @@ function Ver({ t, categorias, subcategorias, editavel, aoEditar, aoSair, aoMudar
 
   const dados: [string, string][] = [
     ["Data", t.hora ? `${fmtData(t.data)} às ${t.hora.slice(0, 5)}` : fmtData(t.data)],
-    [t.cartaoCreditoId ? "Cartão" : "Conta", t.cartaoCreditoNome ?? t.contaNome ?? "—"],
-    ["Meio de pagamento", t.meioPagamentoDescricao ?? "—"],
-    ["Categoria", cat ? (sub ? `${cat.descricao} › ${sub.nome}` : cat.descricao) : "—"],
+    [t.cartaoCreditoId ? "Cartão" : "Conta", t.cartaoCreditoNome ?? t.contaNome ?? "Não informada"],
+    ["Meio de pagamento", t.meioPagamentoDescricao ?? "Não informado"],
+    ["Categoria", cat ? (sub ? `${cat.descricao} › ${sub.nome}` : cat.descricao) : "Sem categoria"],
   ]
 
   const excluir = async () => {

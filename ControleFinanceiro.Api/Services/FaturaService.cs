@@ -459,7 +459,7 @@ public class FaturaService
             ?? throw new KeyNotFoundException("Pagamento não encontrado.");
         if (fatura.ValorPago < pagamento.Valor)
             throw new InvalidOperationException(
-                "A fatura registra menos pago do que este pagamento — confira a fatura antes de estornar.");
+                "A fatura registra menos pago do que este pagamento. Confira a fatura antes de estornar.");
 
         ParcelaTransacao? parcela = null;
         if (pagamento.ParcelaTransacaoId is { } parcelaId)
@@ -712,7 +712,7 @@ public class FaturaService
             Data = t.Data.ToDateTime(t.Hora ?? TimeOnly.MinValue),
             CriadoEm = t.CriadoEm,
             MeioPagamento = t.MeioPagamento.HasValue ? (int)t.MeioPagamento.Value : 0,
-            MeioPagamentoDescricao = Domain.Enums.MeioPagamentoExtensions.Descricao(t.MeioPagamento) ?? "—",
+            MeioPagamentoDescricao = Domain.Enums.MeioPagamentoExtensions.Descricao(t.MeioPagamento) ?? "Não informado",
         }).ToList();
 
         return dto;

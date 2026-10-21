@@ -64,8 +64,8 @@ describe("Bancos — lista com a ficha da conta", () => {
     expect(linha(/Nubank/)).toHaveAttribute("aria-expanded", "true")
     expect(screen.getByText("NU PAGAMENTOS")).toBeInTheDocument()
     expect(screen.getByText("12345-6")).toBeInTheDocument()
-    // Agência não informada aparece em branco, não some (dá pra ver o que falta preencher).
-    expect(screen.getByText("Agência").nextElementSibling).toHaveTextContent("—")
+    // Agência não informada aparece dizendo isso, não some (dá pra ver o que falta preencher).
+    expect(screen.getByText("Agência").nextElementSibling).toHaveTextContent("Não informada")
     // O cartão ligado à conta aparece na ficha e leva pra página dele.
     expect(screen.getByText("Cartões")).toBeInTheDocument()
     expect(screen.getByRole("link", { name: /Nubank gold/ })).toHaveAttribute("href", "/cartoes/c1")
