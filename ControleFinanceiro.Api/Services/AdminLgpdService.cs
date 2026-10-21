@@ -85,6 +85,9 @@ public class AdminLgpdService
                     Nome = c.Nome,
                     Tipo = c.Tipo.ToString(),
                     Banco = c.Banco != null ? c.Banco.Nome : null,
+                    Agencia = c.Agencia,
+                    NumeroConta = c.NumeroConta,
+                    EncerradaEm = c.EncerradaEm,
                 })
                 .ToListAsync(),
             Cartoes = await _context.CartoesCredito
@@ -95,6 +98,8 @@ public class AdminLgpdService
                     Nome = c.Nome,
                     UltimosDigitos = c.UltimosDigitos,
                     LimiteTotal = c.LimiteTotal,
+                    DiaFechamento = c.DiaFechamento,
+                    DiaVencimento = c.DiaVencimento,
                 })
                 .ToListAsync(),
             // ToDateTime não traduz pro SQL — projeta Data+Hora crus e monta o DateTime em memória.
@@ -112,6 +117,12 @@ public class AdminLgpdService
                     t.Data,
                     t.Hora,
                     Categoria = t.Categoria != null ? t.Categoria.Descricao : null,
+                    Subcategoria = t.Subcategoria != null ? t.Subcategoria.Nome : null,
+                    Conta = t.Conta != null ? t.Conta.Nome : null,
+                    Cartao = t.CartaoCredito != null ? t.CartaoCredito.Nome : null,
+                    t.MeioPagamento,
+                    t.StatusTransacao,
+                    t.Ativo,
                 })
                 .ToListAsync())
                 .Select(t => new TransacaoExportadaDto
@@ -122,6 +133,12 @@ public class AdminLgpdService
                     Tipo = t.Tipo.ToString(),
                     Data = t.Data.ToDateTime(t.Hora ?? TimeOnly.MinValue),
                     Categoria = t.Categoria,
+                    Subcategoria = t.Subcategoria,
+                    Conta = t.Conta,
+                    Cartao = t.Cartao,
+                    FormaDePagamento = t.MeioPagamento.Descricao(),
+                    Situacao = t.StatusTransacao.ToString(),
+                    Excluido = !t.Ativo,
                 })
                 .ToList(),
             Metas = metas
@@ -134,9 +151,133 @@ public class AdminLgpdService
                 .ToList(),
             Orcamentos = await _context.Orcamentos
                 .Where(o => o.UsuarioId == usuarioId)
-                .Select(o => new OrcamentoExportadoDto { Id = o.Id, Mes = o.Mes, Ano = o.Ano, Valor = o.ValorLimite })
+                .Select(o => new OrcamentoExportadoDto
+                {
+                    Id = o.Id, Categoria = o.Categoria != null ? o.Categoria.Descricao : null, Mes = o.Mes, Ano = o.Ano, Valor = o.ValorLimite,
+                })
                 .ToListAsync(),
+            ContasFixas = (await _context.Recorrentes
+                .IgnoreQueryFilters()
+                .Where(r => r.CriadoPor == usuarioId)
+                .OrderBy(r => r.Descricao)
+                .Select(r => new
+                {
+                    r.Id, r.Descricao, r.Valor, r.Tipo, r.Frequencia, r.Dia, r.DataInicio, r.DataFim, r.MeioPagamento, r.Ativo,
+                    r.CanceladoEm, r.ExcluidoEm,
+                    Categoria = r.Categoria != null ? r.Categoria.Descricao : null,
+                    Conta = r.Conta != null ? r.Conta.Nome : null,
+                    Cartao = r.CartaoCredito != null ? r.CartaoCredito.Nome : null,
+                })
+                .ToListAsync())
+                .Select(r => new ContaFixaExportadaDto
+                {
+                    Id = r.Id, Descricao = r.Descricao, Valor = r.Valor, Tipo = r.Tipo.ToString(), Frequencia = r.Frequencia.ToString(),
+                    Dia = r.Dia, DataInicio = r.DataInicio, DataFim = r.DataFim, Categoria = r.Categoria, Conta = r.Conta, Cartao = r.Cartao,
+                    FormaDePagamento = r.MeioPagamento.Descricao(), Ativa = r.Ativo && r.CanceladoEm == null && r.ExcluidoEm == null,
+                    CanceladaEm = r.CanceladoEm, ExcluidaEm = r.ExcluidoEm,
+                })
+                .ToList(),
+            ComprasParceladas = await ParceladasAsync(usuarioId),
+            Emprestimos = (await _context.Emprestimos
+                .IgnoreQueryFilters()
+                .Where(e => e.CriadoPor == usuarioId)
+                .OrderByDescending(e => e.DataInicio)
+                .Select(e => new
+                {
+                    e.Id, e.Descricao, e.Pessoa, e.Tipo, e.ValorTotal, e.ValorPago, e.TaxaJuroMensal, e.DataInicio, e.DataVencimento,
+                    e.Quitado, e.Observacao,
+                })
+                .ToListAsync())
+                .Select(e => new EmprestimoExportadoDto
+                {
+                    Id = e.Id, Descricao = e.Descricao, Pessoa = e.Pessoa, Tipo = e.Tipo.ToString(), ValorTotal = e.ValorTotal,
+                    ValorPago = e.ValorPago, TaxaJuroMensal = e.TaxaJuroMensal, DataInicio = e.DataInicio, DataVencimento = e.DataVencimento,
+                    Quitado = e.Quitado, Observacao = e.Observacao,
+                })
+                .ToList(),
+            RendaEsperada = await _context.RendasPrevistas
+                .Where(r => r.UsuarioId == usuarioId)
+                .OrderBy(r => r.Ano).ThenBy(r => r.Mes)
+                .Select(r => new RendaEsperadaExportadaDto { Ano = r.Ano, Mes = r.Mes, FixaEsperada = r.FixaEsperada, VariavelEsperada = r.VariavelEsperada })
+                .ToListAsync(),
+            CategoriasProprias = await CategoriasDaPessoaAsync(usuarioId),
+            ConferenciasDeSaldo = await _context.ReconciliacoesSaldo
+                .Where(r => r.UsuarioId == usuarioId && r.Ativo)
+                .OrderBy(r => r.DataHora)
+                .Select(r => new ConferenciaExportadaDto
+                {
+                    Conta = r.Conta != null ? r.Conta.Nome : null, DataHora = r.DataHora, SaldoNoBanco = r.SaldoDeclarado,
+                    SaldoNoApp = r.SaldoCalculado, Diferenca = r.Diferenca, Ajustada = r.AjusteTransacaoId != null,
+                })
+                .ToListAsync(),
+            Notificacoes = await _context.Notificacoes
+                .Where(n => n.UsuarioId == usuarioId)
+                .OrderByDescending(n => n.CriadoEm)
+                .Select(n => new NotificacaoExportadaDto { Titulo = n.Titulo, Mensagem = n.Mensagem, Lida = n.Lida, CriadoEm = n.CriadoEm })
+                .ToListAsync(),
+            // Só o vínculo da própria pessoa (nome da família, a relação que ela declarou, o papel, quando entrou e saiu).
+            Familias = (await _context.MembrosFamilia
+                .IgnoreQueryFilters()
+                .Where(m => m.UsuarioId == usuarioId)
+                .Select(m => new { Nome = m.Familia != null ? m.Familia.Nome : "", m.Papel, m.PapelPermissao, m.EntrouEm, m.SaiuEm })
+                .ToListAsync())
+                .Select(m => new FamiliaExportadaDto
+                {
+                    Nome = m.Nome, Relacao = m.Papel, Permissao = m.PapelPermissao.ToString(), EntrouEm = m.EntrouEm, SaiuEm = m.SaiuEm,
+                })
+                .ToList(),
         };
+    }
+
+    private async Task<List<ParcelamentoExportadoDto>> ParceladasAsync(Guid usuarioId)
+    {
+        var lista = await _context.Parcelamentos
+            .IgnoreQueryFilters()
+            .Where(p => p.CriadoPor == usuarioId)
+            .OrderByDescending(p => p.DataCompra)
+            .Select(p => new
+            {
+                p.Id, p.Descricao, p.Tipo, p.DataCompra, p.ValorTotal, p.ValorComJuros, p.TaxaJuroMensal, p.QuantidadeParcelas,
+                p.ParcelasPagasAntes, p.CanceladoEm,
+                Cartao = p.CartaoCredito != null ? p.CartaoCredito.Nome : null,
+                Categoria = p.Categoria != null ? p.Categoria.Descricao : null,
+                Parcelas = p.Parcelas.OrderBy(x => x.Numero)
+                    .Select(x => new { x.Numero, x.Valor, x.ValorComJuros, x.DataVencimento, x.Status, x.PagoEm }).ToList(),
+            })
+            .ToListAsync();
+        return lista.Select(p => new ParcelamentoExportadoDto
+        {
+            Id = p.Id, Descricao = p.Descricao, Tipo = p.Tipo.ToString(), DataCompra = p.DataCompra, ValorTotal = p.ValorTotal,
+            ValorComJuros = p.ValorComJuros, TaxaJuroMensal = p.TaxaJuroMensal, QuantidadeParcelas = p.QuantidadeParcelas,
+            ParcelasPagasAntes = p.ParcelasPagasAntes, Cartao = p.Cartao, Categoria = p.Categoria, CanceladoEm = p.CanceladoEm,
+            Parcelas = p.Parcelas.Select(x => new ParcelaExportadaDto
+            {
+                Numero = x.Numero, Valor = x.Valor, ValorComJuros = x.ValorComJuros, DataVencimento = x.DataVencimento,
+                Situacao = x.Status.ToString(), PagoEm = x.PagoEm,
+            }).ToList(),
+        }).ToList();
+    }
+
+    /// <summary>As categorias que a pessoa criou e as subcategorias dela (inclusive dentro das categorias padrão).</summary>
+    private async Task<List<CategoriaExportadaDto>> CategoriasDaPessoaAsync(Guid usuarioId)
+    {
+        var proprias = await _context.Categorias.Where(c => c.UsuarioId == usuarioId)
+            .Select(c => new { c.Id, c.Descricao, c.Finalidade }).ToListAsync();
+        var subs = await _context.Subcategorias.Where(s => s.UsuarioId == usuarioId)
+            .Select(s => new { s.Nome, s.CategoriaId, Categoria = s.Categoria != null ? s.Categoria.Descricao : "", Finalidade = s.Categoria != null ? s.Categoria.Finalidade : Finalidade.Ambas })
+            .ToListAsync();
+        var resultado = proprias.Select(c => new CategoriaExportadaDto
+        {
+            Id = c.Id, Descricao = c.Descricao, Finalidade = c.Finalidade.ToString(),
+            Subcategorias = subs.Where(s => s.CategoriaId == c.Id).Select(s => s.Nome).OrderBy(n => n).ToList(),
+        }).ToList();
+        // Subcategoria própria numa categoria padrão: a categoria entra só pra levar a subcategoria.
+        resultado.AddRange(subs.Where(s => proprias.All(c => c.Id != s.CategoriaId)).GroupBy(s => s.CategoriaId).Select(g => new CategoriaExportadaDto
+        {
+            Id = g.Key, Descricao = g.First().Categoria, Finalidade = g.First().Finalidade.ToString(),
+            Subcategorias = g.Select(s => s.Nome).OrderBy(n => n).ToList(),
+        }));
+        return resultado.OrderBy(c => c.Descricao).ToList();
     }
 
     // ── Exclusão em 2 estágios ────────────────────────────────────────────────────────────
