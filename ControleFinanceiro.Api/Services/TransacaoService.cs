@@ -269,40 +269,10 @@ namespace ControleFinanceiro.Api.Services
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 100);
 
-            var lancamentos = TransacoesFiltradas(usuarioId, from, to, categoriaId, q, tipo, contaId, cartaoId,
-                    valorMin, valorMax, status, apenasCaixa: false, meioPagamento, natureza)
-                .Where(t => t.Tipo == TipoTransacao.Despesa)
-                .Where(RegrasFinanceiras.EntraNoResultado)
-                .Select(t => new ChaveDeLinha { Id = t.Id, EhParcelamento = false, Data = t.Data, Hora = t.Hora, CriadoEm = t.CriadoEm, Valor = t.Valor });
-
-            // Compra parcelada: só despesa, só no cartão, sempre efetivada, meio Crédito.
-            var semParcelamento = (tipo.HasValue && tipo.Value != (int)TipoTransacao.Despesa)
-                || contaId.HasValue
-                || (status.HasValue && status.Value != (int)StatusTransacao.Executado)
-                || (meioPagamento.HasValue && meioPagamento.Value != (int)MeioPagamento.Credito)
-                || (!string.IsNullOrEmpty(natureza) && natureza != "saida");
-            var parcelamentos = _context.Parcelamentos
-                .Where(p => p.CriadoPor == usuarioId && p.CartaoCredito!.CriadoPor == usuarioId && p.Ativo
-                            && p.Tipo != TipoParcelamento.Recorrente && !semParcelamento);
-            if (from.HasValue) { var de = from.Value.ToDateTime(TimeOnly.MinValue); parcelamentos = parcelamentos.Where(p => p.DataCompra >= de); }
-            if (to.HasValue) { var ate = to.Value.ToDateTime(TimeOnly.MinValue); parcelamentos = parcelamentos.Where(p => p.DataCompra < ate); }
-            if (categoriaId.HasValue) parcelamentos = parcelamentos.Where(p => p.CategoriaId == categoriaId.Value);
-            if (cartaoId.HasValue) parcelamentos = parcelamentos.Where(p => p.CartaoCreditoId == cartaoId.Value);
-            if (valorMin.HasValue) parcelamentos = parcelamentos.Where(p => (p.ValorComJuros ?? p.ValorTotal) >= valorMin.Value);
-            if (valorMax.HasValue) parcelamentos = parcelamentos.Where(p => (p.ValorComJuros ?? p.ValorTotal) <= valorMax.Value);
-            if (!string.IsNullOrWhiteSpace(q))
-            {
-                var termo = $"%{q.Trim().ToLower()}%";
-                parcelamentos = parcelamentos.Where(p => EF.Functions.Like(p.Descricao.ToLower(), termo));
-            }
-            var compras = parcelamentos.Select(p => new ChaveDeLinha
-            {
-                Id = p.Id, EhParcelamento = true, Data = DateOnly.FromDateTime(p.DataCompra), Hora = null,
-                CriadoEm = p.CriadoEm, Valor = p.ValorComJuros ?? p.ValorTotal,
-            });
+            var uniao = LinhasDeGasto(usuarioId, from, to, categoriaId, q, tipo, contaId, cartaoId, valorMin, valorMax, status,
+                meioPagamento, natureza);
 
             // Mesma ordem da visão Saldo (sem hora: 00:00 no DESC, 23:59 no ASC; empate pela criação).
-            var uniao = lancamentos.Concat(compras);
             var semHoraNoFimDesc = TimeOnly.MinValue;
             var semHoraNoFimAsc = TimeOnly.MaxValue;
             var ordenada = ordenacao switch
@@ -339,6 +309,69 @@ namespace ControleFinanceiro.Api.Services
             };
         }
 
+        /// <summary>
+        /// O topo da visão Gastos (decisão do Gustavo, 2026-10-21: o topo muda conforme a visão): o total do que a
+        /// lista mostra, com os MESMOS filtros e a mesma regra (<see cref="LinhasDeGasto"/>), e quanto disso foi em
+        /// conta e quanto no cartão (compra parcelada pelo total). Somado no banco.
+        /// </summary>
+        public async Task<ResumoGastosDto> ResumirGastosAsync(
+            Guid usuarioId, DateOnly? from = null, DateOnly? to = null, Guid? categoriaId = null, string? q = null,
+            int? tipo = null, Guid? contaId = null, Guid? cartaoId = null, decimal? valorMin = null, decimal? valorMax = null,
+            int? status = null, int? meioPagamento = null, string? natureza = null)
+        {
+            var linhas = LinhasDeGasto(usuarioId, from, to, categoriaId, q, tipo, contaId, cartaoId, valorMin, valorMax, status,
+                meioPagamento, natureza);
+            var noCartao = await linhas.Where(l => l.NoCartao).SumAsync(l => l.Valor);
+            var emConta = await linhas.Where(l => !l.NoCartao).SumAsync(l => l.Valor);
+            return new ResumoGastosDto(emConta + noCartao, emConta, noCartao);
+        }
+
+        /// <summary>
+        /// As linhas da visão Gastos (regra única da lista e do resumo): despesa que entra no resultado, em conta ou
+        /// à vista no cartão, e cada compra parcelada UMA vez, pelo total, na data da compra. UNION ALL no banco.
+        /// </summary>
+        private IQueryable<ChaveDeLinha> LinhasDeGasto(
+            Guid usuarioId, DateOnly? from, DateOnly? to, Guid? categoriaId, string? q, int? tipo, Guid? contaId,
+            Guid? cartaoId, decimal? valorMin, decimal? valorMax, int? status, int? meioPagamento, string? natureza)
+        {
+            var lancamentos = TransacoesFiltradas(usuarioId, from, to, categoriaId, q, tipo, contaId, cartaoId,
+                    valorMin, valorMax, status, apenasCaixa: false, meioPagamento, natureza)
+                .Where(t => t.Tipo == TipoTransacao.Despesa)
+                .Where(RegrasFinanceiras.EntraNoResultado)
+                .Select(t => new ChaveDeLinha
+                {
+                    Id = t.Id, EhParcelamento = false, Data = t.Data, Hora = t.Hora, CriadoEm = t.CriadoEm, Valor = t.Valor,
+                    NoCartao = t.CartaoCreditoId != null,
+                });
+
+            // Compra parcelada: só despesa, só no cartão, sempre efetivada, meio Crédito.
+            var semParcelamento = (tipo.HasValue && tipo.Value != (int)TipoTransacao.Despesa)
+                || contaId.HasValue
+                || (status.HasValue && status.Value != (int)StatusTransacao.Executado)
+                || (meioPagamento.HasValue && meioPagamento.Value != (int)MeioPagamento.Credito)
+                || (!string.IsNullOrEmpty(natureza) && natureza != "saida");
+            var parcelamentos = _context.Parcelamentos
+                .Where(p => p.CriadoPor == usuarioId && p.CartaoCredito!.CriadoPor == usuarioId && p.Ativo
+                            && p.Tipo != TipoParcelamento.Recorrente && !semParcelamento);
+            if (from.HasValue) { var de = from.Value.ToDateTime(TimeOnly.MinValue); parcelamentos = parcelamentos.Where(p => p.DataCompra >= de); }
+            if (to.HasValue) { var ate = to.Value.ToDateTime(TimeOnly.MinValue); parcelamentos = parcelamentos.Where(p => p.DataCompra < ate); }
+            if (categoriaId.HasValue) parcelamentos = parcelamentos.Where(p => p.CategoriaId == categoriaId.Value);
+            if (cartaoId.HasValue) parcelamentos = parcelamentos.Where(p => p.CartaoCreditoId == cartaoId.Value);
+            if (valorMin.HasValue) parcelamentos = parcelamentos.Where(p => (p.ValorComJuros ?? p.ValorTotal) >= valorMin.Value);
+            if (valorMax.HasValue) parcelamentos = parcelamentos.Where(p => (p.ValorComJuros ?? p.ValorTotal) <= valorMax.Value);
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var termo = $"%{q.Trim().ToLower()}%";
+                parcelamentos = parcelamentos.Where(p => EF.Functions.Like(p.Descricao.ToLower(), termo));
+            }
+            var compras = parcelamentos.Select(p => new ChaveDeLinha
+            {
+                Id = p.Id, EhParcelamento = true, Data = DateOnly.FromDateTime(p.DataCompra), Hora = null,
+                CriadoEm = p.CriadoEm, Valor = p.ValorComJuros ?? p.ValorTotal, NoCartao = true,
+            });
+            return lancamentos.Concat(compras);
+        }
+
         /// <summary>Chave de ordenação de uma linha da lista (lançamento ou compra parcelada) pro UNION.</summary>
         private sealed class ChaveDeLinha
         {
@@ -348,6 +381,8 @@ namespace ControleFinanceiro.Api.Services
             public TimeOnly? Hora { get; set; }
             public DateTime CriadoEm { get; set; }
             public decimal Valor { get; set; }
+            /// <summary>Gasto no cartão (à vista ou compra parcelada); senão, em conta.</summary>
+            public bool NoCartao { get; set; }
         }
 
         /// <summary>Lançamentos do usuário com os filtros da lista (conta dele ou cartão dele). Filtro no banco.</summary>
