@@ -70,7 +70,7 @@ public class RecorrenteServiceTests
             ContaId = contaId,
             Frequencia = FrequenciaRecorrencia.Mensal,
             Dia = 1,
-            DataInicio = DateTime.UtcNow.Date.AddMonths(-1),
+            DataInicio = HorarioBrasil.HojeData().AddMonths(-1),
             Ativo = ativo,
             CriadoPor = userId,
             CriadoEm = DateTime.UtcNow
@@ -92,7 +92,7 @@ public class RecorrenteServiceTests
             StatusTransacao = StatusTransacao.Previsao,
             Ativo = true,
             CriadoPor = userId,
-            Data = DateOnly.FromDateTime(data ?? DateTime.UtcNow.Date.AddDays(5)),
+            Data = DateOnly.FromDateTime(data ?? HorarioBrasil.HojeData().AddDays(5)),
             RecorrenteOrigemId = recorrenteId,
             CriadoEm = DateTime.UtcNow
         };
@@ -164,7 +164,7 @@ public class RecorrenteServiceTests
 
         var encerrada = SeedRecorrente(ctx, u, c);
         encerrada.Descricao = "Curso";
-        encerrada.DataFim = DateTime.UtcNow.Date.AddDays(-1);
+        encerrada.DataFim = HorarioBrasil.HojeData().AddDays(-1);
 
         ctx.SaveChanges();
         return (u, ativa, pausada, cancelada, encerrada);
@@ -218,7 +218,7 @@ public class RecorrenteServiceTests
         var u = SeedUsuario(ctx);
         var c = SeedConta(ctx, u);
         var rec = SeedRecorrente(ctx, u, c);
-        rec.DataFim = DateTime.UtcNow.Date;
+        rec.DataFim = HorarioBrasil.HojeData();
         ctx.SaveChanges();
 
         var svc = CreateService(ctx);
@@ -310,8 +310,8 @@ public class RecorrenteServiceTests
         var u = SeedUsuario(ctx);
         var c = SeedConta(ctx, u);
         var rec = SeedRecorrente(ctx, u, c);
-        SeedTransacaoPrevisao(ctx, u, rec.Id, c, DateTime.UtcNow.Date.AddDays(3));
-        SeedTransacaoPrevisao(ctx, u, rec.Id, c, DateTime.UtcNow.Date.AddDays(10));
+        SeedTransacaoPrevisao(ctx, u, rec.Id, c, HorarioBrasil.HojeData().AddDays(3));
+        SeedTransacaoPrevisao(ctx, u, rec.Id, c, HorarioBrasil.HojeData().AddDays(10));
 
         // Also seed an Executado transaction (should NOT be cancelled)
         ctx.Transacoes.Add(new Transacao
@@ -324,7 +324,7 @@ public class RecorrenteServiceTests
             StatusTransacao = StatusTransacao.Executado,
             Ativo = true,
             CriadoPor = u,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow.Date.AddDays(-5)),
+            Data = DateOnly.FromDateTime(HorarioBrasil.HojeData().AddDays(-5)),
             RecorrenteOrigemId = rec.Id,
             CriadoEm = DateTime.UtcNow
         });
@@ -613,7 +613,7 @@ public class RecorrenteServiceTests
     {
         Descricao = descricao, Valor = valor, Tipo = (int)TipoTransacao.Despesa, ContaId = contaId,
         Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 10,
-        DataInicio = DateTime.SpecifyKind(DateTime.UtcNow.Date.AddDays(1), DateTimeKind.Utc),
+        DataInicio = DateTime.SpecifyKind(HorarioBrasil.HojeData().AddDays(1), DateTimeKind.Utc),
     };
 
     private static Task<int> PrevisoesAsync(AppDbContext ctx, Guid usuarioId) =>
@@ -795,8 +795,8 @@ public class RecorrenteServiceTests
         var u = SeedUsuario(ctx);
         var c = SeedConta(ctx, u);
         var rec = SeedRecorrente(ctx, u, c);
-        var future1 = SeedTransacaoPrevisao(ctx, u, rec.Id, c, DateTime.UtcNow.Date.AddDays(3));
-        var future2 = SeedTransacaoPrevisao(ctx, u, rec.Id, c, DateTime.UtcNow.Date.AddDays(10));
+        var future1 = SeedTransacaoPrevisao(ctx, u, rec.Id, c, HorarioBrasil.HojeData().AddDays(3));
+        var future2 = SeedTransacaoPrevisao(ctx, u, rec.Id, c, HorarioBrasil.HojeData().AddDays(10));
 
         var svc = CreateService(ctx);
         await svc.EditarProximaOcorrenciaAsync(rec.Id, new EditarProximaOcorrenciaDto { Valor = 555m }, u);
@@ -872,7 +872,7 @@ public class RecorrenteServiceTests
         var c = SeedConta(ctx, u);
         var rec = SeedRecorrente(ctx, u, c);
         var prevista = SeedTransacaoPrevisao(ctx, u, rec.Id, c);
-        var jaCobrada = SeedTransacaoPrevisao(ctx, u, rec.Id, c, DateTime.UtcNow.Date.AddDays(-20));
+        var jaCobrada = SeedTransacaoPrevisao(ctx, u, rec.Id, c, HorarioBrasil.HojeData().AddDays(-20));
         jaCobrada.StatusTransacao = StatusTransacao.Executado;
         ctx.SaveChanges();
 
@@ -921,7 +921,7 @@ public class RecorrenteServiceTests
             ContaId = c,
             Frequencia = (int)FrequenciaRecorrencia.Semanal,
             Dia = 5,
-            DataInicio = DateTime.UtcNow.Date
+            DataInicio = HorarioBrasil.HojeData()
         };
         await svc.AtualizarAsync(rec.Id, dto, u);
 
@@ -944,7 +944,7 @@ public class RecorrenteServiceTests
         var dto = new CriarRecorrenteDto
         {
             Descricao = "x", Valor = 1m, Tipo = 1, ContaId = c,
-            Frequencia = 1, Dia = 1, DataInicio = DateTime.UtcNow.Date
+            Frequencia = 1, Dia = 1, DataInicio = HorarioBrasil.HojeData()
         };
         await Assert.ThrowsAsync<ForbiddenAccessException>(() =>
             svc.AtualizarAsync(rec.Id, dto, u2));
@@ -974,7 +974,7 @@ public class RecorrenteServiceTests
         SeedRecorrente(ctx, outroUid, SeedConta(ctx, outroUid));   // outro usuário
 
         // Próximos 30 dias = cobrança PREVISTA de hoje a hoje+30: 2 em 10 dias, 1 em 60 dias, 1 sem previsão.
-        var hoje = DateTime.UtcNow.Date;
+        var hoje = HorarioBrasil.HojeData();
         var ativos = await ctx.Recorrentes.Where(r => r.CriadoPor == uid && r.Ativo).ToListAsync();
         SeedTransacaoPrevisao(ctx, uid, ativos[0].Id, conta, hoje.AddDays(10));
         SeedTransacaoPrevisao(ctx, uid, ativos[1].Id, conta, hoje.AddDays(10));
@@ -1052,7 +1052,7 @@ public class RecorrenteServiceTests
         var curso = SeedRecorrente(ctx, u, c);
         curso.Descricao = "Curso";
         curso.Valor = 300m;
-        curso.DataFim = DateTime.UtcNow.Date.AddDays(-13);
+        curso.DataFim = HorarioBrasil.HojeData().AddDays(-13);
         curso.DataProximaGeracao = DateTime.UtcNow.AddDays(3); // dentro dos 30 dias
         ctx.SaveChanges();
         Assert.True(curso.Ativo); // o dado "sujo" que o hero precisa tolerar
@@ -1074,7 +1074,7 @@ public class RecorrenteServiceTests
         var ctx = CreateContext();
         var u = SeedUsuario(ctx);
         var rec = SeedRecorrente(ctx, u, SeedConta(ctx, u));
-        rec.DataFim = DateTime.UtcNow.Date;
+        rec.DataFim = HorarioBrasil.HojeData();
         ctx.SaveChanges();
 
         var stats = await CreateService(ctx).ObterStatsAsync(u);
@@ -1135,7 +1135,7 @@ public class RecorrenteServiceTests
         {
             Descricao = "Tentativa de redirecionar", Valor = 100m, Tipo = (int)TipoTransacao.Despesa,
             ContaId = c2DeOutro, Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 1,
-            DataInicio = DateTime.UtcNow.Date,
+            DataInicio = HorarioBrasil.HojeData(),
         };
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.AtualizarAsync(rec.Id, dto, u1));
@@ -1159,7 +1159,7 @@ public class RecorrenteServiceTests
         {
             Descricao = "x", Valor = 100m, Tipo = (int)TipoTransacao.Despesa,
             CartaoCreditoId = cartaoDeOutro, Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 1,
-            DataInicio = DateTime.UtcNow.Date,
+            DataInicio = HorarioBrasil.HojeData(),
         };
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.AtualizarAsync(rec.Id, dto, u1));
@@ -1180,7 +1180,7 @@ public class RecorrenteServiceTests
         {
             Descricao = "x", Valor = 100m, Tipo = (int)TipoTransacao.Despesa,
             ContaId = c1, CategoriaId = categoriaDeOutro, Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 1,
-            DataInicio = DateTime.UtcNow.Date,
+            DataInicio = HorarioBrasil.HojeData(),
         };
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.AtualizarAsync(rec.Id, dto, u1));
@@ -1199,7 +1199,7 @@ public class RecorrenteServiceTests
         {
             Descricao = "x", Valor = 100m, Tipo = (int)TipoTransacao.Despesa,
             ContaId = null, CartaoCreditoId = null, Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 1,
-            DataInicio = DateTime.UtcNow.Date,
+            DataInicio = HorarioBrasil.HojeData(),
         };
 
         await Assert.ThrowsAsync<ArgumentException>(() => svc.AtualizarAsync(rec.Id, dto, u1));
@@ -1219,7 +1219,7 @@ public class RecorrenteServiceTests
         {
             Descricao = "x", Valor = 100m, Tipo = (int)TipoTransacao.Despesa,
             ContaId = c1, CartaoCreditoId = cartao1, Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 1,
-            DataInicio = DateTime.UtcNow.Date,
+            DataInicio = HorarioBrasil.HojeData(),
         };
 
         await Assert.ThrowsAsync<ArgumentException>(() => svc.AtualizarAsync(rec.Id, dto, u1));
@@ -1239,7 +1239,7 @@ public class RecorrenteServiceTests
         {
             Descricao = "Assinatura", Valor = 50m, Tipo = (int)TipoTransacao.Despesa,
             ContaId = c1, CategoriaId = categoriaDeOutro, Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 1,
-            DataInicio = DateTime.UtcNow.Date,
+            DataInicio = HorarioBrasil.HojeData(),
         };
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.CriarAsync(dto, u1));
@@ -1259,7 +1259,7 @@ public class RecorrenteServiceTests
         {
             Descricao = "Streaming", Valor = 30m, Tipo = (int)TipoTransacao.Despesa,
             ContaId = c1, CategoriaId = categoriaGlobal, Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 1,
-            DataInicio = DateTime.UtcNow.Date,
+            DataInicio = HorarioBrasil.HojeData(),
         };
 
         var resultado = await svc.CriarAsync(dto, u1);
@@ -1301,7 +1301,7 @@ public class RecorrenteServiceTests
         var u2 = SeedUsuario(ctx);
         var conta = SeedConta(ctx, u1);
         var cartaoDeOutro = SeedCartao(ctx, u2);
-        var hoje = DateTime.UtcNow.Date;
+        var hoje = HorarioBrasil.HojeData();
         // Dia = hoje: a cobrança de hoje está no compasso (AgendaRecorrente) — com Dia 1 a próxima seria dia 1º.
         var valida = SeedRecorrente(ctx, u1, conta);
         valida.DataProximaGeracao = hoje;

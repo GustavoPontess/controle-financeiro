@@ -216,7 +216,7 @@ public class SubcategoriaServiceTests
         var cat = await SeedCategoria(ctx, u);
         var velha = await svc.CriarAsync(new Subcategoria { Nome = "Feira", CategoriaId = cat.Id }, u);
         var nova = await svc.CriarAsync(new Subcategoria { Nome = "Hortifruti", CategoriaId = cat.Id }, u);
-        ctx.Transacoes.Add(new Transacao { Id = Guid.NewGuid(), Descricao = "Feira", Valor = 10, Tipo = TipoTransacao.Despesa, CategoriaId = cat.Id, SubcategoriaId = velha.Id, ContaId = Guid.NewGuid(), Ativo = false, CriadoPor = u, Data = DateOnly.FromDateTime(DateTime.UtcNow) });
+        ctx.Transacoes.Add(new Transacao { Id = Guid.NewGuid(), Descricao = "Feira", Valor = 10, Tipo = TipoTransacao.Despesa, CategoriaId = cat.Id, SubcategoriaId = velha.Id, ContaId = Guid.NewGuid(), Ativo = false, CriadoPor = u, Data = HorarioBrasil.Hoje() });
         ctx.Recorrentes.Add(new Recorrente { Id = Guid.NewGuid(), Descricao = "Feira", Valor = 80, Tipo = TipoTransacao.Despesa, CategoriaId = cat.Id, SubcategoriaId = velha.Id, CriadoPor = u, DataInicio = DateTime.UtcNow });
         await ctx.SaveChangesAsync();
 
@@ -250,8 +250,8 @@ public class SubcategoriaServiceTests
         var u = Guid.NewGuid();
         var cat = await SeedCategoria(ctx, u);
         var sub = await svc.CriarAsync(new Subcategoria { Nome = "Feira", CategoriaId = cat.Id }, u);
-        ctx.Transacoes.Add(new Transacao { Id = Guid.NewGuid(), Descricao = "Feira", Valor = 10, Tipo = TipoTransacao.Despesa, CategoriaId = cat.Id, SubcategoriaId = sub.Id, ContaId = Guid.NewGuid(), Ativo = true, CriadoPor = u, Data = DateOnly.FromDateTime(DateTime.UtcNow) });
-        ctx.Transacoes.Add(new Transacao { Id = Guid.NewGuid(), Descricao = "Feira", Valor = 10, Tipo = TipoTransacao.Despesa, CategoriaId = cat.Id, SubcategoriaId = sub.Id, ContaId = Guid.NewGuid(), Ativo = false, CriadoPor = u, Data = DateOnly.FromDateTime(DateTime.UtcNow) });
+        ctx.Transacoes.Add(new Transacao { Id = Guid.NewGuid(), Descricao = "Feira", Valor = 10, Tipo = TipoTransacao.Despesa, CategoriaId = cat.Id, SubcategoriaId = sub.Id, ContaId = Guid.NewGuid(), Ativo = true, CriadoPor = u, Data = HorarioBrasil.Hoje() });
+        ctx.Transacoes.Add(new Transacao { Id = Guid.NewGuid(), Descricao = "Feira", Valor = 10, Tipo = TipoTransacao.Despesa, CategoriaId = cat.Id, SubcategoriaId = sub.Id, ContaId = Guid.NewGuid(), Ativo = false, CriadoPor = u, Data = HorarioBrasil.Hoje() });
         await ctx.SaveChangesAsync();
 
         var uso = await svc.UsoAsync(sub.Id, u);

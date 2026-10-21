@@ -173,12 +173,12 @@ public class CartaoCreditoServiceTests
         {
             Id = Guid.NewGuid(), Descricao = "Compra X", Valor = 100, Tipo = TipoTransacao.Despesa,
             CartaoCreditoId = cartao.Id, FaturaId = fatura.Id, UsadoComoCredito = true,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuarioId, Ativo = true,
+            Data = HorarioBrasil.Hoje(), CriadoPor = usuarioId, Ativo = true,
         };
         var pagamento = new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Pagamento fatura", Valor = 100, Tipo = TipoTransacao.Despesa,
-            FaturaPagaId = fatura.Id, Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuarioId, Ativo = true,
+            FaturaPagaId = fatura.Id, Data = HorarioBrasil.Hoje(), CriadoPor = usuarioId, Ativo = true,
         };
         ctx.CartoesCredito.Add(cartao);
         ctx.Faturas.Add(fatura);
@@ -226,7 +226,7 @@ public class CartaoCreditoServiceTests
         {
             Id = Guid.NewGuid(), Descricao = "Compra X", Valor = 100, Tipo = TipoTransacao.Despesa,
             CartaoCreditoId = cartao.Id, FaturaId = fatura.Id, UsadoComoCredito = true,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuarioId, Ativo = true,
+            Data = HorarioBrasil.Hoje(), CriadoPor = usuarioId, Ativo = true,
         };
         ctx.CartoesCredito.Add(cartao);
         ctx.Faturas.Add(fatura);

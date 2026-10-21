@@ -54,7 +54,7 @@ public class DashboardHttpTests : IClassFixture<CustomWebApplicationFactory>
         return client;
     }
 
-    private static DateOnly Hoje => DateOnly.FromDateTime(DateTime.UtcNow);
+    private static DateOnly Hoje => HorarioBrasil.Hoje();
 
     // "yyyy-MM-dd": o formato do date puro no JSON (e o que o front parseia sem fuso).
     private static string Iso(DateOnly d) => d.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);

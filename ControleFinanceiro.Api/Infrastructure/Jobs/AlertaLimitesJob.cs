@@ -28,7 +28,7 @@ public class AlertaLimitesJob
     /// <param name="agora">Só pra teste. O mês é o de Brasília (UTC−3): o app ainda não guarda fuso por pessoa.</param>
     public async Task ExecuteAsync(DateTime? agora = null)
     {
-        var hoje = (agora ?? DateTime.UtcNow).AddHours(-3);
+        var hoje = agora.HasValue ? HorarioBrasil.DeUtc(agora.Value) : HorarioBrasil.Agora();
         var usuarios = await _context.Orcamentos.Select(o => o.UsuarioId).Distinct().ToListAsync();
         foreach (var usuarioId in usuarios)
         {

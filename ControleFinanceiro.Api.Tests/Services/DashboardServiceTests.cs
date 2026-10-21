@@ -35,10 +35,10 @@ public class DashboardServiceTests
 
     private static DashboardService Servico(AppDbContext ctx) => new(ctx, new LimiteCalculatorService(ctx));
 
-    // "Hoje" do serviço = DateTime.UtcNow.Date (o mesmo relógio do DashboardService). Teste que depende do
+    // "Hoje" do serviço = HorarioBrasil.HojeData() (o mesmo relógio do DashboardService). Teste que depende do
     // relógio (recentes até hoje, "mês passado" do hero) monta as datas a partir daqui — nunca de data fixa —
     // e captura o valor UMA vez no começo (`var hoje = Hoje;`).
-    private static DateOnly Hoje => DateOnly.FromDateTime(DateTime.UtcNow);
+    private static DateOnly Hoje => HorarioBrasil.Hoje();
     private static DateOnly PrimeiroDoMes(DateOnly d) => new(d.Year, d.Month, 1);
     private static (int Ano, int Mes) MesDe(DateOnly d) => (d.Year, d.Month);
 

@@ -52,7 +52,7 @@ public class LimiteCartaoRegraUnicaTests
         ctx.Transacoes.Add(new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Salário", Valor = 100_000, Tipo = TipoTransacao.Receita,
-            ContaId = conta.Id, Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuarioId,
+            ContaId = conta.Id, Data = HorarioBrasil.Hoje(), CriadoPor = usuarioId,
         });
         await ctx.SaveChangesAsync();
         return new Cenario(usuarioId, cartao.Id, conta.Id);
@@ -65,7 +65,7 @@ public class LimiteCartaoRegraUnicaTests
         {
             Descricao = "Compra", Valor = valor, Tipo = TipoTransacao.Despesa, CartaoCreditoId = c.CartaoId,
             UsadoComoCredito = true, MeioPagamento = MeioPagamento.Credito, StatusTransacao = status,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow),
+            Data = HorarioBrasil.Hoje(),
         }, c.UsuarioId);
 
     private static ParcelamentoService Parcelamentos(AppDbContext ctx) =>
@@ -75,16 +75,16 @@ public class LimiteCartaoRegraUnicaTests
         Parcelamentos(ctx).CriarAsync(new CriarParcelamentoDto
         {
             Descricao = "Geladeira", Valor = valor, Tipo = TipoParcelamento.CompraParcelada,
-            CartaoCreditoId = c.CartaoId, DataCompra = DateTime.UtcNow.Date, Parcelas = parcelas,
+            CartaoCreditoId = c.CartaoId, DataCompra = HorarioBrasil.HojeData(), Parcelas = parcelas,
             // 1ª parcela na fatura em que a compra cai (regra do #275) — "o mês de hoje" é recusado
             // quando o dia de hoje já passou do fechamento.
-            PrimeiraParcelaMes = TestHelpers.MesDaFatura(DateTime.UtcNow, 10),
+            PrimeiraParcelaMes = TestHelpers.MesDaFatura(HorarioBrasil.Agora(), 10),
             IdempotencyKey = Guid.NewGuid().ToString(),
         }, c.UsuarioId);
 
     private static Task PagarFaturaAsync(AppDbContext ctx, Cenario c, Guid faturaId, decimal valor) =>
         new FaturaService(ctx).PagarFaturaAsync(faturaId,
-            new PagarFaturaDto { ContaId = c.ContaId, Valor = valor, DataPagamento = DateTime.UtcNow }, c.UsuarioId,
+            new PagarFaturaDto { ContaId = c.ContaId, Valor = valor, DataPagamento = HorarioBrasil.Agora() }, c.UsuarioId,
             Guid.NewGuid().ToString());
 
     private static Task<LimiteCalculatorService.LimiteSnapshot> LimiteAsync(AppDbContext ctx, Cenario c) =>
@@ -217,7 +217,7 @@ public class LimiteCartaoRegraUnicaTests
     {
         var ctx = CreateContext();
         var c = await SeedAsync(ctx);
-        var hoje = DateTime.UtcNow.Date;
+        var hoje = HorarioBrasil.HojeData();
         // A: cobra 300 e tem 500 pagos (pagou tudo e uma compra foi excluída depois) → sobra crédito de 200.
         // B: cobra 400, nada pago.
         var a = new Fatura
@@ -305,7 +305,7 @@ public class LimiteCartaoRegraUnicaTests
         var naConta = await svc.CriarTransacaoAsync(new Transacao
         {
             Descricao = "Mercado", Valor = 1_200m, Tipo = TipoTransacao.Despesa, ContaId = c.ContaId,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow),
+            Data = HorarioBrasil.Hoje(),
         }, c.UsuarioId);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => svc.AtualizarAsync(naConta.Id, new Transacao
@@ -384,7 +384,7 @@ public class LimiteCartaoRegraUnicaTests
         // pelo job, a compra ficava fora das duas consultas da regra — usado 0 com R$ 80 comprados.
         var ctx = CreateContext();
         var c = await SeedAsync(ctx);
-        var hoje = DateTime.UtcNow.Date;
+        var hoje = HorarioBrasil.HojeData();
 
         await CriarRecorrenteNoCartaoAsync(ctx, c, hoje);
         await AssertMesmoNumeroEmTodosOsPontosAsync(ctx, c, 0m); // só previsão: ainda não usa limite
@@ -414,7 +414,7 @@ public class LimiteCartaoRegraUnicaTests
         // lançava as ocorrências vencidas no cartão SEM fatura — pagar todas as faturas deixava 320 presos.
         var ctx = CreateContext();
         var c = await SeedAsync(ctx);
-        var hoje = DateTime.UtcNow.Date;
+        var hoje = HorarioBrasil.HojeData();
 
         await CriarRecorrenteNoCartaoAsync(ctx, c, hoje.AddMonths(-6)); // vencidas cobradas na criação; previsões até o horizonte
         await Recorrentes(ctx).GerarPendentesAsync(c.UsuarioId);       // efetivadas de -3 meses a hoje
@@ -443,7 +443,7 @@ public class LimiteCartaoRegraUnicaTests
         var ctx = CreateContext();
         var c = await SeedAsync(ctx);
         var outro = await SeedAsync(ctx);
-        var hoje = DateTime.UtcNow.Date;
+        var hoje = HorarioBrasil.HojeData();
         var recorrenteId = Guid.NewGuid();
 
         // Fatura do ciclo passado já quitada: cobrou 100 e recebeu 100.
@@ -678,7 +678,7 @@ public class LimiteCartaoRegraUnicaTests
         ctx.Transacoes.Add(new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Intruso", Valor = 700, Tipo = TipoTransacao.Despesa,
-            CartaoCreditoId = c.CartaoId, Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = outro.UsuarioId,
+            CartaoCreditoId = c.CartaoId, Data = HorarioBrasil.Hoje(), CriadoPor = outro.UsuarioId,
         });
         await ctx.SaveChangesAsync();
 
@@ -748,7 +748,7 @@ public class LimiteCartaoRegraUnicaTests
         {
             Descricao = "Compra", Valor = valor, Tipo = TipoTransacao.Despesa, CartaoCreditoId = c.CartaoId,
             UsadoComoCredito = false, MeioPagamento = MeioPagamento.Pix, StatusTransacao = StatusTransacao.Executado,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow),
+            Data = HorarioBrasil.Hoje(),
         };
         var svc = new TransacaoService(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx));
 

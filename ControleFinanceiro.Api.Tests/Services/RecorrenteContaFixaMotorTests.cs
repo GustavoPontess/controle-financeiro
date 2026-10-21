@@ -35,7 +35,7 @@ public class RecorrenteContaFixaMotorTests
     private static RecorrenteService CreateService(AppDbContext ctx) =>
         new(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx));
 
-    private static DateOnly Hoje => DateOnly.FromDateTime(DateTime.UtcNow);
+    private static DateOnly Hoje => HorarioBrasil.Hoje();
 
     private static DateTime Utc(DateOnly d) => d.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
 
@@ -85,7 +85,7 @@ public class RecorrenteContaFixaMotorTests
             DataProximaGeracao = cursor is { } c ? Utc(c) : null,
             Ativo = ativo,
             CriadoPor = userId,
-            CriadoEm = DateTime.UtcNow,
+            CriadoEm = HorarioBrasil.Agora(),
         };
         ctx.Recorrentes.Add(r);
         ctx.SaveChanges();
@@ -108,11 +108,11 @@ public class RecorrenteContaFixaMotorTests
             UsadoComoCredito = r.CartaoCreditoId.HasValue,
             StatusTransacao = status,
             Ativo = ativo,
-            CanceladoEm = ativo ? null : DateTime.UtcNow,
+            CanceladoEm = ativo ? null : HorarioBrasil.Agora(),
             CriadoPor = r.CriadoPor,
             Data = data,
             RecorrenteOrigemId = r.Id,
-            CriadoEm = DateTime.UtcNow,
+            CriadoEm = HorarioBrasil.Agora(),
         };
         ctx.Transacoes.Add(t);
         ctx.SaveChanges();
@@ -391,9 +391,9 @@ public class RecorrenteContaFixaMotorTests
         var inicio = Hoje.AddMonths(-2);
         var pausada = SeedRecorrente(ctx, u, conta, 5, inicio, ativo: false);
         var cancelada = SeedRecorrente(ctx, u, conta, 5, inicio, ativo: false);
-        cancelada.CanceladoEm = DateTime.UtcNow;
+        cancelada.CanceladoEm = HorarioBrasil.Agora();
         var excluidaComAtivoLegado = SeedRecorrente(ctx, u, conta, 5, inicio); // Ativo=true mas excluída
-        excluidaComAtivoLegado.ExcluidoEm = DateTime.UtcNow;
+        excluidaComAtivoLegado.ExcluidoEm = HorarioBrasil.Agora();
         ctx.SaveChanges();
 
         await CreateService(ctx).GerarPendentesAsync(u);
@@ -573,7 +573,7 @@ public class RecorrenteContaFixaMotorTests
                 await svc.AtualizarAsync(id, new CriarRecorrenteDto
                 {
                     Descricao = "x", Valor = 1m, Tipo = (int)TipoTransacao.Despesa, ContaId = contaId,
-                    Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 1, DataInicio = DateTime.UtcNow.Date,
+                    Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 1, DataInicio = HorarioBrasil.HojeData(),
                 }, usuarioId);
                 break;
             default: throw new ArgumentOutOfRangeException(nameof(operacao));
@@ -614,7 +614,7 @@ public class RecorrenteContaFixaMotorTests
         var ctx = CreateContext();
         var u = SeedUsuario(ctx);
         var r = SeedRecorrente(ctx, u, SeedConta(ctx, u), 15, Hoje.AddMonths(-1));
-        r.ExcluidoEm = DateTime.UtcNow;
+        r.ExcluidoEm = HorarioBrasil.Agora();
         SeedTransacao(ctx, r, Hoje.AddDays(5), StatusTransacao.Previsao);
         ctx.SaveChanges();
         var svc = CreateService(ctx);
@@ -1025,10 +1025,10 @@ public class RecorrenteContaFixaMotorTests
         pausada.Descricao = "Pausada";
         var cancelada = SeedRecorrente(ctx, u, conta, 15, hoje.AddMonths(-3), ativo: false);
         cancelada.Descricao = "Cancelada";
-        cancelada.CanceladoEm = DateTime.UtcNow;
+        cancelada.CanceladoEm = HorarioBrasil.Agora();
         var canceladaComAtivoLegado = SeedRecorrente(ctx, u, conta, 15, hoje.AddMonths(-3));
         canceladaComAtivoLegado.Descricao = "CanceladaLegado";
-        canceladaComAtivoLegado.CanceladoEm = DateTime.UtcNow;
+        canceladaComAtivoLegado.CanceladoEm = HorarioBrasil.Agora();
         var semPrevisao = SeedRecorrente(ctx, u, conta, 15, hoje.AddMonths(-3));
         semPrevisao.Descricao = "SemPrevisao";
         ctx.SaveChanges();
@@ -1310,7 +1310,7 @@ public class RecorrenteContaFixaMotorTests
 
     private static Recorrente Realinhada(AppDbContext ctx, Recorrente r)
     {
-        r.RealinhadoEm = DateTime.UtcNow;
+        r.RealinhadoEm = HorarioBrasil.Agora();
         ctx.SaveChanges();
         return r;
     }

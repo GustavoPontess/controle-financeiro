@@ -9,6 +9,7 @@ using ControleFinanceiro.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using ControleFinanceiro.Api.Infrastructure;
 
 namespace ControleFinanceiro.Api.Controllers
 {
@@ -242,7 +243,7 @@ namespace ControleFinanceiro.Api.Controllers
         public async Task<IActionResult> Aviso([FromQuery] decimal valor, [FromQuery] Guid? contaId = null, [FromQuery] Guid? cartaoId = null)
         {
             // "Hoje" no Brasil (UTC-3): o dia em que a pessoa está lançando.
-            var hoje = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(-3));
+            var hoje = HorarioBrasil.Hoje();
             var resposta = await _aviso.AvisarAsync(GetUserId(), valor, contaId, cartaoId, hoje);
             return resposta is null ? NoContent() : Ok(resposta);
         }

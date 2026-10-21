@@ -1,3 +1,4 @@
+using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -30,7 +31,7 @@ public class DashboardController : ControllerBase
     public async Task<IActionResult> GetResumo([FromQuery] int? ano, [FromQuery] int? mes)
     {
         var usuarioId = GetUserId();
-        var now = DateTime.Now;
+        var now = HorarioBrasil.Agora();
         var resultado = await _service.GetResumoAsync(usuarioId, ano ?? now.Year, mes ?? now.Month);
         return Ok(resultado);
     }

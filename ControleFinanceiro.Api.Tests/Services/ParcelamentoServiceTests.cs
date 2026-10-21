@@ -61,7 +61,7 @@ public class ParcelamentoServiceTests
             Valor = 300,
             Tipo = TipoParcelamento.CompraParcelada,
             CartaoCreditoId = cartaoId,
-            DataCompra = DateTime.UtcNow.Date,
+            DataCompra = HorarioBrasil.HojeData(),
             Parcelas = 3,
             PrimeiraParcelaMes = TestHelpers.MesDaFatura(DateTime.UtcNow, 10),
             CategoriaId = context.Categorias.First().Id,
@@ -102,7 +102,7 @@ public class ParcelamentoServiceTests
             Valor = 0,
             Tipo = TipoParcelamento.CompraParcelada,
             CartaoCreditoId = cartaoId,
-            DataCompra = DateTime.UtcNow.Date,
+            DataCompra = HorarioBrasil.HojeData(),
             Parcelas = 3,
             PrimeiraParcelaMes = TestHelpers.MesDaFatura(DateTime.UtcNow, 10),
             IdempotencyKey = Guid.NewGuid().ToString()
@@ -132,7 +132,7 @@ public class ParcelamentoServiceTests
             Valor = 100,
             Tipo = TipoParcelamento.CompraParcelada,
             CartaoCreditoId = cartaoId,
-            DataCompra = DateTime.UtcNow.Date,
+            DataCompra = HorarioBrasil.HojeData(),
             Parcelas = 1,
             PrimeiraParcelaMes = TestHelpers.MesDaFatura(DateTime.UtcNow, 10),
             IdempotencyKey = Guid.NewGuid().ToString()
@@ -163,7 +163,7 @@ public class ParcelamentoServiceTests
             Valor = 300,
             Tipo = TipoParcelamento.CompraParcelada,
             CartaoCreditoId = cartaoId,
-            DataCompra = DateTime.UtcNow.Date,
+            DataCompra = HorarioBrasil.HojeData(),
             Parcelas = 3,
             PrimeiraParcelaMes = TestHelpers.MesDaFatura(DateTime.UtcNow, 10),
             CategoriaId = context.Categorias.First().Id,
@@ -205,7 +205,7 @@ public class ParcelamentoServiceTests
         var criado = await service.CriarAsync(new CriarParcelamentoDto
         {
             Descricao = "Livro", Valor = 200, Tipo = TipoParcelamento.CompraParcelada, CartaoCreditoId = cartaoId,
-            DataCompra = DateTime.UtcNow.Date, Parcelas = 2, PrimeiraParcelaMes = TestHelpers.MesDaFatura(DateTime.UtcNow, 10),
+            DataCompra = HorarioBrasil.HojeData(), Parcelas = 2, PrimeiraParcelaMes = TestHelpers.MesDaFatura(DateTime.UtcNow, 10),
             CategoriaId = context.Categorias.First().Id, IdempotencyKey = Guid.NewGuid().ToString(),
         }, usuarioId);
         // Parcela 1 paga (antecipada); a 2 é cancelada junto com o parcelamento.

@@ -23,7 +23,7 @@ public class ContaServiceTests
     private static ContaService CriarService(AppDbContext ctx) => new(ctx, new FinancialEventLogService(ctx));
 
     // Transacao.Data agora é DateOnly (o DIA, sem fuso) + Hora TimeOnly? (null = sem hora).
-    private static DateOnly Hoje => DateOnly.FromDateTime(DateTime.UtcNow);
+    private static DateOnly Hoje => HorarioBrasil.Hoje();
 
     [Theory]
     [InlineData(TipoConta.CartaoCredito)]
@@ -136,7 +136,7 @@ public class ContaServiceTests
         var usuarioId = Guid.NewGuid();
         var conta = new Conta { Nome = "Conta Retroativa", Tipo = TipoConta.ContaCorrente };
         // 30 dias atrás, com hora no meio da tarde de propósito: o service guarda só o DIA (Hora = null).
-        var dataAbertura = DateTime.UtcNow.Date.AddDays(-30).AddHours(15).AddMinutes(30);
+        var dataAbertura = HorarioBrasil.HojeData().AddDays(-30).AddHours(15).AddMinutes(30);
 
         await svc.CriarAsync(conta, usuarioId, saldoInicial: 1000, dataSaldoInicial: dataAbertura);
 
@@ -175,7 +175,7 @@ public class ContaServiceTests
         var usuarioId = Guid.NewGuid();
         var conta = new Conta { Nome = "Conta Hoje Explicito", Tipo = TipoConta.ContaCorrente };
 
-        await svc.CriarAsync(conta, usuarioId, saldoInicial: 200, dataSaldoInicial: DateTime.UtcNow.Date);
+        await svc.CriarAsync(conta, usuarioId, saldoInicial: 200, dataSaldoInicial: HorarioBrasil.HojeData());
 
         Assert.Equal(1, await ctx.Transacoes.CountAsync(t => t.ContaId == conta.Id && t.EhSaldoInicial));
     }
@@ -189,7 +189,7 @@ public class ContaServiceTests
         var conta = new Conta { Nome = "Conta Futura", Tipo = TipoConta.ContaCorrente };
 
         var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
-            svc.CriarAsync(conta, usuarioId, saldoInicial: 1000, dataSaldoInicial: DateTime.UtcNow.Date.AddDays(1)));
+            svc.CriarAsync(conta, usuarioId, saldoInicial: 1000, dataSaldoInicial: HorarioBrasil.HojeData().AddDays(1)));
 
         Assert.Contains("futura", ex.Message);
         // A recusa vem antes de qualquer gravação: nem conta órfã, nem transação de saldo inicial.
@@ -205,7 +205,7 @@ public class ContaServiceTests
         var usuarioId = Guid.NewGuid();
         var conta = new Conta { Nome = "Conta Sem Saldo", Tipo = TipoConta.ContaCorrente };
 
-        await svc.CriarAsync(conta, usuarioId, saldoInicial: 0, dataSaldoInicial: DateTime.UtcNow.Date.AddDays(-10));
+        await svc.CriarAsync(conta, usuarioId, saldoInicial: 0, dataSaldoInicial: HorarioBrasil.HojeData().AddDays(-10));
 
         Assert.Equal(0, await ctx.Transacoes.CountAsync());
     }

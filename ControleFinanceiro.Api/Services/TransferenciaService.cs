@@ -38,7 +38,7 @@ public class TransferenciaService
 
         // As duas pernas nascem efetivadas (entram no saldo na hora): transferência futura moveria um
         // dinheiro que ainda não saiu. O front já barrava; o back não — mesma regra do lançamento em conta.
-        if (dto.Data > DateOnly.FromDateTime(DateTime.UtcNow))
+        if (dto.Data > HorarioBrasil.Hoje())
             throw new ArgumentException("A data da transferência não pode ser futura.");
 
         var contaOrigem = await _context.Contas

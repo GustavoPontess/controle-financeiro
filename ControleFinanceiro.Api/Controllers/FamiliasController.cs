@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using ControleFinanceiro.Api.DTOs.Familia;
+using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -133,7 +134,7 @@ public class FamiliasController : ControllerBase
         [FromQuery] Guid? responsavelId = null, [FromQuery] Guid? pagadorId = null,
         [FromQuery] Guid? categoriaId = null, [FromQuery] string? situacao = null)
     {
-        var agora = DateTime.UtcNow;
+        var agora = HorarioBrasil.Agora(); // o mês de hoje no Brasil
         var result = await _despesaCompartilhada.ListarDespesasAsync(
             id, GetUserId(), mes ?? agora.Month, ano ?? agora.Year, responsavelId, pagadorId, categoriaId, situacao);
         return Ok(result);
@@ -163,7 +164,7 @@ public class FamiliasController : ControllerBase
     [ProducesResponseType(typeof(List<ContaFixaDaCasaDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListarContasFixas(Guid id, [FromQuery] int? mes = null, [FromQuery] int? ano = null)
     {
-        var agora = DateTime.UtcNow;
+        var agora = HorarioBrasil.Agora(); // o mês de hoje no Brasil
         return Ok(await _despesaCompartilhada.ListarContasFixasAsync(id, GetUserId(), mes ?? agora.Month, ano ?? agora.Year));
     }
 
@@ -173,7 +174,7 @@ public class FamiliasController : ControllerBase
     public async Task<IActionResult> ObterBalanco(
         Guid id, [FromQuery] int? mes = null, [FromQuery] int? ano = null)
     {
-        var agora = DateTime.UtcNow;
+        var agora = HorarioBrasil.Agora(); // o mês de hoje no Brasil
         var result = await _despesaCompartilhada.ObterBalancoAsync(
             id, GetUserId(), mes ?? agora.Month, ano ?? agora.Year);
         return Ok(result);
@@ -259,7 +260,7 @@ public class FamiliasController : ControllerBase
     public async Task<IActionResult> ObterGastoDependente(
         Guid id, Guid depId, [FromQuery] int? mes = null, [FromQuery] int? ano = null)
     {
-        var agora = DateTime.UtcNow;
+        var agora = HorarioBrasil.Agora(); // o mês de hoje no Brasil
         var result = await _dependenteService.ObterGastoAsync(
             id, depId, GetUserId(), mes ?? agora.Month, ano ?? agora.Year);
         return Ok(result);

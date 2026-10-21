@@ -61,14 +61,14 @@ public class EncerramentoContaService
         if (dto.ContaDestinoId.HasValue && dto.Ajustar)
             throw new ArgumentException("Escolha um só: transferir o saldo ou ajustar.");
 
-        var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
+        var hoje = HorarioBrasil.Hoje();
         var data = dto.Data ?? hoje;
         if (data > hoje)
             throw new ArgumentException("A data do encerramento não pode ser futura.");
 
         // O que ainda vai acontecer na conta segura o encerramento: conta fixa que pode cobrar nela (ativa ou
         // pausada) e lançamento previsto. Encerrar por cima deixaria cobrança caindo numa conta que sumiu.
-        var hojeData = DateTime.UtcNow.Date;
+        var hojeData = HorarioBrasil.HojeData();
         if (await _context.Recorrentes.AnyAsync(r => r.ContaId == contaId && r.CriadoPor == usuarioId
                 && r.CanceladoEm == null && r.ExcluidoEm == null && (r.DataFim == null || r.DataFim >= hojeData)))
             throw new InvalidOperationException(

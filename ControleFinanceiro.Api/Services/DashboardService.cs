@@ -40,7 +40,7 @@ public class DashboardService
             .DistinctBy(t => t.Id)
             .ToList();
 
-        var hoje = DateTime.UtcNow.Date;
+        var hoje = HorarioBrasil.HojeData();
         var hojeDia = DateOnly.FromDateTime(hoje);
 
         // Movimento REAL das contas (mesma regra do saldo: Ativo + Executado, só o que tem conta).

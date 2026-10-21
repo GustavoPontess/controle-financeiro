@@ -46,7 +46,7 @@ public class FaturaAposCancelamentoTests
     private static async Task<Cenario> SeedAsync(AppDbContext ctx, bool cicloFechado)
     {
         var usuarioId = Guid.NewGuid();
-        var hoje = DateTime.UtcNow.Date;
+        var hoje = HorarioBrasil.HojeData();
         var cartao = new CartaoCredito
         {
             Id = Guid.NewGuid(), Nome = "Cartão", TemCredito = true, LimiteTotal = 10_000,
@@ -119,7 +119,7 @@ public class FaturaAposCancelamentoTests
 
     private static Task PagarFaturaAsync(AppDbContext ctx, Cenario c, decimal valor) =>
         new FaturaService(ctx).PagarFaturaAsync(c.FaturaId,
-            new PagarFaturaDto { ContaId = c.ContaId, Valor = valor, DataPagamento = DateTime.UtcNow }, c.UsuarioId,
+            new PagarFaturaDto { ContaId = c.ContaId, Valor = valor, DataPagamento = HorarioBrasil.Agora() }, c.UsuarioId,
             Guid.NewGuid().ToString());
 
     private static Task CancelarParcelaAsync(AppDbContext ctx, Cenario c) =>
@@ -212,7 +212,7 @@ public class FaturaAposCancelamentoTests
         await new TransacaoService(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx)).CriarTransacaoAsync(new Transacao
         {
             Descricao = "Farmácia", Valor = 50, Tipo = TipoTransacao.Despesa, CartaoCreditoId = c.CartaoId,
-            UsadoComoCredito = true, MeioPagamento = MeioPagamento.Credito, Data = DateOnly.FromDateTime(DateTime.UtcNow),
+            UsadoComoCredito = true, MeioPagamento = MeioPagamento.Credito, Data = HorarioBrasil.Hoje(),
         }, c.UsuarioId);
 
         var comCompra = await DtoAsync(ctx, c, c.FaturaId);
@@ -238,7 +238,7 @@ public class FaturaAposCancelamentoTests
 
         // O tempo passa: chega o dia do fechamento.
         var aFechar = await ctx.Faturas.SingleAsync(f => f.Id == c.FaturaId);
-        aFechar.DataFechamento = DateTime.UtcNow.Date;
+        aFechar.DataFechamento = HorarioBrasil.HojeData();
         await ctx.SaveChangesAsync();
 
         await new FaturaFechamentoJob(ctx, new FinancialEventLogService(ctx)).ExecuteAsync();
@@ -276,7 +276,7 @@ public class FaturaAposCancelamentoTests
         }, c.UsuarioId);
 
         // O tempo passa: a fatura seguinte (só com a parcela cancelada) fecha e vence.
-        var hoje = DateTime.UtcNow.Date;
+        var hoje = HorarioBrasil.HojeData();
         var seguinte = await ctx.Faturas.SingleAsync(f => f.Id == c.FaturaSeguinteId);
         seguinte.DataFechamento = hoje.AddDays(-15);
         seguinte.DataVencimento = hoje.AddDays(-5);
@@ -319,7 +319,7 @@ public class FaturaAposCancelamentoTests
                 Descricao = "compra", Valor = total, Tipo = TipoTransacao.Despesa, UsadoComoCredito = true, Ativo = true,
             });
 
-        var virouPago = RegrasFinanceiras.ReconciliarEstadoPagamento(fatura, DateTime.UtcNow);
+        var virouPago = RegrasFinanceiras.ReconciliarEstadoPagamento(fatura, HorarioBrasil.Agora());
 
         Assert.Equal(esperado, fatura.EstadoPagamento);
         Assert.Equal(esperado == EstadoPagamentoFatura.Pago, virouPago);
@@ -447,7 +447,7 @@ public class FaturaAposCancelamentoTests
     private static Task<ParcelamentoDetalheDto> CriarParcelamentoNoCicloDeHojeAsync(
         AppDbContext ctx, Cenario c, string descricao, decimal valor)
     {
-        var hoje = DateTime.UtcNow.Date;
+        var hoje = HorarioBrasil.HojeData();
         return Parcelamentos(ctx).CriarAsync(new CriarParcelamentoDto
         {
             Descricao = descricao, Valor = valor, Tipo = TipoParcelamento.CompraParcelada,
@@ -593,7 +593,7 @@ public class FaturaAposCancelamentoTests
         {
             Id = Guid.NewGuid(), Descricao = "Farmácia", Valor = valor, Tipo = TipoTransacao.Despesa,
             CartaoCreditoId = c.CartaoId, FaturaId = c.FaturaId, UsadoComoCredito = true,
-            MeioPagamento = MeioPagamento.Credito, Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = c.UsuarioId,
+            MeioPagamento = MeioPagamento.Credito, Data = HorarioBrasil.Hoje(), CriadoPor = c.UsuarioId,
         };
         ctx.Transacoes.Add(compra);
         await ctx.SaveChangesAsync();
@@ -657,7 +657,7 @@ public class FaturaAposCancelamentoTests
     private static Transacao Edicao(decimal valor) => new()
     {
         Descricao = "Mercado", Valor = valor, Tipo = TipoTransacao.Despesa,
-        Data = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-45)),
+        Data = DateOnly.FromDateTime(HorarioBrasil.Agora().AddDays(-45)),
     };
 
     [Fact]
@@ -750,7 +750,7 @@ public class FaturaAposCancelamentoTests
         var c = await SeedAsync(ctx, cicloFechado: true);
         await PagarFaturaAsync(ctx, c, 200m);
         var mercado = await MercadoAsync(ctx);
-        var novaData = DateTime.UtcNow.Date.AddDays(-5);
+        var novaData = HorarioBrasil.HojeData().AddDays(-5);
 
         Assert.True(await Transacoes(ctx).AtualizarAsync(mercado, EdicaoComData(100m, novaData), c.UsuarioId));
 
@@ -778,7 +778,7 @@ public class FaturaAposCancelamentoTests
         var mercado = await MercadoAsync(ctx);
         var faturasAntes = await ctx.Faturas.CountAsync();
 
-        await Transacoes(ctx).AtualizarAsync(mercado, EdicaoComData(100m, DateTime.UtcNow.Date.AddDays(-30)), c.UsuarioId);
+        await Transacoes(ctx).AtualizarAsync(mercado, EdicaoComData(100m, HorarioBrasil.HojeData().AddDays(-30)), c.UsuarioId);
 
         ctx.ChangeTracker.Clear();
         Assert.Equal(c.FaturaId, (await ctx.Transacoes.SingleAsync(t => t.Id == mercado)).FaturaId);
@@ -828,7 +828,7 @@ public class FaturaAposCancelamentoTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => svc.DeletarAsync(pagamento, c.UsuarioId));
         await Assert.ThrowsAsync<InvalidOperationException>(() => svc.AtualizarAsync(pagamento, new Transacao
         {
-            Descricao = "Pagamento", Valor = 1m, Tipo = TipoTransacao.Despesa, Data = DateOnly.FromDateTime(DateTime.UtcNow),
+            Descricao = "Pagamento", Valor = 1m, Tipo = TipoTransacao.Despesa, Data = HorarioBrasil.Hoje(),
         }, c.UsuarioId));
 
         ctx.ChangeTracker.Clear();

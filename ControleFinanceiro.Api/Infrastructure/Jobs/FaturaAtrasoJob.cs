@@ -21,7 +21,7 @@ public class FaturaAtrasoJob
 
     public async Task ExecuteAsync()
     {
-        var hoje = DateTime.UtcNow.Date;
+        var hoje = HorarioBrasil.HojeData();
         var faturas = await Pendentes(hoje).ToListAsync();
 
         var marcouAlguma = false;

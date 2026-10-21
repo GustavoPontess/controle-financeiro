@@ -72,7 +72,7 @@ public class OrcamentoService
             .ToList();
 
         var deCategoria = limites.Where(l => l.CategoriaId.HasValue).ToList();
-        return new LimitesDoMesDto(ano, mes, Editavel(ano, mes, agora ?? DateTime.UtcNow),
+        return new LimitesDoMesDto(ano, mes, Editavel(ano, mes, agora ?? HorarioBrasil.Agora()),
             deCategoria.Sum(l => l.Limite), deCategoria.Sum(l => l.Gasto), deCategoria.Sum(l => l.Previsto),
             limites, semLimite);
     }
@@ -105,7 +105,7 @@ public class OrcamentoService
         ValidarMes(dto.Ano, dto.Mes);
         if (dto.Valor <= 0 || dto.Valor > 999_999_999.99m)
             throw new ArgumentException("Diga o limite.");
-        ExigirEditavel(dto.Ano, dto.Mes, agora ?? DateTime.UtcNow);
+        ExigirEditavel(dto.Ano, dto.Mes, agora ?? HorarioBrasil.Agora());
         if (dto.CategoriaId.HasValue)
             await ExigirCategoriaDeGastoAsync(dto.CategoriaId.Value, usuarioId);
 
@@ -134,7 +134,7 @@ public class OrcamentoService
     public async Task<LimitesDoMesDto> TirarAsync(Guid? categoriaId, int ano, int mes, Guid usuarioId, DateTime? agora = null)
     {
         ValidarMes(ano, mes);
-        ExigirEditavel(ano, mes, agora ?? DateTime.UtcNow);
+        ExigirEditavel(ano, mes, agora ?? HorarioBrasil.Agora());
         var chave = Chave(ano, mes);
         var daCategoria = await _context.Orcamentos
             .Where(o => o.UsuarioId == usuarioId && o.CategoriaId == categoriaId)

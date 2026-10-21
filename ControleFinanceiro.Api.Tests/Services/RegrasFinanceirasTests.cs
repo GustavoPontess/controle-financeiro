@@ -39,7 +39,7 @@ public class RegrasFinanceirasTests
         ParcelamentoId = Guid.NewGuid(),
         Numero = 1,
         QuantidadeTotal = 2,
-        DataVencimento = DateTime.UtcNow.Date,
+        DataVencimento = HorarioBrasil.HojeData(),
         Valor = valor,
         ValorComJuros = comJuros,
         Status = status,
@@ -53,7 +53,7 @@ public class RegrasFinanceirasTests
         Tipo = TipoTransacao.Despesa,
         UsadoComoCredito = usadoComoCredito,
         Ativo = ativo,
-        Data = DateOnly.FromDateTime(DateTime.UtcNow),
+        Data = HorarioBrasil.Hoje(),
     };
 
     [Fact]
@@ -139,7 +139,7 @@ public class RegrasFinanceirasTests
         ctx.Transacoes.Add(new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Salário", Valor = 100_000, Tipo = TipoTransacao.Receita,
-            ContaId = conta.Id, Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuarioId,
+            ContaId = conta.Id, Data = HorarioBrasil.Hoje(), CriadoPor = usuarioId,
         });
         await ctx.SaveChangesAsync();
 
@@ -150,9 +150,9 @@ public class RegrasFinanceirasTests
                 Valor = valor,
                 Tipo = TipoParcelamento.CompraParcelada,
                 CartaoCreditoId = cartao.Id,
-                DataCompra = DateTime.UtcNow.Date,
+                DataCompra = HorarioBrasil.HojeData(),
                 Parcelas = 2,
-                PrimeiraParcelaMes = TestHelpers.MesDaFatura(DateTime.UtcNow, cartao.DiaFechamento),
+                PrimeiraParcelaMes = TestHelpers.MesDaFatura(HorarioBrasil.Agora(), cartao.DiaFechamento),
                 IdempotencyKey = Guid.NewGuid().ToString(),
             }, usuarioId);
 
@@ -165,7 +165,7 @@ public class RegrasFinanceirasTests
         {
             Id = Guid.NewGuid(), Descricao = "Mercado", Valor = 100, Tipo = TipoTransacao.Despesa,
             CartaoCreditoId = cartao.Id, FaturaId = faturaId, UsadoComoCredito = true,
-            MeioPagamento = MeioPagamento.Credito, Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuarioId,
+            MeioPagamento = MeioPagamento.Credito, Data = HorarioBrasil.Hoje(), CriadoPor = usuarioId,
         });
         await ctx.SaveChangesAsync();
 
@@ -250,11 +250,11 @@ public class RegrasFinanceirasTests
 
         // Restante é 400: cobrar a parcela cancelada (ex.: pagar 900) é recusado.
         await Assert.ThrowsAsync<ArgumentException>(() => faturaService.PagarFaturaAsync(c.FaturaId,
-            new PagarFaturaDto { ContaId = c.ContaId, Valor = 401m, DataPagamento = DateTime.UtcNow }, c.UsuarioId,
+            new PagarFaturaDto { ContaId = c.ContaId, Valor = 401m, DataPagamento = HorarioBrasil.Agora() }, c.UsuarioId,
             Guid.NewGuid().ToString()));
 
         await faturaService.PagarFaturaAsync(c.FaturaId,
-            new PagarFaturaDto { ContaId = c.ContaId, Valor = 400m, DataPagamento = DateTime.UtcNow }, c.UsuarioId,
+            new PagarFaturaDto { ContaId = c.ContaId, Valor = 400m, DataPagamento = HorarioBrasil.Agora() }, c.UsuarioId,
             Guid.NewGuid().ToString());
 
         var fatura = await ctx.Faturas.AsNoTracking().SingleAsync(f => f.Id == c.FaturaId);
@@ -285,7 +285,7 @@ public class RegrasFinanceirasTests
     {
         var ctx = CreateContext();
         var usuarioId = Guid.NewGuid();
-        var hoje = DateTime.UtcNow.Date;
+        var hoje = HorarioBrasil.HojeData();
         var cartao = new CartaoCredito { Id = Guid.NewGuid(), Nome = "Cartão", TemCredito = true, CriadoPor = usuarioId, Ativo = true };
         var fatura = new Fatura
         {
@@ -476,9 +476,9 @@ public class RegrasFinanceirasTests
             Valor = valorParcelamento,
             Tipo = TipoParcelamento.CompraParcelada,
             CartaoCreditoId = cartao.Id,
-            DataCompra = DateTime.UtcNow.Date,
+            DataCompra = HorarioBrasil.HojeData(),
             Parcelas = 2,
-            PrimeiraParcelaMes = TestHelpers.MesDaFatura(DateTime.UtcNow, cartao.DiaFechamento),
+            PrimeiraParcelaMes = TestHelpers.MesDaFatura(HorarioBrasil.Agora(), cartao.DiaFechamento),
             IdempotencyKey = Guid.NewGuid().ToString(),
         }, c.UsuarioId);
 

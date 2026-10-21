@@ -200,14 +200,14 @@ public class EstornoPagamentoFaturaTests
         ctx.AddRange(cartao, conta, new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Salário", Valor = 1000m, Tipo = TipoTransacao.Receita, ContaId = conta.Id,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuario,
+            Data = HorarioBrasil.Hoje(), CriadoPor = usuario,
         });
         await ctx.SaveChangesAsync();
         var parcelamento = await new ParcelamentoService(ctx, new FinancialEventLogService(ctx), new LimiteCalculatorService(ctx), new FaturaService(ctx))
             .CriarAsync(new CriarParcelamentoDto
             {
                 Descricao = "Fone", Valor = 200m, Tipo = TipoParcelamento.CompraParcelada, CartaoCreditoId = cartao.Id,
-                DataCompra = DateTime.UtcNow.Date, Parcelas = 2, PrimeiraParcelaMes = TestHelpers.MesDaFatura(DateTime.UtcNow, 10),
+                DataCompra = HorarioBrasil.HojeData(), Parcelas = 2, PrimeiraParcelaMes = TestHelpers.MesDaFatura(DateTime.UtcNow, 10),
                 IdempotencyKey = Chave(),
             }, usuario);
         var parcelas = new ParcelaTransacaoService(ctx, new FinancialEventLogService(ctx), new LimiteCalculatorService(ctx));

@@ -69,7 +69,7 @@ public class EmprestimoServiceTests
         Valor = 100,
         ContaId = contaId,
         CategoriaId = categoriaId,
-        Data = DateTime.UtcNow,
+        Data = HorarioBrasil.Agora(),
         IdempotencyKey = key ?? Guid.NewGuid().ToString(),
     };
 
@@ -102,8 +102,8 @@ public class EmprestimoServiceTests
         Pessoa = "João",
         ValorTotal = 500,
         Tipo = TipoEmprestimo.Emprestei,
-        DataInicio = DateTime.UtcNow,
-        DataVencimento = DateTime.UtcNow.AddDays(30),
+        DataInicio = HorarioBrasil.Agora(),
+        DataVencimento = HorarioBrasil.Agora().AddDays(30),
         IdempotencyKey = key ?? Guid.NewGuid().ToString(),
     };
 
@@ -135,8 +135,8 @@ public class EmprestimoServiceTests
     {
         var svc = NewSvc(CreateContext());
         var dto = DtoValido();
-        dto.DataInicio = DateTime.UtcNow;
-        dto.DataVencimento = DateTime.UtcNow.AddDays(-1);
+        dto.DataInicio = HorarioBrasil.Agora();
+        dto.DataVencimento = HorarioBrasil.Agora().AddDays(-1);
 
         var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, Guid.NewGuid()));
         Assert.Contains("anterior", ex.Message);
@@ -321,7 +321,7 @@ public class EmprestimoServiceTests
         var receita = new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Receita", Valor = 100, Tipo = TipoTransacao.Receita,
-            ContaId = contaId, CategoriaId = categoriaReceitaId, Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuarioId,
+            ContaId = contaId, CategoriaId = categoriaReceitaId, Data = HorarioBrasil.Hoje(), CriadoPor = usuarioId,
         };
         ctx.Transacoes.Add(receita);
         await ctx.SaveChangesAsync();
@@ -380,7 +380,7 @@ public class EmprestimoServiceTests
 
         var solicitacao = (await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
         {
-            Valor = 50, ContaId = contaId, CategoriaId = categoriaId, Data = DateTime.UtcNow,
+            Valor = 50, ContaId = contaId, CategoriaId = categoriaId, Data = HorarioBrasil.Agora(),
             IdempotencyKey = Guid.NewGuid().ToString(),
         }, devedorId)).Single();
 
@@ -932,12 +932,12 @@ public class EmprestimoServiceTests
         var uid = Guid.NewGuid();
 
         var vencido = NovoDto("Vencido", "X", 300, TipoEmprestimo.Emprestei);
-        vencido.DataInicio = DateTime.UtcNow.AddDays(-10);
-        vencido.DataVencimento = DateTime.UtcNow.AddDays(-5);
+        vencido.DataInicio = HorarioBrasil.Agora().AddDays(-10);
+        vencido.DataVencimento = HorarioBrasil.Agora().AddDays(-5);
         await svc.CriarAsync(vencido, uid);
 
         var futuro = NovoDto("Futuro", "Y", 200, TipoEmprestimo.Emprestei);
-        futuro.DataVencimento = DateTime.UtcNow.AddDays(5);
+        futuro.DataVencimento = HorarioBrasil.Agora().AddDays(5);
         await svc.CriarAsync(futuro, uid);
 
         var stats = await svc.ObterStatsAsync(uid);
@@ -954,8 +954,8 @@ public class EmprestimoServiceTests
         var uid = Guid.NewGuid();
         var dto = DtoValido();
         dto.ValorTotal = 200;
-        dto.DataInicio = DateTime.UtcNow.AddDays(-10);
-        dto.DataVencimento = DateTime.UtcNow.AddDays(-5);
+        dto.DataInicio = HorarioBrasil.Agora().AddDays(-10);
+        dto.DataVencimento = HorarioBrasil.Agora().AddDays(-5);
         dto.PercentualMultaAtraso = 20;
         await svc.CriarAsync(dto, uid);
         await svc.ListarAsync(uid); // dispara o snapshot da multa
@@ -975,7 +975,7 @@ public class EmprestimoServiceTests
         var dto = NovoDto("Parcelado", "X", 1000, TipoEmprestimo.Emprestei);
         dto.FormaPagamento = FormaPagamentoEmprestimo.Parcelado;
         dto.QuantidadeParcelas = 2;
-        dto.PrimeiroVencimento = DateTime.UtcNow.AddDays(-5); // 1ª parcela vencida, 2ª (+1 mês) ainda não
+        dto.PrimeiroVencimento = HorarioBrasil.Agora().AddDays(-5); // 1ª parcela vencida, 2ª (+1 mês) ainda não
         await svc.CriarAsync(dto, uid);
 
         var stats = await svc.ObterStatsAsync(uid);
@@ -994,7 +994,7 @@ public class EmprestimoServiceTests
         var uid = SeedUsuario(ctx, "apagar-vencido@x.com");
         // Devo 300, já paguei 100 → restante 200, vencido há 5 dias.
         await SeedEmprestimoAsync(ctx, svc, uid, "Devo vencido", valorTotal: 300, valorPago: 100,
-            vencimento: DateTime.UtcNow.Date.AddDays(-5), tipo: TipoEmprestimo.PeguiEmprestado);
+            vencimento: HorarioBrasil.HojeData().AddDays(-5), tipo: TipoEmprestimo.PeguiEmprestado);
 
         var stats = await svc.ObterStatsAsync(uid);
 
@@ -1010,7 +1010,7 @@ public class EmprestimoServiceTests
         using var ctx = CreateContext();
         var svc = NewSvc(ctx);
         var uid = SeedUsuario(ctx, "dois-lados@x.com");
-        var vencido = DateTime.UtcNow.Date.AddDays(-5);
+        var vencido = HorarioBrasil.HojeData().AddDays(-5);
         await SeedEmprestimoAsync(ctx, svc, uid, "Emprestei vencido", valorTotal: 300, vencimento: vencido, tipo: TipoEmprestimo.Emprestei);
         await SeedEmprestimoAsync(ctx, svc, uid, "Devo vencido", valorTotal: 200, vencimento: vencido, tipo: TipoEmprestimo.PeguiEmprestado);
 
@@ -1027,7 +1027,7 @@ public class EmprestimoServiceTests
         var svc = NewSvc(ctx);
         var uid = SeedUsuario(ctx, "apagar-futuro@x.com");
         await SeedEmprestimoAsync(ctx, svc, uid, "Devo no futuro", valorTotal: 400,
-            vencimento: DateTime.UtcNow.Date.AddDays(5), tipo: TipoEmprestimo.PeguiEmprestado);
+            vencimento: HorarioBrasil.HojeData().AddDays(5), tipo: TipoEmprestimo.PeguiEmprestado);
         await SeedEmprestimoAsync(ctx, svc, uid, "Devo sem data", valorTotal: 150,
             vencimento: null, tipo: TipoEmprestimo.PeguiEmprestado);
 
@@ -1044,7 +1044,7 @@ public class EmprestimoServiceTests
         var svc = NewSvc(ctx);
         var uid = SeedUsuario(ctx, "apagar-quitado@x.com");
         await SeedEmprestimoAsync(ctx, svc, uid, "Devia, já quitado", valorTotal: 300,
-            vencimento: DateTime.UtcNow.Date.AddDays(-5), tipo: TipoEmprestimo.PeguiEmprestado, quitado: true);
+            vencimento: HorarioBrasil.HojeData().AddDays(-5), tipo: TipoEmprestimo.PeguiEmprestado, quitado: true);
 
         var stats = await svc.ObterStatsAsync(uid);
 
@@ -1059,8 +1059,8 @@ public class EmprestimoServiceTests
         var svc = NewSvc(ctx);
         var uid = SeedUsuario(ctx, "apagar-multa@x.com");
         var dto = NovoDto("Devo com multa", "X", 200, TipoEmprestimo.PeguiEmprestado);
-        dto.DataInicio = DateTime.UtcNow.AddDays(-10);
-        dto.DataVencimento = DateTime.UtcNow.AddDays(-5);
+        dto.DataInicio = HorarioBrasil.Agora().AddDays(-10);
+        dto.DataVencimento = HorarioBrasil.Agora().AddDays(-5);
         dto.PercentualMultaAtraso = 20;
         await svc.CriarAsync(dto, uid);
         await svc.ListarAsync(uid); // dispara o snapshot da multa
@@ -1079,7 +1079,7 @@ public class EmprestimoServiceTests
         var dto = NovoDto("Devo parcelado", "X", 1000, TipoEmprestimo.PeguiEmprestado);
         dto.FormaPagamento = FormaPagamentoEmprestimo.Parcelado;
         dto.QuantidadeParcelas = 2;
-        dto.PrimeiroVencimento = DateTime.UtcNow.AddDays(-5); // 1ª parcela vencida, 2ª (+1 mês) ainda não
+        dto.PrimeiroVencimento = HorarioBrasil.Agora().AddDays(-5); // 1ª parcela vencida, 2ª (+1 mês) ainda não
         await svc.CriarAsync(dto, uid);
 
         var stats = await svc.ObterStatsAsync(uid);
@@ -1096,7 +1096,7 @@ public class EmprestimoServiceTests
         var svc = NewSvc(ctx);
         var eu = SeedUsuario(ctx, "eu@x.com");
         var outro = SeedUsuario(ctx, "outro@x.com");
-        var vencido = DateTime.UtcNow.Date.AddDays(-5);
+        var vencido = HorarioBrasil.HojeData().AddDays(-5);
         await SeedEmprestimoAsync(ctx, svc, eu, "Meu vencido", valorTotal: 120, vencimento: vencido, tipo: TipoEmprestimo.PeguiEmprestado);
         await SeedEmprestimoAsync(ctx, svc, outro, "Vencido do outro", valorTotal: 9999, vencimento: vencido, tipo: TipoEmprestimo.PeguiEmprestado);
 
@@ -1120,8 +1120,8 @@ public class EmprestimoServiceTests
         var dto = DtoValido();
         dto.Tipo = TipoEmprestimo.Emprestei; // credor emprestou → pro devedor vinculado é "a pagar"
         dto.ValorTotal = 500;
-        dto.DataInicio = DateTime.UtcNow.AddDays(-10);
-        dto.DataVencimento = DateTime.UtcNow.AddDays(-5);
+        dto.DataInicio = HorarioBrasil.Agora().AddDays(-10);
+        dto.DataVencimento = HorarioBrasil.Agora().AddDays(-5);
         var criado = await svc.CriarAsync(dto, credorId);
         var link = await svc.VincularAsync(criado.Id, new VincularEmprestimoDto("devedor@x.com"), credorId);
         await svc.AceitarVinculoAsync(link.LinkConvite.Split('/').Last(), devedorId);
@@ -1234,7 +1234,7 @@ public class EmprestimoServiceTests
         var dto = DtoValido();
         dto.FormaPagamento = FormaPagamentoEmprestimo.Parcelado;
         dto.QuantidadeParcelas = 2;
-        dto.PrimeiroVencimento = DateTime.UtcNow;
+        dto.PrimeiroVencimento = HorarioBrasil.Agora();
         var credorId = SeedUsuario(ctx, "credor@x.com");
         var devedorId = SeedUsuario(ctx, "devedor@x.com");
         var criado = await svc.CriarAsync(dto, credorId);
@@ -1248,7 +1248,7 @@ public class EmprestimoServiceTests
             Valor = parcelas[0].Valor,
             ContaId = contaId,
             CategoriaId = categoriaId,
-            Data = DateTime.UtcNow,
+            Data = HorarioBrasil.Agora(),
             IdempotencyKey = Guid.NewGuid().ToString(),
         }, credorId);
 
@@ -1286,7 +1286,7 @@ public class EmprestimoServiceTests
             Valor = valor,
             Tipo = TipoTransacao.Despesa,
             ContaId = contaId,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow),
+            Data = HorarioBrasil.Hoje(),
             CriadoPor = usuarioId,
         };
         ctx.Transacoes.Add(t);
@@ -1307,7 +1307,7 @@ public class EmprestimoServiceTests
         var resultado = (await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
         {
             TransacaoExistenteId = despesa.Id,
-            Data = DateTime.UtcNow,
+            Data = HorarioBrasil.Agora(),
             IdempotencyKey = Guid.NewGuid().ToString(),
         }, devedorId)).Single();
 
@@ -1330,7 +1330,7 @@ public class EmprestimoServiceTests
             svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
             {
                 TransacaoExistenteId = despesaDoCredor.Id,
-                Data = DateTime.UtcNow,
+                Data = HorarioBrasil.Agora(),
                 IdempotencyKey = Guid.NewGuid().ToString(),
             }, devedorId));
     }
@@ -1345,7 +1345,7 @@ public class EmprestimoServiceTests
         var receita = new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Receita", Valor = 100, Tipo = TipoTransacao.Receita,
-            ContaId = contaId, Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = devedorId,
+            ContaId = contaId, Data = HorarioBrasil.Hoje(), CriadoPor = devedorId,
         };
         ctx.Transacoes.Add(receita);
         await ctx.SaveChangesAsync();
@@ -1354,7 +1354,7 @@ public class EmprestimoServiceTests
             svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
             {
                 TransacaoExistenteId = receita.Id,
-                Data = DateTime.UtcNow,
+                Data = HorarioBrasil.Agora(),
                 IdempotencyKey = Guid.NewGuid().ToString(),
             }, devedorId));
     }
@@ -1370,13 +1370,13 @@ public class EmprestimoServiceTests
 
         await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
         {
-            TransacaoExistenteId = despesa.Id, Data = DateTime.UtcNow, IdempotencyKey = Guid.NewGuid().ToString(),
+            TransacaoExistenteId = despesa.Id, Data = HorarioBrasil.Agora(), IdempotencyKey = Guid.NewGuid().ToString(),
         }, devedorId);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
             {
-                TransacaoExistenteId = despesa.Id, Data = DateTime.UtcNow, IdempotencyKey = Guid.NewGuid().ToString(),
+                TransacaoExistenteId = despesa.Id, Data = HorarioBrasil.Agora(), IdempotencyKey = Guid.NewGuid().ToString(),
             }, devedorId));
     }
 
@@ -1391,13 +1391,13 @@ public class EmprestimoServiceTests
 
         var primeira = (await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
         {
-            TransacaoExistenteId = despesa.Id, Data = DateTime.UtcNow, IdempotencyKey = Guid.NewGuid().ToString(),
+            TransacaoExistenteId = despesa.Id, Data = HorarioBrasil.Agora(), IdempotencyKey = Guid.NewGuid().ToString(),
         }, devedorId)).Single();
         await svc.RejeitarPagamentoSolicitacaoAsync(primeira.Id, new RejeitarPagamentoEmprestimoDto(), credorId);
 
         var segunda = (await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
         {
-            TransacaoExistenteId = despesa.Id, Data = DateTime.UtcNow, IdempotencyKey = Guid.NewGuid().ToString(),
+            TransacaoExistenteId = despesa.Id, Data = HorarioBrasil.Agora(), IdempotencyKey = Guid.NewGuid().ToString(),
         }, devedorId)).Single();
 
         Assert.Equal(despesa.Id, (await ctx.EmprestimoPagamentoSolicitacoes.FindAsync(segunda.Id))!.TransacaoComprovanteId);
@@ -1754,7 +1754,7 @@ public class EmprestimoServiceTests
         dto.ValorTotal = 200;
         dto.FormaPagamento = FormaPagamentoEmprestimo.Parcelado;
         dto.QuantidadeParcelas = 2;
-        dto.PrimeiroVencimento = DateTime.UtcNow;
+        dto.PrimeiroVencimento = HorarioBrasil.Agora();
         dto.TaxaJuroMensal = 10; // 10% sobre o valor de cada parcela (decisão do Gustavo, não sobre saldo devedor)
 
         var criado = await svc.CriarAsync(dto, Guid.NewGuid());
@@ -1803,8 +1803,8 @@ public class EmprestimoServiceTests
         var uid = Guid.NewGuid();
         var dto = DtoValido();
         dto.ValorTotal = 200;
-        dto.DataInicio = DateTime.UtcNow.AddDays(-10);
-        dto.DataVencimento = DateTime.UtcNow.AddDays(-5); // já vencido
+        dto.DataInicio = HorarioBrasil.Agora().AddDays(-10);
+        dto.DataVencimento = HorarioBrasil.Agora().AddDays(-5); // já vencido
         dto.PercentualMultaAtraso = 20;
         await svc.CriarAsync(dto, uid);
 
@@ -1827,7 +1827,7 @@ public class EmprestimoServiceTests
         var svc = NewSvc(ctx);
         var uid = Guid.NewGuid();
         var dto = DtoValido();
-        dto.DataVencimento = DateTime.UtcNow.AddDays(5); // ainda não venceu
+        dto.DataVencimento = HorarioBrasil.Agora().AddDays(5); // ainda não venceu
         dto.PercentualMultaAtraso = 20;
         await svc.CriarAsync(dto, uid);
 
@@ -1842,7 +1842,7 @@ public class EmprestimoServiceTests
         var svc = NewSvc(CreateContext());
         var dto = DtoValido();
         dto.FormaPagamento = FormaPagamentoEmprestimo.Parcelado;
-        dto.PrimeiroVencimento = DateTime.UtcNow;
+        dto.PrimeiroVencimento = HorarioBrasil.Agora();
 
         await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, Guid.NewGuid()));
     }
@@ -1867,7 +1867,7 @@ public class EmprestimoServiceTests
         var dto = DtoValido();
         dto.FormaPagamento = FormaPagamentoEmprestimo.Parcelado;
         dto.QuantidadeParcelas = quantidade;
-        dto.PrimeiroVencimento = DateTime.UtcNow;
+        dto.PrimeiroVencimento = HorarioBrasil.Agora();
 
         await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, Guid.NewGuid()));
     }
@@ -1895,7 +1895,7 @@ public class EmprestimoServiceTests
         dto.ValorTotal = 200;
         dto.FormaPagamento = FormaPagamentoEmprestimo.Parcelado;
         dto.QuantidadeParcelas = quantidade;
-        dto.PrimeiroVencimento = primeiroVencimento ?? DateTime.UtcNow.AddDays(30);
+        dto.PrimeiroVencimento = primeiroVencimento ?? HorarioBrasil.Agora().AddDays(30);
         dto.PercentualMultaAtraso = percentualMultaAtraso;
 
         var criado = await svc.CriarAsync(dto, credorId);
@@ -1918,7 +1918,7 @@ public class EmprestimoServiceTests
 
         var resultado = (await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
         {
-            Valor = parcela.Valor, ContaId = contaId, CategoriaId = categoriaId, Data = DateTime.UtcNow,
+            Valor = parcela.Valor, ContaId = contaId, CategoriaId = categoriaId, Data = HorarioBrasil.Agora(),
             IdempotencyKey = Guid.NewGuid().ToString(),
         }, devedorId)).Single();
 
@@ -1944,13 +1944,13 @@ public class EmprestimoServiceTests
 
         var primeira = (await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
         {
-            Valor = parcela1.Valor, ContaId = contaId, CategoriaId = categoriaId, Data = DateTime.UtcNow,
+            Valor = parcela1.Valor, ContaId = contaId, CategoriaId = categoriaId, Data = HorarioBrasil.Agora(),
             IdempotencyKey = Guid.NewGuid().ToString(),
         }, devedorId)).Single();
 
         var segunda = (await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
         {
-            Valor = parcela1.Valor, ContaId = contaId, CategoriaId = categoriaId, Data = DateTime.UtcNow,
+            Valor = parcela1.Valor, ContaId = contaId, CategoriaId = categoriaId, Data = HorarioBrasil.Agora(),
             IdempotencyKey = Guid.NewGuid().ToString(),
         }, devedorId)).Single();
 
@@ -1972,14 +1972,14 @@ public class EmprestimoServiceTests
         // Cobre as 2 parcelas de uma vez com o valor total — não sobra nenhuma pendente.
         await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
         {
-            Valor = emprestimo!.ValorTotal, ContaId = contaId, CategoriaId = categoriaId, Data = DateTime.UtcNow,
+            Valor = emprestimo!.ValorTotal, ContaId = contaId, CategoriaId = categoriaId, Data = HorarioBrasil.Agora(),
             IdempotencyKey = Guid.NewGuid().ToString(),
         }, devedorId);
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
             svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
             {
-                Valor = 50, ContaId = contaId, CategoriaId = categoriaId, Data = DateTime.UtcNow,
+                Valor = 50, ContaId = contaId, CategoriaId = categoriaId, Data = HorarioBrasil.Agora(),
                 IdempotencyKey = Guid.NewGuid().ToString(),
             }, devedorId));
     }
@@ -1999,7 +1999,7 @@ public class EmprestimoServiceTests
 
         var resultado = await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
         {
-            Valor = 200, ContaId = contaId, CategoriaId = categoriaId, Data = DateTime.UtcNow,
+            Valor = 200, ContaId = contaId, CategoriaId = categoriaId, Data = HorarioBrasil.Agora(),
             IdempotencyKey = Guid.NewGuid().ToString(),
         }, devedorId);
 
@@ -2025,7 +2025,7 @@ public class EmprestimoServiceTests
 
         var resultado = await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
         {
-            Valor = 120, ContaId = contaId, CategoriaId = categoriaId, Data = DateTime.UtcNow,
+            Valor = 120, ContaId = contaId, CategoriaId = categoriaId, Data = HorarioBrasil.Agora(),
             IdempotencyKey = Guid.NewGuid().ToString(),
         }, devedorId);
 
@@ -2054,7 +2054,7 @@ public class EmprestimoServiceTests
             svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
             {
                 Valor = emprestimo!.ValorTotal + 50, ContaId = contaId, CategoriaId = categoriaId,
-                Data = DateTime.UtcNow, IdempotencyKey = Guid.NewGuid().ToString(),
+                Data = HorarioBrasil.Agora(), IdempotencyKey = Guid.NewGuid().ToString(),
             }, devedorId));
         Assert.Contains("maior que o total", ex.Message);
     }
@@ -2071,7 +2071,7 @@ public class EmprestimoServiceTests
 
         var resultado = (await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
         {
-            Valor = 20, ContaId = contaId, CategoriaId = categoriaId, Data = DateTime.UtcNow,
+            Valor = 20, ContaId = contaId, CategoriaId = categoriaId, Data = HorarioBrasil.Agora(),
             IdempotencyKey = Guid.NewGuid().ToString(),
         }, credorId)).Single();
 
@@ -2097,13 +2097,13 @@ public class EmprestimoServiceTests
 
         await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
         {
-            Valor = 20, ContaId = contaId, CategoriaId = categoriaId, Data = DateTime.UtcNow,
+            Valor = 20, ContaId = contaId, CategoriaId = categoriaId, Data = HorarioBrasil.Agora(),
             IdempotencyKey = Guid.NewGuid().ToString(),
         }, credorId);
 
         await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
         {
-            Valor = 30, ContaId = contaId, CategoriaId = categoriaId, Data = DateTime.UtcNow,
+            Valor = 30, ContaId = contaId, CategoriaId = categoriaId, Data = HorarioBrasil.Agora(),
             IdempotencyKey = Guid.NewGuid().ToString(),
         }, credorId);
 
@@ -2127,7 +2127,7 @@ public class EmprestimoServiceTests
 
         var resultado = await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
         {
-            Valor = 100, ContaId = contaId, CategoriaId = categoriaId, Data = DateTime.UtcNow,
+            Valor = 100, ContaId = contaId, CategoriaId = categoriaId, Data = HorarioBrasil.Agora(),
             IdempotencyKey = Guid.NewGuid().ToString(),
         }, credorId);
 
@@ -2153,7 +2153,7 @@ public class EmprestimoServiceTests
 
         var solicitacao = (await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
         {
-            Valor = parcela.Valor, ContaId = contaDevedorId, CategoriaId = categoriaId, Data = DateTime.UtcNow,
+            Valor = parcela.Valor, ContaId = contaDevedorId, CategoriaId = categoriaId, Data = HorarioBrasil.Agora(),
             IdempotencyKey = Guid.NewGuid().ToString(),
         }, devedorId)).Single();
 
@@ -2179,7 +2179,7 @@ public class EmprestimoServiceTests
 
         var solicitacao = (await svc.SolicitarPagamentoAsync(emprestimoId, new SolicitarPagamentoEmprestimoDto
         {
-            Valor = 20, ContaId = contaDevedorId, CategoriaId = categoriaId, Data = DateTime.UtcNow,
+            Valor = 20, ContaId = contaDevedorId, CategoriaId = categoriaId, Data = HorarioBrasil.Agora(),
             IdempotencyKey = Guid.NewGuid().ToString(),
         }, devedorId)).Single();
 
@@ -2244,7 +2244,7 @@ public class EmprestimoServiceTests
         var ctx = CreateContext();
         var svc = NewSvc(ctx);
         var (emprestimoId, credorId, _) = await CriarVinculadoParceladoAsync(
-            ctx, svc, quantidade: 2, primeiroVencimento: DateTime.UtcNow.AddDays(-10), percentualMultaAtraso: 5);
+            ctx, svc, quantidade: 2, primeiroVencimento: HorarioBrasil.Agora().AddDays(-10), percentualMultaAtraso: 5);
 
         var primeira = await svc.ListarParcelasAsync(emprestimoId, credorId);
         var atrasada = primeira.First(p => p.Numero == 1);
@@ -2596,7 +2596,7 @@ public class EmprestimoServiceTests
         if (forma == FormaPagamentoEmprestimo.Parcelado)
         {
             dto.QuantidadeParcelas = 2;
-            dto.PrimeiroVencimento = DateTime.UtcNow.AddDays(30);
+            dto.PrimeiroVencimento = HorarioBrasil.Agora().AddDays(30);
         }
 
         var criado = await svc.CriarAsync(dto, usuarioId);
@@ -2618,7 +2618,7 @@ public class EmprestimoServiceTests
         Pessoa = pessoa,
         ValorTotal = valor,
         Tipo = tipo,
-        DataInicio = DateTime.UtcNow,
+        DataInicio = HorarioBrasil.Agora(),
         IdempotencyKey = Guid.NewGuid().ToString(),
     };
 
@@ -2681,7 +2681,7 @@ public class EmprestimoServiceTests
         var lancamentos = await ctx.Transacoes.ToListAsync();
         Assert.Equal(2, lancamentos.Count);
         Assert.All(lancamentos, t => Assert.True(t.EhEmprestimo));
-        var hoje = DateTime.UtcNow;
+        var hoje = HorarioBrasil.Agora();
         Assert.Empty(await RegrasFinanceiras.GastosPorCategoriaDoMesAsync(ctx, u, hoje.Year, hoje.Month));
         Assert.Equal(0m, (await new RendaService(ctx).ObterMesAsync(u, hoje.Year, hoje.Month)).Recebido);
         // O saldo continua mexendo: saiu 500, voltou 100.

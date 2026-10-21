@@ -56,7 +56,7 @@ public class MetaService
         meta.ContaId = NovaCaixinha(nome, usuarioId).Id;
         _context.Metas.Add(meta);
         await _context.SaveChangesAsync();
-        return Montar(meta, 0m, DateTime.UtcNow);
+        return Montar(meta, 0m, HorarioBrasil.Agora());
     }
 
     /// <summary>Edita nome, ícone, alvo e prazo (só quem criou). A caixinha acompanha o nome.</summary>
@@ -67,7 +67,7 @@ public class MetaService
         if (dto.CategoriaId.HasValue)
             await DonoRecursos.ExigirCategoriaAsync(_context, dto.CategoriaId.Value, usuarioId);
         var prazo = NormalizarPrazo(dto.DataLimite, permitirPassado: true);
-        if (prazo.HasValue && prazo != meta.DataLimite && prazo.Value < InicioDoMes(DateTime.UtcNow))
+        if (prazo.HasValue && prazo != meta.DataLimite && prazo.Value < InicioDoMes(HorarioBrasil.Agora()))
             throw new ArgumentException("O prazo não pode ser num mês que já passou.");
 
         meta.Nome = ValidarNome(dto.Nome);
@@ -117,7 +117,7 @@ public class MetaService
             .OrderBy(m => m.CriadoEm)
             .ToListAsync();
         var guardado = await GuardadoAsync(metas);
-        var hoje = agora ?? DateTime.UtcNow;
+        var hoje = agora ?? HorarioBrasil.Agora();
         return metas.Select(m => Montar(m, guardado.GetValueOrDefault(m.Id), hoje)).ToList();
     }
 
@@ -125,7 +125,7 @@ public class MetaService
     {
         var meta = await BuscarComAcessoAsync(metaId, usuarioId);
         var guardado = await GuardadoAsync([meta]);
-        return Montar(meta, guardado.GetValueOrDefault(meta.Id), agora ?? DateTime.UtcNow);
+        return Montar(meta, guardado.GetValueOrDefault(meta.Id), agora ?? HorarioBrasil.Agora());
     }
 
     /// <summary>Guardou e resgatou, do mais recente pro mais antigo (as transferências da caixinha).</summary>
@@ -237,7 +237,7 @@ public class MetaService
 
         // O dia é o do aparelho da pessoa (a tela manda), o mesmo da transferência: UtcNow virava o dia seguinte
         // depois das 21h em Brasília.
-        var dia = dto.Data ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var dia = dto.Data ?? HorarioBrasil.Hoje();
         using (_context.LiberarCaixinha())
             await _transferencias.CriarAsync(new CriarTransferenciaDto
             {
@@ -328,7 +328,7 @@ public class MetaService
         ContaOrigemId = origem,
         ContaDestinoId = destino,
         Valor = dto.Valor,
-        Data = dto.Data ?? DateOnly.FromDateTime(DateTime.UtcNow),
+        Data = dto.Data ?? HorarioBrasil.Hoje(),
         Descricao = descricao,
     };
 
@@ -392,7 +392,7 @@ public class MetaService
     {
         if (prazo is null) return null;
         var mes = InicioDoMes(prazo.Value);
-        if (!permitirPassado && mes < InicioDoMes(DateTime.UtcNow))
+        if (!permitirPassado && mes < InicioDoMes(HorarioBrasil.Agora()))
             throw new ArgumentException("O prazo não pode ser num mês que já passou.");
         if (mes.Year > DateTime.UtcNow.Year + 60)
             throw new ArgumentException("Prazo longe demais.");
