@@ -442,7 +442,7 @@ public class AcertoServiceTests
         var svc = NewSvc(c.Ctx);
 
         await Assert.ThrowsAsync<ArgumentException>(() => svc.RegistrarAsync(c.FamiliaId, caio, DtoConta(c.Bia, c.Ana, 50m, null)));
-        var amanha = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1);
+        var amanha = HorarioBrasil.Hoje().AddDays(1);
         await Assert.ThrowsAsync<ArgumentException>(() => svc.RegistrarAsync(c.FamiliaId, c.Bia, DtoConta(c.Bia, c.Ana, 50m, c.ContaBia, amanha)));
         Assert.Empty(await c.Ctx.AcertosContas.ToListAsync());
         Assert.Empty(await c.Ctx.Transacoes.Where(t => t.EhAcerto).ToListAsync());

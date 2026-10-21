@@ -84,8 +84,8 @@ namespace ControleFinanceiro.Api.Services
             // Ponto de partida da conta: início do dia escolhido (default hoje). Carimbar no começo do
             // dia deixa o baseline da reconciliação ANTES dos lançamentos daquele dia e permite saldo
             // inicial retroativo (ex.: "tenho X desde 01/09"). Não pode ser no futuro.
-            var dataAbertura = DateOnly.FromDateTime(dataSaldoInicial ?? DateTime.UtcNow);
-            if (dataAbertura > DateOnly.FromDateTime(DateTime.UtcNow))
+            var dataAbertura = dataSaldoInicial.HasValue ? DateOnly.FromDateTime(dataSaldoInicial.Value) : HorarioBrasil.Hoje();
+            if (dataAbertura > HorarioBrasil.Hoje())
                 throw new ArgumentException("A data do saldo inicial não pode ser futura.");
 
             ValidarFormato(conta);
@@ -169,8 +169,8 @@ namespace ControleFinanceiro.Api.Services
             }
 
             // Data: a informada, ou mantém a atual, ou hoje se for novo. Nunca futura.
-            var dataAbertura = data ?? existente?.Data ?? DateOnly.FromDateTime(DateTime.UtcNow);
-            if (dataAbertura > DateOnly.FromDateTime(DateTime.UtcNow))
+            var dataAbertura = data ?? existente?.Data ?? HorarioBrasil.Hoje();
+            if (dataAbertura > HorarioBrasil.Hoje())
                 throw new ArgumentException("A data do saldo inicial não pode ser futura.");
 
             if (existente != null)

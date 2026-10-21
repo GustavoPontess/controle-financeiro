@@ -54,7 +54,7 @@ public class FaturaPagarHttpTests : IClassFixture<CustomWebApplicationFactory>
         {
             Id = Guid.NewGuid(), Descricao = "Compra", Valor = valorCompra, Tipo = TipoTransacao.Despesa,
             CartaoCreditoId = cartao.Id, FaturaId = fatura.Id, UsadoComoCredito = true,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuario.Id, Ativo = true,
+            Data = HorarioBrasil.Hoje(), CriadoPor = usuario.Id, Ativo = true,
         };
         var conta = new Conta
         {
@@ -87,7 +87,7 @@ public class FaturaPagarHttpTests : IClassFixture<CustomWebApplicationFactory>
 
     // Data fixa pra todas as requisições: o replay compara a DATA do pagamento com a da 1ª tentativa,
     // e DateTime.UtcNow por requisição tornaria o teste frágil se virasse a meia-noite no meio dele.
-    private static readonly DateTime DataPagamento = DateTime.UtcNow.Date.AddHours(12);
+    private static readonly DateTime DataPagamento = HorarioBrasil.HojeData().AddHours(12);
 
     private static HttpRequestMessage PagarRequest(
         Guid cartaoId, Guid faturaId, Guid contaId, decimal valor, string csrf, string? idempotencyKey)

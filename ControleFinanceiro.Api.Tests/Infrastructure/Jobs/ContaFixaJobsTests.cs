@@ -40,7 +40,7 @@ public class ContaFixaJobsTests
 
     private static ExecutarRecorrentesJob ExecutarJob(AppDbContext ctx) => new(ctx, new NotificacaoService(ctx, NullLogger<NotificacaoService>.Instance));
 
-    private static DateOnly Hoje => DateOnly.FromDateTime(DateTime.UtcNow);
+    private static DateOnly Hoje => HorarioBrasil.Hoje();
 
     private static DateTime Utc(DateOnly d) => d.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
 
@@ -90,7 +90,7 @@ public class ContaFixaJobsTests
             DataProximaGeracao = cursor is { } c ? Utc(c) : null,
             Ativo = ativo,
             CriadoPor = userId,
-            CriadoEm = DateTime.UtcNow,
+            CriadoEm = HorarioBrasil.Agora(),
         };
         ctx.Recorrentes.Add(r);
         ctx.SaveChanges();
@@ -112,11 +112,11 @@ public class ContaFixaJobsTests
         UsadoComoCredito = r.CartaoCreditoId.HasValue,
         StatusTransacao = status,
         Ativo = ativo,
-        CanceladoEm = ativo ? null : DateTime.UtcNow,
+        CanceladoEm = ativo ? null : HorarioBrasil.Agora(),
         CriadoPor = r.CriadoPor,
         Data = data,
         RecorrenteOrigemId = recorrenteOrigemId ?? r.Id,
-        CriadoEm = DateTime.UtcNow,
+        CriadoEm = HorarioBrasil.Agora(),
     });
 
     private static Transacao Salvar(AppDbContext ctx, Transacao t)
@@ -232,10 +232,10 @@ public class ContaFixaJobsTests
         var r = SeedRecorrente(ctx, u, SeedConta(ctx, u), 15, hoje.AddMonths(-2));
         switch (cenario)
         {
-            case "excluida": r.ExcluidoEm = DateTime.UtcNow; r.Ativo = false; break;
-            case "excluida-ativo-legado": r.ExcluidoEm = DateTime.UtcNow; break;
-            case "cancelada": r.CanceladoEm = DateTime.UtcNow; r.Ativo = false; break;
-            case "cancelada-ativo-legado": r.CanceladoEm = DateTime.UtcNow; break;
+            case "excluida": r.ExcluidoEm = HorarioBrasil.Agora(); r.Ativo = false; break;
+            case "excluida-ativo-legado": r.ExcluidoEm = HorarioBrasil.Agora(); break;
+            case "cancelada": r.CanceladoEm = HorarioBrasil.Agora(); r.Ativo = false; break;
+            case "cancelada-ativo-legado": r.CanceladoEm = HorarioBrasil.Agora(); break;
         }
         ctx.SaveChanges();
         var previsao = SeedTransacao(ctx, r, hoje.AddDays(-2), StatusTransacao.Previsao,
@@ -274,7 +274,7 @@ public class ContaFixaJobsTests
         var viva = SeedRecorrente(ctx, u, conta, 15, hoje.AddMonths(-2));
         var pausada = SeedRecorrente(ctx, u, conta, 15, hoje.AddMonths(-2), ativo: false);
         var excluida = SeedRecorrente(ctx, u, conta, 15, hoje.AddMonths(-2));
-        excluida.ExcluidoEm = DateTime.UtcNow;
+        excluida.ExcluidoEm = HorarioBrasil.Agora();
         excluida.Ativo = false;
         ctx.SaveChanges();
         var daViva = SeedTransacao(ctx, viva, hoje.AddDays(-1), StatusTransacao.Previsao);
@@ -420,8 +420,8 @@ public class ContaFixaJobsTests
         var inicio = hoje.AddMonths(-2);
 
         var pausada = SeedRecorrente(ctx, u, conta, 15, inicio, ativo: false);
-        var cancelada = SeedRecorrente(ctx, u, conta, 15, inicio); cancelada.CanceladoEm = DateTime.UtcNow; // Ativo=true legado
-        var excluida = SeedRecorrente(ctx, u, conta, 15, inicio); excluida.ExcluidoEm = DateTime.UtcNow;    // Ativo=true legado
+        var cancelada = SeedRecorrente(ctx, u, conta, 15, inicio); cancelada.CanceladoEm = HorarioBrasil.Agora(); // Ativo=true legado
+        var excluida = SeedRecorrente(ctx, u, conta, 15, inicio); excluida.ExcluidoEm = HorarioBrasil.Agora();    // Ativo=true legado
         var pausadaSemPrevisao = SeedRecorrente(ctx, u, conta, 15, inicio, ativo: false);
         ctx.SaveChanges();
         var previsoes = new[]
@@ -596,7 +596,7 @@ public class ContaFixaJobsTests
         var hoje = Hoje;
         var r = SeedRecorrente(ctx, u, SeedConta(ctx, u), dia: 28, inicio: hoje.AddMonths(-2),
             cursor: D(hoje.Year + 1, 1, 28));
-        r.RealinhadoEm = DateTime.UtcNow.AddDays(-1);
+        r.RealinhadoEm = HorarioBrasil.Agora().AddDays(-1);
         ctx.SaveChanges();
         var foraDoDia = SeedTransacao(ctx, r, D(hoje.AddMonths(1).Year, hoje.AddMonths(1).Month, 1), StatusTransacao.Previsao);
 

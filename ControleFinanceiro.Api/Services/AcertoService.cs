@@ -66,8 +66,8 @@ public class AcertoService
             DeUsuarioId = dto.DeUsuarioId,
             ParaUsuarioId = dto.ParaUsuarioId,
             Valor = dto.Valor,
-            Mes = dto.Mes ?? agora.Month,
-            Ano = dto.Ano ?? agora.Year,
+            Mes = dto.Mes ?? HorarioBrasil.Agora().Month,
+            Ano = dto.Ano ?? HorarioBrasil.Agora().Year,
             Observacao = dto.Observacao,
             CriadoPor = usuarioId,
             Data = data,
@@ -330,7 +330,7 @@ public class AcertoService
     private static DateOnly ValidarData(DateOnly? data)
     {
         // A data da tela é a do aparelho (Brasil, atrás do UTC): nunca passa do dia UTC de hoje.
-        var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
+        var hoje = HorarioBrasil.Hoje();
         var d = data ?? hoje;
         if (d > hoje)
             throw new ArgumentException("O dia em que o dinheiro passou não pode ser no futuro.");

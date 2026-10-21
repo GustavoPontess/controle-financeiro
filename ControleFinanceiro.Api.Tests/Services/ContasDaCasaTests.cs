@@ -60,7 +60,7 @@ public class ContasDaCasaTests
         {
             Id = Guid.NewGuid(), Descricao = "Mercado", Valor = valor, Tipo = tipo, CategoriaId = tipo == TipoTransacao.Despesa ? c.Mercado : null,
             ContaId = conta, CartaoCreditoId = cartao, UsadoComoCredito = cartao != null, StatusTransacao = StatusTransacao.Executado,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow),
+            Data = HorarioBrasil.Hoje(),
         }, c.Gustavo);
 
     private static Task<Transacao> Ler(Casa c, Guid id) => c.Ctx.Transacoes.Include(t => t.Rateios).SingleAsync(t => t.Id == id);
@@ -83,7 +83,7 @@ public class ContasDaCasaTests
         var transferencia = await Ler(c, (await Transacoes(c).CriarTransacaoAsync(new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Pra poupança", Valor = 10m, Tipo = TipoTransacao.Despesa, ContaId = c.Conta,
-            EhTransferencia = true, StatusTransacao = StatusTransacao.Executado, Data = DateOnly.FromDateTime(DateTime.UtcNow),
+            EhTransferencia = true, StatusTransacao = StatusTransacao.Executado, Data = HorarioBrasil.Hoje(),
         }, c.Gustavo)).Id);
         Assert.Null(transferencia.FamiliaId);
     }
@@ -139,7 +139,7 @@ public class ContasDaCasaTests
         var r = await new RecorrenteService(c.Ctx, new FaturaService(c.Ctx), new FinancialEventLogService(c.Ctx)).CriarAsync(new CriarRecorrenteDto
         {
             Descricao = "Luz", Valor = 200m, Tipo = (int)TipoTransacao.Despesa, CategoriaId = c.Mercado, ContaId = c.Conta,
-            Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 5, DataInicio = DateTime.UtcNow.Date.AddDays(1),
+            Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 5, DataInicio = HorarioBrasil.HojeData().AddDays(1),
         }, c.Gustavo);
 
         var cobrancas = await c.Ctx.Transacoes.Include(t => t.Rateios).Where(t => t.RecorrenteOrigemId == r.Id).ToListAsync();

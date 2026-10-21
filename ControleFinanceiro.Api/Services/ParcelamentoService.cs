@@ -126,7 +126,7 @@ public class ParcelamentoService
     /// </summary>
     private (DateTime DaCompra, DateTime NaoVencida, DateTime Aberta) MesesDasFaturas(CartaoCredito cartao, DateTime dataCompra)
     {
-        var hojeNoBrasil = _relogio.GetUtcNow().UtcDateTime.AddHours(-5).Date;
+        var hojeNoBrasil = HorarioBrasil.DiaMaisCedo(_relogio.GetUtcNow().UtcDateTime);
         var (_, fechamentoDaCompra) = FaturaService.CalcularPeriodo(dataCompra.Date, cartao.DiaFechamento);
         var (fechamentoDaAnterior, fechamentoDaAberta) = FaturaService.CalcularPeriodo(hojeNoBrasil, cartao.DiaFechamento);
         // A fatura anterior à aberta (fechou em fechamentoDaAnterior) ainda aceita cobrança se não venceu.
@@ -169,7 +169,7 @@ public class ParcelamentoService
                 "Parcelas já pagas deve ficar entre 0 e o total menos 1: precisa sobrar pelo menos uma.");
 
         var agoraUtc = _relogio.GetUtcNow().UtcDateTime;
-        if (dto.DataCompra.Date > agoraUtc.Date)
+        if (dto.DataCompra.Date > HorarioBrasil.DeUtc(agoraUtc).Date)
             throw new InvalidOperationException("Data da compra não pode ser futura.");
         if (string.IsNullOrWhiteSpace(dto.Descricao))
             throw new InvalidOperationException("Descreva a compra.");

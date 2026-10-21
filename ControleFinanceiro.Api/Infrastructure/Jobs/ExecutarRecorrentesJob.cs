@@ -27,7 +27,7 @@ public class ExecutarRecorrentesJob
 
     public async Task ExecuteAsync()
     {
-        var hoje = DateTime.UtcNow.Date;
+        var hoje = HorarioBrasil.HojeData();
         var hojeData = DateOnly.FromDateTime(hoje);
 
         var transacoes = await _context.Transacoes

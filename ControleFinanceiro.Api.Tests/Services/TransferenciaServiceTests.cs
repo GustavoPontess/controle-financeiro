@@ -32,7 +32,7 @@ public class TransferenciaServiceTests
         await new TransferenciaService(ctx).CriarAsync(new CriarTransferenciaDto
         {
             ContaOrigemId = origem.Id, ContaDestinoId = destino.Id, Valor = 500m,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow), Descricao = "Reserva"
+            Data = HorarioBrasil.Hoje(), Descricao = "Reserva"
         }, usuarioId);
 
         var txns = await ctx.Transacoes.ToListAsync();
@@ -51,7 +51,7 @@ public class TransferenciaServiceTests
         var reserva = await service.CriarAsync(new CriarTransferenciaDto
         {
             ContaOrigemId = origem.Id, ContaDestinoId = destino.Id, Valor = 500m,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow), Descricao = "Reserva de emergência"
+            Data = HorarioBrasil.Hoje(), Descricao = "Reserva de emergência"
         }, usuarioId);
         var volta = await service.CriarAsync(new CriarTransferenciaDto
         {
@@ -86,11 +86,11 @@ public class TransferenciaServiceTests
         var service = new TransferenciaService(ctx);
         await service.CriarAsync(new CriarTransferenciaDto
         {
-            ContaOrigemId = o1.Id, ContaDestinoId = o2.Id, Valor = 10m, Data = DateOnly.FromDateTime(DateTime.UtcNow), Descricao = "Reserva"
+            ContaOrigemId = o1.Id, ContaDestinoId = o2.Id, Valor = 10m, Data = HorarioBrasil.Hoje(), Descricao = "Reserva"
         }, outroId);
         await service.CriarAsync(new CriarTransferenciaDto
         {
-            ContaOrigemId = origem.Id, ContaDestinoId = destino.Id, Valor = 10m, Data = DateOnly.FromDateTime(DateTime.UtcNow), Descricao = "Reserva"
+            ContaOrigemId = origem.Id, ContaDestinoId = destino.Id, Valor = 10m, Data = HorarioBrasil.Hoje(), Descricao = "Reserva"
         }, usuarioId);
 
         var result = await service.ListarAsync(usuarioId, busca: "reserva");
@@ -107,7 +107,7 @@ public class TransferenciaServiceTests
         var dto = await service.CriarAsync(new CriarTransferenciaDto
         {
             ContaOrigemId = origem.Id, ContaDestinoId = destino.Id, Valor = 500m,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow), Descricao = "Reserva"
+            Data = HorarioBrasil.Hoje(), Descricao = "Reserva"
         }, usuarioId);
 
         await service.DeletarAsync(dto.Id, usuarioId);
@@ -134,7 +134,7 @@ public class TransferenciaServiceTests
         await new TransferenciaService(ctx).CriarAsync(new CriarTransferenciaDto
         {
             ContaOrigemId = origem.Id, ContaDestinoId = destino.Id, Valor = 500m,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow), Descricao = "Reserva"
+            Data = HorarioBrasil.Hoje(), Descricao = "Reserva"
         }, usuarioId);
         var pernaDestino = await ctx.Transacoes.SingleAsync(t => t.ContaId == destino.Id);
 
@@ -154,13 +154,13 @@ public class TransferenciaServiceTests
         await new TransferenciaService(ctx).CriarAsync(new CriarTransferenciaDto
         {
             ContaOrigemId = origem.Id, ContaDestinoId = destino.Id, Valor = 500m,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow), Descricao = "Reserva"
+            Data = HorarioBrasil.Hoje(), Descricao = "Reserva"
         }, usuarioId);
         var perna = await ctx.Transacoes.SingleAsync(t => t.ContaId == origem.Id);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => Transacoes(ctx).AtualizarAsync(perna.Id, new Transacao
         {
-            Descricao = "Reserva", Valor = 1m, Tipo = TipoTransacao.Despesa, Data = DateOnly.FromDateTime(DateTime.UtcNow),
+            Descricao = "Reserva", Valor = 1m, Tipo = TipoTransacao.Despesa, Data = HorarioBrasil.Hoje(),
         }, usuarioId));
 
         ctx.ChangeTracker.Clear();
@@ -195,7 +195,7 @@ public class TransferenciaServiceTests
     public async Task Criar_SemHora_PernasFicamSemHora()
     {
         var (ctx, usuarioId, origem, destino) = Seed();
-        var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
+        var hoje = HorarioBrasil.Hoje();
 
         await new TransferenciaService(ctx).CriarAsync(new CriarTransferenciaDto
         {

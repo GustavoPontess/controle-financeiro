@@ -28,7 +28,7 @@ public class TransacoesHttpTests : IClassFixture<CustomWebApplicationFactory>
 
     public TransacoesHttpTests(CustomWebApplicationFactory factory) => _factory = factory;
 
-    private static DateOnly Hoje => DateOnly.FromDateTime(DateTime.UtcNow);
+    private static DateOnly Hoje => HorarioBrasil.Hoje();
 
     // "yyyy-MM-dd" é exatamente o que o front envia em `data` (e filtra em from/to).
     private static string Iso(DateOnly d) => d.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);

@@ -43,7 +43,7 @@ public static class DevDataSeeder
         if (await context.Usuarios.AnyAsync(u => u.Email == DevEmail))
             return;
 
-        var hoje = DateTime.UtcNow.Date;
+        var hoje = HorarioBrasil.HojeData();
         var hash = PasswordHasher.HashPassword(Senha);
 
         // Categorias padrão (já seedadas por CategoriaSeeder).

@@ -39,7 +39,7 @@ public class ExpandirRecorrentesJobTests
         CartaoCreditoId = cartaoId,
         Frequencia = FrequenciaRecorrencia.Mensal,
         Dia = 1,
-        DataInicio = DateTime.UtcNow.Date.AddMonths(-1),
+        DataInicio = HorarioBrasil.HojeData().AddMonths(-1),
         Ativo = true,
         CriadoPor = criadoPor,
         CriadoEm = DateTime.UtcNow,

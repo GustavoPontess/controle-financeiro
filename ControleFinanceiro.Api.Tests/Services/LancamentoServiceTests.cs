@@ -55,7 +55,7 @@ public class LancamentoServiceTests
         return new Cenario(ctx, svc, transacoes, transferencias, usuarioId, contaA.Id, contaB.Id, cartao.Id);
     }
 
-    private static DateOnly Hoje => DateOnly.FromDateTime(DateTime.UtcNow);
+    private static DateOnly Hoje => HorarioBrasil.Hoje();
 
     private static async Task<Transacao> SeedDespesaEmConta(Cenario c, decimal valor = 100m, StatusTransacao status = StatusTransacao.Executado, DateOnly? data = null)
     {

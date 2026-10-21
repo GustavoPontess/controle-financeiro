@@ -183,7 +183,7 @@ public class MetaServiceTests
             ctx.Transacoes.Add(new Transacao
             {
                 Id = Guid.NewGuid(), Descricao = "Saldo Inicial", Valor = saldo, Tipo = TipoTransacao.Receita, ContaId = c.Id,
-                Data = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-5), CriadoPor = usuarioId, EhSaldoInicial = true,
+                Data = HorarioBrasil.Hoje().AddDays(-5), CriadoPor = usuarioId, EhSaldoInicial = true,
             });
         ctx.SaveChanges();
         return c.Id;
@@ -501,12 +501,12 @@ public class MetaServiceTests
 
         // Transferência avulsa (tela de transferências) pra caixinha.
         var erro = await Assert.ThrowsAsync<InvalidOperationException>(() => new TransferenciaService(ctx).CriarAsync(
-            new DTOs.Transferencia.CriarTransferenciaDto { ContaOrigemId = conta, ContaDestinoId = caixinha, Valor = 10m, Data = DateOnly.FromDateTime(DateTime.UtcNow) }, user));
+            new DTOs.Transferencia.CriarTransferenciaDto { ContaOrigemId = conta, ContaDestinoId = caixinha, Valor = 10m, Data = HorarioBrasil.Hoje() }, user));
         Assert.Equal(Conta.MensagemCaixinha, erro.Message);
         ctx.ChangeTracker.Clear();
 
         // Lançamento direto, qualquer caminho.
-        ctx.Transacoes.Add(new Transacao { Id = Guid.NewGuid(), Descricao = "x", Valor = 5m, Tipo = TipoTransacao.Despesa, ContaId = caixinha, CriadoPor = user, Data = DateOnly.FromDateTime(DateTime.UtcNow) });
+        ctx.Transacoes.Add(new Transacao { Id = Guid.NewGuid(), Descricao = "x", Valor = 5m, Tipo = TipoTransacao.Despesa, ContaId = caixinha, CriadoPor = user, Data = HorarioBrasil.Hoje() });
         await Assert.ThrowsAsync<InvalidOperationException>(() => ctx.SaveChangesAsync());
         ctx.ChangeTracker.Clear();
 

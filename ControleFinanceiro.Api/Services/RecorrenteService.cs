@@ -306,7 +306,7 @@ public class RecorrenteService
 
     public async Task GerarPendentesAsync(Guid usuarioId)
     {
-        var hoje = DateTime.UtcNow.Date;
+        var hoje = HorarioBrasil.HojeData();
         var amanha = DateOnly.FromDateTime(hoje).AddDays(1);
         var recorrentes = await _context.Recorrentes
             .Where(r => r.CriadoPor == usuarioId && r.Ativo && r.ExcluidoEm == null &&
@@ -379,7 +379,7 @@ public class RecorrenteService
     /// </summary>
     public async Task<RecorrenteStatsDto> ObterStatsAsync(Guid usuarioId)
     {
-        var hoje = DateTime.UtcNow.Date;
+        var hoje = HorarioBrasil.HojeData();
         var query = _context.Recorrentes.Where(r => r.CriadoPor == usuarioId && r.ExcluidoEm == null);
         // "Ativas" do hero = em vigor (MESMA regra da aba Ativas / do rótulo Situacao) e não pausada
         // (pausada não gera cobrança nem pesa no custo). Só `Ativo` não bastava: ninguém desliga o
@@ -455,7 +455,7 @@ public class RecorrenteService
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);
-        var hoje = DateTime.UtcNow.Date;
+        var hoje = HorarioBrasil.HojeData();
 
         var query = _context.Recorrentes.Where(r => r.CriadoPor == usuarioId && r.ExcluidoEm == null);
 
@@ -533,7 +533,7 @@ public class RecorrenteService
             .FirstOrDefaultAsync(x => x.Id == id && x.CriadoPor == usuarioId && x.ExcluidoEm == null)
             ?? throw new KeyNotFoundException("Recorrente não encontrado.");
 
-        var hoje = DateTime.UtcNow.Date;
+        var hoje = HorarioBrasil.HojeData();
         var hojeD = DateOnly.FromDateTime(hoje);
         var proxima = await _context.Transacoes
             .Where(t => t.RecorrenteOrigemId == id && t.Ativo
@@ -616,7 +616,7 @@ public class RecorrenteService
         AgendaRecorrente.ValidarPeriodo(
             DateOnly.FromDateTime(dataInicio),
             dto.DataFim is { } fimDto ? DateOnly.FromDateTime(fimDto.ToUniversalTime()) : null,
-            DateOnly.FromDateTime(DateTime.UtcNow));
+            HorarioBrasil.Hoje());
 
         // Dentro de uma transação de quem chamou (edição que vira conta fixa), participa dela.
         var proprioTx = _context.Database.CurrentTransaction is null;
@@ -673,7 +673,7 @@ public class RecorrenteService
             // rodar. Depois, as previsões até o horizonte da edição e do ExpandirRecorrentesJob (1º de janeiro do
             // ano que vem), ou 3 meses a contar do início, se for mais longe (início no futuro). Só os 3 meses do
             // início deixavam "Aluguel desde agosto" sem as cobranças de novembro em diante até o job da madrugada.
-            var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
+            var hoje = HorarioBrasil.Hoje();
             await GerarOcorrenciasAsync(recorrente, hoje,
                 recorrente.CartaoCreditoId.HasValue ? StatusTransacao.Previsao : StatusTransacao.Executado);
             var vencidasNoCartao = _context.ChangeTracker.Entries<Transacao>()
@@ -895,7 +895,7 @@ public class RecorrenteService
         AgendaRecorrente.ValidarPeriodo(
             DateOnly.FromDateTime(r.DataInicio),
             dto.DataFim is { } fimDto ? DateOnly.FromDateTime(fimDto.ToUniversalTime()) : null,
-            DateOnly.FromDateTime(DateTime.UtcNow), validarInicio: false);
+            HorarioBrasil.Hoje(), validarInicio: false);
 
         r.Descricao = dto.Descricao;
         r.Valor = dto.Valor;
@@ -918,7 +918,7 @@ public class RecorrenteService
         if (r.Ativo && r.CanceladoEm == null)
         {
             var agora = DateTime.UtcNow;
-            var hoje = DateOnly.FromDateTime(agora);
+            var hoje = HorarioBrasil.Hoje();
             var inicio = DateOnly.FromDateTime(r.DataInicio);
             var canceladas = await CancelarPrevisoesAsync(r.Id, "Conta fixa alterada", agora, aPartirDe: hoje, preservarEditadas: true);
             await ReconciliarFaturasDasCanceladasAsync(canceladas, usuarioId, Guid.NewGuid(), agora);
@@ -953,7 +953,7 @@ public class RecorrenteService
             return;
 
         var agora = DateTime.UtcNow;
-        var hoje = DateOnly.FromDateTime(agora);
+        var hoje = HorarioBrasil.Hoje();
         var correlationId = Guid.NewGuid();
 
         if (r.Ativo)

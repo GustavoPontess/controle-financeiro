@@ -24,7 +24,7 @@ public class ExpandirRecorrentesJob
 
     public async Task ExecuteAsync()
     {
-        var hoje = DateTime.UtcNow.Date;
+        var hoje = HorarioBrasil.HojeData();
         var hojeD = DateOnly.FromDateTime(hoje);
         var horizonte = AgendaRecorrente.HorizonteExpansao(hojeD); // previsão até o fim do ano corrente (inclusive Dez/31)
 

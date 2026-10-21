@@ -297,7 +297,7 @@ public class FaturaServiceTests
         var usuarioId = Guid.NewGuid();
 
         await Assert.ThrowsAsync<KeyNotFoundException>(
-            () => service.ObterOuCriarFaturaAsync(Guid.NewGuid(), DateOnly.FromDateTime(DateTime.UtcNow), usuarioId));
+            () => service.ObterOuCriarFaturaAsync(Guid.NewGuid(), HorarioBrasil.Hoje(), usuarioId));
     }
 
     [Fact]
@@ -401,9 +401,9 @@ public class FaturaServiceTests
         {
             Id = Guid.NewGuid(),
             CartaoCreditoId = cartao.Id,
-            DataInicio = DateTime.UtcNow.AddDays(-30),
-            DataFechamento = DateTime.UtcNow,
-            DataVencimento = DateTime.UtcNow.AddDays(10),
+            DataInicio = HorarioBrasil.Agora().AddDays(-30),
+            DataFechamento = HorarioBrasil.Agora(),
+            DataVencimento = HorarioBrasil.Agora().AddDays(10),
             CriadoPor = usuarioId,
             EstadoCiclo = EstadoCicloFatura.Fechada,
             EstadoPagamento = EstadoPagamentoFatura.NaoPago,
@@ -417,7 +417,7 @@ public class FaturaServiceTests
             CartaoCreditoId = cartao.Id,
             FaturaId = fatura.Id,
             UsadoComoCredito = true,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow),
+            Data = HorarioBrasil.Hoje(),
             CriadoPor = usuarioId,
             Ativo = true,
         };
@@ -439,7 +439,7 @@ public class FaturaServiceTests
         var service = new FaturaService(ctx);
         var usuarioId = Guid.NewGuid();
 
-        var dto = new PagarFaturaDto { ContaId = Guid.NewGuid(), Valor = 100, DataPagamento = DateTime.UtcNow };
+        var dto = new PagarFaturaDto { ContaId = Guid.NewGuid(), Valor = 100, DataPagamento = HorarioBrasil.Agora() };
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() => service.PagarFaturaAsync(Guid.NewGuid(), dto, usuarioId, Chave()));
     }
@@ -460,7 +460,7 @@ public class FaturaServiceTests
         await ctx.SaveChangesAsync();
 
         var service = new FaturaService(ctx);
-        var dto = new PagarFaturaDto { ContaId = contaAtacante.Id, Valor = 100, DataPagamento = DateTime.UtcNow };
+        var dto = new PagarFaturaDto { ContaId = contaAtacante.Id, Valor = 100, DataPagamento = HorarioBrasil.Agora() };
 
         var deOutro = await Assert.ThrowsAsync<KeyNotFoundException>(
             () => service.PagarFaturaAsync(fatura.Id, dto, atacanteId, Chave()));
@@ -479,7 +479,7 @@ public class FaturaServiceTests
         var usuarioId = Guid.NewGuid();
         var (service, _, fatura, conta) = await SetupFaturaComCompraAsync(ctx, usuarioId);
 
-        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 50, DataPagamento = DateTime.UtcNow.AddDays(2) };
+        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 50, DataPagamento = HorarioBrasil.Agora().AddDays(2) };
 
         var ex = await Assert.ThrowsAsync<ArgumentException>(() => service.PagarFaturaAsync(fatura.Id, dto, usuarioId, Chave()));
         Assert.Contains("futura", ex.Message);
@@ -495,7 +495,7 @@ public class FaturaServiceTests
         var usuarioId = Guid.NewGuid();
         var (service, _, fatura, conta) = await SetupFaturaComCompraAsync(ctx, usuarioId);
 
-        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 50, DataPagamento = DateTime.UtcNow, MeioPagamento = 99 };
+        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 50, DataPagamento = HorarioBrasil.Agora(), MeioPagamento = 99 };
 
         var ex = await Assert.ThrowsAsync<ArgumentException>(() => service.PagarFaturaAsync(fatura.Id, dto, usuarioId, Chave()));
         Assert.Equal(MeioPagamentoExtensions.MensagemInvalido, ex.Message);
@@ -513,7 +513,7 @@ public class FaturaServiceTests
         fatura.ValorPago = 300;
         await ctx.SaveChangesAsync();
 
-        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 50, DataPagamento = DateTime.UtcNow };
+        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 50, DataPagamento = HorarioBrasil.Agora() };
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.PagarFaturaAsync(fatura.Id, dto, usuarioId, Chave()));
         Assert.Contains("já foi paga", ex.Message);
@@ -526,7 +526,7 @@ public class FaturaServiceTests
         var usuarioId = Guid.NewGuid();
         var (service, _, fatura, _) = await SetupFaturaComCompraAsync(ctx, usuarioId);
 
-        var dto = new PagarFaturaDto { ContaId = Guid.NewGuid(), Valor = 50, DataPagamento = DateTime.UtcNow };
+        var dto = new PagarFaturaDto { ContaId = Guid.NewGuid(), Valor = 50, DataPagamento = HorarioBrasil.Agora() };
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() => service.PagarFaturaAsync(fatura.Id, dto, usuarioId, Chave()));
     }
@@ -540,7 +540,7 @@ public class FaturaServiceTests
         var usuarioId = Guid.NewGuid();
         var (service, _, fatura, conta) = await SetupFaturaComCompraAsync(ctx, usuarioId);
 
-        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = valor, DataPagamento = DateTime.UtcNow };
+        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = valor, DataPagamento = HorarioBrasil.Agora() };
 
         await Assert.ThrowsAsync<ArgumentException>(() => service.PagarFaturaAsync(fatura.Id, dto, usuarioId, Chave()));
     }
@@ -552,7 +552,7 @@ public class FaturaServiceTests
         var usuarioId = Guid.NewGuid();
         var (service, _, fatura, conta) = await SetupFaturaComCompraAsync(ctx, usuarioId, valorCompra: 300m);
 
-        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 301m, DataPagamento = DateTime.UtcNow };
+        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 301m, DataPagamento = HorarioBrasil.Agora() };
 
         var ex = await Assert.ThrowsAsync<ArgumentException>(() => service.PagarFaturaAsync(fatura.Id, dto, usuarioId, Chave()));
         Assert.Contains("Valor inválido", ex.Message);
@@ -564,7 +564,7 @@ public class FaturaServiceTests
         var ctx = CreateContext();
         var usuarioId = Guid.NewGuid();
         var (service, cartao, fatura, conta) = await SetupFaturaComCompraAsync(ctx, usuarioId, valorCompra: 300m);
-        var dataPagamento = DateTime.UtcNow;
+        var dataPagamento = HorarioBrasil.Agora();
 
         var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 300m, DataPagamento = dataPagamento, MeioPagamento = 4 };
 
@@ -592,7 +592,7 @@ public class FaturaServiceTests
         var usuarioId = Guid.NewGuid();
         var (service, _, fatura, conta) = await SetupFaturaComCompraAsync(ctx, usuarioId, valorCompra: 300m);
 
-        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 100m, DataPagamento = DateTime.UtcNow };
+        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 100m, DataPagamento = HorarioBrasil.Agora() };
         await service.PagarFaturaAsync(fatura.Id, dto, usuarioId, Chave());
 
         var faturaDb = await ctx.Faturas.FindAsync(fatura.Id);
@@ -609,7 +609,7 @@ public class FaturaServiceTests
         var usuarioId = Guid.NewGuid();
         var (service, _, fatura, conta) = await SetupFaturaComCompraAsync(ctx, usuarioId, valorCompra: 300m);
 
-        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 100m, DataPagamento = DateTime.UtcNow };
+        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 100m, DataPagamento = HorarioBrasil.Agora() };
         await service.PagarFaturaAsync(fatura.Id, dto, usuarioId, Chave());
 
         var logs = await ctx.FinancialEventLogs.ToListAsync();
@@ -640,7 +640,7 @@ public class FaturaServiceTests
         var usuarioId = Guid.NewGuid();
         var (service, _, fatura, conta) = await SetupFaturaComCompraAsync(ctx, usuarioId, valorCompra: 300m);
         var chave = Chave();
-        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 100m, DataPagamento = DateTime.UtcNow };
+        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 100m, DataPagamento = HorarioBrasil.Agora() };
 
         var primeiro = await service.PagarFaturaAsync(fatura.Id, dto, usuarioId, chave);
         var segundo = await service.PagarFaturaAsync(fatura.Id, dto, usuarioId, chave);
@@ -669,7 +669,7 @@ public class FaturaServiceTests
         var usuarioId = Guid.NewGuid();
         var (service, _, fatura, conta) = await SetupFaturaComCompraAsync(ctx, usuarioId, valorCompra: 300m);
         var chave = Chave();
-        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 300m, DataPagamento = DateTime.UtcNow };
+        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 300m, DataPagamento = HorarioBrasil.Agora() };
 
         var primeiro = await service.PagarFaturaAsync(fatura.Id, dto, usuarioId, chave);
         var segundo = await service.PagarFaturaAsync(fatura.Id, dto, usuarioId, chave);
@@ -688,7 +688,7 @@ public class FaturaServiceTests
         var ctx = CreateContext();
         var usuarioId = Guid.NewGuid();
         var (service, _, fatura, conta) = await SetupFaturaComCompraAsync(ctx, usuarioId, valorCompra: 300m);
-        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 100m, DataPagamento = DateTime.UtcNow };
+        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 100m, DataPagamento = HorarioBrasil.Agora() };
 
         var primeiro = await service.PagarFaturaAsync(fatura.Id, dto, usuarioId, Chave());
         var segundo = await service.PagarFaturaAsync(fatura.Id, dto, usuarioId, Chave());
@@ -711,7 +711,7 @@ public class FaturaServiceTests
         var ctx = CreateContext();
         var usuarioId = Guid.NewGuid();
         var (service, _, fatura, conta) = await SetupFaturaComCompraAsync(ctx, usuarioId, valorCompra: 300m);
-        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 100m, DataPagamento = DateTime.UtcNow };
+        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 100m, DataPagamento = HorarioBrasil.Agora() };
 
         var ex = await Assert.ThrowsAsync<ArgumentException>(
             () => service.PagarFaturaAsync(fatura.Id, dto, usuarioId, chave));
@@ -728,7 +728,7 @@ public class FaturaServiceTests
         var ctx = CreateContext();
         var usuarioId = Guid.NewGuid();
         var (service, _, fatura, conta) = await SetupFaturaComCompraAsync(ctx, usuarioId);
-        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 100m, DataPagamento = DateTime.UtcNow };
+        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 100m, DataPagamento = HorarioBrasil.Agora() };
 
         await Assert.ThrowsAsync<ArgumentException>(() => service.PagarFaturaAsync(
             fatura.Id, dto, usuarioId, new string('k', RegistroIdempotencia.ChaveMaxLength + 1)));
@@ -747,9 +747,9 @@ public class FaturaServiceTests
         var chave = Chave();
 
         await Assert.ThrowsAsync<ArgumentException>(() => service.PagarFaturaAsync(fatura.Id,
-            new PagarFaturaDto { ContaId = conta.Id, Valor = 301m, DataPagamento = DateTime.UtcNow }, usuarioId, chave));
+            new PagarFaturaDto { ContaId = conta.Id, Valor = 301m, DataPagamento = HorarioBrasil.Agora() }, usuarioId, chave));
         var pagamento = await service.PagarFaturaAsync(fatura.Id,
-            new PagarFaturaDto { ContaId = conta.Id, Valor = 100m, DataPagamento = DateTime.UtcNow }, usuarioId, chave);
+            new PagarFaturaDto { ContaId = conta.Id, Valor = 100m, DataPagamento = HorarioBrasil.Agora() }, usuarioId, chave);
 
         Assert.Equal(100m, pagamento.Valor);
         Assert.Equal(100m, (await ctx.Faturas.AsNoTracking().SingleAsync(f => f.Id == fatura.Id)).ValorPago);
@@ -765,7 +765,7 @@ public class FaturaServiceTests
         var (service, _, fatura1, conta) = await SetupFaturaComCompraAsync(ctx, usuarioId, valorCompra: 300m);
         var (_, _, fatura2, _) = await SetupFaturaComCompraAsync(ctx, usuarioId, valorCompra: 300m);
         var chave = Chave();
-        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 100m, DataPagamento = DateTime.UtcNow };
+        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 100m, DataPagamento = HorarioBrasil.Agora() };
 
         await service.PagarFaturaAsync(fatura1.Id, dto, usuarioId, chave);
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -788,9 +788,9 @@ public class FaturaServiceTests
         var chave = Chave();
 
         var pagA = await service.PagarFaturaAsync(faturaA.Id,
-            new PagarFaturaDto { ContaId = contaA.Id, Valor = 100m, DataPagamento = DateTime.UtcNow }, usuarioA, chave);
+            new PagarFaturaDto { ContaId = contaA.Id, Valor = 100m, DataPagamento = HorarioBrasil.Agora() }, usuarioA, chave);
         var pagB = await service.PagarFaturaAsync(faturaB.Id,
-            new PagarFaturaDto { ContaId = contaB.Id, Valor = 50m, DataPagamento = DateTime.UtcNow }, usuarioB, chave);
+            new PagarFaturaDto { ContaId = contaB.Id, Valor = 50m, DataPagamento = HorarioBrasil.Agora() }, usuarioB, chave);
 
         Assert.NotEqual(pagA.Id, pagB.Id);
         Assert.Equal(50m, (await ctx.Faturas.AsNoTracking().SingleAsync(f => f.Id == faturaB.Id)).ValorPago);
@@ -814,7 +814,7 @@ public class FaturaServiceTests
         ctx.Contas.Add(contaB);
         await ctx.SaveChangesAsync();
         var chave = Chave();
-        var hoje = DateTime.UtcNow;
+        var hoje = HorarioBrasil.Agora();
         await service.PagarFaturaAsync(fatura.Id, new PagarFaturaDto
         {
             ContaId = contaA.Id, Valor = 300m, DataPagamento = hoje, MeioPagamento = (int)MeioPagamento.Pix,
@@ -849,7 +849,7 @@ public class FaturaServiceTests
         var usuarioId = Guid.NewGuid();
         var (service, _, fatura, conta) = await SetupFaturaComCompraAsync(ctx, usuarioId, valorCompra: 300m);
         var chave = Chave();
-        var manha = DateTime.UtcNow.Date.AddHours(9);
+        var manha = HorarioBrasil.HojeData().AddHours(9);
 
         var primeiro = await service.PagarFaturaAsync(fatura.Id,
             new PagarFaturaDto { ContaId = conta.Id, Valor = 100m, DataPagamento = manha }, usuarioId, chave);
@@ -875,7 +875,7 @@ public class FaturaServiceTests
         var usuarioId = Guid.NewGuid();
         var (service, _, fatura, conta) = await SetupFaturaComCompraAsync(ctx, usuarioId, valorCompra: 300m);
         var chave = Chave();
-        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 100m, DataPagamento = DateTime.UtcNow };
+        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 100m, DataPagamento = HorarioBrasil.Agora() };
 
         Transacao? pagamentoDaGemea = null;
         corrida.Concorrente = async () =>
@@ -909,7 +909,7 @@ public class FaturaServiceTests
         var usuarioId = Guid.NewGuid();
         var (service, _, fatura, conta) = await SetupFaturaComCompraAsync(ctx, usuarioId, valorCompra: 300m);
         var chave = Chave();
-        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 100m, DataPagamento = DateTime.UtcNow };
+        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 100m, DataPagamento = HorarioBrasil.Agora() };
 
         Transacao? pagamentoDaGemea = null;
         corrida.Concorrente = async () =>
@@ -939,7 +939,7 @@ public class FaturaServiceTests
         var usuarioId = Guid.NewGuid();
         var (service, _, fatura, conta) = await SetupFaturaComCompraAsync(ctx, usuarioId, valorCompra: 300m);
         var chave = Chave();
-        var hoje = DateTime.UtcNow;
+        var hoje = HorarioBrasil.Agora();
 
         corrida.Concorrente = async () =>
         {
@@ -973,7 +973,7 @@ public class FaturaServiceTests
         var ctx = CreateContext(root, nome, corrida);
         var usuarioId = Guid.NewGuid();
         var (service, _, fatura, conta) = await SetupFaturaComCompraAsync(ctx, usuarioId, valorCompra: 300m);
-        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 250m, DataPagamento = DateTime.UtcNow };
+        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 250m, DataPagamento = HorarioBrasil.Agora() };
 
         corrida.Concorrente = async () =>
         {
@@ -1049,13 +1049,13 @@ public class FaturaServiceTests
             {
                 Id = Guid.NewGuid(), Descricao = "Compra ativa", Valor = 50, Tipo = TipoTransacao.Despesa,
                 CartaoCreditoId = cartao.Id, FaturaId = faturaRecente.Id, UsadoComoCredito = true,
-                Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuarioId, Ativo = true,
+                Data = HorarioBrasil.Hoje(), CriadoPor = usuarioId, Ativo = true,
             },
             new Transacao
             {
                 Id = Guid.NewGuid(), Descricao = "Compra cancelada", Valor = 20, Tipo = TipoTransacao.Despesa,
                 CartaoCreditoId = cartao.Id, FaturaId = faturaRecente.Id, UsadoComoCredito = true,
-                Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuarioId, Ativo = false,
+                Data = HorarioBrasil.Hoje(), CriadoPor = usuarioId, Ativo = false,
             });
         ctx.ParcelasTransacao.AddRange(
             new ParcelaTransacao
@@ -1096,8 +1096,8 @@ public class FaturaServiceTests
         var fatura = new Fatura
         {
             Id = Guid.NewGuid(), CartaoCreditoId = cartao.Id,
-            DataInicio = DateTime.UtcNow.AddDays(-40), DataFechamento = DateTime.UtcNow.AddDays(-10),
-            DataVencimento = DateTime.UtcNow.AddDays(-5), CriadoPor = usuarioId,
+            DataInicio = HorarioBrasil.Agora().AddDays(-40), DataFechamento = HorarioBrasil.Agora().AddDays(-10),
+            DataVencimento = HorarioBrasil.Agora().AddDays(-5), CriadoPor = usuarioId,
             EstadoPagamento = EstadoPagamentoFatura.NaoPago,
         };
         ctx.CartoesCredito.Add(cartao);
@@ -1107,7 +1107,7 @@ public class FaturaServiceTests
         {
             Id = Guid.NewGuid(), Descricao = "Mercado", Valor = 80, Tipo = TipoTransacao.Despesa,
             CartaoCreditoId = cartao.Id, FaturaId = fatura.Id, UsadoComoCredito = true,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-20)), CriadoPor = usuarioId,
+            Data = DateOnly.FromDateTime(HorarioBrasil.Agora().AddDays(-20)), CriadoPor = usuarioId,
         });
         await ctx.SaveChangesAsync();
 
@@ -1128,8 +1128,8 @@ public class FaturaServiceTests
         Fatura Vencida(EstadoPagamentoFatura estado, decimal valorPago) => new()
         {
             Id = Guid.NewGuid(), CartaoCreditoId = cartao.Id,
-            DataInicio = DateTime.UtcNow.AddDays(-40), DataFechamento = DateTime.UtcNow.AddDays(-10),
-            DataVencimento = DateTime.UtcNow.AddDays(-5), CriadoPor = usuarioId,
+            DataInicio = HorarioBrasil.Agora().AddDays(-40), DataFechamento = HorarioBrasil.Agora().AddDays(-10),
+            DataVencimento = HorarioBrasil.Agora().AddDays(-5), CriadoPor = usuarioId,
             EstadoCiclo = EstadoCicloFatura.Fechada, EstadoPagamento = estado, ValorPago = valorPago,
         };
         var coberta = Vencida(EstadoPagamentoFatura.Parcial, 100);
@@ -1140,7 +1140,7 @@ public class FaturaServiceTests
         {
             Id = Guid.NewGuid(), Descricao = "Mercado", Valor = 100, Tipo = TipoTransacao.Despesa,
             CartaoCreditoId = cartao.Id, FaturaId = coberta.Id, UsadoComoCredito = true,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-20)), CriadoPor = usuarioId,
+            Data = DateOnly.FromDateTime(HorarioBrasil.Agora().AddDays(-20)), CriadoPor = usuarioId,
         });
         await ctx.SaveChangesAsync();
 
@@ -1159,8 +1159,8 @@ public class FaturaServiceTests
         var fatura = new Fatura
         {
             Id = Guid.NewGuid(), CartaoCreditoId = cartao.Id,
-            DataInicio = DateTime.UtcNow.AddDays(-40), DataFechamento = DateTime.UtcNow.AddDays(-10),
-            DataVencimento = DateTime.UtcNow.AddDays(-5), CriadoPor = usuarioId,
+            DataInicio = HorarioBrasil.Agora().AddDays(-40), DataFechamento = HorarioBrasil.Agora().AddDays(-10),
+            DataVencimento = HorarioBrasil.Agora().AddDays(-5), CriadoPor = usuarioId,
             EstadoPagamento = EstadoPagamentoFatura.Pago, ValorPago = 0,
         };
         ctx.CartoesCredito.Add(cartao);
@@ -1208,21 +1208,21 @@ public class FaturaServiceTests
         var fatura = new Fatura
         {
             Id = Guid.NewGuid(), CartaoCreditoId = cartao.Id,
-            DataInicio = DateTime.UtcNow.AddDays(-30), DataFechamento = DateTime.UtcNow,
-            DataVencimento = DateTime.UtcNow.AddDays(10), CriadoPor = usuarioId,
+            DataInicio = HorarioBrasil.Agora().AddDays(-30), DataFechamento = HorarioBrasil.Agora(),
+            DataVencimento = HorarioBrasil.Agora().AddDays(10), CriadoPor = usuarioId,
         };
         var compra = new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Compra no mercado", Valor = 80, Tipo = TipoTransacao.Despesa,
             CartaoCreditoId = cartao.Id, FaturaId = fatura.Id, UsadoComoCredito = true,
-            CategoriaId = categoria.Id, Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuarioId, Ativo = true,
+            CategoriaId = categoria.Id, Data = HorarioBrasil.Hoje(), CriadoPor = usuarioId, Ativo = true,
         };
         // Transação de conta corrente (não é crédito) associada por engano à fatura não deve aparecer.
         var naoCredito = new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Não é crédito", Valor = 10, Tipo = TipoTransacao.Despesa,
             CartaoCreditoId = cartao.Id, FaturaId = fatura.Id, UsadoComoCredito = false,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuarioId, Ativo = true,
+            Data = HorarioBrasil.Hoje(), CriadoPor = usuarioId, Ativo = true,
         };
         ctx.CartoesCredito.Add(cartao);
         ctx.Categorias.Add(categoria);
@@ -1249,7 +1249,7 @@ public class FaturaServiceTests
         var (_, cartao, fatura, conta) = await SetupFaturaComCompraAsync(ctx, usuarioId, valorCompra: 300m);
 
         var service = new FaturaService(ctx);
-        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 300m, DataPagamento = DateTime.UtcNow, MeioPagamento = (int)MeioPagamento.Pix };
+        var dto = new PagarFaturaDto { ContaId = conta.Id, Valor = 300m, DataPagamento = HorarioBrasil.Agora(), MeioPagamento = (int)MeioPagamento.Pix };
         await service.PagarFaturaAsync(fatura.Id, dto, usuarioId, Chave());
 
         var detalhe = await service.DetalheAsync(fatura.Id, usuarioId);
@@ -1265,9 +1265,9 @@ public class FaturaServiceTests
     private static Fatura NovaFatura(CartaoCredito cartao, Guid usuarioId, int mesesAFrente = 0) => new()
     {
         Id = Guid.NewGuid(), CartaoCreditoId = cartao.Id,
-        DataInicio = DateTime.UtcNow.Date.AddMonths(mesesAFrente).AddDays(-30),
-        DataFechamento = DateTime.UtcNow.Date.AddMonths(mesesAFrente),
-        DataVencimento = DateTime.UtcNow.Date.AddMonths(mesesAFrente).AddDays(10),
+        DataInicio = HorarioBrasil.HojeData().AddMonths(mesesAFrente).AddDays(-30),
+        DataFechamento = HorarioBrasil.HojeData().AddMonths(mesesAFrente),
+        DataVencimento = HorarioBrasil.HojeData().AddMonths(mesesAFrente).AddDays(10),
         CriadoPor = usuarioId,
     };
 
@@ -1298,7 +1298,7 @@ public class FaturaServiceTests
         var categoria = new Categoria { Id = Guid.NewGuid(), Descricao = "Eletrodomésticos", Finalidade = Finalidade.Despesa };
         var fatura = NovaFatura(cartao, usuarioId);
         var proxima = NovaFatura(cartao, usuarioId, mesesAFrente: 1);
-        var dataCompra = DateTime.UtcNow.Date.AddMonths(-1);
+        var dataCompra = HorarioBrasil.HojeData().AddMonths(-1);
         var geladeira = NovoParcelamento(cartao, usuarioId, "Geladeira", dataCompra, categoria.Id);
         var sofa = NovoParcelamento(cartao, usuarioId, "Sofá", dataCompra);
 
@@ -1310,7 +1310,7 @@ public class FaturaServiceTests
         {
             Id = Guid.NewGuid(), Descricao = "Mercado", Valor = 40, Tipo = TipoTransacao.Despesa,
             CartaoCreditoId = cartao.Id, FaturaId = fatura.Id, UsadoComoCredito = true,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuarioId, Ativo = true,
+            Data = HorarioBrasil.Hoje(), CriadoPor = usuarioId, Ativo = true,
         };
         ctx.CartoesCredito.Add(cartao);
         ctx.Categorias.Add(categoria);
@@ -1353,8 +1353,8 @@ public class FaturaServiceTests
         var cartaoDoOutro = CriarCartao(outroId);
         var minhaFatura = NovaFatura(meuCartao, usuarioId);
         var faturaDoOutro = NovaFatura(cartaoDoOutro, outroId);
-        var meu = NovoParcelamento(meuCartao, usuarioId, "Notebook", DateTime.UtcNow.Date);
-        var doOutro = NovoParcelamento(cartaoDoOutro, outroId, "TV do outro", DateTime.UtcNow.Date);
+        var meu = NovoParcelamento(meuCartao, usuarioId, "Notebook", HorarioBrasil.HojeData());
+        var doOutro = NovoParcelamento(cartaoDoOutro, outroId, "TV do outro", HorarioBrasil.HojeData());
         var minhaParcela = NovaParcela(meu, minhaFatura, 1, 200m);
         var parcelaDoOutro = NovaParcela(doOutro, faturaDoOutro, 1, 500m);
         ctx.CartoesCredito.AddRange(meuCartao, cartaoDoOutro);
@@ -1378,8 +1378,8 @@ public class FaturaServiceTests
         var usuarioId = Guid.NewGuid();
         var cartao = CriarCartao(usuarioId);
         var fatura = NovaFatura(cartao, usuarioId);
-        var celular = NovoParcelamento(cartao, usuarioId, "Celular", DateTime.UtcNow.Date);
-        var fone = NovoParcelamento(cartao, usuarioId, "Fone", DateTime.UtcNow.Date.AddMonths(-1));
+        var celular = NovoParcelamento(cartao, usuarioId, "Celular", HorarioBrasil.HojeData());
+        var fone = NovoParcelamento(cartao, usuarioId, "Fone", HorarioBrasil.HojeData().AddMonths(-1));
         ctx.CartoesCredito.Add(cartao);
         ctx.Faturas.Add(fatura);
         ctx.Parcelamentos.AddRange(celular, fone);
