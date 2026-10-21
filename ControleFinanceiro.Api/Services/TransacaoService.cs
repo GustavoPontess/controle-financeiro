@@ -122,7 +122,7 @@ namespace ControleFinanceiro.Api.Services
             // (ex.: salário do próximo mês) pode ser futura — é justamente o ponto dela.
             if (!transacao.CartaoCreditoId.HasValue
                 && transacao.StatusTransacao == Domain.Enums.StatusTransacao.Executado
-                && transacao.Data > DateOnly.FromDateTime(DateTime.UtcNow))
+                && transacao.Data > HorarioBrasil.Hoje())
                 throw new ArgumentException("A data da transação não pode ser futura.");
 
             // Compra no cartão só entra se o limite disponível cobre (mesma trava da compra parcelada).
@@ -558,7 +558,7 @@ namespace ControleFinanceiro.Api.Services
             // Mesma regra do CriarTransacaoAsync: data futura só é proibida pra lançamento efetivado em CONTA.
             // Previsão (salário do próximo mês) e compra de crédito pós-datada podem ser futuras — de propósito.
             if (!creditoNovo && statusNovo == StatusTransacao.Executado
-                && dados.Data > DateOnly.FromDateTime(DateTime.UtcNow))
+                && dados.Data > HorarioBrasil.Hoje())
                 throw new ArgumentException("A data da transação não pode ser futura.");
 
             // Categoria/subcategoria vêm do cliente: global ou do próprio usuário.

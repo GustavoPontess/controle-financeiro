@@ -92,7 +92,7 @@ public class FaturaJobsConcorrenciaTests
     public async Task Atraso_ConflitoNoLote_RefazUmaAUma_PagaNaCorridaNaoAtrasa_OutraAtrasa()
     {
         var (ctx, outro, interceptor) = CriarContextos();
-        var hoje = DateTime.UtcNow.Date;
+        var hoje = HorarioBrasil.HojeData();
         var paga = await SeedFaturaAsync(ctx, hoje.AddDays(-20), hoje.AddDays(-10), 300);
         var devendo = await SeedFaturaAsync(ctx, hoje.AddDays(-20), hoje.AddDays(-10), 200);
         ctx.ChangeTracker.Clear();
@@ -117,7 +117,7 @@ public class FaturaJobsConcorrenciaTests
     public async Task Fechamento_ConflitoNoLote_RefazUmaAUma_FechaTodas_SemEventoDuplicado()
     {
         var (ctx, outro, interceptor) = CriarContextos();
-        var hoje = DateTime.UtcNow.Date;
+        var hoje = HorarioBrasil.HojeData();
         // Coberta: ValorPago = total com o ciclo aberto (cancelamento de parcela) → o fechamento quita e audita.
         var coberta = await SeedFaturaAsync(ctx, hoje, hoje.AddDays(10), 100, valorPago: 100,
             estado: EstadoPagamentoFatura.Parcial, ciclo: EstadoCicloFatura.Aberta);

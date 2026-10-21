@@ -128,7 +128,7 @@ public class EmprestimoService(
         var qtdAtivos = await ativos.CountAsync();
         var qtdTotal = await query.CountAsync();
 
-        var hoje = DateTime.UtcNow.Date;
+        var hoje = HorarioBrasil.HojeData();
         // Parcelado precisa somar por parcela vencida (nem todo empréstimo tem DataVencimento no
         // nível do registro) — volume pequeno (empréstimos pessoais), avaliação em memória é ok.
         var aReceberAtivos = await ativos
@@ -256,7 +256,7 @@ public class EmprestimoService(
                 EhEmprestimo = true, // vai e volta, como transferência: fora do resultado do mês
                 ContaId = dto.ContaId,
                 CategoriaId = dto.CategoriaId,
-                Data = DateOnly.FromDateTime(dto.DataInicio.ToUniversalTime()),
+                Data = DateOnly.FromDateTime(dto.DataInicio), // o dia que a pessoa escolheu (sem converter pro fuso da máquina)
                 Hora = null, // lançamento de empréstimo é datado (sem hora de relógio)
             }, usuarioId);
             transacaoId = transacao.Id;
@@ -715,7 +715,7 @@ public class EmprestimoService(
                 EhEmprestimo = true, // vai e volta, como transferência: fora do resultado do mês
                 ContaId = dto.ContaId,
                 CategoriaId = dto.CategoriaId,
-                Data = DateOnly.FromDateTime(dto.Data.ToUniversalTime()),
+                Data = DateOnly.FromDateTime(dto.Data), // o dia que a pessoa escolheu (sem converter pro fuso da máquina)
                 Hora = null, // pagamento/recebimento de empréstimo é datado (sem hora de relógio)
             }, usuarioId);
             valor = dto.Valor;
@@ -963,7 +963,7 @@ public class EmprestimoService(
                 EhEmprestimo = true, // vai e volta, como transferência: fora do resultado do mês
                 ContaId = dto.ContaId,
                 CategoriaId = dto.CategoriaId,
-                Data = DateOnly.FromDateTime(DateTime.UtcNow),
+                Data = HorarioBrasil.Hoje(),
                 Hora = null, // recebimento de empréstimo é datado (sem hora de relógio)
             }, usuarioId);
             solicitacao.TransacaoRecebimentoId = transacaoRecebimento.Id;
@@ -1702,7 +1702,7 @@ public class EmprestimoService(
     {
         var restante = e.ValorTotal - e.ValorPago;
         var percentual = e.ValorTotal > 0 ? Math.Round(e.ValorPago / e.ValorTotal * 100, 1) : 0;
-        var vencido = !e.Quitado && e.DataVencimento.HasValue && e.DataVencimento.Value.Date < DateTime.UtcNow.Date;
+        var vencido = !e.Quitado && e.DataVencimento.HasValue && e.DataVencimento.Value.Date < HorarioBrasil.HojeData();
 
         var souCriador = usuarioId == e.CriadoPor;
         var vinculado = e.StatusVinculo == StatusVinculoEmprestimo.Vinculado;
@@ -1808,7 +1808,7 @@ public class EmprestimoService(
     private static bool AplicarMultaSeAtrasada(EmprestimoParcela p, Emprestimo emprestimo)
     {
         if (p.Status != StatusParcelaEmprestimo.Pendente) return false;
-        if (p.DataVencimento.Date >= DateTime.UtcNow.Date) return false;
+        if (p.DataVencimento.Date >= HorarioBrasil.HojeData()) return false;
         if (p.ValorComMulta.HasValue) return false;
         if (!emprestimo.PercentualMultaAtraso.HasValue) return false;
 
@@ -1824,7 +1824,7 @@ public class EmprestimoService(
         if (e.Quitado) return false;
         if (e.ValorComMulta.HasValue) return false;
         if (!e.PercentualMultaAtraso.HasValue) return false;
-        if (!e.DataVencimento.HasValue || e.DataVencimento.Value.Date >= DateTime.UtcNow.Date) return false;
+        if (!e.DataVencimento.HasValue || e.DataVencimento.Value.Date >= HorarioBrasil.HojeData()) return false;
 
         e.ValorComMulta = Math.Round(e.ValorTotal * (1 + e.PercentualMultaAtraso.Value / 100), 2);
         return true;
@@ -1832,7 +1832,7 @@ public class EmprestimoService(
 
     private static EmprestimoParcelaDto ToParcelaDto(EmprestimoParcela p, Guid? solicitacaoPendenteId = null)
     {
-        var atrasada = p.Status == StatusParcelaEmprestimo.Pendente && p.DataVencimento.Date < DateTime.UtcNow.Date;
+        var atrasada = p.Status == StatusParcelaEmprestimo.Pendente && p.DataVencimento.Date < HorarioBrasil.HojeData();
         return new EmprestimoParcelaDto
         {
             Id = p.Id,

@@ -221,7 +221,7 @@ public class FaturaService
             throw new ArgumentException($"Valor inválido. Restante a pagar: {Reais.Formatar(valorRestante)}.");
         // Pagamento debita a conta na hora: data futura seria dinheiro que ainda não saiu (mesma regra da
         // transferência e do lançamento efetivado em conta). O front já barra; o back também.
-        if (DateOnly.FromDateTime(dto.DataPagamento) > DateOnly.FromDateTime(DateTime.UtcNow))
+        if (DateOnly.FromDateTime(dto.DataPagamento) > HorarioBrasil.Hoje())
             throw new ArgumentException("A data do pagamento não pode ser futura.");
         MeioPagamentoExtensions.DoCliente(dto.MeioPagamento); // fora do enum → 400 antes de gravar
 
@@ -805,6 +805,6 @@ public class FaturaService
         // do EstadoPagamento: fatura coberta que ficou Parcial após cancelamento, ou zerada sem
         // pagamento, não deve nada — mesma regra do FaturaAtrasoJob.
         dto.Vencida = dto.ValorRestante > 0
-                      && DateTime.UtcNow.Date > f.DataVencimento.Date;
+                      && HorarioBrasil.HojeData() > f.DataVencimento.Date;
     }
 }

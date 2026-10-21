@@ -60,7 +60,7 @@ public class RecorrentesHttpTests : IClassFixture<CustomWebApplicationFactory>
             {
                 descricao = "Internet", valor = 120m, tipo = (int)TipoTransacao.Despesa, contaId,
                 frequencia = (int)FrequenciaRecorrencia.Mensal, dia = 10,
-                dataInicio = DateTime.UtcNow.Date.AddDays(1),
+                dataInicio = HorarioBrasil.HojeData().AddDays(1),
             }),
         };
         req.Headers.Add("X-CSRF-Token", csrf);

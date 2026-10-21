@@ -1,3 +1,4 @@
+using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.DTOs.Relatorios;
 using ControleFinanceiro.Api.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -34,7 +35,7 @@ public class RelatoriosController : ControllerBase
     public async Task<IActionResult> GetRelatorio([FromQuery] int? ano)
     {
         var usuarioId = GetUserId();
-        var resultado = await _service.GetRelatorioAsync(usuarioId, ano ?? DateTime.Now.Year);
+        var resultado = await _service.GetRelatorioAsync(usuarioId, ano ?? HorarioBrasil.Agora().Year);
         return Ok(resultado);
     }
 

@@ -30,7 +30,7 @@ public class ViabilidadeMetaService
     {
         if (valorAlvo <= 0 || valorAlvo > 999_999_999.99m)
             throw new ArgumentException("Diga quanto quer juntar.");
-        var hoje = agora ?? DateTime.UtcNow;
+        var hoje = agora ?? HorarioBrasil.Agora();
         var inicioMes = new DateTime(hoje.Year, hoje.Month, 1);
         var (rendaEsperada, gastoTipico) = await RendaEGastoNormalAsync(usuarioId, hoje);
 
@@ -89,7 +89,7 @@ public class ViabilidadeMetaService
     /// </summary>
     public async Task<ViabilidadeDasMetasDto> DasMetasAsync(Guid usuarioId, DateTime? agora = null)
     {
-        var hoje = agora ?? DateTime.UtcNow;
+        var hoje = agora ?? HorarioBrasil.Agora();
         var metas = (await _metas.ListarAsync(usuarioId, soPessoais: true, agora: hoje))
             .Where(m => !m.Concluida && m.PorMes > 0).ToList();
         var pedem = metas.Sum(m => m.PorMes!.Value);

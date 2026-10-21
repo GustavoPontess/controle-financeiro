@@ -51,7 +51,7 @@ public class ContasFixasDaCasaTests
     private static CriarRecorrenteDto Aluguel(Casa c, Guid? familiaId, decimal valor = 1500.01m) => new()
     {
         Descricao = "Aluguel", Valor = valor, Tipo = (int)TipoTransacao.Despesa, CategoriaId = c.Moradia, ContaId = c.Conta,
-        Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 5, DataInicio = DateTime.UtcNow.Date.AddDays(1), FamiliaId = familiaId,
+        Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 5, DataInicio = HorarioBrasil.HojeData().AddDays(1), FamiliaId = familiaId,
     };
 
     private static Task<List<Transacao>> Cobrancas(Casa c, Guid recorrenteId) =>
@@ -165,7 +165,7 @@ public class ContasFixasDaCasaTests
         var luz = new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Luz", Valor = 100m, Tipo = TipoTransacao.Despesa, CriadoPor = c.Gustavo,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow), CategoriaId = c.Moradia, ContaId = c.Conta, StatusTransacao = StatusTransacao.Executado,
+            Data = HorarioBrasil.Hoje(), CategoriaId = c.Moradia, ContaId = c.Conta, StatusTransacao = StatusTransacao.Executado,
         };
         c.Ctx.Transacoes.Add(luz);
         c.Ctx.SaveChanges();

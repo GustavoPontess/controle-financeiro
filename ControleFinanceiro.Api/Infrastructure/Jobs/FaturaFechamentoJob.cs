@@ -24,7 +24,7 @@ public class FaturaFechamentoJob
 
     public async Task ExecuteAsync()
     {
-        var hoje = DateTime.UtcNow.Date;
+        var hoje = HorarioBrasil.HojeData();
         var faturas = await AFechar(hoje).ToListAsync();
         if (faturas.Count == 0)
             return;

@@ -901,7 +901,7 @@ public class AuthService
     private static void ValidarDataNascimento(DateTime? data)
     {
         if (!data.HasValue) return;
-        if (data.Value.Date > DateTime.UtcNow.Date)
+        if (data.Value.Date > HorarioBrasil.HojeData())
             throw new ArgumentException("A data de nascimento não pode ser no futuro.");
         if (data.Value.Year < 1900)
             throw new ArgumentException("Data de nascimento inválida.");

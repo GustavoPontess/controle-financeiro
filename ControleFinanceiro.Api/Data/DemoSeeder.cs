@@ -38,7 +38,7 @@ public static class DemoSeeder
         var nubank = await context.CartoesCredito.FirstAsync(c => c.CriadoPor == dev.Id && c.Nome == "Nubank");
         var categorias = await context.Categorias.Where(c => c.UsuarioId == null).ToListAsync();
         Guid Cat(string desc) => categorias.First(c => c.Descricao.StartsWith(desc)).Id;
-        var hoje = DateTime.UtcNow.Date;
+        var hoje = HorarioBrasil.HojeData();
 
         await ContasFixasAsync(sp, context, dev.Id, corrente.Id, poupanca.Id, carteira.Id, nubank.Id, Cat, hoje);
         var itau = await CartoesAsync(sp, context, dev.Id, corrente.Id, Cat, hoje);
@@ -314,7 +314,7 @@ public static class DemoSeeder
         {
             // "Hoje" igual ao do servidor (o dia mais cedo no Brasil, UTC-5): com o dia UTC, das 21h à meia-noite
             // de Brasília no dia do fechamento, a fatura aberta daqui era a seguinte e o servidor recusava.
-            var hojeBr = DateTime.UtcNow.AddHours(-5).Date;
+            var hojeBr = HorarioBrasil.DiaMaisCedo(DateTime.UtcNow);
             var (_, fechAberta) = FaturaService.CalcularPeriodo(hojeBr, cartao.DiaFechamento);
             var primeira = new DateTime(fechAberta.Year, fechAberta.Month, 1).AddMonths(-jaPagas);
             var compra = jaPagas == 0 ? hojeBr : fechAberta.AddMonths(-jaPagas).AddDays(-5);

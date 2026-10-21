@@ -55,7 +55,7 @@ public class AdminLgpdServiceTests
         ctx.Transacoes.Add(new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "T", Valor = 10, Tipo = TipoTransacao.Despesa,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuarioId, CartaoCreditoId = cartao.Id,
+            Data = HorarioBrasil.Hoje(), CriadoPor = usuarioId, CartaoCreditoId = cartao.Id,
         });
         ctx.FinancialEventLogs.Add(new FinancialEventLog
         {
@@ -101,33 +101,33 @@ public class AdminLgpdServiceTests
         ctx.Transacoes.Add(new Transacao
         {
             Id = Guid.NewGuid(), Descricao = "Excluída", Valor = 5, Tipo = TipoTransacao.Despesa, ContaId = conta.Id, Ativo = false,
-            StatusTransacao = StatusTransacao.Executado, Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = u.Id,
+            StatusTransacao = StatusTransacao.Executado, Data = HorarioBrasil.Hoje(), CriadoPor = u.Id,
         });
         ctx.Recorrentes.Add(new Recorrente
         {
             Id = Guid.NewGuid(), Descricao = "Aluguel", Valor = 1800, Tipo = TipoTransacao.Despesa, ContaId = conta.Id, Ativo = true,
-            Frequencia = FrequenciaRecorrencia.Mensal, Dia = 10, DataInicio = DateTime.UtcNow.Date, CriadoPor = u.Id,
+            Frequencia = FrequenciaRecorrencia.Mensal, Dia = 10, DataInicio = HorarioBrasil.HojeData(), CriadoPor = u.Id,
         });
         var parc = new Parcelamento
         {
             Id = Guid.NewGuid(), Descricao = "Geladeira", ValorTotal = 3000, QuantidadeParcelas = 10, CartaoCreditoId = cartao.Id,
-            DataCompra = DateTime.UtcNow.Date, CriadoPor = u.Id, Ativo = true,
+            DataCompra = HorarioBrasil.HojeData(), CriadoPor = u.Id, Ativo = true,
         };
         ctx.Parcelamentos.Add(parc);
         ctx.ParcelasTransacao.Add(new ParcelaTransacao
         {
-            Id = Guid.NewGuid(), ParcelamentoId = parc.Id, Numero = 1, QuantidadeTotal = 10, Valor = 300, DataVencimento = DateTime.UtcNow.Date,
+            Id = Guid.NewGuid(), ParcelamentoId = parc.Id, Numero = 1, QuantidadeTotal = 10, Valor = 300, DataVencimento = HorarioBrasil.HojeData(),
             FaturaId = Guid.NewGuid(), CriadoPor = u.Id,
         });
         ctx.Emprestimos.Add(new Emprestimo
         {
             Id = Guid.NewGuid(), Descricao = "Conserto", Pessoa = "João", ValorTotal = 600, ValorPago = 200, Tipo = TipoEmprestimo.Emprestei,
-            DataInicio = DateTime.UtcNow.Date, CriadoPor = u.Id, Ativo = true,
+            DataInicio = HorarioBrasil.HojeData(), CriadoPor = u.Id, Ativo = true,
         });
         ctx.Emprestimos.Add(new Emprestimo
         {
             Id = Guid.NewGuid(), Descricao = "De outra pessoa", Pessoa = "X", ValorTotal = 1, Tipo = TipoEmprestimo.Emprestei,
-            DataInicio = DateTime.UtcNow.Date, CriadoPor = outro.Id, Ativo = true,
+            DataInicio = HorarioBrasil.HojeData(), CriadoPor = outro.Id, Ativo = true,
         });
         ctx.RendasPrevistas.Add(new RendaPrevista { Id = Guid.NewGuid(), UsuarioId = u.Id, Ano = 2026, Mes = 10, FixaEsperada = 6000 });
         ctx.ReconciliacoesSaldo.Add(new ReconciliacaoSaldo

@@ -24,7 +24,7 @@ public class EncerramentoContaServiceTests
     private static EncerramentoContaService Servico(AppDbContext ctx) =>
         new(ctx, new TransferenciaService(ctx), new FinancialEventLogService(ctx));
 
-    private static DateOnly Hoje => DateOnly.FromDateTime(DateTime.UtcNow);
+    private static DateOnly Hoje => HorarioBrasil.Hoje();
     private static string Chave() => Guid.NewGuid().ToString();
 
     private static Conta NovaConta(AppDbContext ctx, Guid usuarioId, string nome, decimal saldoInicial = 0m)

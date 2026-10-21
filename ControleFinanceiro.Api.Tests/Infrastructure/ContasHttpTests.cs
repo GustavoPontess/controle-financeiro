@@ -71,7 +71,7 @@ public class ContasHttpTests : IClassFixture<CustomWebApplicationFactory>
     }
 
     // Transacao.Data é DateOnly (o DIA, sem fuso) e Hora é TimeOnly? (null = sem hora).
-    private static DateOnly Hoje => DateOnly.FromDateTime(DateTime.UtcNow);
+    private static DateOnly Hoje => HorarioBrasil.Hoje();
 
     // "YYYY-MM-DD" é exatamente o que o ContaForm do front envia em dataSaldoInicial (e em `data` do PUT).
     private static string Iso(DateOnly d) => d.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);

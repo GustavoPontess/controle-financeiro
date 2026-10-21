@@ -64,7 +64,7 @@ public class CobrancaEAvisoDeCompraTests
     private static ExecutarRecorrentesJob Job(AppDbContext ctx) =>
         new(ctx, new NotificacaoService(ctx, NullLogger<NotificacaoService>.Instance));
 
-    private static DateOnly Hoje => DateOnly.FromDateTime(DateTime.UtcNow);
+    private static DateOnly Hoje => HorarioBrasil.Hoje();
 
     private static string SemNbsp(string s) => s.Replace(' ', ' ');
 
@@ -118,7 +118,7 @@ public class CobrancaEAvisoDeCompraTests
         // Conta fixa de R$ 80 com cobranças vencidas por gerar (abrir a lista gera as que venceram).
         rec.Valor = 80m;
         rec.Descricao = "Streaming";
-        rec.DataInicio = DateTime.UtcNow.Date.AddMonths(-2);
+        rec.DataInicio = HorarioBrasil.HojeData().AddMonths(-2);
         rec.Dia = rec.DataInicio.Day;
         rec.DataProximaGeracao = rec.DataInicio;
         await c.Ctx.SaveChangesAsync();

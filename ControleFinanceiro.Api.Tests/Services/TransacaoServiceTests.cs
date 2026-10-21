@@ -54,7 +54,7 @@ public class TransacaoServiceTests
             Descricao = "Teste",
             Valor = 0,
             Tipo = TipoTransacao.Despesa,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow),
+            Data = HorarioBrasil.Hoje(),
         };
 
         var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarTransacaoAsync(transacao, usuarioId));
@@ -74,7 +74,7 @@ public class TransacaoServiceTests
             Descricao = "Teste",
             Valor = -10,
             Tipo = TipoTransacao.Despesa,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow),
+            Data = HorarioBrasil.Hoje(),
         };
 
         await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarTransacaoAsync(transacao, usuarioId));
@@ -121,7 +121,7 @@ public class TransacaoServiceTests
         var resultado = await svc.CriarTransacaoAsync(transacao, usuarioId);
 
         Assert.Equal(StatusTransacao.Previsao, resultado.StatusTransacao);
-        Assert.True(resultado.Data > DateOnly.FromDateTime(DateTime.UtcNow));
+        Assert.True(resultado.Data > HorarioBrasil.Hoje());
     }
 
     [Fact]
@@ -138,7 +138,7 @@ public class TransacaoServiceTests
             Valor = 100,
             Tipo = TipoTransacao.Despesa,
             StatusTransacao = StatusTransacao.Executado,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow),
+            Data = HorarioBrasil.Hoje(),
         };
 
         var resultado = await svc.CriarTransacaoAsync(transacao, usuarioId);
@@ -159,7 +159,7 @@ public class TransacaoServiceTests
             Descricao = "Teste",
             Valor = 100,
             Tipo = TipoTransacao.Despesa,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow),
+            Data = HorarioBrasil.Hoje(),
         };
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.CriarTransacaoAsync(transacao, usuarioId));
@@ -177,7 +177,7 @@ public class TransacaoServiceTests
             Descricao = "Teste",
             Valor = 100,
             Tipo = TipoTransacao.Despesa,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow),
+            Data = HorarioBrasil.Hoje(),
         };
 
         var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarTransacaoAsync(transacao, usuarioId));
@@ -208,7 +208,7 @@ public class TransacaoServiceTests
             Descricao = "Teste",
             Valor = 100,
             Tipo = TipoTransacao.Despesa,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow),
+            Data = HorarioBrasil.Hoje(),
         };
 
         var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarTransacaoAsync(transacao, usuarioId));
@@ -228,7 +228,7 @@ public class TransacaoServiceTests
             Descricao = "Supermercado",
             Valor = 150,
             Tipo = TipoTransacao.Despesa,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow),
+            Data = HorarioBrasil.Hoje(),
         };
 
         var resultado = await svc.CriarTransacaoAsync(transacao, usuarioId);
@@ -247,7 +247,7 @@ public class TransacaoServiceTests
         // 23:30 de propósito: qualquer shift de horas viraria o DIA.
         var (ctx, svc) = Build();
         var (contaId, usuarioId) = await SeedConta(ctx);
-        var dia = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-7);
+        var dia = HorarioBrasil.Hoje().AddDays(-7);
         var hora = new TimeOnly(23, 30, 15);
         var transacao = new Transacao
         {
@@ -273,7 +273,7 @@ public class TransacaoServiceTests
     {
         var (ctx, svc) = Build();
         var (contaId, usuarioId) = await SeedConta(ctx);
-        var dia = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-3);
+        var dia = HorarioBrasil.Hoje().AddDays(-3);
         var transacao = new Transacao
         {
             Id = Guid.NewGuid(), ContaId = contaId, Descricao = "Sem hora", Valor = 10, Tipo = TipoTransacao.Despesa,
@@ -297,7 +297,7 @@ public class TransacaoServiceTests
         var transacao = new Transacao
         {
             Id = Guid.NewGuid(), ContaId = contaId, Descricao = "Hoje", Valor = 10, Tipo = TipoTransacao.Despesa,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow), Hora = new TimeOnly(23, 59),
+            Data = HorarioBrasil.Hoje(), Hora = new TimeOnly(23, 59),
         };
 
         var resultado = await svc.CriarTransacaoAsync(transacao, usuarioId);
@@ -311,7 +311,7 @@ public class TransacaoServiceTests
     {
         var (ctx, svc) = Build();
         var (contaId, usuarioId) = await SeedConta(ctx);
-        var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
+        var hoje = HorarioBrasil.Hoje();
         var transacao = new Transacao
         {
             Id = Guid.NewGuid(), ContaId = contaId, Descricao = "Original", Valor = 100, Tipo = TipoTransacao.Despesa,
@@ -350,7 +350,7 @@ public class TransacaoServiceTests
     {
         var (ctx, svc) = Build();
         var (contaId, usuarioId) = await SeedConta(ctx);
-        var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
+        var hoje = HorarioBrasil.Hoje();
         var d1 = hoje.AddDays(-20);
         var d2 = hoje.AddDays(-10);
         var d3 = hoje.AddDays(-5);
@@ -373,7 +373,7 @@ public class TransacaoServiceTests
     {
         var (ctx, svc) = Build();
         var (contaId, usuarioId) = await SeedConta(ctx);
-        var dia = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-2);
+        var dia = HorarioBrasil.Hoje().AddDays(-2);
         ctx.Transacoes.AddRange(
             new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "cedo", Valor = 1, Tipo = TipoTransacao.Despesa, Data = dia, Hora = new TimeOnly(8, 0) },
             new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "tarde", Valor = 2, Tipo = TipoTransacao.Despesa, Data = dia, Hora = new TimeOnly(18, 30) },
@@ -394,7 +394,7 @@ public class TransacaoServiceTests
         // hora saem pela ordem de criação (= ordem do extrato). Antes: NULL primeiro no DESC e empate aleatório.
         var (ctx, svc) = Build();
         var (contaId, usuarioId) = await SeedConta(ctx);
-        var dia = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-2);
+        var dia = HorarioBrasil.Hoje().AddDays(-2);
         var t0 = DateTime.UtcNow.AddHours(-1);
         ctx.Transacoes.AddRange(
             new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "sem-hora-1", Valor = 1, Tipo = TipoTransacao.Despesa, Data = dia, Hora = null, CriadoEm = t0 },
@@ -423,13 +423,13 @@ public class TransacaoServiceTests
             Descricao = "Original",
             Valor = 100,
             Tipo = TipoTransacao.Despesa,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow),
+            Data = HorarioBrasil.Hoje(),
             CriadoPor = usuarioId,
         };
         ctx.Transacoes.Add(transacao);
         await ctx.SaveChangesAsync();
 
-        var dados = new Transacao { Descricao = "Editada", Valor = -50, Tipo = TipoTransacao.Despesa, Data = DateOnly.FromDateTime(DateTime.UtcNow) };
+        var dados = new Transacao { Descricao = "Editada", Valor = -50, Tipo = TipoTransacao.Despesa, Data = HorarioBrasil.Hoje() };
 
         await Assert.ThrowsAsync<ArgumentException>(() => svc.AtualizarAsync(transacao.Id, dados, usuarioId));
     }
@@ -447,7 +447,7 @@ public class TransacaoServiceTests
             Descricao = "Original",
             Valor = 100,
             Tipo = TipoTransacao.Despesa,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow),
+            Data = HorarioBrasil.Hoje(),
             CriadoPor = usuarioId,
         };
         ctx.Transacoes.Add(transacao);
@@ -561,7 +561,7 @@ public class TransacaoServiceTests
             Descricao = "Compra mercado",
             Valor = 142.30m,
             Tipo = TipoTransacao.Despesa,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow),
+            Data = HorarioBrasil.Hoje(),
         };
 
         var criada = await svc.CriarTransacaoAsync(transacao, usuarioId);
@@ -592,7 +592,7 @@ public class TransacaoServiceTests
             Descricao = "Inconsistente",
             Valor = 50m,
             Tipo = TipoTransacao.Despesa,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow),
+            Data = HorarioBrasil.Hoje(),
         };
 
         var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarTransacaoAsync(transacao, usuarioId));
@@ -613,7 +613,7 @@ public class TransacaoServiceTests
         ctx.Transacoes.AddRange(
             new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "Salário", Valor = 1000, Tipo = TipoTransacao.Receita, Data = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2)) },
             new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "Mercado", Valor = 200, Tipo = TipoTransacao.Despesa, Data = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)) },
-            new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "Uber", Valor = 30, Tipo = TipoTransacao.Despesa, Data = DateOnly.FromDateTime(DateTime.UtcNow) });
+            new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "Uber", Valor = 30, Tipo = TipoTransacao.Despesa, Data = HorarioBrasil.Hoje() });
         await ctx.SaveChangesAsync();
 
         // tipo=1 (Despesa) → 2 itens
@@ -693,7 +693,7 @@ public class TransacaoServiceTests
         ctx.Contas.Add(conta2);
         ctx.Transacoes.AddRange(
             new Transacao { Id = Guid.NewGuid(), ContaId = contaId, Descricao = "na 1", Valor = 100, Tipo = TipoTransacao.Despesa, Data = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)) },
-            new Transacao { Id = Guid.NewGuid(), ContaId = conta2.Id, Descricao = "na 2", Valor = 100, Tipo = TipoTransacao.Despesa, Data = DateOnly.FromDateTime(DateTime.UtcNow) });
+            new Transacao { Id = Guid.NewGuid(), ContaId = conta2.Id, Descricao = "na 2", Valor = 100, Tipo = TipoTransacao.Despesa, Data = HorarioBrasil.Hoje() });
         await ctx.SaveChangesAsync();
 
         var r = await svc.ListarAsync(usuarioId, contaId: conta2.Id);
@@ -800,7 +800,7 @@ public class TransacaoServiceTests
         var (contaId, usuarioId) = await SeedConta(ctx);
         await SeedExtratoMisto(ctx, contaId, usuarioId);
         var (contaOutro, outroUsuarioId) = await SeedConta(ctx);
-        ctx.Transacoes.Add(new Transacao { Id = Guid.NewGuid(), ContaId = contaOutro, Descricao = "Do outro", Valor = 999, Tipo = TipoTransacao.Despesa, Data = DateOnly.FromDateTime(DateTime.UtcNow) });
+        ctx.Transacoes.Add(new Transacao { Id = Guid.NewGuid(), ContaId = contaOutro, Descricao = "Do outro", Valor = 999, Tipo = TipoTransacao.Despesa, Data = HorarioBrasil.Hoje() });
         await ctx.SaveChangesAsync();
 
         var meu = await svc.ListarAsync(usuarioId, apenasCaixa: true);
@@ -1004,7 +1004,7 @@ public class TransacaoServiceTests
         Descricao = "Despesa",
         Valor = 100m,
         Tipo = TipoTransacao.Despesa,
-        Data = DateOnly.FromDateTime(DateTime.UtcNow),
+        Data = HorarioBrasil.Hoje(),
     };
 
     [Fact]
@@ -1076,7 +1076,7 @@ public class TransacaoServiceTests
             Descricao = "Tentativa",
             Valor = 100,
             Tipo = TipoTransacao.Despesa,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow),
+            Data = HorarioBrasil.Hoje(),
         };
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.CriarTransacaoAsync(transacao, usuarioId));
@@ -1101,7 +1101,7 @@ public class TransacaoServiceTests
             Descricao = "Compra",
             Valor = 80,
             Tipo = TipoTransacao.Despesa,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow),
+            Data = HorarioBrasil.Hoje(),
         };
 
         var resultado = await svc.CriarTransacaoAsync(transacao, usuarioId);
@@ -1123,7 +1123,7 @@ public class TransacaoServiceTests
             Descricao = "Original",
             Valor = 100,
             Tipo = TipoTransacao.Despesa,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow),
+            Data = HorarioBrasil.Hoje(),
             CriadoPor = usuarioId,
         };
         ctx.Transacoes.Add(transacao);
@@ -1136,7 +1136,7 @@ public class TransacaoServiceTests
         var dados = new Transacao
         {
             Descricao = "Editada", Valor = 999m, Tipo = TipoTransacao.Despesa,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow), CategoriaId = categoriaDeOutro.Id,
+            Data = HorarioBrasil.Hoje(), CategoriaId = categoriaDeOutro.Id,
         };
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.AtualizarAsync(transacao.Id, dados, usuarioId));
@@ -1157,7 +1157,7 @@ public class TransacaoServiceTests
         var transacao = new Transacao
         {
             Id = Guid.NewGuid(), ContaId = contaId, Descricao = "Original", Valor = 100,
-            Tipo = TipoTransacao.Despesa, Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoPor = usuarioId,
+            Tipo = TipoTransacao.Despesa, Data = HorarioBrasil.Hoje(), CriadoPor = usuarioId,
         };
         ctx.Transacoes.Add(transacao);
 
@@ -1170,7 +1170,7 @@ public class TransacaoServiceTests
         var dados = new Transacao
         {
             Descricao = "Editada", Valor = 100, Tipo = TipoTransacao.Despesa,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow), SubcategoriaId = subcategoriaDeOutro.Id,
+            Data = HorarioBrasil.Hoje(), SubcategoriaId = subcategoriaDeOutro.Id,
         };
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.AtualizarAsync(transacao.Id, dados, usuarioId));
@@ -1182,7 +1182,7 @@ public class TransacaoServiceTests
         // A marca é o que faz alterar a conta fixa / realinhar preservarem a edição (P2-4 do motor).
         var (ctx, svc) = Build();
         var (contaId, usuarioId) = await SeedConta(ctx);
-        var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
+        var hoje = HorarioBrasil.Hoje();
         Transacao Nova(Guid? recorrente) => new()
         {
             Id = Guid.NewGuid(), ContaId = contaId, Descricao = "X", Valor = 100, Tipo = TipoTransacao.Despesa,

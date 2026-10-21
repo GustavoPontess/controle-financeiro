@@ -496,7 +496,7 @@ public class CategoriaServiceTests
         {
             Id = Guid.NewGuid(), Descricao = "Lançamento", Valor = 10, Tipo = tipo, CategoriaId = categoriaId, SubcategoriaId = sub,
             ContaId = Guid.NewGuid(), StatusTransacao = StatusTransacao.Executado, Ativo = ativo, CriadoPor = u,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow), CriadoEm = DateTime.UtcNow,
+            Data = HorarioBrasil.Hoje(), CriadoEm = DateTime.UtcNow,
         };
         ctx.Transacoes.Add(t);
         ctx.SaveChanges();

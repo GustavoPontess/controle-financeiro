@@ -4,6 +4,7 @@ using ControleFinanceiro.Api.DTOs.Common;
 using ControleFinanceiro.Api.DTOs.Emprestimo;
 using ControleFinanceiro.Api.Services;
 using System.Security.Claims;
+using ControleFinanceiro.Api.Infrastructure;
 
 namespace ControleFinanceiro.Api.Controllers;
 
@@ -38,7 +39,7 @@ public class EmprestimosController(EmprestimoService service) : ControllerBase
     [ProducesResponseType(typeof(ProximosEmprestimosDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Proximos([FromServices] ProximosEmprestimosService proximos) =>
         // "Hoje" no Brasil (UTC-3): o dia em que a pessoa está olhando.
-        Ok(await proximos.CalcularAsync(UserId, DateOnly.FromDateTime(DateTime.UtcNow.AddHours(-3))));
+        Ok(await proximos.CalcularAsync(UserId, HorarioBrasil.Hoje()));
 
     /// <summary>KPIs agregados — a receber, a pagar, ativos e total.</summary>
     [HttpGet("stats")]
