@@ -187,6 +187,23 @@ public class CompraParceladaTests
     }
 
     [Fact]
+    public async Task ResumoDosGastos_TotalDoQueAListaMostra_EmContaENoCartao_ComOsMesmosFiltros()
+    {
+        // Topo da visão Gastos (decisão do Gustavo, 2026-10-21): soma do que a lista mostra, em conta e no cartão
+        // (compra parcelada pelo total); sem pagamento de fatura, transferência, receita nem a compra cancelada.
+        var c = await Build();
+        await SeedGastos(c);
+
+        var tudo = await c.Transacoes.ResumirGastosAsync(c.UsuarioId);
+        Assert.Equal((1630m, 100m, 1530m), (tudo.Total, tudo.EmConta, tudo.NoCartao));
+
+        var soConta = await c.Transacoes.ResumirGastosAsync(c.UsuarioId, contaId: c.ContaId);
+        Assert.Equal((100m, 100m, 0m), (soConta.Total, soConta.EmConta, soConta.NoCartao));
+        var busca = await c.Transacoes.ResumirGastosAsync(c.UsuarioId, q: "gela");
+        Assert.Equal(1500m, busca.Total);
+    }
+
+    [Fact]
     public async Task Gastos_FiltrosEPaginaValemPraCompraParceladaTambem()
     {
         var c = await Build();

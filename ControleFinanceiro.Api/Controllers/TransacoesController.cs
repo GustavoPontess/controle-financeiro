@@ -213,6 +213,25 @@ namespace ControleFinanceiro.Api.Controllers
         }
 
         /// <summary>
+        /// Topo da visão Gastos: total do que a lista de Gastos mostra (mesmos filtros), em conta e no cartão.
+        /// </summary>
+        [HttpGet("gastos/resumo")]
+        [ProducesResponseType(typeof(ResumoGastosDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> ResumoGastos(
+            [FromQuery] DateOnly? from = null,
+            [FromQuery] DateOnly? to = null,
+            [FromQuery] Guid? categoriaId = null,
+            [FromQuery] string? q = null,
+            [FromQuery] Guid? contaId = null,
+            [FromQuery] Guid? cartaoId = null,
+            [FromQuery] decimal? valorMin = null,
+            [FromQuery] decimal? valorMax = null,
+            [FromQuery] int? status = null,
+            [FromQuery] int? meioPagamento = null)
+            => Ok(await _service.ResumirGastosAsync(GetUserId(), from, to, categoriaId, q, null, contaId, cartaoId,
+                valorMin, valorMax, status, meioPagamento, null));
+
+        /// <summary>
         /// Antes de salvar uma compra: ela tira o dinheiro das contas fixas dos próximos 30 dias? No cartão olha o
         /// limite, na conta o saldo. 200 com o aviso (frase, contas uma por linha e o saldo/limite de hoje) ou 204
         /// quando não aperta nada. Só avisa.

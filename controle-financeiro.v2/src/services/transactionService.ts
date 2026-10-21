@@ -34,6 +34,15 @@ export type ListTransactionsFilter = {
   visao?: "gastos"
 }
 
+/** Topo da visão Gastos: o total do que a lista mostra (mesmos filtros), em conta e no cartão. */
+export type ResumoGastos = { total: number; emConta: number; noCartao: number }
+
+export const getResumoGastos = async (filter: ListTransactionsFilter = {}): Promise<ResumoGastos> => {
+  const { from, to, categoriaId, q, contaId, cartaoId, valorMin, valorMax, status, meioPagamento } = filter
+  const res = await api.get("/transacoes/gastos/resumo", { params: { from, to, categoriaId, q, contaId, cartaoId, valorMin, valorMax, status, meioPagamento } })
+  return res.data
+}
+
 export type TransacaoStats = {
   /** Total registrado (inclui crédito). */
   entradas: number
