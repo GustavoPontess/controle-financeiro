@@ -10,6 +10,10 @@ export interface ReconciliacaoMarco {
   /** 1 = Baseline, 2 = Verificação. */
   tipo: number
   temAjuste: boolean
+  /** Saldo do app até o marco, recalculado AGORA (só na lista; null no marco derivado). */
+  saldoCalculadoAgora?: number | null
+  /** declarado − saldoCalculadoAgora: muda se lançaram/editaram/excluíram algo com data até o marco depois. */
+  diferencaAgora?: number | null
   /** Marco derivado do saldo inicial da conta — não é removível (pra mudar, edita a conta). */
   derivado?: boolean
   observacao?: string

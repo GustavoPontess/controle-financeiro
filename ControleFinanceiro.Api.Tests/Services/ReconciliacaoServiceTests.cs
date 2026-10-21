@@ -877,6 +877,27 @@ public class ReconciliacaoServiceTests
     }
 
     [Fact]
+    public async Task Listar_MarcoQueBateu_LancamentoDepoisComDataAteOMarco_MostraADiferencaDeAgora()
+    {
+        // Conferiu em T0 com o app em 100 (bateu). Depois alguém lança R$ 600 de despesa com data ANTES de T0:
+        // o app naquele dia passa a 100 − 600 e a listagem diz que não bate mais. Lançamento depois de T0 não conta.
+        var (ctx, service, usuarioId, conta) = Seed();
+        await AddTransacao(ctx, conta.Id, TipoTransacao.Receita, 100m, T0.AddDays(-5));
+        var marco = NovoMarco(usuarioId, conta.Id, T0);
+        ctx.ReconciliacoesSaldo.Add(marco);
+        await ctx.SaveChangesAsync();
+        Assert.Equal(0m, (await service.ListarAsync(usuarioId, conta.Id)).Single().DiferencaAgora);
+
+        await AddTransacao(ctx, conta.Id, TipoTransacao.Despesa, 600m, T0.AddDays(-1));
+        await AddTransacao(ctx, conta.Id, TipoTransacao.Despesa, 50m, T0.AddDays(1));
+
+        var dto = (await service.ListarAsync(usuarioId, conta.Id)).Single();
+        Assert.Equal(0m, dto.Diferenca); // o do dia em que conferiu fica gravado
+        Assert.Equal(-500m, dto.SaldoCalculadoAgora);
+        Assert.Equal(600m, dto.DiferencaAgora);
+    }
+
+    [Fact]
     public async Task Listar_ContaSemMarcos_RetornaListaVazia()
     {
         var (_, service, usuarioId, conta) = Seed();
