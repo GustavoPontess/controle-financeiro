@@ -1303,6 +1303,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<decimal>("PercentualAlerta")
                         .HasColumnType("numeric");
 
+                    b.Property<Guid?>("SubcategoriaId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("UsuarioId")
                         .HasColumnType("uuid");
 
@@ -1313,7 +1316,9 @@ namespace ControleFinanceiro.Api.Migrations
 
                     b.HasIndex("CategoriaId");
 
-                    b.HasIndex("UsuarioId", "CategoriaId", "Mes", "Ano")
+                    b.HasIndex("SubcategoriaId");
+
+                    b.HasIndex("UsuarioId", "CategoriaId", "SubcategoriaId", "Mes", "Ano")
                         .IsUnique();
 
                     b.ToTable("Orcamentos");
@@ -1928,6 +1933,9 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<bool>("EhEmprestimo")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("EhInvestimento")
                         .HasColumnType("boolean");
 
                     b.Property<bool>("EhPagamentoFatura")
@@ -2630,6 +2638,11 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasForeignKey("CategoriaId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Subcategoria", "Subcategoria")
+                        .WithMany()
+                        .HasForeignKey("SubcategoriaId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "Usuario")
                         .WithMany()
                         .HasForeignKey("UsuarioId")
@@ -2637,6 +2650,8 @@ namespace ControleFinanceiro.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Categoria");
+
+                    b.Navigation("Subcategoria");
 
                     b.Navigation("Usuario");
                 });

@@ -20,9 +20,16 @@ public record RendaMesDto(
     decimal Falta,
     /// <summary>Média do recebido nos 3 meses anteriores com renda (sugestão quando não há previsto). Null sem histórico.</summary>
     decimal? SugestaoMedia3Meses,
-    List<EntradaRendaDto> Entradas);
+    List<EntradaRendaDto> Entradas,
+    /// <summary>O recebido separado em fixa e variável (pela subcategoria, <c>RendaService.EhFixa</c>).</summary>
+    decimal FixaRecebida,
+    decimal VariavelRecebida,
+    /// <summary>Renda prevista (conta fixa de receita) que ainda vai cair no mês, separada igual.</summary>
+    decimal FixaAindaVem,
+    decimal VariavelAindaVem);
 
-public record EntradaRendaDto(Guid Id, DateOnly Data, string Descricao, decimal Valor, string? Subcategoria, bool Recebida);
+/// <summary>Uma entrada de renda do mês. <c>Fixa</c>: a subcategoria é de renda fixa (salário, aposentadoria, benefício…).</summary>
+public record EntradaRendaDto(Guid Id, DateOnly Data, string Descricao, decimal Valor, string? Subcategoria, bool Recebida, bool Fixa = false);
 
 /// <summary>Declara o que a pessoa espera receber no mês (fixa e variável). Vale até ela mudar de novo.</summary>
 public record DefinirRendaPrevistaDto(

@@ -1,21 +1,10 @@
 import { api } from "../api/cliente"
 import type { RendaFamilia, RendaMes, VisibilidadeRenda } from "../types/Renda"
 
-/** O mês da pessoa: previsto (fixa + variável declaradas), recebido, o que falta e as entradas. */
+/** O mês da pessoa: previsto (o esperado das Receitas do Orçamento), recebido, o que falta e as entradas. O esperado
+ *  se muda nas Receitas do Orçamento (`definirReceita`), não mais aqui. */
 export const getRendaMes = async (ano: number, mes: number): Promise<RendaMes> => {
   const res = await api.get("/renda/mes", { params: { ano, mes } })
-  return res.data
-}
-
-/** Declara o que a pessoa espera receber no mês (fixa e variável). Vale pros meses seguintes até ela mudar. */
-export const definirRendaPrevista = async (ano: number, mes: number, fixaEsperada: number, variavelEsperada: number): Promise<RendaMes> => {
-  const res = await api.put("/renda/mes", { ano, mes, fixaEsperada, variavelEsperada })
-  return res.data
-}
-
-/** Apaga a declaração do mês: volta a valer a do último mês que tem. */
-export const limparRendaPrevista = async (ano: number, mes: number): Promise<RendaMes> => {
-  const res = await api.delete("/renda/mes", { params: { ano, mes } })
   return res.data
 }
 

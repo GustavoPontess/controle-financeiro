@@ -1,5 +1,6 @@
 import { api } from "../api/cliente"
 import type { LimitesDoMes } from "../types/Limite"
+import type { FontesDoMes } from "../types/Orcamento"
 
 // Limites de gasto por categoria. Vale todo mês até a pessoa mudar: pôr, mudar e tirar valem do mês em diante.
 const BASE = "orcamentos"
@@ -18,3 +19,18 @@ export const definirLimite = (categoriaId: string | null, ano: number, mes: numb
 /** Tira o limite da categoria deste mês em diante (os meses passados continuam com ele). */
 export const tirarLimite = (categoriaId: string | null, ano: number, mes: number): Promise<LimitesDoMes> =>
   api.delete<LimitesDoMes>(BASE, { params: { ...(categoriaId ? { categoriaId } : {}), ano, mes }, skipErrorToast: true }).then((r) => r.data)
+
+/** As seções de fontes do Orçamento: Receitas (quanto espera receber) e Investimentos (quanto planeja investir). Mesma
+ *  regra do planejado das despesas: vale todo mês até mudar. A fonte é a subcategoria ou, sem ela, a categoria inteira. */
+export type LadoFonte = "receitas" | "investimentos"
+
+export const getFontesDoMes = (lado: LadoFonte, ano: number, mes: number): Promise<FontesDoMes> =>
+  api.get<FontesDoMes>(`${BASE}/${lado}`, { params: { ano, mes } }).then((r) => r.data)
+
+export const definirFonte = (lado: LadoFonte, categoriaId: string, subcategoriaId: string | null, ano: number, mes: number, valor: number): Promise<FontesDoMes> =>
+  api.put<FontesDoMes>(`${BASE}/${lado}`, { categoriaId, subcategoriaId, ano, mes, valor }, { skipErrorToast: true }).then((r) => r.data)
+
+export const tirarFonte = (lado: LadoFonte, categoriaId: string, subcategoriaId: string | null, ano: number, mes: number): Promise<FontesDoMes> =>
+  api.delete<FontesDoMes>(`${BASE}/${lado}`, {
+    params: { categoriaId, ...(subcategoriaId ? { subcategoriaId } : {}), ano, mes }, skipErrorToast: true,
+  }).then((r) => r.data)

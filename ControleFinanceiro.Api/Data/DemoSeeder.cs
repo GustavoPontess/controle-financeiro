@@ -161,7 +161,7 @@ public static class DemoSeeder
         // Uma categoria comum que ainda não gastou nada no mês (Lazer, Educação, Transporte…, a primeira livre).
         var preferidas = new[] { "Lazer", "Educação", "Transporte", "Saúde" };
         var livres = await context.Categorias
-            .Where(c => c.UsuarioId == null && c.Finalidade != Finalidade.Receita && !comGasto.Contains(c.Id))
+            .Where(c => c.UsuarioId == null && c.Finalidade != Finalidade.Receita && c.Finalidade != Finalidade.Investimento && !comGasto.Contains(c.Id))
             .Select(c => new { c.Id, c.Descricao }).ToListAsync();
         var semGasto = preferidas.Select(n => livres.FirstOrDefault(c => c.Descricao.StartsWith(n))?.Id).FirstOrDefault(id => id.HasValue)
             ?? livres.OrderBy(c => c.Descricao).Select(c => (Guid?)c.Id).FirstOrDefault() ?? Guid.Empty;

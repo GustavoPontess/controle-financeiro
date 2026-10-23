@@ -10,7 +10,7 @@ namespace ControleFinanceiro.Api.Tests.Services;
 
 /// <summary>
 /// O orçamento do mês (tela Orçamento, base zero como a planilha do Gustavo): a renda esperada menos o planejado das
-/// despesas menos o que as metas pedem é o "a ser alocado"; zerado, toda a renda tem destino.
+/// despesas menos os investimentos planejados é o "a ser alocado"; zerado, toda a renda tem destino. Metas ficam fora.
 /// </summary>
 public class OrcamentoDoMesServiceTests
 {
@@ -19,10 +19,8 @@ public class OrcamentoDoMesServiceTests
             .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
             .Options);
 
-    private static MetaService Metas(AppDbContext ctx) => new(ctx, new TransferenciaService(ctx));
-
     private static OrcamentoDoMesService Servico(AppDbContext ctx) =>
-        new(ctx, new RendaService(ctx), new OrcamentoService(ctx), Metas(ctx));
+        new(new RendaService(ctx), new OrcamentoService(ctx));
 
     private static Guid Usuario(AppDbContext ctx)
     {
@@ -74,13 +72,13 @@ public class OrcamentoDoMesServiceTests
 
         var mes = await Servico(ctx).CalcularAsync(u, hoje.Year, hoje.Month);
 
-        Assert.Equal((0m, 0m, 0m, 0m), (mes.RendaEsperada, mes.DespesasPlanejadas, mes.PraGuardar, mes.AAlocar));
+        Assert.Equal((0m, 0m, 0m, 0m), (mes.RendaEsperada, mes.DespesasPlanejadas, mes.InvestimentosPlanejados, mes.AAlocar));
         Assert.Equal("neutro", mes.Resposta.Tom);
         Assert.StartsWith("Diga quanto você espera receber", mes.Resposta.Texto);
     }
 
     [Fact]
-    public async Task AAlocar_EARendaMenosOPlanejadoMenosOQueAsMetasPedem()
+    public async Task AAlocar_EARendaMenosOPlanejadoMenosOsInvestimentosPlanejados_MetasFicamFora()
     {
         var ctx = CreateContext();
         var u = Usuario(ctx);
@@ -88,23 +86,27 @@ public class OrcamentoDoMesServiceTests
         RendaEsperada(ctx, u, 5000m, hoje.Year, hoje.Month);
         Planejar(ctx, u, Categoria(ctx, "Mercado"), 1000m, hoje.Year, hoje.Month);
         Planejar(ctx, u, Categoria(ctx, "Moradia"), 1500m, hoje.Year, hoje.Month);
+        var tesouro = new Categoria { Id = Guid.NewGuid(), Descricao = "Renda fixa", Finalidade = Finalidade.Investimento };
+        ctx.Categorias.Add(tesouro);
+        ctx.SaveChanges();
+        Planejar(ctx, u, tesouro.Id, 300m, hoje.Year, hoje.Month);
+        ctx.Transacoes.Add(new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "Aporte", Valor = 200m, Tipo = TipoTransacao.Despesa, CategoriaId = tesouro.Id, CriadoPor = u,
+            Data = new DateOnly(hoje.Year, hoje.Month, 1), StatusTransacao = StatusTransacao.Executado, Ativo = true,
+        });
+        ctx.SaveChanges();
         var conta = Conta(ctx, u, 3000m);
-        var metas = Metas(ctx);
+        var metas = new MetaService(ctx, new TransferenciaService(ctx));
         var viagem = await metas.CriarAsync(new CriarMetaDto("Viagem", null, 2400m, hoje.AddMonths(11).ToDateTime(TimeOnly.MinValue), null, null), u);
         await metas.GuardarAsync(viagem.Id, new MovimentoMetaDto(conta, 300m), u, Guid.NewGuid().ToString());
-        await metas.ResgatarAsync(viagem.Id, new MovimentoMetaDto(conta, 100m), u, Guid.NewGuid().ToString());
-        // A meta, depois de guardar, pede 2.200 / 12; o orçamento conta do começo do mês: 2.400 / 12 = 200.
-        Assert.True((await metas.ObterAsync(viagem.Id, u)).PorMes < 200m);
 
         var mes = await Servico(ctx).CalcularAsync(u, hoje.Year, hoje.Month);
 
         Assert.Equal(5000m, mes.RendaEsperada);
-        Assert.Equal(2500m, mes.DespesasPlanejadas);
-        Assert.Equal(200m, mes.PraGuardar); // guardar no mês não encolhe o pedido do mês
-        var meta = Assert.Single(mes.Metas);
-        Assert.Equal(("Viagem", 200m), (meta.Nome, meta.GuardadoNoMes)); // guardou 300, resgatou 100
-        Assert.Equal(200m, mes.GuardadoNoMes);
-        Assert.Equal(2300m, mes.AAlocar);
+        Assert.Equal(2500m, mes.DespesasPlanejadas); // o investimento não entra nas despesas
+        Assert.Equal((300m, 200m), (mes.InvestimentosPlanejados, mes.Investido));
+        Assert.Equal(2200m, mes.AAlocar); // 5.000 − 2.500 − 300; a meta não pede nada aqui
         Assert.Equal("neutro", mes.Resposta.Tom);
         Assert.StartsWith("Faltam ", mes.Resposta.Texto);
     }
@@ -129,24 +131,5 @@ public class OrcamentoDoMesServiceTests
         var zerado = await Servico(ctx).CalcularAsync(u, hoje.Year, hoje.Month);
         Assert.Equal(0m, zerado.AAlocar);
         Assert.Equal("positivo", zerado.Resposta.Tom);
-    }
-
-    [Fact]
-    public async Task MetaConcluida_NaoPedeMaisNada()
-    {
-        var ctx = CreateContext();
-        var u = Usuario(ctx);
-        var hoje = HorarioBrasil.Hoje();
-        RendaEsperada(ctx, u, 1000m, hoje.Year, hoje.Month);
-        var conta = Conta(ctx, u, 1000m);
-        var metas = Metas(ctx);
-        var meta = await metas.CriarAsync(new CriarMetaDto("Celular", null, 500m, hoje.AddMonths(5).ToDateTime(TimeOnly.MinValue), null, null), u);
-        await metas.GuardarAsync(meta.Id, new MovimentoMetaDto(conta, 500m), u, Guid.NewGuid().ToString());
-        await metas.ConcluirAsync(meta.Id, new ConcluirMetaDto(conta), u, Guid.NewGuid().ToString());
-
-        var mes = await Servico(ctx).CalcularAsync(u, hoje.Year, hoje.Month);
-
-        Assert.Empty(mes.Metas);
-        Assert.Equal((0m, 1000m), (mes.PraGuardar, mes.AAlocar));
     }
 }

@@ -5,6 +5,9 @@
 .grupoRotulo { display: inline-flex; align-items: center; gap: 6px; }
 /* Um grupo depois do outro: linha separando (o cabeçalho sozinho não marcava a divisão). */
 .grupo + .grupo { margin-top: 8px; border-top: 1px solid var(--v2-linha); }
+/* Divisão dentro do grupo: rótulo menor, recuado, com uma linha fina em cima (a primeira sem) */
+.subgrupo { margin: 6px 16px 0; padding: 10px 0 4px; border-top: 1px dashed var(--v2-linha); font-size: var(--v2-fs-xs); font-weight: 600; color: var(--v2-texto-2); }
+.subgrupo:first-child { margin-top: 0; padding-top: 2px; border-top: 0; }
 .vazio { padding: 10px 16px 14px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
 
 /* Linhas: marca · nome + detalhe · direita · seta. A linha é um botão: abre a ficha logo embaixo. */

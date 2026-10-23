@@ -296,13 +296,16 @@ public class OrcamentoServiceTests
     // ── Sem limite, sugestão, validação ─────────────────────────────────────
 
     [Fact]
-    public async Task SemLimite_ListaQuemGastouSemLimite_EOutroUsuarioNaoAparece()
+    public async Task SemLimite_QuemGastouPrimeiro_DepoisTodaCategoriaDeGastoSemGasto_EOutroUsuarioNaoAparece()
     {
         var ctx = CreateContext();
         var u = SeedUsuario(ctx);
         var outro = SeedUsuario(ctx, "outro@test.com");
         var mercado = SeedCategoria(ctx, "Mercado");
         var lazer = SeedCategoria(ctx, "Lazer");
+        SeedCategoria(ctx, "Pets", dono: u);                       // da pessoa, sem gasto: aparece no fim
+        SeedCategoria(ctx, "Do outro", dono: outro);               // de outra pessoa: nunca
+        SeedCategoria(ctx, "Salário", Finalidade.Receita);         // de receita: fica nas Receitas
         var svc = new OrcamentoService(ctx);
         await Definir(svc, u, mercado, 1000m, 2026, 5);
         await Definir(svc, outro, lazer, 50m, 2026, 5);
@@ -314,7 +317,7 @@ public class OrcamentoServiceTests
         var maio = await svc.DoMesAsync(u, 2026, 5, Agora);
 
         Assert.Equal(100m, Assert.Single(maio.Limites).Gasto); // o gasto do outro não entra
-        Assert.Equal([("Lazer", 250m), ("Sem categoria", 30m)], maio.SemLimite.Select(s => (s.Categoria, s.Gasto)));
+        Assert.Equal([("Lazer", 250m), ("Sem categoria", 30m), ("Pets", 0m)], maio.SemLimite.Select(s => (s.Categoria, s.Gasto)));
     }
 
     [Fact]
@@ -368,5 +371,161 @@ public class OrcamentoServiceTests
         var geral = Assert.Single(maio.Limites);
         Assert.Equal(("Todos os gastos", 800m), (geral.Categoria, geral.Gasto));
         Assert.Equal(0m, maio.TotalLimite); // os totais são das categorias com limite próprio
+    }
+
+    // ── Receitas: o que espera receber, por categoria de receita ─────────────
+
+    private static void Receita(AppDbContext ctx, Guid usuario, Guid? categoria, decimal valor, DateOnly data,
+        StatusTransacao status = StatusTransacao.Executado) =>
+        Gasto(ctx, usuario, categoria, valor, data, status, t => { t.Tipo = TipoTransacao.Receita; t.Descricao = "Receita"; });
+
+    [Fact]
+    public async Task Receitas_PlanejadoPorCategoria_ComRecebidoOQueAindaVemEOQueCaiuSemPlanejado()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var salario = SeedCategoria(ctx, "Salário", Finalidade.Receita, u);
+        var freela = SeedCategoria(ctx, "Freela", Finalidade.Receita, u);
+        var aluguel = SeedCategoria(ctx, "Aluguel", Finalidade.Receita, u);
+        var volta = SeedCategoria(ctx, RendaService.CategoriaDinheiroQueVolta, Finalidade.Receita);
+        var mercado = SeedCategoria(ctx);
+        var svc = new OrcamentoService(ctx);
+        await svc.DefinirReceitaAsync(new DefinirFonteDto(salario, null, 2026, 5, 5000m), u, Agora);
+        await svc.DefinirReceitaAsync(new DefinirFonteDto(freela, null, 2026, 5, 800m), u, Agora);
+        await Definir(svc, u, mercado, 1000m, 2026, 5);
+        Receita(ctx, u, salario, 5000m, new DateOnly(2026, 6, 5));
+        Receita(ctx, u, freela, 300m, new DateOnly(2026, 6, 10));
+        Receita(ctx, u, freela, 200m, new DateOnly(2026, 6, 25), StatusTransacao.Previsao);
+        Receita(ctx, u, aluguel, 900m, new DateOnly(2026, 6, 1));
+        Receita(ctx, u, volta, 40m, new DateOnly(2026, 6, 2)); // cashback: não é renda
+
+        var junho = await svc.ReceitasDoMesAsync(u, 2026, 6, Agora); // vale todo mês até mudar
+
+        Assert.Equal(["Salário", "Freela"], junho.Fontes.Select(r => r.Nome));
+        Assert.Equal((800m, 300m, 200m), (junho.Fontes[1].Planejado, junho.Fontes[1].Realizado, junho.Fontes[1].AindaVem));
+        Assert.Equal((5800m, 5300m, 200m), (junho.TotalPlanejado, junho.TotalRealizado, junho.TotalAindaVem));
+        var sem = Assert.Single(junho.SemPlanejado); // toda categoria de receita aparece; aqui todas já estão (fora "Dinheiro que volta")
+        Assert.Equal(("Aluguel", 900m, true), (sem.Nome, sem.Realizado, sem.Planejavel));
+        SeedCategoria(ctx, "Bolsa", Finalidade.Receita, u);
+        Assert.Equal(("Bolsa", 0m), (await svc.ReceitasDoMesAsync(u, 2026, 6, Agora)).SemPlanejado.Select(r => (r.Nome, r.Realizado)).Last());
+        // As despesas não veem o planejado de receita, nem o contrário.
+        Assert.Equal("Mercado", Assert.Single((await svc.DoMesAsync(u, 2026, 6, Agora)).Limites).Categoria);
+    }
+
+    [Fact]
+    public async Task Receitas_SoCategoriaDeReceita_TirarValeDoMesEmDiante_EARendaEsperadaSegueOPlanejado()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var salario = SeedCategoria(ctx, "Salário", Finalidade.Receita, u);
+        var freela = SeedCategoria(ctx, "Freela", Finalidade.Receita, u);
+        var mercado = SeedCategoria(ctx);
+        var volta = SeedCategoria(ctx, RendaService.CategoriaDinheiroQueVolta, Finalidade.Receita);
+        var svc = new OrcamentoService(ctx);
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.DefinirReceitaAsync(new DefinirFonteDto(mercado, null, 2026, 5, 10m), u, Agora));
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.DefinirReceitaAsync(new DefinirFonteDto(volta, null, 2026, 5, 10m), u, Agora));
+        await Assert.ThrowsAsync<ArgumentException>(() => Definir(svc, u, salario, 10m, 2026, 5)); // despesa não planeja receita
+
+        // Antes de planejar por categoria vale a declaração antiga; depois, o planejado.
+        ctx.Add(new RendaPrevista { Id = Guid.NewGuid(), UsuarioId = u, Ano = 2026, Mes = 5, FixaEsperada = 3000m, VariavelEsperada = 0m });
+        ctx.SaveChanges();
+        var renda = new RendaService(ctx);
+        Assert.Equal(3000m, (await renda.ObterMesAsync(u, 2026, 5)).Previsto);
+        await svc.DefinirReceitaAsync(new DefinirFonteDto(salario, null, 2026, 5, 5000m), u, Agora);
+        await svc.DefinirReceitaAsync(new DefinirFonteDto(freela, null, 2026, 5, 800m), u, Agora);
+        Assert.Equal(5800m, (await renda.ObterMesAsync(u, 2026, 7)).Previsto);
+
+        var julho = await svc.TirarReceitaAsync(freela, null, 2026, 7, u, Agora);
+
+        Assert.Equal("Salário", Assert.Single(julho.Fontes).Nome);
+        Assert.Equal(2, (await svc.ReceitasDoMesAsync(u, 2026, 6, Agora)).Fontes.Count); // junho continua com as duas
+        Assert.Equal(5000m, (await renda.ObterMesAsync(u, 2026, 7)).Previsto);
+    }
+
+    [Fact]
+    public async Task Receitas_UmaLinhaPorSubcategoria_DaCategoriaDeRenda_EARendaEsperadaSomaTodas()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var renda = SeedCategoria(ctx, "Renda", Finalidade.Receita);
+        var mercado = SeedCategoria(ctx);
+        Guid Sub(string nome, Guid categoria)
+        {
+            var x = new Subcategoria { Id = Guid.NewGuid(), Nome = nome, CategoriaId = categoria };
+            ctx.Subcategorias.Add(x);
+            ctx.SaveChanges();
+            return x.Id;
+        }
+        var salario = Sub("Salário", renda);
+        var freela = Sub("Freelance e PJ", renda);
+        Sub("Aposentadoria", renda);
+        var feira = Sub("Feira", mercado);
+        var svc = new OrcamentoService(ctx);
+        await svc.DefinirReceitaAsync(new DefinirFonteDto(renda, salario, 2026, 5, 5000m), u, Agora);
+        await svc.DefinirReceitaAsync(new DefinirFonteDto(renda, freela, 2026, 5, 800m), u, Agora);
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.DefinirReceitaAsync(new DefinirFonteDto(renda, feira, 2026, 5, 1m), u, Agora));
+        Gasto(ctx, u, renda, 5000m, new DateOnly(2026, 5, 5), ajuste: t => { t.Tipo = TipoTransacao.Receita; t.SubcategoriaId = salario; });
+        Gasto(ctx, u, renda, 12m, new DateOnly(2026, 5, 6), ajuste: t => t.Tipo = TipoTransacao.Receita); // sem subcategoria
+
+        var maio = await svc.ReceitasDoMesAsync(u, 2026, 5, Agora);
+
+        Assert.Equal([("Salário", 5000m, 5000m), ("Freelance e PJ", 800m, 0m)], maio.Fontes.Select(r => (r.Nome, r.Planejado, r.Realizado)));
+        Assert.All(maio.Fontes, r => Assert.Equal("Renda", r.Categoria));
+        // Recebeu sem subcategoria: a categoria inteira, com nome que diz isso; depois a fonte sem nada.
+        Assert.Equal([("Renda (sem subcategoria)", 12m), ("Aposentadoria", 0m)], maio.SemPlanejado.Select(r => (r.Nome, r.Realizado)));
+        Assert.Equal(5800m, (await new RendaService(ctx).ObterMesAsync(u, 2026, 5)).Previsto);
+
+        var semFreela = await svc.TirarReceitaAsync(renda, freela, 2026, 5, u, Agora);
+        Assert.Equal("Salário", Assert.Single(semFreela.Fontes).Nome);
+    }
+
+    // ── Investimentos: aporte e resgate, fora do resultado ───────────────────
+
+    [Fact]
+    public async Task Investimento_MarcaSozinho_FicaForaDoGasto_EASecaoContaAporteMenosResgate()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var investimentos = SeedCategoria(ctx, "Investimentos", Finalidade.Investimento);
+        var tesouro = new Subcategoria { Id = Guid.NewGuid(), Nome = "Tesouro Direto", CategoriaId = investimentos };
+        var acoes = new Subcategoria { Id = Guid.NewGuid(), Nome = "Ações e fundos", CategoriaId = investimentos };
+        ctx.Subcategorias.AddRange(tesouro, acoes);
+        ctx.SaveChanges();
+        var mercado = SeedCategoria(ctx);
+        var svc = new OrcamentoService(ctx);
+        await svc.DefinirInvestimentoAsync(new DefinirFonteDto(investimentos, tesouro.Id, 2026, 5, 1000m), u, Agora);
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.DefinirInvestimentoAsync(new DefinirFonteDto(mercado, null, 2026, 5, 1m), u, Agora));
+        await Assert.ThrowsAsync<ArgumentException>(() => Definir(svc, u, investimentos, 1m, 2026, 5)); // despesa não planeja investimento
+        Gasto(ctx, u, investimentos, 1200m, new DateOnly(2026, 5, 5), ajuste: t => t.SubcategoriaId = tesouro.Id);       // aporte
+        Gasto(ctx, u, investimentos, 300m, new DateOnly(2026, 5, 20), ajuste: t => { t.Tipo = TipoTransacao.Receita; t.SubcategoriaId = tesouro.Id; }); // resgate
+        Gasto(ctx, u, mercado, 100m, new DateOnly(2026, 5, 6));
+
+        Assert.True(ctx.Transacoes.Single(t => t.Valor == 1200m).EhInvestimento); // o AppDbContext marca pela categoria
+        Assert.False(ctx.Transacoes.Single(t => t.Valor == 100m).EhInvestimento);
+        var gastos = await RegrasFinanceiras.GastosPorCategoriaDoMesAsync(ctx, u, 2026, 5);
+        Assert.Equal([mercado], gastos.Keys); // aporte não é gasto
+        Assert.DoesNotContain((await svc.DoMesAsync(u, 2026, 5, Agora)).SemLimite, x => x.CategoriaId == investimentos);
+
+        var maio = await svc.InvestimentosDoMesAsync(u, 2026, 5, Agora);
+
+        var linha = Assert.Single(maio.Fontes);
+        Assert.Equal(("Tesouro Direto", 1000m, 900m), (linha.Nome, linha.Planejado, linha.Realizado)); // 1.200 − 300
+        Assert.Equal(["Ações e fundos"], maio.SemPlanejado.Select(r => r.Nome));
+    }
+
+    [Fact]
+    public async Task Categoria_QueViraInvestimento_LevaOsLancamentosDelaPraForaDoResultado()
+    {
+        var ctx = CreateContext();
+        var u = SeedUsuario(ctx);
+        var poupar = SeedCategoria(ctx, "Poupar", Finalidade.Ambas, u);
+        Gasto(ctx, u, poupar, 500m, new DateOnly(2026, 5, 5));
+        Assert.False(ctx.Transacoes.Single().EhInvestimento);
+
+        var svc = new CategoriaService(ctx);
+        await svc.AtualizarAsync(poupar, "Poupar", Finalidade.Investimento, u);
+        Assert.True(ctx.Transacoes.Single().EhInvestimento);
+        await svc.AtualizarAsync(poupar, "Poupar", Finalidade.Despesa, u);
+        Assert.False(ctx.Transacoes.Single().EhInvestimento);
     }
 }

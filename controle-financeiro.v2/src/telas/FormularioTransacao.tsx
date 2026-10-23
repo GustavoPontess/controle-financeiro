@@ -37,6 +37,7 @@ import Segmentos from "../componentes/Segmentos"
 import Selecao from "../componentes/Selecao"
 import SeletorData, { formatarData } from "../componentes/SeletorData"
 import { MAX_DESCRICAO, MEIO, MEIOS_PAGAMENTO, MEIOS_RECEBIMENTO, PARCELAS, TIPO, horaValida } from "../dominio/transacao"
+import { aceitaTipo } from "../dominio/categoria"
 import { PAPEL_PERMISSAO, primeiroNome } from "../dominio/familia"
 import { formatMoney, moneyParaCampo, parseMoney } from "../utils/money"
 import { dataLocalISO, horaLocalHHMM, mascararHora, somaDias } from "../utils/dateTime"
@@ -108,7 +109,7 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
   // Futuro só no cartão ou como previsão.
   const dataMax = transferencia || (!credito && efetivado) ? hoje : undefined
 
-  const cats = useMemo(() => categorias.filter((c) => c.finalidade === 3 || c.finalidade === tipo), [categorias, tipo])
+  const cats = useMemo(() => categorias.filter((c) => aceitaTipo(c, tipo)), [categorias, tipo])
   const subs = useMemo(() => subcategorias.filter((s) => s.categoriaId === categoriaId), [subcategorias, categoriaId])
   const cartoesCredito = useMemo(() => cartoes.filter((c) => c.temCredito && c.ativo !== false), [cartoes])
   const opcoesConta = contas.map((c) => ({ valor: c.id, rotulo: c.nome }))
@@ -130,7 +131,7 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
     if (n === "receita" && !MEIOS_RECEBIMENTO.some((m) => m.valor === meio)) { setMeio(MEIO.pix); setParcelas(1) }
     const novoTipo = n === "receita" ? TIPO.receita : TIPO.despesa
     const atual = categorias.find((c) => c.id === categoriaId)
-    if (atual && atual.finalidade !== 3 && atual.finalidade !== novoTipo) { setCategoriaId(""); setSubcategoriaId("") }
+    if (atual && !aceitaTipo(atual, novoTipo)) { setCategoriaId(""); setSubcategoriaId("") }
   }
   const trocarMeio = (m: number) => {
     setMeio(m)

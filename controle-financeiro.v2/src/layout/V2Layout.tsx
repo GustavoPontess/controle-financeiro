@@ -28,10 +28,10 @@ type Secao = { para: string; rotulo: string; raiz?: string; semMenu?: boolean }
 
 const PRINCIPAL: ItemMenu[] = [
   { para: "/dashboard", rotulo: "Visão geral", icone: LayoutDashboard },
+  { para: "/orcamento", rotulo: "Orçamento", icone: Wallet },
   { para: "/transacoes", rotulo: "Transações", icone: Receipt },
   { para: "/cartoes", rotulo: "Cartões", icone: CreditCard },
   { para: "/contas-fixas", rotulo: "Contas fixas", icone: Repeat },
-  { para: "/orcamento", rotulo: "Orçamento", icone: Wallet },
   { para: "/relatorios", rotulo: "Relatórios", icone: BarChart3 },
   { para: "/reconciliacao", rotulo: "Reconciliação", icone: Scale },
   { para: "/emprestimos", rotulo: "Empréstimos", icone: Handshake },

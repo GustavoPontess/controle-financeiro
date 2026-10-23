@@ -40,7 +40,6 @@ import FamiliaRegras from "./telas/FamiliaRegras"
 import Metas from "./telas/Metas"
 import MetaFormulario from "./telas/MetaFormulario"
 import MetaPagina from "./telas/MetaPagina"
-import LimiteFormulario from "./telas/LimiteFormulario"
 import MovimentoMeta from "./telas/MovimentoMeta"
 import ConvidarMembro from "./telas/ConvidarMembro"
 import Dependente from "./telas/Dependente"
@@ -91,8 +90,7 @@ export default function App() {
         <Route path="/importar" element={<ImportarExtrato />} />
         <Route path="/reconciliacao" element={<Reconciliacao />} />
         <Route path="/orcamento" element={<Orcamento />} />
-        <Route path="/orcamento/planejar" element={<LimiteFormulario modo="novo" />} />
-        <Route path="/orcamento/editar" element={<LimiteFormulario modo="editar" />} />
+        <Route path="/orcamento/*" element={<Navigate to="/orcamento" replace />} />
         {/* Renda e Limites viraram seções do Orçamento (2026-10-21): links e avisos antigos caem lá. */}
         <Route path="/renda" element={<Navigate to="/orcamento" replace />} />
         <Route path="/limites/*" element={<Navigate to="/orcamento" replace />} />

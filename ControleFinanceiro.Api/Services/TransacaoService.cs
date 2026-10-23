@@ -98,6 +98,7 @@ namespace ControleFinanceiro.Api.Services
                 if (categoria == null)
                     throw new KeyNotFoundException("Categoria não encontrada.");
 
+                // Investimento aceita os dois: aporte sai (despesa), resgate volta (receita).
                 if (categoria.Finalidade == Finalidade.Receita && transacao.Tipo == TipoTransacao.Despesa)
                     throw new ArgumentException("Categoria inválida para despesa.");
 
