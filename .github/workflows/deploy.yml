@@ -29,8 +29,8 @@ env:
 jobs:
   imagens:
     name: Montar imagens
-    # Só CI verde de push na main (PR não publica); ou disparo manual.
-    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    # Só CI verde de push na main (PR não publica); ou disparo manual NA main (branch não revisada não vai pro GHCR).
+    if: (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     permissions:
       contents: read
