@@ -10,6 +10,7 @@ O Pontes vai pro ar com o **Kamal 2** (v2.12.0). Contrato e plano completos: `E:
 | Imagens | `ghcr.io/gustavopontess/controle-financeiro-api` e `-web` (privadas), tag = SHA do commit |
 | Segredos | só nos secrets do environment `production` do GitHub; `.kamal/secrets` lê do ambiente, sem valor no repo |
 | Backup | na VPS: cron + antes de todo deploy da API (hook `.kamal/hooks/pre-deploy`); o dado nunca sai pro GitHub |
+| E-mail | Resend por SMTP (`smtp.resend.com:587`, STARTTLS; senha = secret `RESEND_API_KEY`). Automáticos saem de `naoresponda@`, alertas de segurança de `seguranca@`, avisos do produto de `pontes@` com Reply-To (secret `SMTP_REPLY_TO_PRODUTO`) |
 
 ## Como publicar
 
@@ -52,5 +53,4 @@ A API aplica as migrações sozinha ao subir (`MigrateAsync` no `Program.cs`, an
 
 ## Pendências
 
-- E-mail (SMTP) em produção: sem ele, recuperar senha não envia nada. Ao ligar o provedor, o SPF do DNS muda (chat do servidor).
 - LGPD art. 33 (servidor nos EUA) e cookies `__Host-`: ver gate no ROADMAP.

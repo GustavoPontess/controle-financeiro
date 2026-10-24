@@ -115,6 +115,8 @@ jobs:
           MFA_ENCRYPTION_KEY: ${{ secrets.MFA_ENCRYPTION_KEY }}
           ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
           HANGFIRE_ADMIN_EMAILS: ${{ secrets.HANGFIRE_ADMIN_EMAILS }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          SMTP_REPLY_TO_PRODUTO: ${{ secrets.SMTP_REPLY_TO_PRODUTO }}
         run: |
           case "$ACAO" in
             deploy)   kamal deploy -c config/deploy.api.yml ;;
