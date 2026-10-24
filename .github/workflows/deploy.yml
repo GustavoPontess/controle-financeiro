@@ -10,6 +10,8 @@
 #            nunca dois Postgres no mesmo volume pontes_pgdata.
 #   rollback volta pra uma versão que já esteve no ar (SHA de 40 caracteres), na API, no web ou nos dois.
 #            Não confere o CI (a versão já passou por ele quando subiu) e não monta imagem.
+#   O hook pre-deploy faz backup no deploy e no rollback da API; no setup pula (o Kamal roda o hook antes de ligar
+#   o Postgres novo; o backup da virada é feito pelo chat do servidor).
 name: Deploy
 
 on:

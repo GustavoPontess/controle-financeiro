@@ -29,7 +29,7 @@ O Kamal só roda pelo workflow: a chave de deploy só existe no environment `pro
 
 ## Primeira vez (`setup`)
 
-Ação `setup`: liga o `kamal-proxy` e o Postgres (acessório `db`) e faz o deploy da API e do web. **Só com o chat do servidor coordenando a virada:** o Postgres antigo precisa estar parado antes, nunca dois Postgres no mesmo volume `pontes_pgdata`.
+Ação `setup`: liga o `kamal-proxy` e o Postgres (acessório `db`) e faz o deploy da API e do web. O hook não faz backup no `setup`: o Kamal roda ele antes de ligar o Postgres novo; o backup da virada é o do chat do servidor, antes de parar o Postgres antigo. **Só com o chat do servidor coordenando a virada:** o Postgres antigo precisa estar parado antes, nunca dois Postgres no mesmo volume `pontes_pgdata`.
 
 ## Migração de banco (atenção)
 

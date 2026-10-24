@@ -1,9 +1,17 @@
 #!/usr/bin/env bash
-# Antes de subir a API: backup do banco NA VPS (o dado nunca sai pro GitHub). Se o backup falhar, o deploy para.
-# Só no deploy da API (o do web não mexe no banco). O comando é o único sudo liberado pro usuário deploy.
+# Antes de subir a API (deploy e rollback): backup do banco NA VPS (o dado nunca sai pro GitHub). Se o backup
+# falhar, o deploy para. Só no deploy da API (o do web não mexe no banco). O comando é o único sudo liberado
+# pro usuário deploy.
 set -euo pipefail
 
 [ "${KAMAL_SERVICE:-}" = "pontes-api" ] || exit 0
 
-echo "backup do banco antes do deploy da API (${KAMAL_VERSION:-?})"
+# No "kamal setup" este hook roda ANTES de o Kamal ligar o Postgres (acessório db): ainda não há banco do Kamal
+# pra copiar. O backup da virada é o do chat do servidor, feito antes de parar o Postgres antigo.
+if [ "${KAMAL_COMMAND:-}" = "setup" ]; then
+  echo "setup: backup pulado (feito na virada, antes de parar o Postgres antigo)"
+  exit 0
+fi
+
+echo "backup do banco antes de ${KAMAL_COMMAND:-deploy} da API (${KAMAL_VERSION:-?})"
 kamal server exec -c config/deploy.api.yml "sudo -n /usr/local/sbin/pontes-backup"
