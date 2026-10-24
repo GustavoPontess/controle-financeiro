@@ -1,0 +1,40 @@
+# Kamal 2: front v2 do Pontes (Caddy interno servindo o build). Contrato em
+# E:\VSCode\pontes\servidor\deploy\PLANO-KAMAL.md. Uso: kamal deploy -c config/deploy.web.yml (pelo workflow Deploy).
+service: pontes-web
+image: gustavopontess/controle-financeiro-web
+
+servers:
+  web:
+    hosts:
+      - 2.24.204.86
+
+ssh:
+  user: deploy
+  keys_only: true
+  key_data:
+    - KAMAL_SSH_KEY
+  forward_agent: false
+
+registry:
+  server: ghcr.io
+  username: gustavopontess
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+builder:
+  arch: amd64
+  context: controle-financeiro.v2
+  dockerfile: controle-financeiro.v2/Dockerfile
+  cache:
+    type: gha
+    options: mode=max
+
+# Tudo de app.pontesdev.com.br que não é /api (esse vai pro pontes-api).
+proxy:
+  ssl: true
+  host: app.pontesdev.com.br
+  app_port: 80
+  healthcheck:
+    path: /
+    interval: 3
+    timeout: 3

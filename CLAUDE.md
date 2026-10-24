@@ -21,6 +21,7 @@ Produto B2C de finanças pessoais e familiares, com diferencial em **gestão fin
 - **Jobs:** Hangfire — `PostgreSqlStorage` (schema `hangfire`). Dashboard `/hangfire` exige autenticação
 - **E-mail:** SMTP via MailKit (`Infrastructure/Email/SmtpEmailSender`, templates em `ModelosEmail`), ligado por `SMTP_HOST` no `.env`; sem ele, stub que loga (dev/CI). Dev: **Mailpit** no `docker-compose.yml` (`docker compose up -d mailpit`, caixa em http://localhost:8025). Links dos e-mails usam `APP_URL` (raiz do front v2). Log nunca leva destinatário, token nem código
 - **Observabilidade:** health checks `/health` e `/health/ready`; logs estruturados via Serilog (console JSON + arquivo); correlation ID por request; Sentry ativado por `SENTRY_DSN`
+- **Produção:** https://app.pontesdev.com.br numa VPS Hostinger compartilhada com o PontesDev. O deploy é com **Kamal 2** (`config/deploy.api.yml`, `config/deploy.web.yml`, workflow Deploy por clique na main; README em `deploy/`); a máquina, o backup e o DNS moram em `E:\VSCode\pontes\servidor` (outro chat). Daqui só o app: nunca mexer na VPS nem no DNS por este repo; migração de banco sempre compatível com a versão anterior (rollback não desfaz migração)
 - **Backlog ativo:** ver `ROADMAP.md` — features dos achados de concorrentes (Lotes 1-5) + fosso família. Estado granular em `STATE.md`
 
 ## Commands
