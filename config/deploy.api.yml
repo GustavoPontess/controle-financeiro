@@ -79,3 +79,8 @@ accessories:
         - POSTGRES_PASSWORD
     volumes:
       - pontes_pgdata:/var/lib/postgresql/data
+
+# A máquina do GitHub derruba conexão SSH parada por alguns minutos (o build passa de 4 min). Conexão ociosa
+# por mais de 60 s é descartada e o Kamal abre outra (padrão: 900 s). https://kamal-deploy.org/docs/configuration/sshkit/
+sshkit:
+  pool_idle_timeout: 60
