@@ -139,6 +139,12 @@ public class Transacao
     /// resultado (<c>RegrasFinanceiras.EntraNoResultado</c>): gasto do mês, limites, renda, Entrou/Saiu.</summary>
     public bool EhEmprestimo { get; set; }
 
+    /// <summary>true se a categoria desta Transacao é de INVESTIMENTO (aporte que sai, resgate que volta). Mexe no
+    /// saldo, mas não é gasto nem renda: fora do resultado, como transferência. Marcado sozinho pelo
+    /// <c>AppDbContext</c> a cada gravação pela categoria (nunca na mão); mudou o tipo da categoria, o
+    /// <c>CategoriaService</c> remarca os lançamentos dela.</summary>
+    public bool EhInvestimento { get; set; }
+
     /// <summary>true se esta Transacao é o dinheiro que passou entre membros da família pra equilibrar o mês
     /// (<c>AcertoService</c>): a saída de quem passou ou a entrada de quem recebeu. Mexe no saldo, mas NÃO é
     /// receita/despesa (o gasto foi a parte de cada um nas despesas divididas). Fora do resultado.</summary>

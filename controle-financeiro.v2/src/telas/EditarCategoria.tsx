@@ -12,10 +12,9 @@ import Campo from "../componentes/Campo"
 import Entrada from "../componentes/Entrada"
 import Formulario, { Campos, PaginaFormulario, RodapeFormulario } from "../componentes/Formulario"
 import Segmentos from "../componentes/Segmentos"
-import { FINALIDADE, FINALIDADES, MAX_NOME_CATEGORIA } from "../dominio/categoria"
+import { FINALIDADE, FINALIDADES, MAX_NOME_CATEGORIA, abaDaFinalidade } from "../dominio/categoria"
 import styles from "./FormularioCategoria.module.css"
 
-const abaDe = (finalidade: number) => (finalidade === FINALIDADE.receita ? FINALIDADE.receita : FINALIDADE.despesa)
 
 export default function EditarCategoria() {
   const { id } = useParams<{ id: string }>()
@@ -42,7 +41,7 @@ export default function EditarCategoria() {
       {(!id || categoria) && (
         <FormularioCategoria categoria={categoria ?? undefined} tipoInicial={estado?.tipo}
           aoSair={() => navigate(voltarPara, { replace: true })}
-          aoSalvo={(c) => navigate("/categorias", { replace: true, state: { abrir: c.id, tipo: abaDe(c.finalidade) } })} />
+          aoSalvo={(c) => navigate("/categorias", { replace: true, state: { abrir: c.id, tipo: abaDaFinalidade(c.finalidade) } })} />
       )}
     </PaginaFormulario>
   )

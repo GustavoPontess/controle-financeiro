@@ -243,7 +243,7 @@ export function Membro({ m, familia, meuId, mesNome, renda, aoMudar }: {
           {renda?.mostrada && (
             <div>
               <dt>Renda em {mesNome}</dt>
-              <dd><Dinheiro valor={renda.recebido ?? 0} />{(renda.previsto ?? 0) > 0 && <span className={styles.dica}> · esperado <Dinheiro valor={renda.previsto ?? 0} /></span>}{sou && <Link to="/renda" className={styles.linkFicha}>Ver renda</Link>}</dd>
+              <dd><Dinheiro valor={renda.recebido ?? 0} />{(renda.previsto ?? 0) > 0 && <span className={styles.dica}> · esperado <Dinheiro valor={renda.previsto ?? 0} /></span>}{sou && <Link to="/orcamento" className={styles.linkFicha}>Ver renda</Link>}</dd>
             </div>
           )}
         </DadosFicha>

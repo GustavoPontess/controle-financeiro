@@ -10,7 +10,7 @@ import styles from "./EntradaValor.module.css"
 
 const MAX_DIGITOS = 12
 
-export default function EntradaValor({ valor, onChange, autoFocus, tom, compacto }: {
+export default function EntradaValor({ valor, onChange, autoFocus, tom, compacto, tamanho, invalido, rotulo }: {
   /** Texto já mascarado ("1.234,56") ou "" */
   valor: string
   onChange: (valor: string) => void
@@ -19,12 +19,19 @@ export default function EntradaValor({ valor, onChange, autoFocus, tom, compacto
   tom?: "positivo" | "negativo" | "neutro"
   /** Caixa comum (44px, com moldura) em vez do número grande. */
   compacto?: boolean
+  /** Só no compacto: "sm" = 40px (dentro de uma linha de tabela). */
+  tamanho?: "md" | "sm"
+  /** Só no compacto, fora de um Campo: marca o erro. */
+  invalido?: boolean
+  /** Só no compacto, fora de um Campo: o nome acessível. */
+  rotulo?: string
 }) {
   const campo = useCampo()
   const inv = campo?.invalido ?? false
   if (compacto) {
     return (
       <Entrada prefixo="R$" inputMode="numeric" autoComplete="off" placeholder="0,00" value={valor} autoFocus={autoFocus}
+        tamanho={tamanho} invalido={invalido} aria-label={rotulo}
         onChange={(e) => onChange(maskMoney(e.target.value.replace(/\D/g, "").slice(0, MAX_DIGITOS), valor))} />
     )
   }

@@ -76,12 +76,12 @@ public class DinheiroDoMesService
     {
         if (baseRenda <= 0)
             return new RespostaDto("neutro", "Diga quanto você espera receber por mês pra saber se o mês fecha.",
-                [new AcaoDto("Dizer a renda", "/renda")]);
+                [new AcaoDto("Dizer a renda", "/orcamento")]);
 
         string? Peso() => maior is { } m ? $" O maior peso é {m.Nome} ({Reais.Formatar(m.Valor)})." : null;
         List<AcaoDto> AcoesDoPeso() => maior is { SemCategoria: true }
             ? [new AcaoDto("Classificar lançamentos", "/transacoes")]
-            : [new AcaoDto("Ver os limites", "/limites")];
+            : [new AcaoDto("Ver o orçamento", "/orcamento")];
 
         if (jaSaiu > baseRenda)
         {

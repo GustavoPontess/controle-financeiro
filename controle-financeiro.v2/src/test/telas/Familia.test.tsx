@@ -74,7 +74,7 @@ const renderizar = (inicio = "/familias/f1") => render(
       <Route path="/familias/:id/convidar" element={<p>convidar</p>} />
       <Route path="/familias/:id/acertos/novo" element={<Acerto />} />
       <Route path="/transacoes/:id" element={<p>lançamento</p>} />
-      <Route path="/renda" element={<p>página de renda</p>} />
+      <Route path="/orcamento" element={<p>página de renda</p>} />
     </Routes>
   </MemoryRouter>,
 )

@@ -49,7 +49,7 @@ export const FREQUENCIAS = [
   { valor: 3, rotulo: "Todo ano" },
 ]
 
-/** Tipo (enum TipoTransacao): 1 = despesa, 2 = receita. Categoria com finalidade 3 serve pros dois. */
+/** Tipo (enum TipoTransacao): 1 = despesa, 2 = receita. Categoria com finalidade 3 (as duas) ou 4 (investimento) serve pros dois. */
 export const TIPO = { despesa: 1, receita: 2 } as const
 
 /** [MaxLength(255)] da descrição no back (transação e transferência). */

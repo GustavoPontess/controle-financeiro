@@ -1,7 +1,7 @@
 export interface Category {
   id: string
   descricao: string
-  finalidade: number // 1 = Despesa, 2 = Receita, 3 = Ambas
+  finalidade: number // 1 = Despesa, 2 = Receita, 3 = Ambas, 4 = Investimento
   isPadrao: boolean
 }
 /** O que usa a categoria (GET /categorias/{id}/uso). Lançamentos e contas fixas: só os vivos. */
