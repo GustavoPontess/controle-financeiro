@@ -1,0 +1,81 @@
+# Kamal 2: API do Pontes (+ Postgres como acessório). Contrato em E:\VSCode\pontes\servidor\deploy\PLANO-KAMAL.md.
+# Uso: kamal deploy -c config/deploy.api.yml (pelo workflow Deploy). Valores secretos vêm de .kamal/secrets,
+# que só lê do ambiente (secrets do environment "production" no GitHub).
+service: pontes-api
+image: gustavopontess/controle-financeiro-api
+
+servers:
+  web:
+    hosts:
+      - 2.24.204.86
+
+ssh:
+  user: deploy
+  keys_only: true
+  key_data:
+    - KAMAL_SSH_KEY
+  forward_agent: false
+
+registry:
+  server: ghcr.io
+  username: gustavopontess
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+builder:
+  arch: amd64
+  context: ControleFinanceiro.Api
+  dockerfile: ControleFinanceiro.Api/Dockerfile
+  cache:
+    type: gha
+    options: mode=max
+
+# O kamal-proxy manda https://app.pontesdev.com.br/api/... pra cá sem cortar o prefixo (as rotas são /api/v1/...);
+# o resto do mesmo host vai pro pontes-web (config/deploy.web.yml).
+proxy:
+  ssl: true
+  host: app.pontesdev.com.br
+  app_port: 8080
+  path_prefix: /api
+  strip_path_prefix: false
+  healthcheck:
+    path: /health
+    interval: 3
+    timeout: 3
+
+# As migrações rodam no startup, antes de a API ouvir a porta: o /health só responde com o banco migrado.
+deploy_timeout: 120
+
+env:
+  clear:
+    ASPNETCORE_ENVIRONMENT: Production
+    APP_URL: https://app.pontesdev.com.br
+    CORS_ALLOWED_ORIGINS: https://app.pontesdev.com.br
+  secret:
+    - DATABASE_URL
+    - JWT_SECRET
+    - JWT_ISSUER
+    - JWT_AUDIENCE
+    - PASSWORD_PEPPER
+    - MFA_ENCRYPTION_KEY
+    - ADMIN_EMAILS
+    - HANGFIRE_ADMIN_EMAILS
+
+# Os volumes que já existem na VPS: logs e as chaves do Data Protection continuam.
+volumes:
+  - pontes_apilogs:/app/logs
+  - pontes_apikeys:/home/app/.aspnet/DataProtection-Keys
+
+accessories:
+  # Container pontes-api-db, só na rede do Kamal (sem porta publicada). Usa o volume do banco de hoje.
+  db:
+    image: postgres:16-alpine
+    host: 2.24.204.86
+    env:
+      clear:
+        POSTGRES_DB: pontes
+        POSTGRES_USER: pontes
+      secret:
+        - POSTGRES_PASSWORD
+    volumes:
+      - pontes_pgdata:/var/lib/postgresql/data

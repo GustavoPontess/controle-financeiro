@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Antes de subir a API: backup do banco NA VPS (o dado nunca sai pro GitHub). Se o backup falhar, o deploy para.
+# Só no deploy da API (o do web não mexe no banco). O comando é o único sudo liberado pro usuário deploy.
+set -euo pipefail
+
+[ "${KAMAL_SERVICE:-}" = "pontes-api" ] || exit 0
+
+echo "backup do banco antes do deploy da API (${KAMAL_VERSION:-?})"
+kamal server exec -c config/deploy.api.yml "sudo -n /usr/local/sbin/pontes-backup"

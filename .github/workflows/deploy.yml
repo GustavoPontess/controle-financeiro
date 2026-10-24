@@ -1,0 +1,81 @@
+# Deploy do Pontes com Kamal 2 (contrato em E:\VSCode\pontes\servidor\deploy\PLANO-KAMAL.md).
+# Só por clique: Actions → Deploy → Run workflow, na main. O clique é a aprovação (decisão do Gustavo, 24/10/2026).
+# Confere o CI verde do commit, monta as imagens, publica no GHCR e sobe na VPS: primeiro a API (com backup do
+# banco antes, hook pre-deploy), depois o web. O kamal-proxy só troca o tráfego depois do health check; se a
+# versão nova não ficar saudável, o deploy falha e a anterior continua no ar. Voltar: kamal rollback (deploy/README.md).
+name: Deploy
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-pontes
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Kamal deploy
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: write
+      actions: read
+    steps:
+      - name: Conferir o CI verde deste commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          conclusao=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&event=push&branch=main" \
+            -q '[.workflow_runs[] | select(.status == "completed")][0].conclusion // "sem-ci"')
+          echo "CI de $GITHUB_SHA: $conclusao"
+          [ "$conclusao" = success ] || { echo "::error::o CI deste commit não está verde ($conclusao); deploy cancelado"; exit 1; }
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Host key fixa: o SSH do Kamal recusa servidor com chave diferente da registrada.
+      - name: Chave do servidor
+        env:
+          HOSTS: ${{ secrets.KAMAL_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$HOSTS" > ~/.ssh/known_hosts
+
+      - uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
+        with:
+          ruby-version: '3.4'
+
+      - name: Instalar o Kamal
+        run: gem install kamal -v 2.12.0 --no-document
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Expõe o cache do Actions pro buildx do Kamal (builder.cache type gha).
+      - uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487 # v4.0.0
+
+      # Segredos só por env: (o .kamal/secrets lê daqui). KAMAL_REGISTRY_PASSWORD = token do job (GHCR).
+      - name: Deploy da API (backup antes, no hook pre-deploy)
+        env:
+          KAMAL_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+          KAMAL_SSH_KEY: ${{ secrets.KAMAL_SSH_KEY }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_ISSUER: ${{ secrets.JWT_ISSUER }}
+          JWT_AUDIENCE: ${{ secrets.JWT_AUDIENCE }}
+          PASSWORD_PEPPER: ${{ secrets.PASSWORD_PEPPER }}
+          MFA_ENCRYPTION_KEY: ${{ secrets.MFA_ENCRYPTION_KEY }}
+          ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
+          HANGFIRE_ADMIN_EMAILS: ${{ secrets.HANGFIRE_ADMIN_EMAILS }}
+        run: kamal deploy -c config/deploy.api.yml
+
+      - name: Deploy do web
+        env:
+          KAMAL_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+          KAMAL_SSH_KEY: ${{ secrets.KAMAL_SSH_KEY }}
+        run: kamal deploy -c config/deploy.web.yml
