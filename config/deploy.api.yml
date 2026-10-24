@@ -62,9 +62,9 @@ env:
     SMTP_PORT: "587"
     SMTP_SECURITY: starttls
     SMTP_USER: resend
-    SMTP_FROM: "Pontes <naoresponda@pontesdev.com.br>"
-    SMTP_FROM_SEGURANCA: "Pontes <seguranca@pontesdev.com.br>"
-    SMTP_FROM_PRODUTO: "Pontes <pontes@pontesdev.com.br>"
+    SMTP_FROM: "Pontes Finanças <naoresponda@pontesdev.com.br>"
+    SMTP_FROM_SEGURANCA: "Pontes Finanças <seguranca@pontesdev.com.br>"
+    SMTP_FROM_PRODUTO: "Pontes Finanças <pontes@pontesdev.com.br>"
   secret:
     - DATABASE_URL
     - JWT_SECRET
