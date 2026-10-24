@@ -1,59 +1,45 @@
 # Deploy de produção do Pontes
 
-Só o app. **Servidor, proxy com HTTPS, DNS, firewall e o mecanismo de deploy na VPS moram em `E:\VSCode\pontes\servidor`** (ponto em comum com o PontesDev; padrão em `servidor/deploy/PADRAO.md`). Decisão e contexto: `docs/features/hospedagem-beta/decisao.md`.
+Daqui sai só o que é do app: as imagens (API e web) e o gatilho do deploy. **O compose de produção, o backup, o proxy com HTTPS, o DNS e o mecanismo de deploy moram no repo do servidor, `E:\VSCode\pontes\servidor`** (`deploy/projetos/pontes/`; padrão em `deploy/PADRAO.md`). Mudança neles é no chat do servidor: eles rodam como root na VPS, então não vêm deste repo. Decisão e contexto: `docs/features/hospedagem-beta/decisao.md`.
 
 | O quê | Valor |
 |---|---|
 | Endereço | https://app.pontesdev.com.br |
-| Pasta no servidor | `/srv/pontes/deploy` (compose + segredos) |
 | Imagens | `ghcr.io/gustavopontess/controle-financeiro-api` e `-web` (privadas), tag = SHA do commit |
 | Versão no ar | `/var/lib/deploy/pontes.versao`; log em `/var/log/deploy/pontes.log` |
-| Backup | `pg_dump` às 3h (UTC) e antes de todo deploy, em `/var/backups/pontes`, 14 dias |
+| Backup | antes de todo deploy e no cron (repo do servidor) |
 
-## Peças
+## Peças deste repo
 
-- `docker-compose.prod.yml`: Postgres e API (só rede interna) + `pontes-web` (front v2 + repasse de `/api`), ligado na rede `web` do proxy central. Nenhuma porta pra fora. As imagens vêm do GHCR (`${VERSAO}`), nada de build no servidor. API e web têm healthcheck.
-- `controle-financeiro.v2/Dockerfile` + `controle-financeiro.v2/Caddyfile`: build do front servido por um Caddy interno (sem HTTPS), com a CSP do app.
-- `scripts/segredos.sh <emails-admin>`: uma vez, gera `.env` e `.env.api` NO servidor. Não sobrescreve (trocar o pepper invalida todas as senhas). O deploy nunca mexe nos dois.
-- `scripts/backup.sh`: backup do banco (cron em `/etc/cron.d/pontes-backup` e antes de cada deploy).
+- `.github/workflows/deploy.yml`: monta e publica as imagens (job `imagens`, único que escreve no GHCR) e avisa a VPS (job `publicar`, só leitura, environment `production`). Actions fixadas por SHA.
+- `ControleFinanceiro.Api/Dockerfile`: imagem da API.
+- `controle-financeiro.v2/Dockerfile` + `controle-financeiro.v2/Caddyfile`: front v2 servido por um Caddy interno (sem HTTPS), com a CSP do app.
+- `scripts/segredos.sh <emails-admin>`: roda uma vez, à mão, no servidor; gera `.env` e `.env.api`. Não sobrescreve (trocar o pepper invalida todas as senhas).
 
 ## Atualizar o app: automático
 
-Merge na `main` → CI verde → `.github/workflows/deploy.yml` monta as imagens, publica no GHCR e manda esta pasta pra VPS. Lá: backup → baixa as imagens → `up -d` → espera API e web ficarem saudáveis (2 min) → se não ficarem, **volta sozinha pra versão anterior** e o job falha.
+Merge na `main` → CI verde → workflow Deploy. A VPS: confere que o Postgres está de pé (sem backup, não publica) → backup → baixa as imagens → `up -d` → espera API e web saudáveis (2 min) → se não ficarem, **volta sozinha pra versão anterior** e o job falha.
 
-- **PR não publica.** Só push na `main` com CI verde (ou disparo manual em Actions → Deploy).
-- **Voltar versão:** Actions → o deploy do commit antigo → Re-run.
-- **Acesso às imagens privadas:** nenhuma senha fica no servidor. O job `publicar` (só leitura de pacotes) manda o próprio `GITHUB_TOKEN` junto do pacote; a VPS faz login numa pasta temporária, baixa e apaga. O token morre quando o job acaba, e quem escreve no GHCR é só o job `imagens`.
+- **PR não publica.** Só push na `main` com CI verde (ou disparo manual em Actions → Deploy). Os secrets do deploy existem só no environment `production`, que só aceita a `main`.
+- **Fora de ordem não sobe.** Se a `main` já andou quando o deploy de um commit chega na vez dele, ele pula sem falhar (um SHA velho não pode subir por cima de um banco já migrado pelo novo).
+- **Voltar versão:** Actions → o deploy do commit antigo → Re-run (re-run passa direto pela checagem de ordem).
+- **Acesso às imagens privadas:** nenhuma senha fica no servidor. O pacote que vai pra VPS é só o `.registro` com o `GITHUB_TOKEN` do job `publicar` (só lê pacotes, morre com o job); a VPS faz login numa pasta temporária, baixa e apaga.
 
 ### Migração de banco (atenção)
 
-A API aplica as migrações sozinha ao subir (`MigrateAsync` no `Program.cs`, antes de abrir a porta). **A volta automática troca as imagens, mas não desfaz migração**: se a versão nova migrou e não ficou saudável, a anterior volta rodando em cima do banco já migrado. Por isso toda migração tem que funcionar com a versão anterior ainda de pé:
+A API aplica as migrações sozinha ao subir (`MigrateAsync` no `Program.cs`, antes de abrir a porta; o healthcheck só fica verde depois). **A volta automática troca as imagens, mas não desfaz migração**: se a versão nova migrou e não ficou saudável, a anterior volta rodando em cima do banco já migrado. Por isso toda migração tem que funcionar com a versão anterior ainda de pé:
 
 - Pode: criar tabela, coluna que aceita nulo ou tem valor padrão, índice.
 - Em duas etapas (dois deploys): renomear ou apagar coluna/tabela, tornar coluna obrigatória. Primeiro o código para de usar; no deploy seguinte, a migração tira.
-- Se precisar mesmo desfazer: restaurar o backup feito logo antes do deploy (abaixo).
+- Se precisar mesmo desfazer: restaurar o backup feito logo antes do deploy (comando no README do servidor).
 
 ## Manual: só em emergência
 
-Com o deploy automático fora do ar. No servidor, como root:
-
-```bash
-cd /srv/pontes/deploy
-VERSAO=<sha do commit> docker compose -f docker-compose.prod.yml pull
-VERSAO=<sha do commit> docker compose -f docker-compose.prod.yml up -d
-```
-
-## Restaurar backup
-
-O backup já leva os comandos de apagar antes de recriar (`--clean`), então restaura por cima do banco atual.
-
-```bash
-cd /srv/pontes/deploy
-gunzip -c /var/backups/pontes/ARQUIVO.sql.gz | VERSAO=atual docker compose -f docker-compose.prod.yml exec -T postgres psql -U pontes -d pontes
-```
+Com o deploy automático fora do ar: pelo chat do servidor (compose e comandos moram lá).
 
 ## Pendências
 
 - E-mail (SMTP) em produção: sem ele, recuperar senha não envia nada. Ao ligar o provedor, o SPF do DNS muda (chat do servidor).
-- Cópia do backup fora do servidor (hoje só no disco da VPS + backup semanal da Hostinger).
+- Cópia do backup fora do servidor.
 - LGPD art. 33 (servidor nos EUA): ver gate no ROADMAP.
+- Cookies do app e `pontesdev.com.br` (site de outro repo) no mesmo "site": ver item no ROADMAP.

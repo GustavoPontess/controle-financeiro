@@ -1,11 +1,11 @@
 # Deploy automático do Pontes (padrão em E:\VSCode\pontes\servidor\deploy\PADRAO.md, "app com containers").
 # Merge na main → CI verde → monta as imagens da API e do web, publica no GHCR (privado) com tag = SHA →
-# manda a pasta deploy/ pra VPS. Lá: backup do banco → pull → up -d → espera ficar saudável (2 min) → se não
-# ficar, volta sozinha pra versão anterior e este workflow falha. Voltar versão: re-rodar o deploy do commit antigo.
+# avisa a VPS. Lá: backup do banco → pull → up -d → espera ficar saudável (2 min) → se não ficar, volta sozinha
+# pra versão anterior e este workflow falha. Voltar versão: re-rodar o deploy do commit antigo.
 #
-# Dois jobs de propósito: só "imagens" pode ESCREVER no GHCR. "publicar" roda só com leitura, e o token dele
-# (GITHUB_TOKEN, morre quando o job acaba) é o que vai pra VPS baixar as imagens: nenhuma senha fica guardada
-# no servidor, e o token que sai daqui não consegue publicar imagem.
+# O compose de produção e o backup moram no repo do SERVIDOR (rodam como root lá). Daqui só vai o .registro:
+# o GITHUB_TOKEN do job "publicar" (só lê pacotes, morre com o job), pra VPS baixar as imagens e apagar.
+# Só "imagens" escreve no GHCR. Actions fixadas por SHA: uma tag sequestrada não publica imagem com backdoor.
 name: Deploy
 
 on:
@@ -36,20 +36,21 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ env.SHA }}
+          persist-credentials: false
 
-      - uses: docker/login-action@v4
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: docker/setup-buildx-action@v4
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Imagem da API
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: ControleFinanceiro.Api
           push: true
@@ -58,7 +59,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=api
 
       - name: Imagem do web (front v2 + proxy interno)
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: controle-financeiro.v2
           push: true
@@ -75,14 +76,21 @@ jobs:
       contents: read
       packages: read
     steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ env.SHA }}
+      # Dois merges seguidos podem ter o CI terminando fora de ordem: um SHA velho não sobe por cima de um banco
+      # já migrado pelo novo. Re-run (run_attempt > 1) é rollback de propósito e passa direto.
+      - name: Conferir se ainda é a última da main
+        id: ordem
+        if: github.run_attempt == 1
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          atual=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" -q .sha)
+          [ "$atual" = "$SHA" ] || { echo "main já está em $atual; pulando $SHA"; echo pular=1 >> "$GITHUB_OUTPUT"; }
 
       # Chave, known_hosts e token só por env:, nunca ${{ secrets.* }} direto no run:.
-      # O pacote leva .registro (linha 1 usuário, linha 2 token): a VPS faz login numa pasta temporária,
-      # baixa as imagens e apaga.
+      # O pacote é só o .registro (linha 1 usuário, linha 2 token).
       - name: Publicar na VPS
+        if: steps.ordem.outputs.pular != '1'
         env:
           CHAVE: ${{ secrets.DEPLOY_SSH_KEY }}
           HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
@@ -92,7 +100,6 @@ jobs:
           printf '%s\n' "$HOSTS" > ~/.ssh/known_hosts
           printf '%s\n' "$CHAVE" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
           mkdir -m 700 pacote
-          git archive HEAD deploy | tar -x -C pacote
           (umask 077; printf '%s\n%s\n' "$GITHUB_ACTOR" "$REGISTRO" > pacote/.registro)
           tar -czf - -C pacote . | ssh -i ~/.ssh/deploy deploy@2.24.204.86 "$SHA"
 
