@@ -1,7 +1,11 @@
 # Deploy automático do Pontes (padrão em E:\VSCode\pontes\servidor\deploy\PADRAO.md, "app com containers").
 # Merge na main → CI verde → monta as imagens da API e do web, publica no GHCR (privado) com tag = SHA →
 # manda a pasta deploy/ pra VPS. Lá: backup do banco → pull → up -d → espera ficar saudável (2 min) → se não
-# ficar, volta sozinha pra versão anterior e este job falha. Voltar versão: re-rodar o deploy do commit antigo.
+# ficar, volta sozinha pra versão anterior e este workflow falha. Voltar versão: re-rodar o deploy do commit antigo.
+#
+# Dois jobs de propósito: só "imagens" pode ESCREVER no GHCR. "publicar" roda só com leitura, e o token dele
+# (GITHUB_TOKEN, morre quando o job acaba) é o que vai pra VPS baixar as imagens: nenhuma senha fica guardada
+# no servidor, e o token que sai daqui não consegue publicar imagem.
 name: Deploy
 
 on:
@@ -17,18 +21,20 @@ concurrency:
 
 permissions:
   contents: read
-  packages: write
+
+env:
+  SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+  IMAGEM: ghcr.io/gustavopontess/controle-financeiro
 
 jobs:
-  deploy:
-    name: Publicar na VPS
+  imagens:
+    name: Montar imagens
     # Só CI verde de push na main (PR não publica); ou disparo manual.
     if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
-    environment: production
-    env:
-      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
-      IMAGEM: ghcr.io/gustavopontess/controle-financeiro
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v7
         with:
@@ -60,17 +66,36 @@ jobs:
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
 
-      # Chave e known_hosts só por env:, nunca ${{ secrets.* }} direto no run:.
+  publicar:
+    name: Publicar na VPS
+    needs: imagens
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.SHA }}
+
+      # Chave, known_hosts e token só por env:, nunca ${{ secrets.* }} direto no run:.
+      # O pacote leva .registro (linha 1 usuário, linha 2 token): a VPS faz login numa pasta temporária,
+      # baixa as imagens e apaga.
       - name: Publicar na VPS
         env:
           CHAVE: ${{ secrets.DEPLOY_SSH_KEY }}
           HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          REGISTRO: ${{ secrets.GITHUB_TOKEN }}
         run: |
           install -d -m 700 ~/.ssh
           printf '%s\n' "$HOSTS" > ~/.ssh/known_hosts
           printf '%s\n' "$CHAVE" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
-          git archive --format=tar.gz HEAD deploy | ssh -i ~/.ssh/deploy deploy@2.24.204.86 "$SHA"
+          mkdir -m 700 pacote
+          git archive HEAD deploy | tar -x -C pacote
+          (umask 077; printf '%s\n%s\n' "$GITHUB_ACTOR" "$REGISTRO" > pacote/.registro)
+          tar -czf - -C pacote . | ssh -i ~/.ssh/deploy deploy@2.24.204.86 "$SHA"
 
-      - name: Apagar a chave
+      - name: Apagar chave e pacote
         if: always()
-        run: rm -f ~/.ssh/deploy
+        run: rm -rf ~/.ssh/deploy pacote

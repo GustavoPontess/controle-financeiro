@@ -23,7 +23,7 @@ Merge na `main` → CI verde → `.github/workflows/deploy.yml` monta as imagens
 
 - **PR não publica.** Só push na `main` com CI verde (ou disparo manual em Actions → Deploy).
 - **Voltar versão:** Actions → o deploy do commit antigo → Re-run.
-- **Primeira vez:** a VPS precisa do token de leitura do GHCR (lado do servidor); sem ele o `pull` falha e nada muda no ar.
+- **Acesso às imagens privadas:** nenhuma senha fica no servidor. O job `publicar` (só leitura de pacotes) manda o próprio `GITHUB_TOKEN` junto do pacote; a VPS faz login numa pasta temporária, baixa e apaga. O token morre quando o job acaba, e quem escreve no GHCR é só o job `imagens`.
 
 ### Migração de banco (atenção)
 
