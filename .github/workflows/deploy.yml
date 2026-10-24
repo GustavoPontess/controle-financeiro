@@ -1,12 +1,34 @@
 # Deploy do Pontes com Kamal 2 (contrato em E:\VSCode\pontes\servidor\deploy\PLANO-KAMAL.md).
 # Só por clique: Actions → Deploy → Run workflow, na main. O clique é a aprovação (decisão do Gustavo, 24/10/2026).
-# Confere o CI verde do commit, monta as imagens, publica no GHCR e sobe na VPS: primeiro a API (com backup do
-# banco antes, hook pre-deploy), depois o web. O kamal-proxy só troca o tráfego depois do health check; se a
-# versão nova não ficar saudável, o deploy falha e a anterior continua no ar. Voltar: kamal rollback (deploy/README.md).
+# O Kamal só roda aqui, porque a chave de deploy só existe no environment "production".
+#
+#   deploy   (padrão) confere o CI verde do commit, monta as imagens, publica no GHCR e sobe na VPS: primeiro a API
+#            (backup do banco antes, hook pre-deploy), depois o web. O kamal-proxy só troca o tráfego depois do
+#            health check; se a versão nova não ficar saudável, o deploy falha e a anterior continua no ar.
+#   setup    primeira vez: liga o kamal-proxy e o Postgres (acessório db) e faz o deploy.
+#            ⚠ SÓ com o chat do servidor coordenando a virada: o Postgres antigo tem que estar PARADO antes,
+#            nunca dois Postgres no mesmo volume pontes_pgdata.
+#   rollback volta pra uma versão que já esteve no ar (SHA de 40 caracteres), na API, no web ou nos dois.
+#            Não confere o CI (a versão já passou por ele quando subiu) e não monta imagem.
 name: Deploy
 
 on:
   workflow_dispatch:
+    inputs:
+      acao:
+        description: O que fazer
+        type: choice
+        options: [deploy, setup, rollback]
+        default: deploy
+      versao:
+        description: Só pro rollback, o SHA (40 caracteres) da versão que volta
+        type: string
+        required: false
+      alvo:
+        description: Só pro rollback, onde voltar
+        type: choice
+        options: [ambos, api, web]
+        default: ambos
 
 concurrency:
   group: deploy-pontes
@@ -17,7 +39,7 @@ permissions:
 
 jobs:
   deploy:
-    name: Kamal deploy
+    name: Kamal ${{ inputs.acao }}
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
@@ -26,7 +48,21 @@ jobs:
       packages: write
       actions: read
     steps:
+      # Entradas só por env: (nunca ${{ inputs.* }} direto no run:).
+      - name: Conferir as entradas
+        env:
+          ACAO: ${{ inputs.acao }}
+          VERSAO: ${{ inputs.versao }}
+          ALVO: ${{ inputs.alvo }}
+        run: |
+          case "$ACAO" in deploy|setup|rollback) ;; *) echo "::error::ação inválida"; exit 1 ;; esac
+          case "$ALVO" in ambos|api|web) ;; *) echo "::error::alvo inválido"; exit 1 ;; esac
+          if [ "$ACAO" = rollback ] && ! printf '%s' "$VERSAO" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "::error::rollback precisa da versão: o SHA do commit, 40 caracteres hexadecimais"; exit 1
+          fi
+
       - name: Conferir o CI verde deste commit
+        if: inputs.acao != 'rollback'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -55,13 +91,18 @@ jobs:
         run: gem install kamal -v 2.12.0 --no-document
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        if: inputs.acao != 'rollback'
 
       # Expõe o cache do Actions pro buildx do Kamal (builder.cache type gha).
       - uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487 # v4.0.0
+        if: inputs.acao != 'rollback'
 
       # Segredos só por env: (o .kamal/secrets lê daqui). KAMAL_REGISTRY_PASSWORD = token do job (GHCR).
-      - name: Deploy da API (backup antes, no hook pre-deploy)
+      - name: API (backup antes, no hook pre-deploy)
+        if: inputs.acao != 'rollback' || inputs.alvo != 'web'
         env:
+          ACAO: ${{ inputs.acao }}
+          VERSAO: ${{ inputs.versao }}
           KAMAL_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
           KAMAL_SSH_KEY: ${{ secrets.KAMAL_SSH_KEY }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
@@ -72,10 +113,22 @@ jobs:
           MFA_ENCRYPTION_KEY: ${{ secrets.MFA_ENCRYPTION_KEY }}
           ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
           HANGFIRE_ADMIN_EMAILS: ${{ secrets.HANGFIRE_ADMIN_EMAILS }}
-        run: kamal deploy -c config/deploy.api.yml
+        run: |
+          case "$ACAO" in
+            deploy)   kamal deploy -c config/deploy.api.yml ;;
+            setup)    kamal setup -c config/deploy.api.yml ;;
+            rollback) kamal rollback "$VERSAO" -c config/deploy.api.yml ;;
+          esac
 
-      - name: Deploy do web
+      - name: Web
+        if: inputs.acao != 'rollback' || inputs.alvo != 'api'
         env:
+          ACAO: ${{ inputs.acao }}
+          VERSAO: ${{ inputs.versao }}
           KAMAL_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
           KAMAL_SSH_KEY: ${{ secrets.KAMAL_SSH_KEY }}
-        run: kamal deploy -c config/deploy.web.yml
+        run: |
+          case "$ACAO" in
+            deploy|setup) kamal deploy -c config/deploy.web.yml ;;
+            rollback)     kamal rollback "$VERSAO" -c config/deploy.web.yml ;;
+          esac

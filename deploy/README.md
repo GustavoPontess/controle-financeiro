@@ -13,7 +13,7 @@ O Pontes vai pro ar com o **Kamal 2** (v2.12.0). Contrato e plano completos: `E:
 
 ## Como publicar
 
-Actions → **Deploy** → Run workflow, na `main`. O clique é a aprovação. O workflow:
+Actions → **Deploy** → Run workflow, na `main`, ação `deploy` (padrão). O clique é a aprovação. O workflow:
 
 1. para se o CI daquele commit não estiver verde;
 2. `kamal deploy -c config/deploy.api.yml`: monta a imagem, publica no GHCR, roda o backup na VPS (se falhar, o deploy para), sobe a versão nova ao lado da velha; o `kamal-proxy` só manda tráfego pra nova quando o `/health` responde (até 120 s, por causa das migrações) e então derruba a velha;
@@ -23,13 +23,13 @@ Se a versão nova não ficar saudável, o deploy falha e a anterior continua no 
 
 ## Voltar versão
 
-```bash
-kamal app containers -c config/deploy.api.yml    # lista as versões guardadas na VPS
-kamal rollback <versão> -c config/deploy.api.yml
-kamal rollback <versão> -c config/deploy.web.yml
-```
+Actions → **Deploy** → Run workflow, na `main`, com **ação `rollback`**, a **versão** (SHA de 40 caracteres de um commit que já esteve no ar) e o **alvo** (`ambos`, `api` ou `web`). Roda `kamal rollback <versão> -c config/deploy.<alvo>.yml`; não confere o CI nem monta imagem. Só funciona pra versão cujo container o Kamal ainda guarda na VPS (as últimas). O hook faz backup antes de voltar a API.
 
-Precisa dos mesmos secrets no ambiente (rodar a partir de quem tem a chave de deploy; hoje, só o GitHub).
+O Kamal só roda pelo workflow: a chave de deploy só existe no environment `production` do GitHub.
+
+## Primeira vez (`setup`)
+
+Ação `setup`: liga o `kamal-proxy` e o Postgres (acessório `db`) e faz o deploy da API e do web. **Só com o chat do servidor coordenando a virada:** o Postgres antigo precisa estar parado antes, nunca dois Postgres no mesmo volume `pontes_pgdata`.
 
 ## Migração de banco (atenção)
 
