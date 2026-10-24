@@ -12,9 +12,10 @@ import Entrada from "../componentes/Entrada"
 import { cadastrar } from "../services/cadastroService"
 import { mensagemDeErro } from "../api/cliente"
 import { useAuth } from "../auth/useAuth"
-import { APP_ATUAL } from "../config"
+import { NOME_PRODUTO, PAGINA_PRODUTO } from "../config"
 import { ehErroDaSenha, requisitosSenha, SENHA_MAX, senhaValida } from "../dominio/senha"
 import styles from "./Auth.module.css"
+import SeloPontesDev from "../componentes/SeloPontesDev"
 
 const MAX_NOME = 200
 const MAX_EMAIL = 255
@@ -104,26 +105,26 @@ export default function Cadastro() {
             ))}
           </ul>
         </div>
-        <span className={styles.palcoRodape}>Pontes · finanças pessoais e familiares</span>
+        <SeloPontesDev className={styles.palcoRodape} />
       </aside>
 
       <main className={styles.painel}>
         <div className={styles.painelMiolo}>
-          <a href={`${APP_ATUAL}/`} className={styles.voltar}><ArrowLeft size={16} strokeWidth={2.25} aria-hidden="true" /> Página inicial</a>
+          <a href={PAGINA_PRODUTO} className={styles.voltar}><ArrowLeft size={16} strokeWidth={2.25} aria-hidden="true" /> Conhecer o {NOME_PRODUTO}</a>
           <div className={styles.marcaMovel}><Logo size={26} /></div>
 
           {enviado ? (
             <div className={styles.form} role="status">
               <span className={styles.selo}><MailCheck size={26} strokeWidth={2} aria-hidden="true" /></span>
-              <h1 className={styles.titulo}>Cadastro enviado!</h1>
+              <h1 className={styles.titulo}>Pedido enviado!</h1>
               <p className={styles.ok}>{enviado}</p>
-              <p className={styles.sub}>Assim que sua conta for aprovada, você já poderá entrar normalmente.</p>
+              <p className={styles.sub}>Assim que o pedido for aprovado, você já poderá entrar normalmente.</p>
               <Botao variante="primario" tamanho="lg" cheio onClick={() => navigate("/entrar")}>Ir para o login</Botao>
             </div>
           ) : (
             <>
-              <h1 className={styles.titulo}>Criar conta grátis</h1>
-              <p className={styles.sub}>Já tem conta? <Link to="/entrar">Entrar</Link></p>
+              <h1 className={styles.titulo}>Pedir acesso</h1>
+              <p className={styles.sub}>O {NOME_PRODUTO} está em beta fechado: você recebe acesso assim que o pedido for aprovado. Já tem conta? <Link to="/entrar">Entrar</Link></p>
 
               <form className={styles.form} onSubmit={enviar} noValidate>
                 {erro && <p className={styles.alerta} role="alert">{erro}</p>}
@@ -159,7 +160,7 @@ export default function Cadastro() {
                   </label>
                   {erros.privacidade && <p className={styles.erroCampo} role="alert">{erros.privacidade}</p>}
                 </div>
-                <Botao variante="primario" tamanho="lg" cheio type="submit" disabled={enviando}>{enviando ? "Criando…" : "Criar conta grátis"}</Botao>
+                <Botao variante="primario" tamanho="lg" cheio type="submit" disabled={enviando}>{enviando ? "Enviando…" : "Enviar pedido"}</Botao>
               </form>
 
               <p className={styles.rodape}>

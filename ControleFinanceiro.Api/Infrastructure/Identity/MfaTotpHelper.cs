@@ -11,7 +11,7 @@ namespace ControleFinanceiro.Api.Infrastructure.Identity;
 public static class MfaTotpHelper
 {
     private const int SecretSizeBytes = 20; // 160 bits — mínimo recomendado RFC 4226 §4
-    private const string Issuer = "Pontes";
+    private const string Issuer = "Pontes Finanças";
 
     public static byte[] GerarSecret() => KeyGeneration.GenerateRandomKey(SecretSizeBytes);
 

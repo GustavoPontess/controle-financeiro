@@ -16,7 +16,7 @@ const renderizar = () => render(
     </Routes>
   </MemoryRouter>,
 )
-const botao = () => screen.getByRole("button", { name: "Criar conta grátis" })
+const botao = () => screen.getByRole("button", { name: "Enviar pedido" })
 const campo = (rotulo: string | RegExp) => screen.getByLabelText(rotulo)
 const SENHA = "uma frase longa e boa"
 
@@ -71,7 +71,7 @@ describe("Cadastro", () => {
     await userEvent.click(campo(/Li e aceito/))
     await userEvent.click(botao())
     expect(cadastrar).toHaveBeenCalledWith({ nome: "Ana Teste", email: "ana@teste.com", dataNascimento: "1990-05-20", password: SENHA, confirmPassword: SENHA })
-    expect(await screen.findByText("Cadastro enviado!")).toBeInTheDocument()
+    expect(await screen.findByText("Pedido enviado!")).toBeInTheDocument()
     expect(screen.getByText(/Cadastro recebido/)).toBeInTheDocument()
     await userEvent.click(screen.getByRole("button", { name: "Ir para o login" }))
     expect(await screen.findByText("tela de entrar")).toBeInTheDocument()

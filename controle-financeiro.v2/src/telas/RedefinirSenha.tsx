@@ -12,6 +12,7 @@ import { redefinirSenha } from "../services/senhaService"
 import { mensagemDeErro } from "../api/cliente"
 import { ehErroDaSenha, requisitosSenha, SENHA_MAX, senhaValida } from "../dominio/senha"
 import styles from "./Auth.module.css"
+import SeloPontesDev from "../componentes/SeloPontesDev"
 
 type Erros = Partial<Record<"senha" | "confirmar", string>>
 
@@ -58,7 +59,7 @@ export default function RedefinirSenha() {
           <p className={styles.frase}>Uma senha nova, <span className={styles.fraseSuave}>e pronto.</span></p>
           <p className={styles.lead}>Pode ser uma frase, fácil de lembrar e difícil de adivinhar. Só precisa ter 15 caracteres ou mais.</p>
         </div>
-        <span className={styles.palcoRodape}>Pontes · finanças pessoais e familiares</span>
+        <SeloPontesDev className={styles.palcoRodape} />
       </aside>
 
       <main className={styles.painel}>

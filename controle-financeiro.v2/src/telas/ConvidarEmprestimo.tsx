@@ -52,7 +52,7 @@ export default function ConvidarEmprestimo() {
           {erro && <p className={styles.alerta} role="alert">{erro}</p>}
           {link ? (
             <>
-              <p className={styles.ok}>Convite criado. Se {quem.split(" ")[0]} tiver conta no Pontes, já aparece pra responder.</p>
+              <p className={styles.ok}>Convite criado. Se {quem.split(" ")[0]} tiver conta no Pontes Finanças, já aparece pra responder.</p>
               <Campo rotulo="Link pra mandar">
                 <div className={styles.link}>
                   <Entrada readOnly value={link} onFocus={(x) => x.target.select()} />

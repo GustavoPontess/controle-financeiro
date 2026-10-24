@@ -17,7 +17,7 @@ public sealed record SmtpOpcoes(
     // Raiz do front (links dos e-mails), sem barra no fim.
     string AppUrl)
 {
-    public const string RemetentePadrao = "Pontes <nao-responda@localhost>";
+    public const string RemetentePadrao = "Pontes Finanças <nao-responda@localhost>";
     public const string AppUrlPadrao = "http://localhost:5174";
 
     public bool Ativo => !string.IsNullOrWhiteSpace(Host);

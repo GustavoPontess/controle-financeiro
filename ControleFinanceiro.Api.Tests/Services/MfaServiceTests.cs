@@ -120,6 +120,7 @@ public class MfaServiceTests : IDisposable
 
         Assert.False(string.IsNullOrEmpty(setup.SecretBase32));
         Assert.StartsWith("otpauth://totp/", setup.QrCodeUri);
+        Assert.Contains("issuer=Pontes%20Finan%C3%A7as", setup.QrCodeUri); // o app autenticador mostra "Pontes Finanças"
         var depois = await ctx.Usuarios.FindAsync(u.Id);
         Assert.False(depois!.MfaAtivo); // ainda não confirmou
         Assert.NotNull(depois.MfaSecretoPendenteCriptografado);
