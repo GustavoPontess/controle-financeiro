@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react"
 import { Navigate, Route, Routes, useParams } from "react-router-dom"
 import Protegido from "./auth/Protegido"
 import V2Layout from "./layout/V2Layout"
@@ -57,6 +58,9 @@ import EmprestimoFormulario from "./telas/EmprestimoFormulario"
 import RegistrarEmprestimo from "./telas/RegistrarEmprestimo"
 import ConvidarEmprestimo from "./telas/ConvidarEmprestimo"
 import ConfirmarPagamentoEmprestimo from "./telas/ConfirmarPagamentoEmprestimo"
+
+// Admin num pedaço à parte: quem não é admin nunca baixa a tela nem o adminService.
+const Admin = lazy(() => import("./telas/Admin"))
 
 // Telas ainda não transformadas: navegam, mostram "em construção" e apontam pro app atual.
 const PENDENTES: [string, string, string][] = [
@@ -140,6 +144,8 @@ export default function App() {
         <Route path="/cartoes/:id/faturas/:faturaId/pagar" element={<PagarFatura />} />
         <Route path="/notificacoes" element={<Notificacoes />} />
         <Route path="/configuracoes" element={<Configuracoes />} />
+        {/* Só admin (a tela manda quem não é pra Visão geral; o servidor confere em cada chamada). */}
+        <Route path="/admin" element={<Suspense fallback={null}><Admin /></Suspense>} />
         {PENDENTES.map(([rota, titulo, atual]) => (
           <Route key={rota} path={rota} element={<EmConstrucao titulo={titulo} atual={atual} />} />
         ))}

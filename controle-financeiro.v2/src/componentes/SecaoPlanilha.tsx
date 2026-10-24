@@ -8,9 +8,10 @@ import { Dinheiro } from "./Dinheiro"
 import { Planilha } from "./Planilha"
 import styles from "./SecaoPlanilha.module.css"
 
-export type NumeroSecao = { rotulo: string; valor?: number; tom?: "positivo" | "negativo" }
+/** `contagem`: número de coisas (cadastros, pessoas), sem R$. Padrão: dinheiro. */
+export type NumeroSecao = { rotulo: string; valor?: number; tom?: "positivo" | "negativo"; contagem?: boolean }
 
-export default function SecaoPlanilha({ titulo, numeros, acao, rotuloNome, colunas, rotulo, carregando, erro, vazio, rodape, children }: {
+export default function SecaoPlanilha({ titulo, numeros, acao, rotuloNome, colunas, rotulo, carregando, erro, vazio, rodape, semBarra, larguraAcao, children }: {
   titulo: string
   /** Nome da primeira coluna da tabela ("Categoria", "Meta"). */
   rotuloNome: string
@@ -30,6 +31,10 @@ export default function SecaoPlanilha({ titulo, numeros, acao, rotuloNome, colun
   children?: ReactNode
   /** A última linha da tabela (`LinhaBotaoPlanilha` com "Planejar categoria"); aparece mesmo com a tabela vazia. */
   rodape?: ReactNode
+  /** Sem a coluna da barra (tabela que não tem progresso, como a do Admin). */
+  semBarra?: boolean
+  /** Coluna de ação com botões de texto (ver `Planilha`). */
+  larguraAcao?: string
 }) {
   return (
     <Bloco titulo={titulo} semRespiro>
@@ -39,6 +44,7 @@ export default function SecaoPlanilha({ titulo, numeros, acao, rotuloNome, colun
             <div key={n.rotulo} className={styles.numero}>
               <span className={styles.rotulo}>{n.rotulo}</span>
               {n.valor === undefined ? <span className={styles.esqueleto} aria-hidden="true" />
+                : n.contagem ? <span className={styles.valor} data-tom={n.tom}>{n.valor.toLocaleString("pt-BR")}</span>
                 : <Dinheiro valor={n.valor} className={styles.valor} tom={n.tom} />}
             </div>
           ))}
@@ -50,7 +56,7 @@ export default function SecaoPlanilha({ titulo, numeros, acao, rotuloNome, colun
         <>
           {vazio && <div className={styles.vazio}>{vazio}</div>}
           {(!vazio || rodape) && (
-            <Planilha rotulo={rotulo ?? titulo} rotuloNome={rotuloNome} colunas={colunas} barra acao semCabecalho={!!vazio}>
+            <Planilha rotulo={rotulo ?? titulo} rotuloNome={rotuloNome} colunas={colunas} barra={!semBarra} acao larguraAcao={larguraAcao} semCabecalho={!!vazio}>
               {!vazio && children}
               {rodape}
             </Planilha>
