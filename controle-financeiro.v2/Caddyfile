@@ -1,0 +1,36 @@
+# Servidor interno do front v2 em produção (porta 80, só na rede Docker, sem HTTPS).
+# O HTTPS e o domínio ficam no proxy central da VPS (pasta E:\VSCode\pontes\servidor), que repassa pra cá.
+{
+	auto_https off
+	admin off
+	# O proxy central já mandou o IP real do visitante (X-Forwarded-For): confia só na rede Docker,
+	# senão a API (rate limit, log de segurança) vê o IP do proxy em vez do visitante.
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
+:80 {
+	encode zstd gzip
+
+	# A API manda os próprios cabeçalhos (CSP do Hangfire inclusive).
+	handle /api/* {
+		reverse_proxy api:8080
+	}
+	handle /hangfire* {
+		reverse_proxy api:8080
+	}
+
+	# O front. CSP: só o próprio domínio + a fonte do Google (index.html).
+	handle {
+		header {
+			Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+			X-Frame-Options "DENY"
+			Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+			-Server
+		}
+		root * /srv/app
+		try_files {path} /index.html
+		file_server
+	}
+}

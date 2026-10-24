@@ -1,0 +1,76 @@
+# Deploy automático do Pontes (padrão em E:\VSCode\pontes\servidor\deploy\PADRAO.md, "app com containers").
+# Merge na main → CI verde → monta as imagens da API e do web, publica no GHCR (privado) com tag = SHA →
+# manda a pasta deploy/ pra VPS. Lá: backup do banco → pull → up -d → espera ficar saudável (2 min) → se não
+# ficar, volta sozinha pra versão anterior e este job falha. Voltar versão: re-rodar o deploy do commit antigo.
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-pontes
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  deploy:
+    name: Publicar na VPS
+    # Só CI verde de push na main (PR não publica); ou disparo manual.
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      IMAGEM: ghcr.io/gustavopontess/controle-financeiro
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.SHA }}
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Imagem da API
+        uses: docker/build-push-action@v7
+        with:
+          context: ControleFinanceiro.Api
+          push: true
+          tags: ${{ env.IMAGEM }}-api:${{ env.SHA }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      - name: Imagem do web (front v2 + proxy interno)
+        uses: docker/build-push-action@v7
+        with:
+          context: controle-financeiro.v2
+          push: true
+          tags: ${{ env.IMAGEM }}-web:${{ env.SHA }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+      # Chave e known_hosts só por env:, nunca ${{ secrets.* }} direto no run:.
+      - name: Publicar na VPS
+        env:
+          CHAVE: ${{ secrets.DEPLOY_SSH_KEY }}
+          HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$HOSTS" > ~/.ssh/known_hosts
+          printf '%s\n' "$CHAVE" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          git archive --format=tar.gz HEAD deploy | ssh -i ~/.ssh/deploy deploy@2.24.204.86 "$SHA"
+
+      - name: Apagar a chave
+        if: always()
+        run: rm -f ~/.ssh/deploy

@@ -1,0 +1,6 @@
+# Rodam no Linux (VPS / containers): fim de linha Unix sempre, mesmo com checkout no Windows.
+*.sh text eol=lf
+deploy/** text eol=lf
+controle-financeiro.v2/Caddyfile text eol=lf
+controle-financeiro.v2/Dockerfile text eol=lf
+ControleFinanceiro.Api/Dockerfile text eol=lf
