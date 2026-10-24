@@ -33,7 +33,12 @@ builder:
 # O kamal-proxy manda https://app.pontesdev.com.br/api/... pra cá sem cortar o prefixo (as rotas são /api/v1/...);
 # o resto do mesmo host vai pro pontes-web (config/deploy.web.yml).
 proxy:
-  ssl: true
+  # Serviço com caminho (/api) não pode ter TLS próprio: o kamal-proxy recusa ("TLS settings must be specified on
+  # the root path service") e herda o HTTPS do serviço da raiz do mesmo host, o pontes-web
+  # (syncTLSOptionsFromRootDomain, kamal-proxy v0.9.2). forward_headers: false pra o proxy sobrescrever o
+  # X-Forwarded-For com o IP real em vez de repassar o que o cliente mandou.
+  ssl: false
+  forward_headers: false
   host: app.pontesdev.com.br
   app_port: 8080
   path_prefix: /api
