@@ -56,6 +56,15 @@ env:
     ASPNETCORE_ENVIRONMENT: Production
     APP_URL: https://app.pontesdev.com.br
     CORS_ALLOWED_ORIGINS: https://app.pontesdev.com.br
+    # E-mail pelo Resend (domínio pontesdev.com.br verificado, região São Paulo). Remetentes decididos com o
+    # Gustavo (24/10/2026); o domínio não recebe e-mail, por isso naoresponda@ e o Reply-To dos avisos do produto.
+    SMTP_HOST: smtp.resend.com
+    SMTP_PORT: "587"
+    SMTP_SECURITY: starttls
+    SMTP_USER: resend
+    SMTP_FROM: "Pontes Finanças <naoresponda@pontesdev.com.br>"
+    SMTP_FROM_SEGURANCA: "Pontes Finanças <seguranca@pontesdev.com.br>"
+    SMTP_FROM_PRODUTO: "Pontes Finanças <pontes@pontesdev.com.br>"
   secret:
     - DATABASE_URL
     - JWT_SECRET
@@ -65,6 +74,10 @@ env:
     - MFA_ENCRYPTION_KEY
     - ADMIN_EMAILS
     - HANGFIRE_ADMIN_EMAILS
+    # A senha do SMTP do Resend é a chave da API ("Sending access", só este domínio). O Reply-To é e-mail
+    # pessoal (dado pessoal): fica fora do repo, vem do secret.
+    - SMTP_PASS:RESEND_API_KEY
+    - SMTP_REPLY_TO_PRODUTO
 
 # Os volumes que já existem na VPS: logs e as chaves do Data Protection continuam.
 volumes:
