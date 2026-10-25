@@ -21,7 +21,6 @@ import { familiaDaRota, useEspacos } from "../estado/espaco"
 import { useHideBalance } from "../estado/ocultar"
 import { useNaoLidas } from "../estado/notificacoes"
 import PainelNotificacoes from "./PainelNotificacoes"
-import SeloPontesDev from "../componentes/SeloPontesDev"
 import { NOME_PRODUTO } from "../config"
 import styles from "./V2Layout.module.css"
 
@@ -176,8 +175,6 @@ export default function V2Layout() {
           </>}
         </nav>
         <div className={styles.rodape}>
-          {/* Selo discreto do estúdio; some no trilho (só ícones). */}
-          <SeloPontesDev className={`${styles.selo} ${styles.itemRotulo}`} />
           <div className={styles.usuario} ref={usuarioRef}>
             {/* O bloco da pessoa diz em que espaço ela está (Pessoal ou a família); o menu troca de espaço. */}
             <button type="button" className={styles.usuarioBotao} aria-label={usuario?.nome ?? "Conta"} title={recolhido ? `${usuario?.nome} · ${nomeDoEspaco}` : undefined}
