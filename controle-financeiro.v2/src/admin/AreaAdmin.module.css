@@ -2,6 +2,10 @@
 .aviso { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-positivo-suave); color: var(--v2-positivo); font-size: var(--v2-fs-sm); font-weight: 500; }
 .aviso[data-erro="true"] { background: var(--v2-negativo-suave); color: var(--v2-negativo); }
 .busca { width: 280px; max-width: 100%; }
+.porta { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; background: var(--v2-bg); }
+.porta > * { width: min(440px, 100%); }
+.portaCorpo { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; }
+.portaTexto { margin: 0; color: var(--v2-texto-2); font-size: var(--v2-fs-md); }
 
 @media (max-width: 900px) {
   .busca { width: 100%; }

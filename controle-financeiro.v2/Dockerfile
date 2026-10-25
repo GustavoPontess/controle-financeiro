@@ -12,3 +12,7 @@ RUN npm run build
 FROM caddy:2-alpine AS runtime
 COPY Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /app/dist /srv/app
+
+# ADMIN_PATH (endereço secreto do admin, do deploy): barra + 20 ou mais letras, números, - ou _. Fora disso, ou sem
+# ele, o admin não sobe: a página é apagada e o Caddy aponta pra um caminho que não leva a nada.
+CMD ["sh", "-c", "if ! printf '%s' \"$ADMIN_PATH\" | grep -Eq '^/[A-Za-z0-9_-]{20,}$'; then rm -f /srv/app/admin.html; export ADMIN_PATH=/.sem-admin; fi; exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile"]

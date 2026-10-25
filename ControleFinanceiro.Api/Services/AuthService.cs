@@ -451,7 +451,8 @@ public class AuthService
         // VerificarMfaLoginAsync confirmar o código é que a sessão de verdade nasce.
         if (usuario.MfaAtivo)
         {
-            var deviceConfiavel = await ObterDispositivoConfiavelAsync(usuario.Id, trustedDeviceToken);
+            // Admin sempre digita o código: "lembrar este dispositivo" não vale pra ele (a policy de admin conta com isso).
+            var deviceConfiavel = usuario.IsAdmin ? null : await ObterDispositivoConfiavelAsync(usuario.Id, trustedDeviceToken);
             if (deviceConfiavel is null)
             {
                 // Sem device confiável → exige o 2º fator: cria o desafio de curta duração e para aqui.

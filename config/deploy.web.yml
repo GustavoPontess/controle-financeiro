@@ -39,6 +39,13 @@ proxy:
     interval: 3
     timeout: 3
 
+# Endereço do admin: só existe no servidor (secret ADMIN_PATH do environment "production", ex. /a1b2c3...; barra +
+# 20 ou mais letras, números, - ou _). Nunca no código nem na imagem: o Caddy lê na hora de subir. Sem ele, o admin
+# não existe em produção (o Dockerfile apaga a página). Ver controle-financeiro.v2/Caddyfile.
+env:
+  secret:
+    - ADMIN_PATH
+
 # A máquina do GitHub derruba conexão SSH parada por alguns minutos (o build passa de 4 min). Conexão ociosa
 # por mais de 60 s é descartada e o Kamal abre outra (padrão: 900 s). https://kamal-deploy.org/docs/configuration/sshkit/
 sshkit:

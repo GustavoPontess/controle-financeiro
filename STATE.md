@@ -24,6 +24,8 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 - #350 tela de Admin no v2 (fila de cadastros e usuários).
 - #351 (nome "Pontes Finanças", selo "um produto Pontes Dev", links pro site, `/login`) entrou e foi **desfeito** em 25/10 a pedido do Gustavo ("eu só queria colocar esse projeto no meu portfólio"). Ficou só o cadastro como **"Pedir acesso"** (aprovação no Admin).
 
+**Admin escondido (branch `feat/admin-oculto`, PR a partir do #354):** o admin virou mini-app à parte (`admin.html`), sem rota nem código no app; em produção só no endereço secreto `ADMIN_PATH` (secret novo no environment `production`); o servidor exige duas etapas ligadas pra admin e o login de admin sempre pede o código. Antes do próximo deploy: criar o secret `ADMIN_PATH` e ligar as duas etapas na conta admin.
+
 **Próximo:** primeiro admin em produção (P1 no ROADMAP, pelo chat do servidor); Admin do v2 sem LGPD/auditoria ainda.
 
 ### 📌 Sessão 2026-10-14 — front com cara de produto · branch `feat/ds-premium` (a partir da `main`)

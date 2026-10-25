@@ -182,7 +182,11 @@ Endpoint: `GET /admin/auditoria`.
 
 ## 7. Frontend
 
-Área `/admin` (rota protegida por `IsAdmin`, invisível/404 pra não-admin), toda em biblioteca
+**Hoje (v2, 2026-10-25):** mini-app à parte (`admin.html` + `src/admin/`), fora do pacote do app; em produção só no
+endereço secreto `ADMIN_PATH` (secret do deploy, Caddyfile do v2); o servidor exige IsAdmin + duas etapas ligadas +
+conta Ativa a cada chamada, e o login de admin sempre pede o código (sem "lembrar dispositivo").
+
+Desenho original (v1): área `/admin` (rota protegida por `IsAdmin`, invisível/404 pra não-admin), toda em biblioteca
 Pontes (CSS Modules + `var(--pontes-*)`), navegação por abas: Pendentes (fila de aprovação) · Métricas ·
 Usuários · LGPD · Auditoria. Ações destrutivas via `PontesDialog` com confirmação forte.
 

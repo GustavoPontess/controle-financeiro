@@ -1,17 +1,20 @@
-// Admin do v2 (/admin): o gate do beta, numa ÁREA PRÓPRIA fora do app (como o AdminLayout do v1, pedido do Gustavo
-// 2026-10-25: "ninguém que usa o app normalmente pode ter ideia de onde fica o admin"). O app não tem item nem link pra
-// cá; este arquivo inteiro (lado de dentro, menu, títulos, telas) é carregado à parte e só depois do porteiro (SoAdmin).
-// O servidor confere de novo em cada chamada (IsAdmin + conta Ativa). Duas páginas no formato planilha:
+// Admin do v2: o gate do beta, num MINI-APP À PARTE (admin.html + src/admin/main.tsx, entrada própria no build).
+// Pedido do Gustavo 2026-10-25: "ninguém que usa o app normalmente pode ter ideia de onde fica o admin". O app comum
+// não tem nenhuma linha que leve pra cá, nem a rota: em produção o Caddy só serve esta página no endereço secreto
+// ADMIN_PATH, que vem do deploy (Caddyfile). Aqui dentro as rotas são relativas a esse endereço (basename).
+// O servidor confere de novo em cada chamada (IsAdmin + duas etapas ligadas + conta Ativa). Duas páginas, planilha:
 //  - Cadastros: a fila de quem pediu pra entrar, com Aprovar e Recusar na própria linha.
 //  - Usuários: todo mundo, com busca e página NO SERVIDOR; Trocar senha e Bloquear (ativos), Reativar (bloqueados).
 // A própria conta não tem ação (o servidor também recusa bloquear a si mesmo). Exclusão LGPD e auditoria: depois.
 import { useCallback, useEffect, useState } from "react"
 import { Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom"
-import { ArrowLeft, Check, ClipboardCheck, Eye, EyeOff, PanelLeftClose, PanelLeftOpen, Users, X } from "lucide-react"
+import { ArrowLeft, Check, ClipboardCheck, Eye, EyeOff, PanelLeftClose, PanelLeftOpen, ShieldCheck, Users, X } from "lucide-react"
 import adminService from "../services/adminService"
+import mfaService from "../services/mfaService"
 import { mensagemDeErro } from "../api/cliente"
 import { useAuth } from "../auth/useAuth"
 import { STATUS_LABEL, StatusUsuario, type MetricasAdmin, type UsuarioAdmin } from "../types/Admin"
+import Bloco from "../componentes/Bloco"
 import Botao from "../componentes/Botao"
 import Busca from "../componentes/Busca"
 import Confirmar from "../componentes/Confirmar"
@@ -25,7 +28,8 @@ import { mascararEmail } from "../utils/mascararEmail"
 import { useHideBalance } from "../estado/ocultar"
 import Logo from "../componentes/Logo"
 import casca from "../layout/V2Layout.module.css"
-import styles from "./Admin.module.css"
+import { irPara } from "./irPara"
+import styles from "./AreaAdmin.module.css"
 
 const TOM: Partial<Record<StatusUsuario, "positivo" | "negativo" | "alerta">> = {
   [StatusUsuario.Ativo]: "positivo",
@@ -45,10 +49,37 @@ const PAGINAS: { secao: Secao; rotulo: string; icone: typeof Users }[] = [
   { secao: "usuarios", rotulo: "Usuários", icone: Users },
 ]
 
+/** O porteiro: sem login vai pro login do app; quem não é admin vai pra Visão geral, sem mensagem (não confirma que
+ *  aqui existe algo). Admin sem as duas etapas ligadas vê só o pedido pra ligar (o servidor recusaria tudo). */
 export default function AreaAdmin() {
-  const { usuario } = useAuth()
-  if (!usuario?.isAdmin) return <Navigate to="/dashboard" replace />
+  const { usuario, carregando, autenticado } = useAuth()
+  const admin = !!usuario?.isAdmin
+  const [duasEtapas, setDuasEtapas] = useState<boolean | null>(null)
+  useEffect(() => {
+    if (carregando) return
+    if (!autenticado) irPara("/entrar")
+    else if (!admin) irPara("/dashboard")
+  }, [carregando, autenticado, admin])
+  useEffect(() => {
+    if (!admin) return
+    mfaService.status().then((s) => setDuasEtapas(s.ativo)).catch(() => setDuasEtapas(false))
+  }, [admin])
+  if (carregando || !usuario || !admin || duasEtapas === null) return null
+  if (!duasEtapas) return <LigarDuasEtapas />
   return <Casca meuId={usuario.id} />
+}
+
+function LigarDuasEtapas() {
+  return (
+    <div className={`v2 ${styles.porta}`}>
+      <Bloco titulo="Ligue as duas etapas">
+        <div className={styles.portaCorpo}>
+          <p className={styles.portaTexto}>O admin só abre com o código do celular ligado na sua conta.</p>
+          <Botao variante="primario" icone={<ShieldCheck size={16} strokeWidth={2.5} />} onClick={() => irPara("/configuracoes")}>Ir pra Configurações</Botao>
+        </div>
+      </Bloco>
+    </div>
+  )
 }
 
 /** O lado de dentro do admin: menu lateral só do admin, topo com o título e o olho, e as páginas. Mesmo visual do app
@@ -58,7 +89,7 @@ function Casca({ meuId }: { meuId: string }) {
   const [oculto, alternarOculto] = useHideBalance()
   const [menuAberto, setMenuAberto] = useState(false)
   useEffect(() => { setMenuAberto(false) }, [pathname])
-  const atual = PAGINAS.find((p) => pathname.startsWith(`/admin/${p.secao}`))
+  const atual = PAGINAS.find((p) => pathname.startsWith(`/${p.secao}`))
   return (
     <div className={`v2 ${casca.raiz}`}>
       {menuAberto && <button type="button" className={casca.veu} aria-label="Fechar menu" onClick={() => setMenuAberto(false)} />}
@@ -70,15 +101,16 @@ function Casca({ meuId }: { meuId: string }) {
         <nav className={casca.nav} aria-label="Administração">
           <span className={casca.grupo}><span className={casca.itemRotulo}>Administração</span></span>
           {PAGINAS.map(({ secao, rotulo, icone: Icone }) => (
-            <NavLink key={secao} to={`/admin/${secao}`} className={({ isActive }) => `${casca.item} ${isActive ? casca.itemAtivo : ""}`}>
+            <NavLink key={secao} to={`/${secao}`} className={({ isActive }) => `${casca.item} ${isActive ? casca.itemAtivo : ""}`}>
               <Icone size={18} strokeWidth={2} aria-hidden="true" /><span className={casca.itemRotulo}>{rotulo}</span>
             </NavLink>
           ))}
         </nav>
         <div className={casca.rodape}>
-          <NavLink to="/dashboard" className={casca.item}>
+          {/* O app mora fora deste mini-app: link comum, não do roteador. */}
+          <a href="/dashboard" className={casca.item}>
             <ArrowLeft size={18} strokeWidth={2} aria-hidden="true" /><span className={casca.itemRotulo}>Voltar ao app</span>
-          </NavLink>
+          </a>
         </div>
       </aside>
       <div className={casca.corpo}>
