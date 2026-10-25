@@ -4,7 +4,7 @@ import type {
   DespesaCompartilhada, BalancoFamilia,
   Dependente, GastoDependente, TipoDependente,
   ModoRateio, RateioItem, RateioTransacao,
-  AcertoContas, ContaFixaDaCasa,
+  AcertoContas, ContaFixaDaCasa, AindaVemDaCasa,
 } from "../types/Familia"
 
 export interface DependenteInput {
@@ -228,6 +228,12 @@ export const marcarContaDaCasa = async (contaId: string, familiaId: string | nul
 /** Cartão da casa: as compras à vista nele daqui pra frente já nascem divididas (null = deixa de ser). */
 export const marcarCartaoDaCasa = async (cartaoId: string, familiaId: string | null): Promise<void> => {
   await api.put(`/familias/cartoes/${cartaoId}/casa`, { familiaId })
+}
+
+/** O que ainda vem da casa no mês: as cobranças das contas fixas da casa que ainda não saíram, total e a sua parte. */
+export const getAindaVemFamilia = async (familiaId: string, mes: number, ano: number): Promise<AindaVemDaCasa> => {
+  const res = await api.get(`/familias/${familiaId}/ainda-vem`, { params: { mes, ano } })
+  return res.data
 }
 
 /** Contas fixas da casa no mês: quem paga, o dia, a cobrança do mês e a sua parte. */

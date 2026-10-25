@@ -81,3 +81,30 @@ dd > .linkFicha { margin-left: 8px; }
 /* Transações da família: o mês à esquerda e o Filtros na mesma linha. */
 .barraMes { display: flex; align-items: center; gap: 12px; }
 .barraMesNav { flex: 1 1 auto; min-width: 0; }
+
+/* Visão geral: o total do que ainda vem da casa no topo do grupo. */
+.aindaVemTotal { font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-texto-2); font-variant-numeric: tabular-nums; }
+
+/* Membros (passo 2 de membros-e-permissoes.md): convidar e adicionar à vista no topo da lista. */
+.membrosTopo { display: flex; flex-wrap: wrap; gap: 8px; padding: 16px 24px 4px; }
+/* Página da pessoa: foto grande, nome, relação; perfil e o que pode; renda; remover/sair. */
+.pessoaTopo { display: flex; align-items: center; gap: 16px; }
+.pessoaFoto { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 999px; background: var(--v2-superficie-2); color: var(--v2-texto-2); font-size: var(--v2-fs-lg); font-weight: 600; }
+.pessoaFoto[data-destaque="true"] { background: var(--v2-acento-suave); color: var(--v2-acento); }
+.pessoaTexto { display: flex; flex: 1; flex-direction: column; gap: 4px; min-width: 0; }
+.pessoaNome { margin: 0; font-size: var(--v2-fs-lg); font-weight: 600; }
+.pessoaSub { font-size: var(--v2-fs-sm); color: var(--v2-texto-2); overflow-wrap: anywhere; }
+.pessoaRelacao { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--v2-linha); }
+.pessoaAcoes { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--v2-linha); }
+.pessoaRenda { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.perfil { display: flex; flex-direction: column; gap: 14px; }
+.perfilAtual { display: inline-flex; align-items: center; gap: 8px; font-size: var(--v2-fs-md); font-weight: 600; }
+.podeLista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.podeLista li { display: flex; align-items: center; gap: 10px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
+.podeLista li[data-pode="true"] { color: var(--v2-texto); }
+.podeLista li[data-pode="true"] svg { color: var(--v2-positivo); }
+.somenteLeitor { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 900px) {
+  .membrosTopo { padding: 12px 12px 4px; }
+  .membrosTopo > * { flex: 1 1 auto; }
+}

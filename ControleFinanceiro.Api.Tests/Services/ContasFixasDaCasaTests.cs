@@ -136,6 +136,29 @@ public class ContasFixasDaCasaTests
     }
 
     [Fact]
+    public async Task AindaVemDaCasa_SoAsQueNaoSairam_ComTotalEASuaParte()
+    {
+        var c = await Build();
+        var aluguel = await Recorrentes(c).CriarAsync(Aluguel(c, c.FamiliaId, 1000m), c.Gustavo);
+        var internet = Aluguel(c, c.FamiliaId, 100m);
+        internet.Descricao = "Internet";
+        var net = await Recorrentes(c).CriarAsync(internet, c.Gustavo);
+        var mes = (await Cobrancas(c, aluguel.Id)).OrderBy(t => t.Data).First().Data;
+        // O aluguel do mês já saiu; a internet ainda vem.
+        var aluguelDoMes = (await Cobrancas(c, aluguel.Id)).Single(t => t.Data.Month == mes.Month && t.Data.Year == mes.Year);
+        aluguelDoMes.StatusTransacao = StatusTransacao.Executado;
+        c.Ctx.SaveChanges();
+
+        var vem = await Despesas(c).AindaVemDaCasaAsync(c.FamiliaId, c.Gabriel, mes.Month, mes.Year);
+
+        var item = Assert.Single(vem.Itens);
+        Assert.Equal("Internet", item.Descricao);
+        Assert.Equal(100m, vem.Total);
+        Assert.Equal(50m, vem.MinhaParte);
+        Assert.Equal(net.Id, item.RecorrenteId);
+    }
+
+    [Fact]
     public async Task MudarOValorDaDespesaDividida_AsPartesAcompanham_ComOMesmoPercentual()
     {
         var c = await Build();

@@ -1,96 +1,113 @@
-// Membros da família (/familias/:id/membros): todo mundo da casa numa tela só (Gustavo 2026-10-19: "dependentes e
-// membros são a mesma coisa"). Quem está (a sua ficha tem relação, renda do mês e "quem vê a sua renda": uma caixa
-// por pessoa; a dos outros só mostra renda se a pessoa liberou pra você), os dependentes (filhos, pais, pets: quem
-// não usa o app mas tem gasto que a casa acompanha; a ficha mostra o gasto do mês) e os convites pendentes.
-// Admin convida, promove, rebaixa e remove (nunca o criador); quem lança adiciona dependente.
-import { useEffect, useState } from "react"
-import { useNavigate, useParams } from "react-router-dom"
-import { useAuth } from "../auth/useAuth"
-import { getRendaFamilia } from "../services/rendaService"
-import { getDependentes } from "../services/familiaService"
-import { usePeriodoFamilia } from "../estado/espaco"
-import type { RendaFamilia } from "../types/Renda"
-import type { Dependente } from "../types/Familia"
-import Bloco, { Esqueleto } from "../componentes/Bloco"
-import { DadosFicha, GrupoFicha, InicialFicha, ItemFicha, ListaFicha } from "../componentes/ListaFicha"
-import { mesAnoCurto } from "../dominio/meta"
-import { dataBR } from "../utils/dateTime"
-import { nomeDoPeriodo } from "../componentes/NavegadorMes"
-import { Alerta, Convite, DependenteLinha, Membro, papeisDe, useFamilia } from "./FamiliaPecas"
-import styles from "./Familia.module.css"
-
-export default function FamiliaMembros() {
-  const { id = "" } = useParams<{ id: string }>()
-  const navigate = useNavigate()
-  const { usuario } = useAuth()
-  const meuId = usuario?.id ?? ""
-  const [versao, setVersao] = useState(0)
-  const recarregar = () => setVersao((v) => v + 1)
-  const { detalhe, erro } = useFamilia(id, versao)
-  const [periodo] = usePeriodoFamilia()
-  const [renda, setRenda] = useState<RendaFamilia | null>(null)
-  const [dependentes, setDependentes] = useState<Dependente[] | null>(null)
-
-  useEffect(() => {
-    let vivo = true
-    getRendaFamilia(id, periodo.ano, periodo.mes).then((r) => { if (vivo) setRenda(r) }).catch(() => { /* sem a linha de renda */ })
-    return () => { vivo = false }
-  }, [id, periodo, versao])
-
-  useEffect(() => {
-    let vivo = true
-    getDependentes(id).then((d) => { if (vivo) setDependentes(d) }).catch(() => { if (vivo) setDependentes([]) })
-    return () => { vivo = false }
-  }, [id, versao])
-
-  if (erro) return <div className={styles.pagina}><Alerta erro={erro} /></div>
-  if (!detalhe) return <div className={styles.pagina}><Bloco><Esqueleto linhas={5} altura={16} /></Bloco></div>
-
-  const { admin, podeAgir } = papeisDe(detalhe, meuId)
-  const mesMin = nomeDoPeriodo(periodo).toLowerCase()
-
-  return (
-    <div className={styles.pagina}>
-      <Bloco semRespiro>
-        <ListaFicha rotulo="Membros">
-          <GrupoFicha rotulo="Quem está" extra={admin ? <button type="button" className={styles.linkFicha} onClick={() => navigate(`/familias/${detalhe.id}/convidar`)}>Convidar</button> : undefined}>
-            {[...detalhe.membros].sort((a, b) => Number(b.usuarioId === meuId) - Number(a.usuarioId === meuId)).map((m) => (
-              <Membro key={m.id} m={m} familia={detalhe} meuId={meuId} mesNome={mesMin}
-                renda={renda?.membros.find((r) => r.usuarioId === m.usuarioId)} aoMudar={recarregar} />
-            ))}
-          </GrupoFicha>
-          {(podeAgir || (dependentes?.length ?? 0) > 0) && (
-            <GrupoFicha rotulo="Dependentes" extra={podeAgir ? <button type="button" className={styles.linkFicha} onClick={() => navigate(`/familias/${detalhe.id}/dependentes/novo`)}>Adicionar</button> : undefined}>
-              {dependentes === null ? <li className={styles.respiro}><Esqueleto linhas={1} altura={18} /></li>
-                : dependentes.length === 0 ? <li className={styles.vazio}>Nenhum ainda.</li>
-                : dependentes.map((d) => <DependenteLinha key={d.id} d={d} familiaId={detalhe.id} periodo={periodo} mesNome={mesMin} podeAgir={podeAgir} aoMudar={recarregar} />)}
-            </GrupoFicha>
-          )}
-          {/* Quem saiu continua no histórico (as despesas que dividiu seguem no equilíbrio dos meses em que estava). */}
-          {(detalhe.quemSaiu?.length ?? 0) > 0 && (
-            <GrupoFicha rotulo="Saíram">
-              {detalhe.quemSaiu!.map((m) => <QuemSaiu key={m.usuarioId} nome={m.nome} saiuEm={m.saiuEm} id={m.usuarioId} />)}
-            </GrupoFicha>
-          )}
-          {detalhe.convitesPendentes.length > 0 && (
-            <GrupoFicha rotulo="Convites pendentes">
-              {detalhe.convitesPendentes.map((c) => <Convite key={c.id} c={c} familiaId={detalhe.id} admin={admin} aoMudar={recarregar} />)}
-            </GrupoFicha>
-          )}
-        </ListaFicha>
-      </Bloco>
-    </div>
-  )
+// Membros da família (/familias/:id/membros): QUEM é da casa (docs/features/familia/membros-e-permissoes.md, passo 2).
+// Convidar e adicionar alguém sem conta ficam à vista no topo; uma linha por pessoa (foto, nome, relação, perfil,
+// situação). Clicar abre a página da pessoa (perfil, o que pode, renda, remover/sair), não uma ficha na linha.
+// Convites pendentes e quem saiu ficam embaixo. O que cada um pode fazer quem decide é o servidor.
+import { useEffect, useState } from "react"
+import { useNavigate, useParams } from "react-router-dom"
+import { UserPlus, UserRoundPlus } from "lucide-react"
+import { useAuth } from "../auth/useAuth"
+import { getDependentes, revogarConvite } from "../services/familiaService"
+import { mensagemDeErro } from "../api/cliente"
+import type { ConviteFamilia, Dependente } from "../types/Familia"
+import { urlFoto } from "../componentes/Avatar"
+import Bloco, { Esqueleto } from "../componentes/Bloco"
+import Botao from "../componentes/Botao"
+import Etiqueta from "../componentes/Etiqueta"
+import { GrupoFicha, InicialFicha, LinhaFicha, ListaFicha } from "../componentes/ListaFicha"
+import { ROTULO_PERMISSAO, rotuloTipoDependente } from "../dominio/familia"
+import { mesAnoCurto } from "../dominio/meta"
+import { diaDeInstante } from "../utils/dateTime"
+import { Alerta, idade, papeisDe, useFamilia } from "./FamiliaPecas"
+import styles from "./Familia.module.css"
+
+export default function FamiliaMembros() {
+  const { id = "" } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const { usuario } = useAuth()
+  const meuId = usuario?.id ?? ""
+  const [versao, setVersao] = useState(0)
+  const { detalhe, erro } = useFamilia(id, versao)
+  const [dependentes, setDependentes] = useState<Dependente[] | null>(null)
+
+  useEffect(() => {
+    let vivo = true
+    getDependentes(id).then((d) => { if (vivo) setDependentes(d) }).catch(() => { if (vivo) setDependentes([]) })
+    return () => { vivo = false }
+  }, [id, versao])
+
+  if (erro) return <div className={styles.pagina}><Alerta erro={erro} /></div>
+  if (!detalhe) return <div className={styles.pagina}><Bloco><Esqueleto linhas={5} altura={16} /></Bloco></div>
+
+  const { admin, podeAgir } = papeisDe(detalhe, meuId)
+  const aqui = `/familias/${detalhe.id}/membros`
+  // Você primeiro, depois os responsáveis, os adultos e quem só vê.
+  const membros = [...detalhe.membros].sort((a, b) =>
+    Number(b.usuarioId === meuId) - Number(a.usuarioId === meuId) || a.papelPermissao - b.papelPermissao || a.nomeUsuario.localeCompare(b.nomeUsuario))
+
+  return (
+    <div className={styles.pagina}>
+      <Bloco semRespiro>
+        {(admin || podeAgir) && (
+          <div className={styles.membrosTopo}>
+            {admin && <Botao variante="primario" onClick={() => navigate(`/familias/${detalhe.id}/convidar`)} icone={<UserPlus size={15} strokeWidth={2.25} aria-hidden="true" />}>Convidar</Botao>}
+            {podeAgir && <Botao onClick={() => navigate(`/familias/${detalhe.id}/dependentes/novo`)} icone={<UserRoundPlus size={15} strokeWidth={2.25} aria-hidden="true" />}>Adicionar alguém sem conta</Botao>}
+          </div>
+        )}
+        <ListaFicha rotulo="Membros">
+          <GrupoFicha rotulo="Na casa">
+            {membros.map((m) => (
+              <LinhaFicha key={m.id} para={`${aqui}/${m.id}`}
+                marca={<InicialFicha texto={m.nomeUsuario} destaque={m.usuarioId === meuId} foto={urlFoto(m.usuarioId, m.fotoEm)} />}
+                titulo={<>{m.nomeUsuario}{m.usuarioId === meuId && <span className={styles.voce}> você</span>}</>}
+                detalhe={`${m.papel} · desde ${diaDeInstante(m.entrouEm)}`}
+                direita={<Etiqueta>{ROTULO_PERMISSAO[m.papelPermissao]}</Etiqueta>} />
+            ))}
+            {dependentes === null ? <li className={styles.respiro}><Esqueleto linhas={1} altura={18} /></li>
+              : dependentes.map((d) => {
+                const anos = d.dataNascimento ? idade(d.dataNascimento) : null
+                return (
+                  <LinhaFicha key={d.id} para={`/familias/${detalhe.id}/dependentes/${d.id}`}
+                    marca={<InicialFicha texto={d.nome} />} titulo={d.apelido ? `${d.nome} (${d.apelido})` : d.nome}
+                    detalhe={anos !== null ? `${rotuloTipoDependente(d.tipo)} · ${anos} ${anos === 1 ? "ano" : "anos"}` : rotuloTipoDependente(d.tipo)}
+                    direita={<Etiqueta>Sem conta</Etiqueta>} />
+                )
+              })}
+          </GrupoFicha>
+          {detalhe.convitesPendentes.length > 0 && (
+            <GrupoFicha rotulo="Convites">
+              {detalhe.convitesPendentes.map((c) => <ConviteLinha key={c.id} c={c} familiaId={detalhe.id} admin={admin} aoMudar={() => setVersao((v) => v + 1)} />)}
+            </GrupoFicha>
+          )}
+          {/* Quem saiu continua no histórico (as despesas que dividiu seguem no equilíbrio dos meses em que estava). */}
+          {(detalhe.quemSaiu?.length ?? 0) > 0 && (
+            <GrupoFicha rotulo="Saíram">
+              {detalhe.quemSaiu!.map((m) => (
+                <LinhaFicha key={m.usuarioId} apagado marca={<InicialFicha texto={m.nome} />} titulo={m.nome}
+                  detalhe={m.saiuEm ? `saiu em ${mesAnoCurto(m.saiuEm)}` : "saiu"} />
+              ))}
+            </GrupoFicha>
+          )}
+        </ListaFicha>
+      </Bloco>
+    </div>
+  )
 }
 
-function QuemSaiu({ id, nome, saiuEm }: { id: string; nome: string; saiuEm: string | null }) {
-  const [aberto, setAberto] = useState(false)
+/** Convite que ainda não foi aceito: quem foi convidado, como, até quando; quem administra cancela na linha. */
+function ConviteLinha({ c, familiaId, admin, aoMudar }: { c: ConviteFamilia; familiaId: string; admin: boolean; aoMudar: () => void }) {
+  const [erro, setErro] = useState<string | null>(null)
+  const [ocupado, setOcupado] = useState(false)
+  const cancelar = async () => {
+    setOcupado(true); setErro(null)
+    try { await revogarConvite(familiaId, c.id); aoMudar() } catch (e) { setErro(mensagemDeErro(e)); setOcupado(false) }
+  }
   return (
-    <ItemFicha id={`saiu-${id}`} aberto={aberto} aoAbrir={() => setAberto((a) => !a)} apagado
-      marca={<InicialFicha texto={nome} />} titulo={nome} detalhe={saiuEm ? `saiu em ${mesAnoCurto(saiuEm)}` : "saiu"}>
-      <DadosFicha>
-        <div><dt>Saiu em</dt><dd>{saiuEm ? dataBR(saiuEm.slice(0, 10)) : "Sem data"}</dd></div>
-      </DadosFicha>
-    </ItemFicha>
+    <>
+      <LinhaFicha apagado marca={<InicialFicha texto={c.emailConvidado} />} titulo={c.emailConvidado}
+        detalhe={`${c.papel} · ${ROTULO_PERMISSAO[c.papelPermissao]} · vale até ${diaDeInstante(c.expiraEm)}`}
+        direita={<Etiqueta tom="alerta">Aguardando</Etiqueta>}
+        acao={admin ? <Botao variante="texto" perigo disabled={ocupado} onClick={cancelar}>Cancelar convite</Botao> : undefined} />
+      {erro && <li><Alerta erro={erro} /></li>}
+    </>
   )
 }

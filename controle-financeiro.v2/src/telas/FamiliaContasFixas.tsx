@@ -65,7 +65,8 @@ export default function FamiliaContasFixas() {
   )
 }
 
-function ContaFixa({ c, foto }: { c: ContaFixaDaCasa; foto?: string }) {
+/** Uma conta fixa da casa (quem paga, o dia, Saiu/Vem dia, a sua parte). Também na Visão geral ("Ainda vem da casa"). */
+export function ContaFixa({ c, foto }: { c: ContaFixaDaCasa; foto?: string }) {
   const [aberto, setAberto] = useState(false)
   const quem = c.ehMinha ? "Você paga" : `${primeiroNome(c.pagadorNome)} paga`
   const situacao = c.cobrancaData == null ? <Etiqueta>Sem cobrança no mês</Etiqueta>

@@ -198,6 +198,16 @@ public class DespesaCompartilhadaService
 
     /// <summary>Contas fixas da casa (aba Contas fixas da família): as ativas de quem ainda lança na família, com a
     /// cobrança do mês (paga ou prevista) e a parte de quem olha. Ordem: o dia do mês.</summary>
+    /// <summary>O que ainda vem da casa no mês: as cobranças PREVISTAS das contas fixas da casa (ainda não saíram), com
+    /// o total e a sua parte (a gravada; sem parte, nada). Mesma lista da aba Contas fixas, só o que falta.</summary>
+    public async Task<AindaVemDaCasaDto> AindaVemDaCasaAsync(Guid familiaId, Guid usuarioId, int mes, int ano)
+    {
+        var itens = (await ListarContasFixasAsync(familiaId, usuarioId, mes, ano))
+            .Where(c => c.CobrancaData != null && c.CobrancaPaga == false)
+            .ToList();
+        return new AindaVemDaCasaDto(itens.Sum(c => c.Valor), itens.Sum(c => c.MinhaParte ?? 0m), itens);
+    }
+
     public async Task<List<ContaFixaDaCasaDto>> ListarContasFixasAsync(Guid familiaId, Guid usuarioId, int mes, int ano)
     {
         await ExigirMembroAsync(familiaId, usuarioId);

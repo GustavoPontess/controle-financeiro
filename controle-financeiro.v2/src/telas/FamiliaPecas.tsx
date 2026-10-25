@@ -5,42 +5,37 @@
 // Quem "só vê" (permissão Dependente) não age, não vê renda de ninguém e não entra na divisão (o servidor manda).
 import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { ArrowRight, Check, ExternalLink, LogOut, Pencil, Trash2, X } from "lucide-react"
+import { ArrowRight, Check, ExternalLink, LogOut, Trash2, X } from "lucide-react"
 import {
   aprovarDespesa, atribuirResponsavel, cancelarAcerto, confirmarAcerto, lancarAcerto, definirLimiteAprovacao, definirModoRateio, dissolverFamilia,
-  editarPapel, editarPermissao, getFamilia, getGastoDependente, inativarDependente, rejeitarDespesa, removerMembro, revogarConvite,
+  getFamilia, rejeitarDespesa, removerMembro,
 } from "../services/familiaService"
-import { definirVisibilidadeRenda } from "../services/rendaService"
 import { mensagemDeErro } from "../api/cliente"
 import { useAuth } from "../auth/useAuth"
 import { getContas } from "../services/contaService"
 import type { Conta } from "../types/Conta"
 import { recarregarEspacos } from "../estado/espaco"
-import type { AcertoContas, BalancoFamilia, ConviteFamilia, Dependente, DespesaCompartilhada, FamiliaDetalhe, MembroFamilia, ModoRateio } from "../types/Familia"
-import type { RendaFamilia, VisibilidadeRenda } from "../types/Renda"
-import { VISIBILIDADE_RENDA } from "../types/Renda"
+import type { AcertoContas, BalancoFamilia, DespesaCompartilhada, FamiliaDetalhe, MembroFamilia, ModoRateio } from "../types/Familia"
+import type { RendaFamilia } from "../types/Renda"
 import { urlFoto } from "../componentes/Avatar"
 import Bloco from "../componentes/Bloco"
 import Botao from "../componentes/Botao"
 import Campo from "../componentes/Campo"
 import Confirmar from "../componentes/Confirmar"
 import { Dinheiro } from "../componentes/Dinheiro"
-import Entrada from "../componentes/Entrada"
 import EntradaValor from "../componentes/EntradaValor"
 import Etiqueta from "../componentes/Etiqueta"
 import Interruptor from "../componentes/Interruptor"
 import { AcoesFicha, DadosFicha, InicialFicha, ItemFicha } from "../componentes/ListaFicha"
-import Marcar from "../componentes/Marcar"
-import type { Periodo } from "../componentes/NavegadorMes"
 import Selecao from "../componentes/Selecao"
-import { APROVACAO, MAX_PAPEL, MODOS_RATEIO, PAPEL_PERMISSAO, fraseSaldo, primeiroNome, rotuloTipoDependente, sugerirEquilibrio } from "../dominio/familia"
+import { APROVACAO, MODOS_RATEIO, PAPEL_PERMISSAO, fraseSaldo, primeiroNome, sugerirEquilibrio } from "../dominio/familia"
 import { mesAnoCurto } from "../dominio/meta"
 import { dataBR, diaDeInstante } from "../utils/dateTime"
 import { formatMoney, moneyParaCampo, parseMoney } from "../utils/money"
 import styles from "./Familia.module.css"
 
 export const diaMes = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
-const idade = (nascimento: string) => {
+export const idade = (nascimento: string) => {
   const n = new Date(nascimento.slice(0, 10)), h = new Date()
   let a = h.getFullYear() - n.getFullYear()
   if (h.getMonth() < n.getMonth() || (h.getMonth() === n.getMonth() && h.getDate() < n.getDate())) a--
@@ -184,133 +179,6 @@ export function SairOuDissolver({ familia, eu, souCriador }: { familia: FamiliaD
   )
 }
 
-// ── Membro: a linha e a ficha. Na SUA: relação, renda do mês e quem vê a sua renda (uma caixa por pessoa).
-//    Na dos outros: renda só se a pessoa liberou pra você; senão nem linha. ─────────────────────────────────
-export function Membro({ m, familia, meuId, mesNome, renda, aoMudar }: {
-  m: MembroFamilia; familia: FamiliaDetalhe; meuId: string; mesNome: string; renda?: RendaFamilia["membros"][number]; aoMudar: () => void
-}) {
-  const [aberto, setAberto] = useState(false)
-  const [editandoRelacao, setEditandoRelacao] = useState(false)
-  const [papel, setPapel] = useState(m.papel)
-  const [erroPapel, setErroPapel] = useState<string | undefined>()
-  const [erro, setErro] = useState<string | null>(null)
-  const [ocupado, setOcupado] = useState(false)
-  const [removendo, setRemovendo] = useState(false)
-  const sou = m.usuarioId === meuId
-  const criador = m.usuarioId === familia.criadoPorUsuarioId
-  const admin = familia.ehAdmin
-  const proporcional = familia.modoRateioPadrao === 2
-  // Quem pode ver a sua renda: os membros que lançam e dividem (quem só vê nunca vê renda de ninguém).
-  const candidatos = familia.membros.filter((x) => x.usuarioId !== meuId && x.papelPermissao !== PAPEL_PERMISSAO.dependente)
-  const [para, setPara] = useState<string[]>(() => (
-    m.visibilidadeRenda === VISIBILIDADE_RENDA.valorParaTodos ? candidatos.map((x) => x.usuarioId) : (m.rendaVisivelPara ?? [])))
-  const [contaNoPeso, setContaNoPeso] = useState(m.visibilidadeRenda !== VISIBILIDADE_RENDA.nada)
-
-  const rodar = async (acao: () => Promise<unknown>, depois?: () => void) => {
-    setOcupado(true); setErro(null)
-    try { await acao(); depois?.(); aoMudar() } catch (e) { setErro(mensagemDeErro(e)) }
-    setOcupado(false)
-  }
-  const salvarPapel = () => {
-    if (!papel.trim()) { setErroPapel("Diga qual é a sua relação com a família."); return }
-    void rodar(() => editarPapel(familia.id, m.id, papel.trim()), () => setEditandoRelacao(false))
-  }
-  // Marcou alguém = essa pessoa vê o valor (nível "pra alguns"); ninguém marcado = só o peso (ou nada, se tirou do peso).
-  const salvarVisibilidade = (lista: string[], peso: boolean) => {
-    const nivel: VisibilidadeRenda = lista.length > 0 ? VISIBILIDADE_RENDA.valorParaAlguns : peso ? VISIBILIDADE_RENDA.soPeso : VISIBILIDADE_RENDA.nada
-    void rodar(() => definirVisibilidadeRenda(familia.id, m.id, nivel, lista))
-  }
-  const marcar = (usuarioId: string, on: boolean) => {
-    const lista = on ? [...para, usuarioId] : para.filter((x) => x !== usuarioId)
-    setPara(lista); salvarVisibilidade(lista, contaNoPeso)
-  }
-
-  return (
-    <>
-      <ItemFicha id={`membro-${m.id}`} aberto={aberto} aoAbrir={() => setAberto((a) => !a)}
-        marca={<InicialFicha texto={m.nomeUsuario} destaque={sou} foto={urlFoto(m.usuarioId, m.fotoEm)} />}
-        titulo={<>{m.nomeUsuario}{sou && <span className={styles.voce}> você</span>}</>}
-        detalhe={`${m.papel} · desde ${diaDeInstante(m.entrouEm)}`}
-        direita={m.papelPermissao === PAPEL_PERMISSAO.admin ? <Etiqueta>Admin</Etiqueta> : m.papelPermissao === PAPEL_PERMISSAO.dependente ? <Etiqueta>Só vê</Etiqueta> : undefined}>
-        <Alerta erro={erro} />
-        <DadosFicha>
-          <div><dt>E-mail</dt><dd>{m.emailUsuario}</dd></div>
-          {sou && !editandoRelacao && (
-            <div><dt>Relação</dt><dd>{m.papel} <button type="button" className={styles.linkFicha} onClick={() => setEditandoRelacao(true)}>Editar</button></dd></div>
-          )}
-          {!sou && <div><dt>Relação</dt><dd>{m.papel}</dd></div>}
-          {/* Renda: a sua sempre; a dos outros só se a pessoa liberou pra você (o servidor decide). Senão, nem linha. */}
-          {renda?.mostrada && (
-            <div>
-              <dt>Renda em {mesNome}</dt>
-              <dd><Dinheiro valor={renda.recebido ?? 0} />{(renda.previsto ?? 0) > 0 && <span className={styles.dica}> · esperado <Dinheiro valor={renda.previsto ?? 0} /></span>}{sou && <Link to="/orcamento" className={styles.linkFicha}>Ver renda</Link>}</dd>
-            </div>
-          )}
-        </DadosFicha>
-        {sou && editandoRelacao && (
-          <div className={styles.fichaForm}>
-            <Campo rotulo="Sua relação com a família" erro={erroPapel}>
-              <Entrada value={papel} maxLength={MAX_PAPEL} placeholder="Cônjuge" autoFocus onChange={(e) => { setPapel(e.target.value); setErroPapel(undefined) }} />
-            </Campo>
-            <div className={styles.fichaFormAcoes}>
-              <Botao onClick={() => setEditandoRelacao(false)} disabled={ocupado}>Cancelar</Botao>
-              <Botao variante="primario" disabled={ocupado} onClick={salvarPapel}>Salvar</Botao>
-            </div>
-          </div>
-        )}
-        {sou && m.papelPermissao !== PAPEL_PERMISSAO.dependente && (
-          <div className={styles.quemVe} role="group" aria-label="Quem vê a sua renda">
-            <span className={styles.rotulo}>Quem vê a sua renda</span>
-            {candidatos.length === 0 ? <span className={styles.dica}>Ninguém mais lança e divide por aqui ainda.</span> : (
-              <div className={styles.quemVeLista}>
-                {candidatos.map((c) => (
-                  <Marcar key={c.id} marcado={para.includes(c.usuarioId)} desabilitado={ocupado} onChange={(on) => marcar(c.usuarioId, on)}>{primeiroNome(c.nomeUsuario)}</Marcar>
-                ))}
-              </div>
-            )}
-            {proporcional && para.length === 0 && (
-              <Marcar marcado={contaNoPeso} desabilitado={ocupado} onChange={(on) => { setContaNoPeso(on); salvarVisibilidade([], on) }}>Contar a minha renda no peso da divisão</Marcar>
-            )}
-          </div>
-        )}
-        {admin && !criador && !sou && (
-          <AcoesFicha>
-            <Botao variante="texto" perigo disabled={ocupado} onClick={() => setRemovendo(true)} icone={<Trash2 size={15} strokeWidth={2.25} aria-hidden="true" />}>Remover</Botao>
-            {m.papelPermissao !== PAPEL_PERMISSAO.admin && <Botao disabled={ocupado} onClick={() => rodar(() => editarPermissao(familia.id, m.id, PAPEL_PERMISSAO.admin))}>Tornar admin</Botao>}
-            {m.papelPermissao === PAPEL_PERMISSAO.admin && <Botao disabled={ocupado} onClick={() => rodar(() => editarPermissao(familia.id, m.id, PAPEL_PERMISSAO.membro))}>Tirar de admin</Botao>}
-            {m.papelPermissao === PAPEL_PERMISSAO.membro && <Botao disabled={ocupado} onClick={() => rodar(() => editarPermissao(familia.id, m.id, PAPEL_PERMISSAO.dependente))}>Só ver</Botao>}
-            {m.papelPermissao === PAPEL_PERMISSAO.dependente && <Botao disabled={ocupado} onClick={() => rodar(() => editarPermissao(familia.id, m.id, PAPEL_PERMISSAO.membro))}>Deixar lançar</Botao>}
-          </AcoesFicha>
-        )}
-      </ItemFicha>
-      <Confirmar aberto={removendo} perigo ocupado={ocupado} titulo={`Remover ${primeiroNome(m.nomeUsuario)} da família?`}
-        texto="A pessoa deixa de ver as despesas e o equilíbrio. Os lançamentos dela continuam com ela." rotuloConfirmar="Remover"
-        onConfirmar={() => { setRemovendo(false); void rodar(() => removerMembro(familia.id, m.id)) }} onCancelar={() => setRemovendo(false)} />
-    </>
-  )
-}
-
-export function Convite({ c, familiaId, admin, aoMudar }: { c: ConviteFamilia; familiaId: string; admin: boolean; aoMudar: () => void }) {
-  const [aberto, setAberto] = useState(false)
-  const [erro, setErro] = useState<string | null>(null)
-  const [ocupado, setOcupado] = useState(false)
-  const revogar = async () => {
-    setOcupado(true); setErro(null)
-    try { await revogarConvite(familiaId, c.id); aoMudar() } catch (e) { setErro(mensagemDeErro(e)); setOcupado(false) }
-  }
-  return (
-    <ItemFicha id={`convite-${c.id}`} aberto={aberto} aoAbrir={() => setAberto((a) => !a)} apagado
-      marca={<InicialFicha texto={c.emailConvidado} />} titulo={c.emailConvidado} detalhe={`${c.papel} · vale até ${diaDeInstante(c.expiraEm)}`}
-      direita={<Etiqueta tom="alerta">Aguardando</Etiqueta>}>
-      <Alerta erro={erro} />
-      <DadosFicha>
-        <div><dt>Pode</dt><dd>{c.papelPermissao === PAPEL_PERMISSAO.dependente ? "Só ver" : "Lançar e dividir"}</dd></div>
-      </DadosFicha>
-      {admin && <AcoesFicha><Botao variante="texto" perigo disabled={ocupado} onClick={revogar}>Cancelar convite</Botao></AcoesFicha>}
-    </ItemFicha>
-  )
-}
-
 // ── Despesa compartilhada: quem pagou, aprovação e responsável na própria linha ─────────────────────────────
 export function Despesa({ d, familiaId, meuId, podeAgir, membros, voltarPara, aoMudar, foto }: {
   d: DespesaCompartilhada; familiaId: string; meuId: string; podeAgir: boolean; membros: { valor: string; rotulo: string }[]; voltarPara: string; aoMudar: () => void
@@ -450,50 +318,6 @@ export function Acerto({ a, familiaId, podeAgir, aoMudar, foto }: { a: AcertoCon
         rotuloConfirmar="Lançar" onConfirmar={() => { if (contaId) void rodar(() => lancarAcerto(familiaId, a.id, contaId, a.data)) }} onCancelar={() => setDialogo(null)}>
         {escolherConta("Conta", false)}
       </Confirmar>
-    </>
-  )
-}
-
-export function DependenteLinha({ d, familiaId, periodo, mesNome, podeAgir, aoMudar }: {
-  d: Dependente; familiaId: string; periodo: Periodo; mesNome: string; podeAgir: boolean; aoMudar: () => void
-}) {
-  const navigate = useNavigate()
-  const [aberto, setAberto] = useState(false)
-  const [confirmando, setConfirmando] = useState(false)
-  const [erro, setErro] = useState<string | null>(null)
-  const [ocupado, setOcupado] = useState(false)
-  const [gasto, setGasto] = useState<number | null>(null)
-  useEffect(() => {
-    if (!aberto) return
-    let vivo = true
-    setGasto(null)
-    getGastoDependente(familiaId, d.id, periodo.mes, periodo.ano).then((g) => { if (vivo) setGasto(g.total) }).catch(() => { /* sem o gasto */ })
-    return () => { vivo = false }
-  }, [aberto, familiaId, d.id, periodo])
-  const inativar = async () => {
-    setOcupado(true); setErro(null); setConfirmando(false)
-    try { await inativarDependente(familiaId, d.id); aoMudar() } catch (e) { setErro(mensagemDeErro(e)); setOcupado(false) }
-  }
-  const anos = d.dataNascimento ? idade(d.dataNascimento) : null
-  return (
-    <>
-      <ItemFicha id={`dependente-${d.id}`} aberto={aberto} aoAbrir={() => setAberto((a) => !a)}
-        marca={<InicialFicha texto={d.nome} />} titulo={d.apelido ? `${d.nome} (${d.apelido})` : d.nome}
-        detalhe={anos !== null ? `${rotuloTipoDependente(d.tipo)} · ${anos} ${anos === 1 ? "ano" : "anos"}` : rotuloTipoDependente(d.tipo)}>
-        <Alerta erro={erro} />
-        <DadosFicha>
-          <div><dt>Em {mesNome}</dt><dd>{gasto === null ? <span className={styles.dica}>…</span> : <Dinheiro valor={gasto} />}</dd></div>
-          {d.dataNascimento && <div><dt>Nascimento</dt><dd>{dataBR(d.dataNascimento)}</dd></div>}
-        </DadosFicha>
-        {podeAgir && (
-          <AcoesFicha>
-            <Botao variante="texto" perigo disabled={ocupado} onClick={() => setConfirmando(true)}>Tirar da família</Botao>
-            <Botao onClick={() => navigate(`/familias/${familiaId}/dependentes/${d.id}/editar`)} icone={<Pencil size={15} strokeWidth={2.25} aria-hidden="true" />}>Editar</Botao>
-          </AcoesFicha>
-        )}
-      </ItemFicha>
-      <Confirmar aberto={confirmando} perigo ocupado={ocupado} titulo={`Tirar ${d.nome} da família?`} texto="Os lançamentos já atribuídos continuam no histórico."
-        rotuloConfirmar="Tirar" onConfirmar={inativar} onCancelar={() => setConfirmando(false)} />
     </>
   )
 }

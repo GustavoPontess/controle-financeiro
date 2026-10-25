@@ -37,6 +37,8 @@ import FamiliaTransacoes from "./telas/FamiliaTransacoes"
 import FamiliaContasFixas from "./telas/FamiliaContasFixas"
 import FamiliaEntreVoces from "./telas/FamiliaEntreVoces"
 import FamiliaMembros from "./telas/FamiliaMembros"
+import FamiliaPessoa from "./telas/FamiliaPessoa"
+import FamiliaDependente from "./telas/FamiliaDependente"
 import FamiliaRegras from "./telas/FamiliaRegras"
 import Metas from "./telas/Metas"
 import MetaFormulario from "./telas/MetaFormulario"
@@ -120,11 +122,13 @@ export default function App() {
         <Route path="/familias/:id/despesas" element={<ParaFamilia pagina="transacoes" />} />
         <Route path="/familias/:id/entre-voces" element={<FamiliaEntreVoces />} />
         <Route path="/familias/:id/membros" element={<FamiliaMembros />} />
+        <Route path="/familias/:id/membros/:membroId" element={<FamiliaPessoa />} />
         {/* Dependentes moram em Membros desde 2026-10-19: o endereço antigo leva pra lá. */}
         <Route path="/familias/:id/dependentes" element={<ParaFamilia pagina="membros" />} />
         <Route path="/familias/:id/regras" element={<FamiliaRegras />} />
         <Route path="/familias/:id/convidar" element={<ConvidarMembro />} />
         <Route path="/familias/:id/dependentes/novo" element={<Dependente />} />
+        <Route path="/familias/:id/dependentes/:depId" element={<FamiliaDependente />} />
         <Route path="/familias/:id/dependentes/:depId/editar" element={<Dependente />} />
         <Route path="/familias/:id/acertos/novo" element={<NovoAcerto />} />
         <Route path="/categorias/nova" element={<EditarCategoria />} />

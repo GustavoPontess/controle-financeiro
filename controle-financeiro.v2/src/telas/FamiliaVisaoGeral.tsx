@@ -1,20 +1,23 @@
 // Visão geral da família (/familias/:id, a primeira página do espaço): o mês em um bloco (despesas da
 // família, renda da casa de quem liberou, quem pagou o quê, o que falta pra equilibrar, o que já passou entre
-// vocês) e, embaixo, só o que pede ação: despesas aguardando aprovação.
+// vocês), o que ainda vem da casa no mês (contas fixas da casa que não saíram, com o total e a sua parte vindos do
+// servidor) e, embaixo, o que pede ação: despesas aguardando aprovação.
 import { useEffect, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { useAuth } from "../auth/useAuth"
-import { getAcertos, getBalancoFamilia, getDespesasFamilia } from "../services/familiaService"
+import { getAcertos, getAindaVemFamilia, getBalancoFamilia, getDespesasFamilia } from "../services/familiaService"
 import { getRendaFamilia } from "../services/rendaService"
 import { usePeriodoFamilia } from "../estado/espaco"
-import type { AcertoContas, BalancoFamilia, DespesaCompartilhada } from "../types/Familia"
+import type { AcertoContas, AindaVemDaCasa, BalancoFamilia, DespesaCompartilhada } from "../types/Familia"
 import type { RendaFamilia } from "../types/Renda"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import Botao from "../componentes/Botao"
+import { Dinheiro } from "../componentes/Dinheiro"
 import { GrupoFicha, ListaFicha } from "../componentes/ListaFicha"
 import NavegadorMes, { nomeDoPeriodo } from "../componentes/NavegadorMes"
 import { APROVACAO, primeiroNome } from "../dominio/familia"
 import { Acerto, Alerta, Despesa, Equilibrio, FaixaMes, Saldos, fotosDe, papeisDe, useFamilia } from "./FamiliaPecas"
+import { ContaFixa } from "./FamiliaContasFixas"
 import styles from "./Familia.module.css"
 
 export default function FamiliaVisaoGeral() {
@@ -31,6 +34,7 @@ export default function FamiliaVisaoGeral() {
   const [acertos, setAcertos] = useState<AcertoContas[] | null>(null)
   // Renda da casa: calculada no servidor pra quem pede (só entra quem liberou o valor pra essa pessoa).
   const [renda, setRenda] = useState<RendaFamilia | null>(null)
+  const [aindaVem, setAindaVem] = useState<AindaVemDaCasa | null>(null)
 
   useEffect(() => {
     let vivo = true
@@ -39,6 +43,7 @@ export default function FamiliaVisaoGeral() {
     getDespesasFamilia(id, periodo.mes, periodo.ano).then((d) => { if (vivo) setDespesas(d) }).catch(() => { if (vivo) setDespesas([]) })
     getAcertos(id, periodo.mes, periodo.ano).then((a) => { if (vivo) setAcertos(a) }).catch(() => { if (vivo) setAcertos([]) })
     getRendaFamilia(id, periodo.ano, periodo.mes).then((r) => { if (vivo) setRenda(r) }).catch(() => { /* sem a faixa */ })
+    getAindaVemFamilia(id, periodo.mes, periodo.ano).then((v) => { if (vivo) setAindaVem(v) }).catch(() => { if (vivo) setAindaVem(null) })
     return () => { vivo = false }
   }, [id, periodo, versao])
 
@@ -94,6 +99,20 @@ export default function FamiliaVisaoGeral() {
           </div>
         )}
       </Bloco>
+
+      {aindaVem && aindaVem.itens.length > 0 && (
+        <Bloco semRespiro>
+          <ListaFicha rotulo="Ainda vem da casa">
+            <GrupoFicha rotulo={`Ainda vem da casa em ${mesMin}`} extra={
+              <span className={styles.aindaVemTotal}>
+                <Dinheiro valor={aindaVem.total} />{aindaVem.minhaParte !== aindaVem.total && <> · sua parte <Dinheiro valor={aindaVem.minhaParte} /></>}
+              </span>
+            }>
+              {aindaVem.itens.map((c) => <ContaFixa key={c.recorrenteId} c={c} foto={fotos[c.pagadorUsuarioId]} />)}
+            </GrupoFicha>
+          </ListaFicha>
+        </Bloco>
+      )}
 
       {pendentes.length > 0 && (
         <Bloco semRespiro>
