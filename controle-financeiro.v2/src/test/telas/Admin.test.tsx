@@ -13,6 +13,7 @@ vi.mock("../../services/adminService", () => ({
   },
 }))
 import adminService from "../../services/adminService"
+import { setHideBalance } from "../../estado/ocultar"
 import Admin from "../../telas/Admin"
 
 const svc = vi.mocked(adminService)
@@ -117,5 +118,17 @@ describe("Admin", () => {
     const cadastros = await screen.findByRole("list", { name: "Cadastros" })
     await userEvent.click(within(cadastros).getByRole("button", { name: "Aprovar Ana Pendente" }))
     expect(await screen.findByRole("alert")).toHaveTextContent("Este cadastro não está aguardando aprovação.")
+  })
+
+  it("olho fechado: e-mail mascarado nas duas listas (dado de terceiro não fica à vista)", async () => {
+    setHideBalance(true)
+    try {
+      renderizar()
+      const cadastros = await screen.findByRole("list", { name: "Cadastros" })
+      expect(within(cadastros).getByText("an•••@t•••.com")).toBeInTheDocument()
+      expect(within(cadastros).queryByText("ana@teste.com")).not.toBeInTheDocument()
+      const lista = await screen.findByRole("list", { name: "Usuários" })
+      expect(within(lista).getByText("bi•••@t•••.com")).toBeInTheDocument()
+    } finally { setHideBalance(false) }
   })
 })

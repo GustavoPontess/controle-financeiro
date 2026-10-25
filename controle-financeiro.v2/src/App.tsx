@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react"
 import { Navigate, Route, Routes, useParams } from "react-router-dom"
 import Protegido from "./auth/Protegido"
+import SoAdmin from "./auth/SoAdmin"
 import V2Layout from "./layout/V2Layout"
 import Entrar from "./telas/Entrar"
 import Cadastro from "./telas/Cadastro"
@@ -148,8 +149,8 @@ export default function App() {
         <Route path="/notificacoes" element={<Notificacoes />} />
         <Route path="/relatorios" element={<Relatorios />} />
         <Route path="/configuracoes" element={<Configuracoes />} />
-        {/* Só admin (a tela manda quem não é pra Visão geral; o servidor confere em cada chamada). */}
-        <Route path="/admin" element={<Suspense fallback={null}><Admin /></Suspense>} />
+        {/* Só admin: o porteiro decide ANTES de baixar a tela (lazy); o servidor confere em cada chamada. */}
+        <Route path="/admin" element={<SoAdmin><Suspense fallback={null}><Admin /></Suspense></SoAdmin>} />
         {PENDENTES.map(([rota, titulo, atual]) => (
           <Route key={rota} path={rota} element={<EmConstrucao titulo={titulo} atual={atual} />} />
         ))}

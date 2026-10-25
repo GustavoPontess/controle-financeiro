@@ -6,11 +6,11 @@
 // e as ações (Configurações, convites, Sair). Cada conta tem as suas famílias.
 // Dentro de uma família (/familias/:id/...) o menu é o da família: Visão geral, Despesas compartilhadas,
 // Entre vocês · Membros, Dependentes, Regras. O que é da pessoa fica no espaço pessoal.
-import { useEffect, useRef, useState } from "react"
+import { lazy, Suspense, useEffect, useRef, useState } from "react"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import {
   ArrowLeft, ArrowLeftRight, BarChart3, Bell, Check, ChevronsUpDown, CreditCard, Handshake, Landmark, LayoutDashboard, LogOut, Mail,
-  PanelLeftClose, PanelLeftOpen, Plus, Receipt, Repeat, Scale, Settings, ShieldCheck, SlidersHorizontal, Tags, Target, Upload, Users, Eye, EyeOff, Wallet,
+  PanelLeftClose, PanelLeftOpen, Plus, Receipt, Repeat, Scale, Settings, SlidersHorizontal, Tags, Target, Upload, Users, Eye, EyeOff, Wallet,
 } from "lucide-react"
 import Avatar, { urlFoto } from "../componentes/Avatar"
 import Botao from "../componentes/Botao"
@@ -42,10 +42,8 @@ const GERENCIAR: ItemMenu[] = [
   { para: "/categorias", rotulo: "Categorias", icone: Tags },
   { para: "/metas", rotulo: "Metas", icone: Target },
 ]
-// Só pra quem é admin, no espaço pessoal (o gate do beta: aprovar cadastros, gerenciar usuários).
-const ADMIN: ItemMenu[] = [
-  { para: "/admin", rotulo: "Admin", icone: ShieldCheck },
-]
+// Admin: o pedaço do menu vem à parte (lazy) e só pra quem é admin, como a tela (ver MenuAdmin e SoAdmin).
+const MenuAdmin = lazy(() => import("./MenuAdmin"))
 const FAMILIA = (id: string): ItemMenu[] => [
   { para: `/familias/${id}`, rotulo: "Visão geral", icone: LayoutDashboard, exato: true },
   { para: `/familias/${id}/transacoes`, rotulo: "Transações", icone: Receipt },
@@ -74,7 +72,7 @@ function secaoDaRota(pathname: string): Secao | undefined {
       ...PRINCIPAL, ...GERENCIAR,
       { para: "/familias", rotulo: "Famílias", semMenu: true },
       { para: "/configuracoes", rotulo: "Configurações" },
-      ...ADMIN,
+      { para: "/admin", rotulo: "Admin" },
       { para: "/notificacoes", rotulo: "Notificações", semMenu: true },
     ]
   return todos.filter((i) => pathname === i.para || pathname.startsWith(i.para + "/")).sort((a, b) => b.para.length - a.para.length)[0]
@@ -168,10 +166,9 @@ export default function V2Layout() {
           {principal.map((i) => <Item key={i.para} {...i} />)}
           <span className={styles.grupo}><span className={styles.itemRotulo}>Gerenciar</span></span>
           {gerenciar.map((i) => <Item key={i.para} {...i} />)}
-          {!familiaId && usuario?.isAdmin && <>
-            <span className={styles.grupo}><span className={styles.itemRotulo}>Administração</span></span>
-            {ADMIN.map((i) => <Item key={i.para} {...i} />)}
-          </>}
+          {!familiaId && usuario?.isAdmin && (
+            <Suspense fallback={null}><MenuAdmin Item={Item} classeGrupo={styles.grupo} classeRotulo={styles.itemRotulo} /></Suspense>
+          )}
         </nav>
         <div className={styles.rodape}>
           <div className={styles.usuario} ref={usuarioRef}>

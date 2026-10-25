@@ -19,6 +19,8 @@ import Paginacao from "../componentes/Paginacao"
 import { CelulaPlanilha, LinhaBotaoPlanilha, LinhaPlanilha } from "../componentes/Planilha"
 import SecaoPlanilha from "../componentes/SecaoPlanilha"
 import { dataBR } from "../utils/dateTime"
+import { mascararEmail } from "../utils/mascararEmail"
+import { useHideBalance } from "../estado/ocultar"
 import styles from "./Admin.module.css"
 
 const TOM: Partial<Record<StatusUsuario, "positivo" | "negativo" | "alerta">> = {
@@ -40,6 +42,9 @@ export default function Admin() {
 }
 
 function PainelAdmin({ meuId }: { meuId: string }) {
+  // Olho fechado (botão do topo): e-mail mascarado, como no v1. Dado pessoal de terceiro não fica à vista à toa.
+  const [oculto] = useHideBalance()
+  const email = (e: string) => (oculto ? mascararEmail(e) : e)
   const [metricas, setMetricas] = useState<MetricasAdmin | null>(null)
   const [pendentes, setPendentes] = useState<UsuarioAdmin[] | null>(null)
   const [erroCadastros, setErroCadastros] = useState<string | null>(null)
@@ -110,7 +115,7 @@ function PainelAdmin({ meuId }: { meuId: string }) {
           { rotulo: "Recusados", valor: m?.recusados, contagem: true },
         ]}>
         {pendentes?.map((u) => (
-          <LinhaPlanilha key={u.id} marca={<InicialFicha texto={u.nome} />} nome={<span>{u.nome}</span>} detalhe={u.email}
+          <LinhaPlanilha key={u.id} marca={<InicialFicha texto={u.nome} />} nome={<span>{u.nome}</span>} detalhe={email(u.email)}
             acao={<>
               <Botao variante="primario" disabled={ocupado} icone={<Check size={15} strokeWidth={2.5} aria-hidden="true" />}
                 aria-label={`Aprovar ${u.nome}`}
@@ -141,7 +146,7 @@ function PainelAdmin({ meuId }: { meuId: string }) {
         {usuarios?.map((u) => {
           const eu = u.id === meuId
           return (
-            <LinhaPlanilha key={u.id} marca={<InicialFicha texto={u.nome} />} nome={<span>{u.nome}{eu ? " (você)" : ""}</span>} detalhe={u.email}
+            <LinhaPlanilha key={u.id} marca={<InicialFicha texto={u.nome} />} nome={<span>{u.nome}{eu ? " (você)" : ""}</span>} detalhe={email(u.email)}
               acao={eu ? undefined : <>
                 {u.status === StatusUsuario.Ativo && <>
                   <Botao variante="texto" disabled={ocupado} aria-label={`Trocar a senha de ${u.nome}`}
