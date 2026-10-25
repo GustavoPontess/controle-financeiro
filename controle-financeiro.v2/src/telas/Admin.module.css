@@ -1,0 +1,8 @@
+.pagina { display: flex; flex-direction: column; gap: 20px; }
+.aviso { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-positivo-suave); color: var(--v2-positivo); font-size: var(--v2-fs-sm); font-weight: 500; }
+.aviso[data-erro="true"] { background: var(--v2-negativo-suave); color: var(--v2-negativo); }
+.busca { width: 280px; max-width: 100%; }
+
+@media (max-width: 900px) {
+  .busca { width: 100%; }
+}

@@ -21,7 +21,7 @@
 .valor[data-tom="mudo"] { color: var(--v2-texto-3); font-weight: 500; }
 .cabecalho .valor { font-size: var(--v2-fs-xs); font-weight: 600; color: var(--v2-texto-3); }
 .barra { min-width: 0; }
-.acao { display: inline-flex; justify-content: flex-end; min-width: 32px; }
+.acao { display: inline-flex; justify-content: flex-end; gap: 6px; min-width: 32px; }
 
 /* A última linha: só o botão de planejar, alinhado com o nome */
 .rodape { display: flex; padding: 12px 16px 6px; border-top: 1px solid var(--v2-linha); }
@@ -50,4 +50,6 @@
   .barra { grid-column: 1 / -1; }
   .grupo { padding: 14px 12px 6px; }
   .rodape { padding: 12px 12px 4px; }
+  /* Ação com botões de texto (Admin): não cabe ao lado do nome, vai pra última linha do cartão */
+  .planilha[data-acao-larga="true"] .acao { grid-column: 1 / -1; grid-row: auto; justify-content: flex-start; }
 }

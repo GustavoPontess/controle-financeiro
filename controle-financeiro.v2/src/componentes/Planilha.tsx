@@ -11,7 +11,7 @@ import styles from "./Planilha.module.css"
 /** As colunas opcionais da planilha: a linha sempre ocupa as duas (vazias quando não têm nada), senão desalinha. */
 const Colunas = createContext({ barra: false, acao: false, valores: 0 })
 
-export function Planilha({ rotulo, rotuloNome, colunas, barra, acao, semCabecalho, children }: {
+export function Planilha({ rotulo, rotuloNome, colunas, barra, acao, larguraAcao, semCabecalho, children }: {
   rotulo: string
   /** Sem a linha dos nomes das colunas (tabela só com o rodapé). */
   semCabecalho?: boolean
@@ -22,14 +22,19 @@ export function Planilha({ rotulo, rotuloNome, colunas, barra, acao, semCabecalh
   barra?: boolean
   /** Tem coluna de ação no fim (botão pequeno). */
   acao?: boolean
+  /** Largura da coluna de ação quando ela leva botões com texto (padrão: 32px, um botão de ícone). No celular
+   *  a ação larga vai pra última linha do cartão. */
+  larguraAcao?: string
   children: ReactNode
 }) {
   // Tela larga: colunas de valor com folga. Tela estreita (até 1200px, o laptop com o menu aberto): as colunas de valor
   // ficam no mínimo e o nome fica com o resto, pra categoria não sumir atrás das reticências.
-  const molde = ["minmax(0, 1fr)", ...colunas.map(() => "128px"), barra ? "140px" : null, acao ? "32px" : null].filter(Boolean).join(" ")
-  const moldeEstreito = ["minmax(0, 1fr)", ...colunas.map(() => "88px"), barra ? "72px" : null, acao ? "32px" : null].filter(Boolean).join(" ")
+  const colAcao = acao ? (larguraAcao ?? "32px") : null
+  const molde = ["minmax(0, 1fr)", ...colunas.map(() => "128px"), barra ? "140px" : null, colAcao].filter(Boolean).join(" ")
+  const moldeEstreito = ["minmax(0, 1fr)", ...colunas.map(() => "88px"), barra ? "72px" : null, colAcao].filter(Boolean).join(" ")
   return (
-    <div className={styles.planilha} style={{ "--planilha-colunas": molde, "--planilha-colunas-estreita": moldeEstreito } as CSSProperties}>
+    <div className={styles.planilha} data-acao-larga={larguraAcao ? "true" : undefined}
+      style={{ "--planilha-colunas": molde, "--planilha-colunas-estreita": moldeEstreito } as CSSProperties}>
       {!semCabecalho && <div className={styles.cabecalho} aria-hidden="true">
         <span>{rotuloNome}</span>
         {colunas.map((c) => <span key={c} className={styles.valor}>{c}</span>)}

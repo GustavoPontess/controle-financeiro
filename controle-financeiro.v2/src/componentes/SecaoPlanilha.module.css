@@ -16,6 +16,8 @@
 @media (max-width: 900px) {
   .resumo { flex-direction: column; align-items: stretch; padding: 8px 16px 14px; }
   .acao { align-self: flex-end; }
+  /* Busca na ação (Usuários do Admin): ocupa a linha toda no celular */
+  .acao:has(input[type="search"]) { align-self: stretch; }
   .numeros { grid-template-columns: minmax(0, 1fr); gap: 10px; }
   .numero { flex-direction: row; align-items: baseline; justify-content: space-between; gap: 12px; }
   .valor { font-size: var(--v2-fs-lg); }

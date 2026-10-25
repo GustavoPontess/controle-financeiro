@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from "react"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import {
   ArrowLeft, ArrowLeftRight, BarChart3, Bell, Check, ChevronsUpDown, CreditCard, Handshake, Landmark, LayoutDashboard, LogOut, Mail,
-  PanelLeftClose, PanelLeftOpen, Plus, Receipt, Repeat, Scale, Settings, SlidersHorizontal, Tags, Target, Upload, Users, Eye, EyeOff, Wallet,
+  PanelLeftClose, PanelLeftOpen, Plus, Receipt, Repeat, Scale, Settings, ShieldCheck, SlidersHorizontal, Tags, Target, Upload, Users, Eye, EyeOff, Wallet,
 } from "lucide-react"
 import Avatar, { urlFoto } from "../componentes/Avatar"
 import Botao from "../componentes/Botao"
@@ -42,6 +42,10 @@ const GERENCIAR: ItemMenu[] = [
   { para: "/categorias", rotulo: "Categorias", icone: Tags },
   { para: "/metas", rotulo: "Metas", icone: Target },
 ]
+// Só pra quem é admin, no espaço pessoal (o gate do beta: aprovar cadastros, gerenciar usuários).
+const ADMIN: ItemMenu[] = [
+  { para: "/admin", rotulo: "Admin", icone: ShieldCheck },
+]
 const FAMILIA = (id: string): ItemMenu[] => [
   { para: `/familias/${id}`, rotulo: "Visão geral", icone: LayoutDashboard, exato: true },
   { para: `/familias/${id}/transacoes`, rotulo: "Transações", icone: Receipt },
@@ -70,6 +74,7 @@ function secaoDaRota(pathname: string): Secao | undefined {
       ...PRINCIPAL, ...GERENCIAR,
       { para: "/familias", rotulo: "Famílias", semMenu: true },
       { para: "/configuracoes", rotulo: "Configurações" },
+      ...ADMIN,
       { para: "/notificacoes", rotulo: "Notificações", semMenu: true },
     ]
   return todos.filter((i) => pathname === i.para || pathname.startsWith(i.para + "/")).sort((a, b) => b.para.length - a.para.length)[0]
@@ -163,6 +168,10 @@ export default function V2Layout() {
           {principal.map((i) => <Item key={i.para} {...i} />)}
           <span className={styles.grupo}><span className={styles.itemRotulo}>Gerenciar</span></span>
           {gerenciar.map((i) => <Item key={i.para} {...i} />)}
+          {!familiaId && usuario?.isAdmin && <>
+            <span className={styles.grupo}><span className={styles.itemRotulo}>Administração</span></span>
+            {ADMIN.map((i) => <Item key={i.para} {...i} />)}
+          </>}
         </nav>
         <div className={styles.rodape}>
           <div className={styles.usuario} ref={usuarioRef}>
