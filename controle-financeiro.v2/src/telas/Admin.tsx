@@ -1,11 +1,13 @@
-// Admin do v2 (/admin): o gate do beta. Só quem é admin vê no menu e entra (o servidor confere de novo em cada
-// chamada: IsAdmin + conta Ativa, policy no back). Duas seções no formato planilha, como o Orçamento:
+// Admin do v2 (/admin): o gate do beta, numa ÁREA PRÓPRIA fora do app (como o AdminLayout do v1, pedido do Gustavo
+// 2026-10-25: "ninguém que usa o app normalmente pode ter ideia de onde fica o admin"). O app não tem item nem link pra
+// cá; este arquivo inteiro (lado de dentro, menu, títulos, telas) é carregado à parte e só depois do porteiro (SoAdmin).
+// O servidor confere de novo em cada chamada (IsAdmin + conta Ativa). Duas páginas no formato planilha:
 //  - Cadastros: a fila de quem pediu pra entrar, com Aprovar e Recusar na própria linha.
 //  - Usuários: todo mundo, com busca e página NO SERVIDOR; Trocar senha e Bloquear (ativos), Reativar (bloqueados).
 // A própria conta não tem ação (o servidor também recusa bloquear a si mesmo). Exclusão LGPD e auditoria: depois.
 import { useCallback, useEffect, useState } from "react"
-import { Navigate } from "react-router-dom"
-import { Check, X } from "lucide-react"
+import { Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom"
+import { ArrowLeft, Check, ClipboardCheck, Eye, EyeOff, PanelLeftClose, PanelLeftOpen, Users, X } from "lucide-react"
 import adminService from "../services/adminService"
 import { mensagemDeErro } from "../api/cliente"
 import { useAuth } from "../auth/useAuth"
@@ -21,6 +23,8 @@ import SecaoPlanilha from "../componentes/SecaoPlanilha"
 import { dataBR } from "../utils/dateTime"
 import { mascararEmail } from "../utils/mascararEmail"
 import { useHideBalance } from "../estado/ocultar"
+import Logo from "../componentes/Logo"
+import casca from "../layout/V2Layout.module.css"
 import styles from "./Admin.module.css"
 
 const TOM: Partial<Record<StatusUsuario, "positivo" | "negativo" | "alerta">> = {
@@ -35,13 +39,71 @@ type Pedido =
   | { tipo: "bloquear"; u: UsuarioAdmin }
   | { tipo: "senha"; u: UsuarioAdmin }
 
-export default function Admin() {
+type Secao = "cadastros" | "usuarios"
+const PAGINAS: { secao: Secao; rotulo: string; icone: typeof Users }[] = [
+  { secao: "cadastros", rotulo: "Cadastros", icone: ClipboardCheck },
+  { secao: "usuarios", rotulo: "Usuários", icone: Users },
+]
+
+export default function AreaAdmin() {
   const { usuario } = useAuth()
   if (!usuario?.isAdmin) return <Navigate to="/dashboard" replace />
-  return <PainelAdmin meuId={usuario.id} />
+  return <Casca meuId={usuario.id} />
 }
 
-function PainelAdmin({ meuId }: { meuId: string }) {
+/** O lado de dentro do admin: menu lateral só do admin, topo com o título e o olho, e as páginas. Mesmo visual do app
+ *  (as classes do V2Layout), mas nada daqui aparece no app: sem "Nova transação", sem sino, sem o menu financeiro. */
+function Casca({ meuId }: { meuId: string }) {
+  const { pathname } = useLocation()
+  const [oculto, alternarOculto] = useHideBalance()
+  const [menuAberto, setMenuAberto] = useState(false)
+  useEffect(() => { setMenuAberto(false) }, [pathname])
+  const atual = PAGINAS.find((p) => pathname.startsWith(`/admin/${p.secao}`))
+  return (
+    <div className={`v2 ${casca.raiz}`}>
+      {menuAberto && <button type="button" className={casca.veu} aria-label="Fechar menu" onClick={() => setMenuAberto(false)} />}
+      <aside className={casca.lateral} data-aberto={menuAberto ? "true" : undefined}>
+        <div className={casca.marca}>
+          <span className={casca.logo}><Logo size={26} /></span>
+          <button type="button" className={casca.fecharMenu} aria-label="Fechar menu" onClick={() => setMenuAberto(false)}><PanelLeftClose size={18} strokeWidth={2} /></button>
+        </div>
+        <nav className={casca.nav} aria-label="Administração">
+          <span className={casca.grupo}><span className={casca.itemRotulo}>Administração</span></span>
+          {PAGINAS.map(({ secao, rotulo, icone: Icone }) => (
+            <NavLink key={secao} to={`/admin/${secao}`} className={({ isActive }) => `${casca.item} ${isActive ? casca.itemAtivo : ""}`}>
+              <Icone size={18} strokeWidth={2} aria-hidden="true" /><span className={casca.itemRotulo}>{rotulo}</span>
+            </NavLink>
+          ))}
+        </nav>
+        <div className={casca.rodape}>
+          <NavLink to="/dashboard" className={casca.item}>
+            <ArrowLeft size={18} strokeWidth={2} aria-hidden="true" /><span className={casca.itemRotulo}>Voltar ao app</span>
+          </NavLink>
+        </div>
+      </aside>
+      <div className={casca.corpo}>
+        <header className={casca.topo}>
+          <button type="button" className={casca.abrirMenu} aria-label="Abrir menu" onClick={() => setMenuAberto(true)}><PanelLeftOpen size={18} strokeWidth={2} /></button>
+          <h1 className={casca.tituloPagina}>{atual?.rotulo ?? "Administração"}</h1>
+          <div className={casca.topoAcoes}>
+            <Botao soIcone aria-label={oculto ? "Mostrar e-mails" : "Esconder e-mails"} onClick={alternarOculto}
+              icone={oculto ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />} />
+          </div>
+        </header>
+        <main className={casca.conteudo} key={pathname}>
+          <Routes>
+            <Route index element={<Navigate to="cadastros" replace />} />
+            <Route path="cadastros" element={<PainelAdmin meuId={meuId} secao="cadastros" />} />
+            <Route path="usuarios" element={<PainelAdmin meuId={meuId} secao="usuarios" />} />
+            <Route path="*" element={<Navigate to="cadastros" replace />} />
+          </Routes>
+        </main>
+      </div>
+    </div>
+  )
+}
+
+function PainelAdmin({ meuId, secao }: { meuId: string; secao: Secao }) {
   // Olho fechado (botão do topo): e-mail mascarado, como no v1. Dado pessoal de terceiro não fica à vista à toa.
   const [oculto] = useHideBalance()
   const email = (e: string) => (oculto ? mascararEmail(e) : e)
@@ -106,7 +168,7 @@ function PainelAdmin({ meuId }: { meuId: string }) {
     <div className={styles.pagina}>
       {aviso && <p className={styles.aviso} data-erro={aviso.erro ? "true" : undefined} role={aviso.erro ? "alert" : "status"}>{aviso.texto}</p>}
 
-      <SecaoPlanilha titulo="Cadastros" rotuloNome="Pessoa" colunas={["Cadastro em"]} semBarra larguraAcao="200px"
+      {secao === "cadastros" && <SecaoPlanilha titulo="Cadastros" rotuloNome="Pessoa" colunas={["Cadastro em"]} semBarra larguraAcao="200px"
         carregando={!pendentes} erro={erroCadastros}
         vazio={pendentes?.length === 0 ? "Nenhum cadastro esperando aprovação." : undefined}
         numeros={[
@@ -126,9 +188,9 @@ function PainelAdmin({ meuId }: { meuId: string }) {
             <CelulaPlanilha rotulo="Cadastro em">{dataBR(u.criadoEm)}</CelulaPlanilha>
           </LinhaPlanilha>
         ))}
-      </SecaoPlanilha>
+      </SecaoPlanilha>}
 
-      <SecaoPlanilha titulo="Usuários" rotuloNome="Pessoa" colunas={["Situação", "Último acesso"]} semBarra larguraAcao="220px"
+      {secao === "usuarios" && <SecaoPlanilha titulo="Usuários" rotuloNome="Pessoa" colunas={["Situação", "Último acesso"]} semBarra larguraAcao="220px"
         carregando={!usuarios} erro={erroUsuarios}
         acao={<Busca valor={busca} onChange={setBusca} placeholder="Buscar por nome ou e-mail" className={styles.busca} />}
         vazio={usuarios?.length === 0 ? (buscaFeita ? `Ninguém com "${buscaFeita}".` : "Nenhum usuário.") : undefined}
@@ -166,7 +228,7 @@ function PainelAdmin({ meuId }: { meuId: string }) {
             </LinhaPlanilha>
           )
         })}
-      </SecaoPlanilha>
+      </SecaoPlanilha>}
 
       <Confirmar aberto={pedido?.tipo === "recusar"} perigo ocupado={ocupado} rotuloConfirmar="Recusar cadastro"
         titulo={`Recusar o cadastro de ${pedido?.u.nome ?? ""}?`}
