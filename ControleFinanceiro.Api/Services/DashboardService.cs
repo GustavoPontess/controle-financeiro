@@ -18,100 +18,77 @@ public class DashboardService
 
     public async Task<DashboardDto> GetResumoAsync(Guid usuarioId, int ano, int mes)
     {
+        // Só os cadastros vêm pra memória; os lançamentos são somados no banco (antes vinham TODOS, com a
+        // categoria de cada um, a cada abertura da Visão geral; numa conta com anos de extrato pesava).
+        // Ordem estável (pelo id), a mesma que a consulta antiga devolvia.
         var contas = await _context.Contas
             .Where(c => c.UsuarioIdProprietario == usuarioId)
             .Include(c => c.Banco)
-            .Include(c => c.Transacoes)
-            .ThenInclude(t => t.Categoria)
+            .OrderBy(c => c.Id)
             .AsNoTracking()
             .ToListAsync();
 
         var cartoes = await _context.CartoesCredito
             .Where(c => c.CriadoPor == usuarioId)
             .Include(c => c.Banco)
-            .Include(c => c.Transacoes)
-            .ThenInclude(t => t.Categoria)
+            .OrderBy(c => c.Id)
             .AsNoTracking()
             .ToListAsync();
 
-        // DistinctBy: uma transação ligada a conta E a cartão viria pelos dois Includes e contaria 2×.
-        var todasTransacoes = contas.SelectMany(c => c.Transacoes)
-            .Concat(cartoes.SelectMany(c => c.Transacoes))
-            .DistinctBy(t => t.Id)
-            .ToList();
+        // Os lançamentos da pessoa: de uma conta dela ou de um cartão dela (o filtro global já tira os excluídos).
+        var lancamentos = _context.Transacoes.AsNoTracking()
+            .Where(t => (t.ContaId != null && t.Conta!.UsuarioIdProprietario == usuarioId)
+                        || (t.CartaoCreditoId != null && t.CartaoCredito!.CriadoPor == usuarioId));
 
         var hoje = HorarioBrasil.HojeData();
         var hojeDia = DateOnly.FromDateTime(hoje);
-
-        // Movimento REAL das contas (mesma regra do saldo: Ativo + Executado, só o que tem conta).
-        // É a base do saldo no tempo — hero, variação e gráfico falam o mesmo número.
-        var movimentoDasContas = todasTransacoes
-            .Where(t => t.ContaId != null && t.Ativo && t.StatusTransacao == StatusTransacao.Executado)
-            .ToList();
-        static decimal ComSinal(Domain.Entities.Transacao t) =>
-            t.Tipo == TipoTransacao.Receita ? t.Valor : -t.Valor;
-
-        // Considera só transações vivas e não canceladas nos KPIs do mês.
-        var transacoesMes = todasTransacoes
-            .Where(t => t.Data.Year == ano && t.Data.Month == mes)
-            .Where(t => t.Ativo && t.StatusTransacao != StatusTransacao.Cancelado)
-            .ToList();
+        var inicioDoMes = new DateOnly(ano, mes, 1);
+        var fimDoMes = inicioDoMes.AddMonths(1);
+        var inicioMesAnterior = inicioDoMes.AddMonths(-1);
 
         // P&L: receita/despesa REAL exclui o que só move saldo (transferência, pagamento de fatura, saldo
         // inicial, ajuste de reconciliação, Pix no Crédito) — regra única em RegrasFinanceiras.
-        static bool EhPnl(Domain.Entities.Transacao t) => RegrasFinanceiras.EntraNoResultadoEmMemoria(t);
+        var doMes = lancamentos
+            .Where(t => t.Data >= inicioDoMes && t.Data < fimDoMes)
+            .Where(t => t.Ativo && t.StatusTransacao != StatusTransacao.Cancelado);
+        var resultadoDoMes = doMes.Where(RegrasFinanceiras.EntraNoResultado);
 
-        // 6 KPIs (#81): Executado = realizado (Recebido/Pago);
-        // Previsao = futuro (A receber / A pagar). Receitas = Recebido + AReceber.
-        var recebido = transacoesMes
-            .Where(t => EhPnl(t) && t.Tipo == TipoTransacao.Receita && t.StatusTransacao == StatusTransacao.Executado)
-            .Sum(t => t.Valor);
-        var aReceber = transacoesMes
-            .Where(t => EhPnl(t) && t.Tipo == TipoTransacao.Receita && t.StatusTransacao == StatusTransacao.Previsao)
-            .Sum(t => t.Valor);
-        var pago = transacoesMes
-            .Where(t => EhPnl(t) && t.Tipo == TipoTransacao.Despesa && t.StatusTransacao == StatusTransacao.Executado)
-            .Sum(t => t.Valor);
-        var aPagar = transacoesMes
-            .Where(t => EhPnl(t) && t.Tipo == TipoTransacao.Despesa && t.StatusTransacao == StatusTransacao.Previsao)
-            .Sum(t => t.Valor);
+        // 6 KPIs (#81): Executado = realizado (Recebido/Pago); Previsao = futuro (A receber / A pagar).
+        var porTipoEStatus = await resultadoDoMes
+            .GroupBy(t => new { t.Tipo, t.StatusTransacao })
+            .Select(g => new { g.Key.Tipo, g.Key.StatusTransacao, Valor = g.Sum(t => t.Valor) })
+            .ToListAsync();
+        decimal Soma(TipoTransacao tipo, StatusTransacao status) =>
+            porTipoEStatus.Where(x => x.Tipo == tipo && x.StatusTransacao == status).Sum(x => x.Valor);
+        var recebido = Soma(TipoTransacao.Receita, StatusTransacao.Executado);
+        var aReceber = Soma(TipoTransacao.Receita, StatusTransacao.Previsao);
+        var pago = Soma(TipoTransacao.Despesa, StatusTransacao.Executado);
+        var aPagar = Soma(TipoTransacao.Despesa, StatusTransacao.Previsao);
 
         var receitasMes = recebido + aReceber;
         var despesasMes = pago + aPagar;
 
-        // Caixa do mês anterior — pros cards "Entrou/Saiu" mostrarem variação % (#1.3).
-        // Mesma base do EntradasCaixa/SaidasCaixa (Executado, exclui crédito não-pago e o que não
-        // entra no resultado).
-        var inicioMesAnterior = new DateTime(ano, mes, 1).AddMonths(-1);
-        var transacoesMesAnterior = todasTransacoes
-            .Where(t => t.Data.Year == inicioMesAnterior.Year && t.Data.Month == inicioMesAnterior.Month)
-            .Where(t => t.Ativo && t.StatusTransacao == StatusTransacao.Executado && !t.UsadoComoCredito && EhPnl(t))
-            .ToList();
-        var entradasCaixaMesAnterior = transacoesMesAnterior
-            .Where(t => t.Tipo == TipoTransacao.Receita).Sum(t => t.Valor);
-        var saidasCaixaMesAnterior = transacoesMesAnterior
-            .Where(t => t.Tipo == TipoTransacao.Despesa).Sum(t => t.Valor);
+        // Caixa do mês e do anterior (cards "Entrou/Saiu" com variação, #1.3): Executado, fora o crédito não
+        // pago e o que não entra no resultado. Também bate com /transacoes/stats.
+        async Task<(decimal Entradas, decimal Saidas)> CaixaAsync(DateOnly de, DateOnly ate)
+        {
+            var linhas = await lancamentos
+                .Where(t => t.Data >= de && t.Data < ate)
+                .Where(t => t.Ativo && t.StatusTransacao == StatusTransacao.Executado && !t.UsadoComoCredito)
+                .Where(RegrasFinanceiras.EntraNoResultado)
+                .GroupBy(t => t.Tipo)
+                .Select(g => new { Tipo = g.Key, Valor = g.Sum(t => t.Valor) })
+                .ToListAsync();
+            return (linhas.Where(l => l.Tipo == TipoTransacao.Receita).Sum(l => l.Valor),
+                    linhas.Where(l => l.Tipo == TipoTransacao.Despesa).Sum(l => l.Valor));
+        }
+        var (receitasCaixaMes, despesasCaixaMes) = await CaixaAsync(inicioDoMes, fimDoMes);
+        var (entradasCaixaMesAnterior, saidasCaixaMesAnterior) = await CaixaAsync(inicioMesAnterior, inicioDoMes);
 
-        // SaldoMes usa apenas movimentos de caixa — crédito só entra quando a fatura é paga.
-        // Também filtra Ativo + Executado pra bater com /transacoes/stats.
-        var receitasCaixaMes = transacoesMes
-            .Where(t => t.Tipo == TipoTransacao.Receita && !t.UsadoComoCredito
-                        && t.StatusTransacao == StatusTransacao.Executado && EhPnl(t))
-            .Sum(t => t.Valor);
-
-        // As saídas de caixa do mês — a lista fica à mão porque "Maiores gastos" usa a MESMA base
-        // (o donut tem que somar o "Saiu").
-        var saidasDeCaixaDoMes = transacoesMes
-            .Where(t => t.Tipo == TipoTransacao.Despesa && !t.UsadoComoCredito
-                        && t.StatusTransacao == StatusTransacao.Executado && EhPnl(t))
-            .ToList();
-        var despesasCaixaMes = saidasDeCaixaDoMes.Sum(t => t.Valor);
-
-        var inicioDoPeriodo = DateOnly.FromDateTime(new DateTime(ano, mes, 1));
-        var saldoAnteriorAoMes = todasTransacoes
-            .Where(t => t.Data < inicioDoPeriodo && !t.UsadoComoCredito
+        var saldoAnteriorAoMes = await lancamentos
+            .Where(t => t.Data < inicioDoMes && !t.UsadoComoCredito
                         && t.Ativo && t.StatusTransacao == StatusTransacao.Executado)
-            .Sum(t => t.Tipo == TipoTransacao.Receita ? t.Valor : -t.Valor);
+            .SumAsync(t => t.Tipo == TipoTransacao.Receita ? t.Valor : -t.Valor);
 
         // Saldo conta = movimento real (Ativo + Executado). Inclui transferência/saldo
         // inicial/pagamento (movem dinheiro); exclui canceladas (soft delete) e previsões.
@@ -138,9 +115,14 @@ public class DashboardService
         // descartar nada: quem não tem categoria vira "Sem categoria" e, passando de 5 grupos, o
         // resto vira "Outros" — assim as fatias somam 100% e o total bate com o "Saiu".
         const int MaxFatias = 5;
-        var gastosPorCategoria = saidasDeCaixaDoMes
-            .GroupBy(t => t.Categoria?.Descricao ?? "Sem categoria")
-            .Select(g => new { Descricao = g.Key, Valor = g.Sum(t => t.Valor) })
+        var gastosPorCategoria = (await doMes
+                .Where(t => t.Tipo == TipoTransacao.Despesa && !t.UsadoComoCredito && t.StatusTransacao == StatusTransacao.Executado)
+                .Where(RegrasFinanceiras.EntraNoResultado)
+                .GroupBy(t => t.Categoria != null ? t.Categoria.Descricao : null)
+                .Select(g => new { Descricao = g.Key, Valor = g.Sum(t => t.Valor) })
+                .ToListAsync())
+            .GroupBy(g => g.Descricao ?? "Sem categoria")
+            .Select(g => new { Descricao = g.Key, Valor = g.Sum(x => x.Valor) })
             .OrderByDescending(g => g.Valor)
             .ToList();
         var topCategorias = gastosPorCategoria.Count <= MaxFatias
@@ -160,15 +142,22 @@ public class DashboardService
         // (recorrente gerada pra frente) tem data futura e furava a fila na frente de tudo.
         // Caixinha de meta: o lado de dentro da meta não entra (a mesma regra da lista de Transações); guardar,
         // resgatar e concluir aparecem uma vez só, na conta de onde o dinheiro saiu ou pra onde voltou.
-        var caixinhas = contas.Where(c => c.Tipo == TipoConta.Caixinha).Select(c => c.Id).ToHashSet();
-        var recentes = todasTransacoes
-            .Where(t => t.Ativo && t.StatusTransacao == StatusTransacao.Executado
-                        && !t.EhSaldoInicial && t.Data <= hojeDia
-                        && !(t.ContaId.HasValue && caixinhas.Contains(t.ContaId.Value)))
-            .OrderByDescending(t => t.Data)
-            .ThenByDescending(t => t.Hora ?? TimeOnly.MinValue)
-            .ThenByDescending(t => t.CriadoEm)
-            .Take(7)
+        var recentes = (await lancamentos
+                .Where(t => t.Ativo && t.StatusTransacao == StatusTransacao.Executado
+                            && !t.EhSaldoInicial && t.Data <= hojeDia
+                            && (t.ContaId == null || t.Conta!.Tipo != TipoConta.Caixinha))
+                .OrderByDescending(t => t.Data)
+                .ThenByDescending(t => t.Hora ?? TimeOnly.MinValue)
+                .ThenByDescending(t => t.CriadoEm)
+                .Take(7)
+                .Select(t => new
+                {
+                    t.Id, t.Descricao, t.Valor, t.Tipo, t.CategoriaId, Categoria = t.Categoria != null ? t.Categoria.Descricao : null,
+                    t.ContaId, t.CartaoCreditoId, Conta = t.Conta != null ? t.Conta.Nome : null,
+                    Cartao = t.CartaoCredito != null ? t.CartaoCredito.Nome : null,
+                    t.MeioPagamento, t.Data, t.Hora, t.EhTransferencia, t.EhPagamentoFatura,
+                })
+                .ToListAsync())
             .Select(t => new TransacaoRecenteDto
             {
                 Id = t.Id,
@@ -176,12 +165,10 @@ public class DashboardService
                 Valor = t.Valor,
                 Tipo = (int)t.Tipo,
                 CategoriaId = t.CategoriaId,
-                Categoria = t.Categoria?.Descricao,
+                Categoria = t.Categoria,
                 ContaId = t.ContaId,
                 CartaoCreditoId = t.CartaoCreditoId,
-                Conta = t.ContaId.HasValue
-                    ? contas.FirstOrDefault(c => c.Id == t.ContaId)?.Nome
-                    : cartoes.FirstOrDefault(c => c.Id == t.CartaoCreditoId)?.Nome,
+                Conta = t.ContaId.HasValue ? t.Conta : t.Cartao,
                 MeioPagamento = t.MeioPagamento.HasValue ? (int)t.MeioPagamento.Value : null,
                 MeioPagamentoDescricao = Domain.Enums.MeioPagamentoExtensions.Descricao(t.MeioPagamento),
                 Data = t.Data,
@@ -190,6 +177,16 @@ public class DashboardService
                 EhPagamentoFatura = t.EhPagamentoFatura,
             }).ToList();
 
+        // Movimento REAL das contas (mesma regra do saldo: Ativo + Executado, só o que tem conta), somado por
+        // mês no banco. É a base do saldo no tempo — o gráfico e a variação do hero falam o mesmo número.
+        var movimentoPorMes = await lancamentos
+            .Where(t => t.ContaId != null && t.Ativo && t.StatusTransacao == StatusTransacao.Executado)
+            .GroupBy(t => new { t.Data.Year, t.Data.Month })
+            .Select(g => new { g.Key.Year, g.Key.Month, Valor = g.Sum(t => t.Tipo == TipoTransacao.Receita ? t.Valor : -t.Valor) })
+            .ToListAsync();
+        decimal SaldoAntesDe(DateOnly data) =>
+            movimentoPorMes.Where(m => new DateOnly(m.Year, m.Month, 1) < data).Sum(m => m.Valor);
+
         // Evolução do saldo das contas: 6 meses terminando no mês selecionado. Mesma base do saldo
         // do hero — o ponto do mês corrente é o próprio saldo total.
         var meses = new[] { "jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez" };
@@ -197,26 +194,19 @@ public class DashboardService
         for (var i = 5; i >= 0; i--)
         {
             var refDate = new DateTime(ano, mes, 1).AddMonths(-i);
-            var fimDoMes = DateOnly.FromDateTime(refDate.AddMonths(1));
-            var saldoAteFim = movimentoDasContas
-                .Where(t => t.Data < fimDoMes)
-                .Sum(ComSinal);
             evolucao.Add(new EvolucaoMesDto
             {
                 Label = $"{meses[refDate.Month - 1]}/{refDate:yy}",
                 Ano = refDate.Year,
                 Mes = refDate.Month,
-                Saldo = saldoAteFim
+                Saldo = SaldoAntesDe(DateOnly.FromDateTime(refDate.AddMonths(1)))
             });
         }
 
         // Saldo das contas no fim do mês PASSADO (em relação a hoje, não ao mês navegado) — o hero
         // mostra o saldo de hoje, então a variação tem que partir do mesmo relógio e da mesma base.
         // Antes vinha do gráfico (mês navegado, outra base) e comparava coisas diferentes.
-        var inicioDoMesAtual = new DateOnly(hoje.Year, hoje.Month, 1);
-        var saldoMesAnterior = movimentoDasContas
-            .Where(t => t.Data < inicioDoMesAtual)
-            .Sum(ComSinal);
+        var saldoMesAnterior = SaldoAntesDe(new DateOnly(hoje.Year, hoje.Month, 1));
 
         // Top 3 cartões ativos por % limite usado (desc). Mostra quem está mais
         // "pressionado" no widget do dashboard.
@@ -284,7 +274,7 @@ public class DashboardService
             .Take(3)
             .ToList();
 
-        var comprasCartaoMes = await ComprasNoCartaoDoMesAsync(usuarioId, ano, mes, cartoes);
+        var comprasCartaoMes = await ComprasNoCartaoDoMesAsync(usuarioId, inicioDoMes, fimDoMes);
 
         return new DashboardDto
         {
@@ -319,20 +309,22 @@ public class DashboardService
     /// não cancelada do parcelamento novo no mês da fatura dela (o "mês da parcela" da tela Cartões).
     /// Nunca o total da compra parcelada — só a parcela do mês, com o número.
     /// </summary>
-    private async Task<List<CompraCartaoDto>> ComprasNoCartaoDoMesAsync(
-        Guid usuarioId, int ano, int mes, List<Domain.Entities.CartaoCredito> cartoes)
+    private async Task<List<CompraCartaoDto>> ComprasNoCartaoDoMesAsync(Guid usuarioId, DateOnly inicioDoMes, DateOnly fimDoMes)
     {
-        var aVista = cartoes
-            .SelectMany(c => c.Transacoes.Select(t => (Cartao: c, Transacao: t)))
-            .Where(x => RegrasFinanceiras.CompoeTotalFatura(x.Transacao)
-                        && x.Transacao.Data.Year == ano && x.Transacao.Data.Month == mes)
+        int ano = inicioDoMes.Year, mes = inicioDoMes.Month;
+        // Crédito à vista do mês (CompoeTotalFatura: no crédito e vivo; o filtro global já tira o excluído).
+        var aVista = (await _context.Transacoes.AsNoTracking()
+                .Where(t => t.CartaoCreditoId != null && t.CartaoCredito!.CriadoPor == usuarioId && t.UsadoComoCredito
+                            && t.Data >= inicioDoMes && t.Data < fimDoMes)
+                .Select(t => new { t.Descricao, t.Valor, t.Data, Cartao = t.CartaoCredito!.Nome, Categoria = t.Categoria != null ? t.Categoria.Descricao : null })
+                .ToListAsync())
             .Select(x => new CompraCartaoDto
             {
-                Descricao = x.Transacao.Descricao,
-                Valor = x.Transacao.Valor,
-                Data = x.Transacao.Data,
-                Cartao = x.Cartao.Nome,
-                Categoria = x.Transacao.Categoria?.Descricao,
+                Descricao = x.Descricao,
+                Valor = x.Valor,
+                Data = x.Data,
+                Cartao = x.Cartao,
+                Categoria = x.Categoria,
             });
 
         var parcelas = (await _context.ParcelasTransacao
