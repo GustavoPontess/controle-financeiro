@@ -1,0 +1,6 @@
+/* Várias colunas: o mosaico tem a altura da coluna mais alta e cada caixa é posicionada (Mosaico.tsx). */
+.mosaico { position: relative; width: 100%; }
+.caixa { position: absolute; top: 0; left: 0; }
+.caixa > * { width: 100%; }
+/* Uma coluna (celular): fluxo normal, na ordem. */
+.pilha { display: flex; flex-direction: column; }
