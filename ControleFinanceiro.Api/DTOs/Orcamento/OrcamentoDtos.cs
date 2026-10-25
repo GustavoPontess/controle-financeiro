@@ -57,3 +57,38 @@ public record LimitesDoMesDto(
 
 /// <summary>Quanto a pessoa gastou na categoria, em média, nos 3 meses antes do mês (null = nada gasto).</summary>
 public record SugestaoLimiteDto(decimal? MediaUltimos3Meses);
+
+/// <summary>
+/// Uma FONTE planejada no mês, nas seções Receitas e Investimentos do Orçamento: a subcategoria (<c>SubcategoriaId</c>;
+/// <c>Nome</c> = "Salário", "Tesouro Direto") ou a categoria inteira (sem subcategoria). <c>Categoria</c> = o nome da
+/// categoria. <c>Planejado</c> vale todo mês até mudar; <c>Realizado</c> = o que caiu (Receitas) ou o que foi investido,
+/// aportes menos resgates (Investimentos); <c>AindaVem</c> = o previsto no mês. <c>DesdeAno</c>/<c>DesdeMes</c>: de
+/// quando vale este valor.
+/// </summary>
+public record FonteDoMesDto(Guid CategoriaId, Guid? SubcategoriaId, string Nome, string Categoria, decimal Planejado, decimal Realizado,
+    decimal AindaVem, int DesdeAno, int DesdeMes);
+
+/// <summary>Fonte sem planejado: teve dinheiro no mês ou ainda não tem nada (a planilha mostra todas). <c>Planejavel</c>:
+/// é do lado da seção (sem categoria ou "Outros" só mostra).</summary>
+public record FonteSemPlanejadoDto(Guid? CategoriaId, Guid? SubcategoriaId, string Nome, string Categoria, decimal Realizado,
+    decimal AindaVem, bool Planejavel);
+
+/// <summary>A seção Receitas (ou Investimentos) do Orçamento de um mês. Os totais somam só as fontes planejadas.</summary>
+public record FontesDoMesDto(
+    int Ano,
+    int Mes,
+    bool Editavel,
+    decimal TotalPlanejado,
+    decimal TotalRealizado,
+    decimal TotalAindaVem,
+    List<FonteDoMesDto> Fontes,
+    List<FonteSemPlanejadoDto> SemPlanejado);
+
+/// <summary>Planejar uma fonte (receita ou investimento) a partir de um mês (vale todo mês até mudar).
+/// <c>SubcategoriaId</c> null = a categoria inteira.</summary>
+public record DefinirFonteDto(
+    Guid CategoriaId,
+    Guid? SubcategoriaId,
+    [Range(2000, 2100)] int Ano,
+    [Range(1, 12)] int Mes,
+    [Range(0.01, 999_999_999.99, ErrorMessage = "Diga o valor.")] decimal Valor);

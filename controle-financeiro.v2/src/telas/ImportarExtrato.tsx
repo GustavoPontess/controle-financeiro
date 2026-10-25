@@ -26,6 +26,7 @@ import { LinhaCampos, RodapeFormulario } from "../componentes/Formulario"
 import Marcar from "../componentes/Marcar"
 import Selecao from "../componentes/Selecao"
 import { rotuloMesFatura } from "../dominio/fatura"
+import { aceitaTipo } from "../dominio/categoria"
 import { TIPO } from "../dominio/transacao"
 import styles from "./ImportarExtrato.module.css"
 
@@ -396,7 +397,7 @@ function Previa({ previa, conta, categorias, aoTrocarColunas, aoCancelar, aoImpo
 
   const opcoesPorTipo = useMemo(() => {
     const de = (tipo: number) => [{ valor: "", rotulo: "Sem categoria" },
-      ...categorias.filter((c) => c.finalidade === 3 || c.finalidade === tipo)
+      ...categorias.filter((c) => aceitaTipo(c, tipo))
         .sort((a, b) => a.descricao.localeCompare(b.descricao, "pt-BR"))
         .map((c) => ({ valor: c.id, rotulo: c.descricao }))]
     return { [TIPO.despesa]: de(TIPO.despesa), [TIPO.receita]: de(TIPO.receita) } as Record<number, { valor: string; rotulo: string }[]>

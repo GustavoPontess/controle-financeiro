@@ -31,6 +31,7 @@ import Segmentos from "../componentes/Segmentos"
 import Selecao from "../componentes/Selecao"
 import SeletorData from "../componentes/SeletorData"
 import { FREQUENCIAS, MAX_DESCRICAO, MEIO, MEIOS_CONTA_FIXA, MEIOS_RECEBIMENTO_FIXO, TIPO } from "../dominio/transacao"
+import { aceitaTipo } from "../dominio/categoria"
 import { FREQUENCIA, descreverRegra, limitesDoInicio } from "../dominio/contaFixa"
 import { moneyParaCampo, parseMoney } from "../utils/money"
 import { dataLocalISO } from "../utils/dateTime"
@@ -99,7 +100,7 @@ export default function FormularioContaFixa({ recorrente, contas = [], cartoes =
   // Na edição o começo antigo vale (pode ter sido há mais de 12 meses); criar segue o limite.
   const limites = editando ? null : limitesDoInicio(hoje)
 
-  const cats = useMemo(() => categorias.filter((c) => c.finalidade === 3 || c.finalidade === tipo), [categorias, tipo])
+  const cats = useMemo(() => categorias.filter((c) => aceitaTipo(c, tipo)), [categorias, tipo])
   const subs = useMemo(() => subcategorias.filter((s) => s.categoriaId === categoriaId), [subcategorias, categoriaId])
   const cartoesCredito = useMemo(() => cartoes.filter((c) => c.temCredito && c.ativo !== false), [cartoes])
   const meios = receita ? MEIOS_RECEBIMENTO_FIXO : MEIOS_CONTA_FIXA
@@ -121,7 +122,7 @@ export default function FormularioContaFixa({ recorrente, contas = [], cartoes =
     const lista = n === "receita" ? MEIOS_RECEBIMENTO_FIXO : MEIOS_CONTA_FIXA
     if (meio !== "" && !lista.some((m) => m.valor === meio)) setMeio("")
     const atual = categorias.find((c) => c.id === categoriaId)
-    if (atual && atual.finalidade !== 3 && atual.finalidade !== novoTipo) { setCategoriaId(""); setSubcategoriaId("") }
+    if (atual && !aceitaTipo(atual, novoTipo)) { setCategoriaId(""); setSubcategoriaId("") }
   }
   const trocarMeio = (m: number) => { setMeio(m); limpa("meio", "conta", "cartao") }
   const escolherData = (x: string) => { setData(x); limpa("data", "dataFim") }

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
 
@@ -36,11 +37,20 @@ public class AppDbContext : DbContext
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         BarrarEscritaEmCaixinha(ids => Contas.AsNoTracking().Any(c => ids.Contains(c.Id) && c.Tipo == TipoConta.Caixinha));
+        var (entradas, categorias) = TransacoesComCategoriaNova();
+        if (entradas.Count > 0)
+            MarcarInvestimento(entradas, Categorias.AsNoTracking()
+                .Where(c => categorias.Contains(c.Id) && c.Finalidade == Finalidade.Investimento).Select(c => c.Id).ToHashSet());
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
 
     public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
+        var (entradas, categorias) = TransacoesComCategoriaNova();
+        if (entradas.Count > 0)
+            MarcarInvestimento(entradas, (await Categorias.AsNoTracking()
+                .Where(c => categorias.Contains(c.Id) && c.Finalidade == Finalidade.Investimento).Select(c => c.Id)
+                .ToListAsync(cancellationToken)).ToHashSet());
         var ids = ContasTocadasPorEscrita();
         if (ids.Count > 0 && await Contas.AsNoTracking().AnyAsync(c => ids.Contains(c.Id) && c.Tipo == TipoConta.Caixinha, cancellationToken))
             throw new InvalidOperationException(Conta.MensagemCaixinha);
@@ -54,6 +64,25 @@ public class AppDbContext : DbContext
         if (ids.Count > 0 && haCaixinhaNoBanco(ids))
             throw new InvalidOperationException(Conta.MensagemCaixinha);
         BarrarCaixinhaNova(ids);
+    }
+
+    /// <summary>Lançamento novo ou que trocou de categoria (o <c>EhInvestimento</c> segue a categoria) e as categorias deles.</summary>
+    private (List<EntityEntry<Transacao>> Entradas, List<Guid> Categorias) TransacoesComCategoriaNova()
+    {
+        var entradas = ChangeTracker.Entries<Transacao>()
+            .Where(e => e.State == EntityState.Added || (e.State == EntityState.Modified && e.Property(t => t.CategoriaId).IsModified))
+            .ToList();
+        return (entradas, entradas.Where(e => e.Entity.CategoriaId.HasValue).Select(e => e.Entity.CategoriaId!.Value).Distinct().ToList());
+    }
+
+    /// <summary>Marca <c>EhInvestimento</c> pela categoria (as do banco e as criadas neste mesmo SaveChanges).</summary>
+    private void MarcarInvestimento(List<EntityEntry<Transacao>> entradas, HashSet<Guid> deInvestimento)
+    {
+        foreach (var c in ChangeTracker.Entries<Categoria>())
+            if (c.State == EntityState.Added && c.Entity.Finalidade == Finalidade.Investimento)
+                deInvestimento.Add(c.Entity.Id);
+        foreach (var e in entradas)
+            e.Entity.EhInvestimento = e.Entity.CategoriaId is { } id && deInvestimento.Contains(id);
     }
 
     /// <summary>Caixinha criada no mesmo SaveChanges (ainda não está no banco) também conta.</summary>
@@ -534,9 +563,17 @@ public class AppDbContext : DbContext
             .IsRequired(false)
             .OnDelete(DeleteBehavior.SetNull);
 
-        // Um usuário pode ter apenas 1 orçamento por (categoria, mês, ano)
+        // Orcamento → Subcategoria (Cascade: o planejado de uma subcategoria some com ela)
         modelBuilder.Entity<Orcamento>()
-            .HasIndex(o => new { o.UsuarioId, o.CategoriaId, o.Mes, o.Ano })
+            .HasOne(o => o.Subcategoria)
+            .WithMany()
+            .HasForeignKey(o => o.SubcategoriaId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Um usuário pode ter apenas 1 orçamento por (categoria, subcategoria, mês, ano)
+        modelBuilder.Entity<Orcamento>()
+            .HasIndex(o => new { o.UsuarioId, o.CategoriaId, o.SubcategoriaId, o.Mes, o.Ano })
             .IsUnique();
 
         // ── Issue #22 Família + Membros ──

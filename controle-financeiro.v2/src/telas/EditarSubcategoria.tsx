@@ -12,7 +12,7 @@ import Botao from "../componentes/Botao"
 import Campo, { ValorFixo } from "../componentes/Campo"
 import Entrada from "../componentes/Entrada"
 import Formulario, { Campos, PaginaFormulario, RodapeFormulario } from "../componentes/Formulario"
-import { FINALIDADE, MAX_NOME_SUBCATEGORIA } from "../dominio/categoria"
+import { MAX_NOME_SUBCATEGORIA, abaDaFinalidade } from "../dominio/categoria"
 import styles from "./FormularioCategoria.module.css"
 
 export default function EditarSubcategoria({ nova }: {
@@ -45,7 +45,7 @@ export default function EditarSubcategoria({ nova }: {
   }, [id, nova])
 
   const voltarPraCategoria = (c: Category) => navigate("/categorias", {
-    replace: true, state: { abrir: c.id, tipo: c.finalidade === FINALIDADE.receita ? FINALIDADE.receita : FINALIDADE.despesa },
+    replace: true, state: { abrir: c.id, tipo: abaDaFinalidade(c.finalidade) },
   })
 
   return (

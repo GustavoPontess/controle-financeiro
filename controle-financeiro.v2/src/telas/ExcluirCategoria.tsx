@@ -15,10 +15,10 @@ import Botao from "../componentes/Botao"
 import Campo, { ValorFixo } from "../componentes/Campo"
 import Formulario, { Campos, Lado, PaginaFormulario, RodapeFormulario } from "../componentes/Formulario"
 import Selecao from "../componentes/Selecao"
-import { FINALIDADE, descreverUso, destinosPossiveis, emUso, verboMover } from "../dominio/categoria"
+import { abaDaFinalidade, descreverUso, destinosPossiveis, emUso, verboMover } from "../dominio/categoria"
 import styles from "./ExcluirCategoria.module.css"
 
-const abaDe = (c?: Category) => (c?.finalidade === FINALIDADE.receita ? FINALIDADE.receita : FINALIDADE.despesa)
+const abaDe = (c?: Category) => abaDaFinalidade(c?.finalidade ?? 1)
 
 type Carga =
   | { tipo: "categoria"; categoria: Category; uso: UsoCategoria; todas: Category[] }

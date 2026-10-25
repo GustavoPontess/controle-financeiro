@@ -152,11 +152,15 @@ export default function Transacoes() {
 
   return (
     <div className={styles.pagina}>
-      {/* Os 3 números. Saldo: o dinheiro que tem hoje + o que entrou e saiu do caixa. Gastos: quanto gastou no que a
-          lista mostra, em conta e no cartão. */}
+      {/* Os números + quantos registros a lista tem (com os filtros de agora, contado no servidor). Saldo: o dinheiro
+          que tem hoje + o que entrou e saiu do caixa. Gastos: quanto gastou no que a lista mostra, em conta e no cartão. */}
       <Bloco className={styles.resumo}>
         {gastos ? (
           <div className={styles.numeros}>
+            <div className={styles.numero}>
+              <span className={styles.rotulo}>Registros</span>
+              {itens ? <span className={styles.numeroValor}>{total.toLocaleString("pt-BR")}</span> : <span className={styles.numeroEsqueleto} aria-hidden="true" />}
+            </div>
             <div className={styles.numero}>
               <span className={styles.rotulo}>Gastos</span>
               {resumoGastos ? <Dinheiro valor={resumoGastos.total} className={styles.numeroValor} /> : <span className={styles.numeroEsqueleto} aria-hidden="true" />}
@@ -172,6 +176,10 @@ export default function Transacoes() {
           </div>
         ) : (
         <div className={styles.numeros}>
+          <div className={styles.numero}>
+            <span className={styles.rotulo}>Registros</span>
+            {itens ? <span className={styles.numeroValor}>{total.toLocaleString("pt-BR")}</span> : <span className={styles.numeroEsqueleto} aria-hidden="true" />}
+          </div>
           <div className={styles.numero}>
             <span className={styles.rotulo}>Saldo em conta</span>
             {contas.length ? <Dinheiro valor={saldoEmConta} className={styles.numeroValor} /> : <span className={styles.numeroEsqueleto} aria-hidden="true" />}

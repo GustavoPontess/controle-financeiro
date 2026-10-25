@@ -1,0 +1,53 @@
+.planilha { display: flex; flex-direction: column; padding: 0 8px 8px; }
+.cabecalho, .linha { display: grid; grid-template-columns: var(--planilha-colunas); align-items: center; gap: 16px; padding: 0 16px; }
+.cabecalho { padding-top: 6px; padding-bottom: 8px; font-size: var(--v2-fs-xs); font-weight: 600; letter-spacing: 0.02em; color: var(--v2-texto-3); }
+.acaoVazia { width: 32px; }
+.cabecalho > span:first-child { font-size: var(--v2-fs-xs); font-weight: 600; color: var(--v2-texto-3); }
+.linhas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.linha { min-height: 60px; padding-top: 10px; padding-bottom: 10px; border-top: 1px solid var(--v2-linha); }
+.linha:hover { background: var(--v2-hover-linha); }
+.grupo { padding: 16px 16px 8px; border-top: 1px solid var(--v2-linha); font-size: var(--v2-fs-xs); font-weight: 600; letter-spacing: 0.02em; color: var(--v2-texto-3); }
+
+.nomeCelula { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.nomeCelula > :first-child { flex-shrink: 0; }
+.texto { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.nome { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: var(--v2-fs-md); font-weight: 500; }
+.nome > :first-child { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.detalhe { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); }
+
+.valor { justify-self: end; min-width: 0; font-size: var(--v2-fs-sm); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+.valor[data-tom="negativo"] { color: var(--v2-negativo); }
+.valor[data-tom="positivo"] { color: var(--v2-positivo); }
+.valor[data-tom="mudo"] { color: var(--v2-texto-3); font-weight: 500; }
+.cabecalho .valor { font-size: var(--v2-fs-xs); font-weight: 600; color: var(--v2-texto-3); }
+.barra { min-width: 0; }
+.acao { display: inline-flex; justify-content: flex-end; min-width: 32px; }
+
+/* A última linha: só o botão de planejar, alinhado com o nome */
+.rodape { display: flex; padding: 12px 16px 6px; border-top: 1px solid var(--v2-linha); }
+.rodape:first-child { border-top: 0; }
+
+/* A linha de planejar: a categoria no lugar do nome, o valor na primeira coluna */
+.linha[data-nova="true"] { background: var(--v2-superficie-2); }
+.linha[data-nova="true"]:hover { background: var(--v2-superficie-2); }
+.campoNome { flex: 1; min-width: 0; max-width: 320px; }
+.campoValor { display: block; width: 100%; min-width: 0; text-align: left; font-weight: 400; }
+
+/* Laptop com o menu aberto: valores no mínimo, nome com o resto */
+@media (max-width: 1200px) {
+  .cabecalho, .linha { grid-template-columns: var(--planilha-colunas-estreita); gap: 12px; }
+}
+
+@media (max-width: 900px) {
+  .planilha { padding: 0 4px 8px; }
+  .cabecalho { display: none; }
+  .linha { grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 8px 12px; padding: 12px; }
+  .linha:first-child { border-top: 0; }
+  .nomeCelula { grid-column: 1 / 4; grid-row: 1; }
+  .acao { grid-column: 4; grid-row: 1; }
+  .valor { justify-self: start; text-align: left; display: flex; flex-direction: column; gap: 2px; }
+  .valor::before { content: attr(data-rotulo); font-size: var(--v2-fs-xs); font-weight: 500; color: var(--v2-texto-3); }
+  .barra { grid-column: 1 / -1; }
+  .grupo { padding: 14px 12px 6px; }
+  .rodape { padding: 12px 12px 4px; }
+}

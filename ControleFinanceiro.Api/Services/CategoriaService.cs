@@ -81,6 +81,10 @@ namespace ControleFinanceiro.Api.Services
                         : "Essa categoria tem despesas. Ela precisa continuar aceitando despesa.");
             }
 
+            // Virou (ou deixou de ser) investimento: os lançamentos dela entram ou saem do resultado junto.
+            if ((categoria.Finalidade == Finalidade.Investimento) != (finalidade == Finalidade.Investimento))
+                foreach (var t in await _context.Transacoes.IgnoreQueryFilters().Where(t => t.CategoriaId == id).ToListAsync())
+                    t.EhInvestimento = finalidade == Finalidade.Investimento;
             categoria.Descricao = nome;
             categoria.Finalidade = finalidade;
             await _context.SaveChangesAsync();
@@ -179,8 +183,9 @@ namespace ControleFinanceiro.Api.Services
             return categoria;
         }
 
+        // Investimento aceita os dois (aporte e resgate), como "As duas".
         private static bool Aceita(Finalidade f, bool temDespesa, bool temReceita) =>
-            f == Finalidade.Ambas || ((!temDespesa || f == Finalidade.Despesa) && (!temReceita || f == Finalidade.Receita));
+            f is Finalidade.Ambas or Finalidade.Investimento || ((!temDespesa || f == Finalidade.Despesa) && (!temReceita || f == Finalidade.Receita));
 
         // Tipos VIVOS na categoria (lançamento excluído não conta — a pessoa nem vê). Parcelamento é sempre despesa.
         private async Task<(bool despesa, bool receita)> TiposEmUsoAsync(Guid id)
@@ -266,7 +271,20 @@ namespace ControleFinanceiro.Api.Services
 
             // Limite vale todo mês até mudar (cada linha = "deste mês em diante"): juntar as duas categorias é somar
             // o que valia em cada mês, de cada pessoa. Só somar as linhas do mesmo mês dava errado no mês seguinte.
-            var limites = await _context.Orcamentos.Where(o => o.CategoriaId == de || o.CategoriaId == para).ToListAsync();
+            // Planejado de uma subcategoria (Receitas) segue a subcategoria: vai junto pra categoria nova; absorvida por
+            // uma de mesmo nome, soma no mesmo mês.
+            foreach (var o in await _context.Orcamentos.Where(o => o.CategoriaId == de && o.SubcategoriaId != null).ToListAsync())
+            {
+                var nova = NovaSub(o.SubcategoriaId);
+                var existente = nova != o.SubcategoriaId
+                    ? await _context.Orcamentos.FirstOrDefaultAsync(x => x.UsuarioId == o.UsuarioId && x.CategoriaId == para
+                        && x.SubcategoriaId == nova && x.Ano == o.Ano && x.Mes == o.Mes)
+                    : null;
+                if (existente is not null) { existente.ValorLimite += o.ValorLimite; _context.Orcamentos.Remove(o); }
+                else { o.CategoriaId = para; o.SubcategoriaId = nova; }
+            }
+            var limites = await _context.Orcamentos
+                .Where(o => (o.CategoriaId == de || o.CategoriaId == para) && o.SubcategoriaId == null).ToListAsync();
             static int Chave(Orcamento o) => o.Ano * 12 + o.Mes;
             static decimal Vale(List<Orcamento> linhas, int chave) =>
                 linhas.Where(o => Chave(o) <= chave).MaxBy(Chave)?.ValorLimite ?? 0m;

@@ -7,6 +7,8 @@ export interface EntradaRenda {
   valor: number
   subcategoria: string | null
   recebida: boolean
+  /** Subcategoria de renda fixa (salário, aposentadoria, benefício…); o resto é variável. */
+  fixa: boolean
 }
 
 export interface RendaMes {
@@ -24,6 +26,12 @@ export interface RendaMes {
   falta: number
   sugestaoMedia3Meses: number | null
   entradas: EntradaRenda[]
+  /** O recebido separado em fixa e variável (regra no servidor). */
+  fixaRecebida: number
+  variavelRecebida: number
+  /** O que ainda vai cair no mês, separado igual. */
+  fixaAindaVem: number
+  variavelAindaVem: number
 }
 
 /** O que a família vê da renda de um membro (VisibilidadeRenda do servidor). */

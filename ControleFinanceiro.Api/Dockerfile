@@ -17,7 +17,8 @@ WORKDIR /app
 # /app/data era do SQLite (removido na #114), não usado por ninguém mais — não recriado.
 RUN (getent group app || addgroup -S app) \
  && (id -u app >/dev/null 2>&1 || adduser -S app -G app) \
- && mkdir -p /app/logs && chown -R app:app /app
+ && mkdir -p /app/logs /home/app/.aspnet/DataProtection-Keys \
+ && chown -R app:app /app /home/app
 USER app
 
 COPY --from=build --chown=app:app /app/publish .

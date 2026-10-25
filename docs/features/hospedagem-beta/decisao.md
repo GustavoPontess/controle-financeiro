@@ -6,6 +6,15 @@ status: DECIDIDO
 
 # Decisão de hospedagem + escopo essencial do beta
 
+> **Atualização 2026-10-23: contratado.** Hostinger VPS **KVM 2** (mensal), não o KVM1 da tabela.
+> **Região: EUA**, porque São Paulo não aparecia na configuração (sem capacidade; o local da VPS é
+> fixo depois de configurar, trocar = reinstalar e apagar tudo). Decisão do Gustavo. Consequências:
+> ~150 ms de latência e **transferência internacional de dados (LGPD art. 33)**, item P1 no gate do
+> ROADMAP. Ubuntu 26.04 LTS puro, sem painel, sem o scanner Monarx; acesso por chave SSH ed25519.
+> Domínio `pontesdev.com.br` (Registro.br), dividido com o estúdio PontesDev:
+> `pontesdev.com.br` = site do estúdio, `app.pontesdev.com.br` = Pontes. Stack no servidor: Docker
+> Compose + proxy reverso com HTTPS automático + Postgres sem porta pública + `pg_dump` diário.
+
 **Documento vivo de decisão (ADR).** Hub de planejamento do beta fechado do Pontes: ONDE hospedar
 + o que é essencial ter pronto antes de publicar. **Hospedagem ainda não decidida.** Fase atual:
 planejar/pesquisar/discutir — **sem criar código de deploy** até a decisão estar fechada aqui.
