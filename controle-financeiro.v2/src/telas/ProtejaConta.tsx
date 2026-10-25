@@ -10,7 +10,6 @@ import Botao from "../componentes/Botao"
 import mfaService from "../services/mfaService"
 import SegurancaMfa from "./SegurancaMfa"
 import styles from "./Auth.module.css"
-import SeloPontesDev from "../componentes/SeloPontesDev"
 
 const BENEFICIOS = [
   { icone: KeyRound, texto: "Mesmo que descubram sua senha, ninguém entra sem o código." },
@@ -40,7 +39,7 @@ export default function ProtejaConta() {
           <p className={styles.frase}>Sua senha, <span className={styles.fraseSuave}>e mais uma tranca.</span></p>
           <p className={styles.lead}>Num app com o seu dinheiro, a verificação em duas etapas é a proteção que mais faz diferença.</p>
         </div>
-        <SeloPontesDev className={styles.palcoRodape} />
+        <span className={styles.palcoRodape}>Pontes · finanças pessoais e familiares</span>
       </aside>
 
       <main className={styles.painel}>
@@ -51,7 +50,7 @@ export default function ProtejaConta() {
           ) : (
             <>
               <h1 className={styles.titulo}>Proteja sua conta</h1>
-              <p className={styles.sub}>Ative a verificação em duas etapas: além da senha, o Pontes Finanças pede um código do seu celular ao entrar.</p>
+              <p className={styles.sub}>Ative a verificação em duas etapas: além da senha, o Pontes pede um código do seu celular ao entrar.</p>
               <ul className={styles.beneficiosPainel}>
                 {BENEFICIOS.map(({ icone: Icone, texto }) => (
                   <li key={texto}><span className={styles.beneficioIcone}><Icone size={16} strokeWidth={2.25} aria-hidden="true" /></span>{texto}</li>

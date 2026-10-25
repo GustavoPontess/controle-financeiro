@@ -13,9 +13,7 @@ import rosterService, { type ContaLembrada } from "../services/rosterService"
 import mfaService from "../services/mfaService"
 import { api } from "../api/cliente"
 import { useAuth } from "../auth/useAuth"
-import { NOME_PRODUTO, PAGINA_PRODUTO } from "../config"
 import styles from "./Auth.module.css"
-import SeloPontesDev from "../componentes/SeloPontesDev"
 
 // Senha padrão das contas de TESTE do seeder de dev (nunca uma senha real; não existe em produção).
 const DEV_SENHA = "Dev@123456"
@@ -182,7 +180,7 @@ export default function Entrar() {
             ))}
           </ul>
         </div>
-        <SeloPontesDev className={styles.palcoRodape} />
+        <span className={styles.palcoRodape}>Pontes · finanças pessoais e familiares</span>
       </aside>
 
       <main className={styles.painel}>
@@ -217,9 +215,7 @@ export default function Entrar() {
                 <ArrowLeft size={16} strokeWidth={2.25} aria-hidden="true" /> Escolher conta salva
               </button>
             )
-          ) : (
-            <a href={PAGINA_PRODUTO} className={styles.voltar}><ArrowLeft size={16} strokeWidth={2.25} aria-hidden="true" /> Conhecer o {NOME_PRODUTO}</a>
-          )}
+          ) : null}
 
           <div className={styles.marcaMovel}><Logo size={26} /></div>
           <h1 className={styles.titulo}>{titulo}</h1>

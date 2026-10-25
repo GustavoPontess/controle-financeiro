@@ -21,7 +21,7 @@ const CODIGO = /^\d{6}$/
 
 /** Arquivo .txt dos códigos de recuperação (\r\n abre bem no Bloco de Notas). */
 const arquivoRecuperacao = (codigos: string[]) => [
-  "Pontes Finanças: códigos de recuperação da verificação em duas etapas",
+  "Pontes: códigos de recuperação da verificação em duas etapas",
   `Gerados em: ${new Date().toLocaleString("pt-BR")}`,
   "",
   "Cada código funciona uma vez, pra quando você estiver sem o app autenticador.",
@@ -134,7 +134,7 @@ export default function SegurancaMfa({ iniciar, aoConcluir, aoCancelar }: {
             <li>Digite o código de 6 números que o app mostrar.</li>
           </ol>
           <div className={styles.qrLinha}>
-            {qr && <img src={qr} alt="QR code pra adicionar o Pontes Finanças no app autenticador" className={styles.qr} width={192} height={192} />}
+            {qr && <img src={qr} alt="QR code pra adicionar o Pontes no app autenticador" className={styles.qr} width={192} height={192} />}
             <div className={styles.chaveBloco}>
               <span className={styles.rotulo}>Chave</span>
               <code className={styles.chave} aria-label="Chave pra digitar no app">{chave}</code>
@@ -178,7 +178,7 @@ export default function SegurancaMfa({ iniciar, aoConcluir, aoCancelar }: {
       {fase === "ativa" && (
         <div className={styles.linha}>
           <p className={styles.texto}>
-            Ao entrar, o Pontes Finanças pede o código do app.
+            Ao entrar, o Pontes pede o código do app.
             {status && <> Restam <strong>{status.backupCodesRestantes}</strong> {status.backupCodesRestantes === 1 ? "código" : "códigos"} de recuperação.</>}
           </p>
           <Botao perigo onClick={() => { setFase("desativar"); setErros({}); setErro(null) }}>Desativar</Botao>

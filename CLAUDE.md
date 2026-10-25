@@ -88,7 +88,7 @@ npm run lint
 - JWT Bearer (HS256), access token de **15 min** em cookie httpOnly (claim `sid`; a cada request confere se a sessão está viva) + refresh opaco rotativo de 7 dias com reuse-detection. O front renova **single-flight** (N 401 → 1 refresh, `axiosConfig.ts`); o back tolera reapresentação do token recém-rotacionado **< 30s e do mesmo dispositivo** (401 `REFRESH_EM_CORRIDA`, sem derrubar a família, com log de segurança) — fora disso, reuse-detection estrita
 - Claims: `NameIdentifier` (user ID), `Email`, `Name`, `sid`
 - CORS allows only `http://localhost:5173` em dev (produção via `CORS_ALLOWED_ORIGINS`)
-- **Nome visível: "Pontes Finanças"** (um produto Pontes Dev; `config.ts`: `NOME_PRODUTO`, `SITE_PONTES_DEV`, `PAGINA_PRODUTO`). Repositório, namespaces, containers e banco seguem `ControleFinanceiro`/`pontes`. Beta fechado: o cadastro do app É o pedido de acesso ("Pedir acesso"): nasce `AguardandoAprovacao` e o admin aprova em `/admin`
+- **Beta fechado:** o cadastro do app É o pedido de acesso ("Pedir acesso"): nasce `AguardandoAprovacao` e o admin aprova em `/admin`. O nome do app é "Pontes" (o "Pontes Finanças" com selo e links pro site da Pontes Dev foi desfeito em 2026-10-25, a pedido do Gustavo: o site só mostra o projeto no portfólio)
 - **API nega por padrão** (`FallbackPolicy`): tudo exige login, exceto o que declara `[AllowAnonymous]` — os endpoints públicos do `AuthController` (login, registro, MFA do login, refresh, switch, logout, roster, reativar conta, esqueci/redefinir senha) e `/health`, `/health/ready`
 
 ### Database

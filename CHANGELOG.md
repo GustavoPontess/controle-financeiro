@@ -9,7 +9,6 @@ versionamento segue [SemVer](https://semver.org/lang/pt-BR/) **0.x (pré-lançam
 ## [Unreleased]
 
 ### Added
-- **Pontes Finanças, um produto Pontes Dev**: o app passa a se chamar Pontes Finanças nas telas, na aba do navegador, nos termos e na privacidade, nos e-mails e no app autenticador (quem já ativou a verificação em duas etapas continua vendo o nome antigo lá, sem quebrar nada). O logo continua o mesmo por enquanto. Selo discreto "um produto Pontes Dev" no login, nas telas de conta e no menu, com link pro site do estúdio; "Conhecer o Pontes Finanças" leva pra pontesdev.com.br/pontes; `/login` passa a abrir o login (é pra onde o site aponta o "Entrar").
 
 ### Changed
 - **Cadastro vira "Pedir acesso"** (beta fechado): o botão do login e a tela de cadastro passam a dizer que é um pedido, que o admin aprova na tela de Admin. O fluxo é o mesmo de antes (a conta nasce aguardando aprovação); só o texto deixa claro que não se entra na hora.
