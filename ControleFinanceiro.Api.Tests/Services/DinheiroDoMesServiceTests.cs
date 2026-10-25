@@ -60,7 +60,7 @@ public class DinheiroDoMesServiceTests
 
         Assert.Equal(0m, mes.RendaBase);
         Assert.Equal("neutro", mes.Resposta.Tom);
-        Assert.Equal("/renda", Assert.Single(mes.Resposta.Acoes).Para);
+        Assert.Equal("/orcamento", Assert.Single(mes.Resposta.Acoes).Para);
     }
 
     [Fact]

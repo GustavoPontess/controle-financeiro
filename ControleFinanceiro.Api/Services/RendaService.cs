@@ -31,7 +31,7 @@ public class RendaService
     /// ajuste, Pix no Crédito, empréstimo) e não é "dinheiro que volta" (cashback, reembolso, estorno: categoria padrão).</summary>
     public static readonly Expression<Func<Transacao, bool>> EhRenda = t =>
         t.Tipo == TipoTransacao.Receita && t.Ativo && t.StatusTransacao != StatusTransacao.Cancelado
-        && !t.EhTransferencia && !t.EhPagamentoFatura && !t.EhSaldoInicial && !t.EhAjusteReconciliacao && !t.EhPixNoCredito && !t.EhEmprestimo && !t.EhAcerto
+        && !t.EhTransferencia && !t.EhPagamentoFatura && !t.EhSaldoInicial && !t.EhAjusteReconciliacao && !t.EhPixNoCredito && !t.EhEmprestimo && !t.EhAcerto && !t.EhInvestimento
         && (t.Categoria == null || t.Categoria.UsuarioId != null || t.Categoria.Descricao != CategoriaDinheiroQueVolta);
 
     // ── Pessoa ───────────────────────────────────────────────────────────────────────────────────
@@ -40,22 +40,41 @@ public class RendaService
     public async Task<RendaMesDto> ObterMesAsync(Guid usuarioId, int ano, int mes)
     {
         ValidarMes(ano, mes);
-        var entradas = await _context.Transacoes
+        var linhas = await _context.Transacoes
             .Where(EhRenda)
             .Where(t => t.CriadoPor == usuarioId && t.Data.Year == ano && t.Data.Month == mes)
             .OrderByDescending(t => t.Data).ThenByDescending(t => t.CriadoEm)
-            .Select(t => new EntradaRendaDto(t.Id, t.Data, t.Descricao, t.Valor,
-                t.Subcategoria != null ? t.Subcategoria.Nome : null,
-                t.StatusTransacao == StatusTransacao.Executado))
+            .Select(t => new
+            {
+                Entrada = new EntradaRendaDto(t.Id, t.Data, t.Descricao, t.Valor,
+                    t.Subcategoria != null ? t.Subcategoria.Nome : null,
+                    t.StatusTransacao == StatusTransacao.Executado),
+                DeContaFixa = t.RecorrenteOrigemId != null,
+            })
             .ToListAsync();
+        var entradas = linhas.Select(x => x.Entrada with { Fixa = EhFixa(x.Entrada.Subcategoria, x.DeContaFixa) }).ToList();
 
         var recebido = entradas.Where(e => e.Recebida).Sum(e => e.Valor);
         var (fixa, variavel, doMes) = await DeclaracaoAsync(usuarioId, ano, mes);
         var previsto = fixa + variavel;
         var sugestao = await SugestaoAsync(usuarioId, ano, mes);
 
-        return new RendaMesDto(ano, mes, previsto, fixa, variavel, doMes, recebido, Math.Max(0m, previsto - recebido), sugestao, entradas);
+        decimal Soma(bool ehFixa, bool recebida) => entradas.Where(e => e.Fixa == ehFixa && e.Recebida == recebida).Sum(e => e.Valor);
+        return new RendaMesDto(ano, mes, previsto, fixa, variavel, doMes, recebido, Math.Max(0m, previsto - recebido), sugestao, entradas,
+            Soma(true, true), Soma(false, true), Soma(true, false), Soma(false, false));
     }
+
+    /// <summary>Subcategorias de renda FIXA (o que cai todo mês igual: trabalho com carteira, aposentadoria, benefício,
+    /// pensão, aluguel). O resto (13º, freela, comissão, dividendos) é variável. Sem subcategoria, é fixa a que vem de
+    /// conta fixa de receita (cai todo mês) e variável a avulsa. Regra única.</summary>
+    public static readonly HashSet<string> SubcategoriasFixas = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Salário", "Aposentadoria", "Bolsa Família", "BPC / LOAS", "Seguro-desemprego", "Outro benefício do governo",
+        "Aluguel recebido", "Pensão recebida",
+    };
+
+    public static bool EhFixa(string? subcategoria, bool deContaFixa = false) =>
+        subcategoria is null ? deContaFixa : SubcategoriasFixas.Contains(subcategoria);
 
     /// <summary>Declara o que a pessoa espera no mês (fixa e variável). Vale pros meses seguintes até ela mudar.</summary>
     public async Task<RendaMesDto> DefinirPrevistoAsync(Guid usuarioId, DefinirRendaPrevistaDto dto)
@@ -195,9 +214,15 @@ public class RendaService
         return (recebido, fixa + variavel);
     }
 
-    /// <summary>O que vale no mês: a declaração do mês, ou a do último mês anterior que tem.</summary>
+    /// <summary>
+    /// O que a pessoa espera receber no mês. Desde 2026-10-22 é o planejado das categorias de receita do Orçamento
+    /// (<see cref="OrcamentoService.ReceitaPlanejadaAsync"/>; vem inteiro em <c>Fixa</c>). Quem nunca planejou por
+    /// categoria segue com a declaração antiga (fixa + variável): a do mês, ou a do último mês anterior que tem.
+    /// </summary>
     private async Task<(decimal Fixa, decimal Variavel, bool DoMes)> DeclaracaoAsync(Guid usuarioId, int ano, int mes)
     {
+        if (await OrcamentoService.ReceitaPlanejadaAsync(_context, usuarioId, ano, mes) is { } planejada)
+            return (planejada.Total, 0m, planejada.DoMes);
         var chave = ano * 12 + mes;
         var linha = await _context.RendasPrevistas
             .Where(r => r.UsuarioId == usuarioId && r.Ano * 12 + r.Mes <= chave)

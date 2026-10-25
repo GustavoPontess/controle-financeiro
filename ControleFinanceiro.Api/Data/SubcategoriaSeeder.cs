@@ -72,6 +72,31 @@ public static class SubcategoriaSeeder
             "Bolsa Família", "BPC / LOAS", "Seguro-desemprego", "Outro benefício do governo",
             "Aluguel recebido", "Dividendos e juros", "Pensão recebida",
         },
+        // Investimento: as fontes do Orçamento. Mudou aqui, muda igual na migration ReorganizaCategoriasDeInvestimento.
+        ["Renda fixa"] = new[]
+        {
+            "Poupança", "CDB", "LCI e LCA", "Tesouro Direto", "Debêntures", "CRI e CRA", "Fundos de renda fixa",
+        },
+        ["Renda variável"] = new[]
+        {
+            "Ações", "Fundos imobiliários", "ETFs", "BDRs", "Fundos de ações", "Fundos multimercado",
+        },
+        ["Previdência"] = new[]
+        {
+            "Previdência privada", "Previdência da empresa",
+        },
+        ["Criptomoedas"] = new[]
+        {
+            "Bitcoin", "Ethereum", "Stablecoins", "Outras moedas",
+        },
+        ["Investimentos no exterior"] = new[]
+        {
+            "Ações no exterior", "ETFs no exterior", "Fundos no exterior", "Conta em moeda estrangeira",
+        },
+        ["Outros investimentos"] = new[]
+        {
+            "Imóveis", "Consórcio", "Ouro e metais", "Negócio próprio", "Crowdfunding e P2P",
+        },
         ["Dinheiro que volta"] = new[]
         {
             "Cashback", "Reembolso", "Estorno",

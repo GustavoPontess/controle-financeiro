@@ -420,8 +420,8 @@ public class ImportacaoService
         foreach (var c in categorias)
         {
             var compativel = tipo == TipoTransacao.Despesa
-                ? c.Finalidade is Finalidade.Despesa or Finalidade.Ambas
-                : c.Finalidade is Finalidade.Receita or Finalidade.Ambas;
+                ? c.Finalidade is Finalidade.Despesa or Finalidade.Ambas or Finalidade.Investimento
+                : c.Finalidade is Finalidade.Receita or Finalidade.Ambas or Finalidade.Investimento;
             if (!compativel)
                 continue;
 

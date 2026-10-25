@@ -23,6 +23,11 @@ export function GrupoFicha({ rotulo, icone, extra, children }: { rotulo: string;
   )
 }
 
+/** Divisão dentro de um grupo (ex.: Receitas, Despesas, Investimentos dentro de "Suas categorias"): só o rótulo. */
+export function SubgrupoFicha({ rotulo }: { rotulo: string }) {
+  return <li className={styles.subgrupo} role="presentation">{rotulo}</li>
+}
+
 /** Uma linha: marca · título + detalhe · direita · seta. Aberta, mostra a ficha (`children`) embaixo. */
 export function ItemFicha({ id, aberto, aoAbrir, marca, titulo, detalhe, direita, apagado, children }: {
   /** Único na tela (liga o botão à ficha pro leitor de tela). */

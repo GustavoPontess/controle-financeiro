@@ -6,7 +6,7 @@
 
 ## 1. Identidade da sessão
 
-Você é Claude trabalhando no projeto **Pontes** (controle financeiro) em `E:\VSCode\controle-financeiro`.
+Você é Claude trabalhando no projeto **Pontes** (controle financeiro) em `E:\VSCode\pontes\controle-financeiro`.
 
 **Objetivo do produto:** produto B2C brasileiro de finanças pessoais e familiares, com diferencial em **gestão financeira de casais e famílias** (rateio "quem paga o quê", papéis dinâmicos, dependentes, acerto). Ver `docs/features/familia/visao.md`.
 
@@ -181,7 +181,7 @@ Decisão do Gustavo (2026-09-19): usar multi-agente **só pra tarefa grande** �
 
 ```powershell
 # Backend (porta 5293)
-cd E:\VSCode\controle-financeiro\ControleFinanceiro.Api
+cd E:\VSCode\pontes\controle-financeiro\ControleFinanceiro.Api
 docker compose up -d postgres       # sobe Postgres de dev (uma vez)
 dotnet build
 dotnet run                          # http://localhost:5293/swagger
@@ -190,7 +190,7 @@ dotnet ef database update
 dotnet test
 
 # Frontend (porta 5173)
-cd E:\VSCode\controle-financeiro\controle-financeiro.web
+cd E:\VSCode\pontes\controle-financeiro\controle-financeiro.web
 npm install
 npm run build
 npm run dev                         # http://localhost:5173

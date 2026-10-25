@@ -155,7 +155,7 @@ function Pessoa({ m, familia, meuId, mesNome, renda, aoMudar }: {
             <span className={styles.pessoaRenda}>
               <Dinheiro valor={renda?.recebido ?? 0} className={styles.grande} />
               {(renda?.previsto ?? 0) > 0 && <span className={styles.dica}>esperado <Dinheiro valor={renda?.previsto ?? 0} /></span>}
-              {sou && <Link to="/renda" className={styles.linkFicha}>Ver renda</Link>}
+              {sou && <Link to="/orcamento" className={styles.linkFicha}>Ver renda</Link>}
             </span>
             {sou && m.papelPermissao !== PAPEL_PERMISSAO.dependente && <QuemVe m={m} familia={familia} meuId={meuId} ocupado={ocupado} rodar={rodar} />}
           </div>

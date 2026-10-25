@@ -8,6 +8,7 @@ const CATEGORIAS = [
   { id: "c2", descricao: "Pets", finalidade: 1, isPadrao: false },
   { id: "c3", descricao: "Salário", finalidade: 2, isPadrao: true },
   { id: "c4", descricao: "Reembolsos", finalidade: 3, isPadrao: false },
+  { id: "c5", descricao: "Investimentos", finalidade: 4, isPadrao: true },
 ]
 const SUBS = [
   { id: "s1", nome: "Aluguel", categoriaId: "c1", isPadrao: true },
@@ -38,9 +39,21 @@ const linha = (nome: RegExp) => within(lista()).getByRole("button", { name: nome
 describe("Categorias", () => {
   beforeEach(() => { vi.clearAllMocks() })
 
-  it("Despesas: as da pessoa primeiro, depois as padrão; 'as duas' aparece nas duas abas", async () => {
+  it("abre em Todas: Suas e Padrão, e dentro de cada uma a divisão Receitas, Despesas, Investimentos", async () => {
     renderizar()
     await screen.findByRole("list", { name: "Categorias" })
+    expect(screen.getByRole("radio", { name: "Todas", checked: true })).toBeInTheDocument()
+    expect(within(lista()).getAllByRole("heading").map((h) => h.textContent)).toEqual(["Suas categorias", expect.stringContaining("Padrão")])
+    const divisoes = (grupo: string) => [...screen.getByRole("list", { name: grupo }).children]
+      .map((li) => li.getAttribute("role") === "presentation" ? `# ${li.textContent}` : li.querySelector("button")?.textContent?.split(/(?=[A-Z])/)[0] ?? "")
+    expect(divisoes("Suas categorias").filter((x) => x.startsWith("#"))).toEqual(["# Despesas"])
+    expect(divisoes("Padrão").filter((x) => x.startsWith("#"))).toEqual(["# Receitas", "# Despesas", "# Investimentos"])
+    expect(linha(/Reembolsos/)).toHaveTextContent("Despesa e receita")
+  })
+
+  it("Despesas: as da pessoa primeiro, depois as padrão; 'as duas' aparece nas duas abas; investimento tem a aba dele", async () => {
+    renderizar()
+    await userEvent.click(await screen.findByRole("radio", { name: "Despesas" }))
     expect(within(screen.getByRole("list", { name: "Suas categorias" })).getAllByRole("button").map((b) => b.textContent))
       .toEqual([expect.stringContaining("Pets"), expect.stringContaining("Reembolsos")])
     expect(within(screen.getByRole("list", { name: "Padrão" })).getAllByRole("button")).toHaveLength(1)
@@ -51,6 +64,10 @@ describe("Categorias", () => {
     expect(linha(/Salário/)).toBeInTheDocument()
     expect(linha(/Reembolsos/)).toHaveTextContent("Despesa e receita")
     expect(within(lista()).queryByRole("button", { name: /Pets/ })).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole("radio", { name: "Investimentos" }))
+    expect(within(screen.getByRole("list", { name: "Padrão" })).getAllByRole("button").map((b) => b.textContent))
+      .toEqual([expect.stringContaining("Investimentos")]) // "as duas" não entra aqui
   })
 
   it("padrão: ficha com subcategorias, só as da pessoa têm Editar/Excluir, e sem Editar/Excluir da categoria", async () => {
