@@ -128,6 +128,7 @@ builder.Services.AddScoped<PasswordResetEmailJob>();
 builder.Services.AddScoped<CsrfTokenService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<RelatorioService>();
+builder.Services.AddScoped<CheckUpService>();
 builder.Services.AddScoped<TransferenciaService>();
 builder.Services.AddScoped<RecorrenteService>();
 builder.Services.AddScoped<EmprestimoService>();

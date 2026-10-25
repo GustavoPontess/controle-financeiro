@@ -52,6 +52,7 @@ import NovaTransacao from "./telas/NovaTransacao"
 import NovaContaFixa from "./telas/NovaContaFixa"
 import Notificacoes from "./telas/Notificacoes"
 import Configuracoes from "./telas/Configuracoes"
+import Relatorios from "./telas/Relatorios"
 import EmConstrucao from "./telas/EmConstrucao"
 import Emprestimos from "./telas/Emprestimos"
 import EmprestimoFormulario from "./telas/EmprestimoFormulario"
@@ -63,9 +64,7 @@ import ConfirmarPagamentoEmprestimo from "./telas/ConfirmarPagamentoEmprestimo"
 const Admin = lazy(() => import("./telas/Admin"))
 
 // Telas ainda não transformadas: navegam, mostram "em construção" e apontam pro app atual.
-const PENDENTES: [string, string, string][] = [
-  ["/relatorios", "Relatórios", "/reports"],
-]
+const PENDENTES: [string, string, string][] = []
 
 export default function App() {
   return (
@@ -143,6 +142,7 @@ export default function App() {
         <Route path="/cartoes/:id/parcelamentos/:pid/parcelas/:parcelaId/antecipar" element={<AnteciparParcela />} />
         <Route path="/cartoes/:id/faturas/:faturaId/pagar" element={<PagarFatura />} />
         <Route path="/notificacoes" element={<Notificacoes />} />
+        <Route path="/relatorios" element={<Relatorios />} />
         <Route path="/configuracoes" element={<Configuracoes />} />
         {/* Só admin (a tela manda quem não é pra Visão geral; o servidor confere em cada chamada). */}
         <Route path="/admin" element={<Suspense fallback={null}><Admin /></Suspense>} />
