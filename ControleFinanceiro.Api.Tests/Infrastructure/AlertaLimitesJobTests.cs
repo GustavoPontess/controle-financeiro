@@ -52,7 +52,7 @@ public class AlertaLimitesJobTests
         await Job(ctx).ExecuteAsync(Agora); // de hora em hora: não repete
 
         var perto = Assert.Single(ctx.Notificacoes);
-        Assert.Equal(("Mercado chegou a 85% do limite", "Em outubro: R$ 850,00 de R$ 1.000,00, sobram R$ 150,00.", "/limites"),
+        Assert.Equal(("Mercado chegou a 85% do planejado", "Em outubro: R$ 850,00 de R$ 1.000,00, sobram R$ 150,00.", "/orcamento"),
             (perto.Titulo, perto.Mensagem, perto.LinkRelativo));
         Assert.Equal(TipoNotificacao.OrcamentoEstourado, perto.Tipo);
 
@@ -61,7 +61,7 @@ public class AlertaLimitesJobTests
         await Job(ctx).ExecuteAsync(Agora);
 
         Assert.Equal(2, ctx.Notificacoes.Count());
-        Assert.Contains(ctx.Notificacoes, n => n.Titulo == "Mercado passou do limite"
+        Assert.Contains(ctx.Notificacoes, n => n.Titulo == "Mercado passou do planejado"
             && n.Mensagem == "Em outubro: R$ 1.050,00 de R$ 1.000,00, R$ 50,00 a mais.");
     }
 
@@ -74,10 +74,10 @@ public class AlertaLimitesJobTests
         Gasto(ctx, u, c, 300m, mes: 11);
 
         await Job(ctx).ExecuteAsync(Agora);
-        Assert.Equal("Mercado passou do limite", Assert.Single(ctx.Notificacoes).Titulo);
+        Assert.Equal("Mercado passou do planejado", Assert.Single(ctx.Notificacoes).Titulo);
 
         await Job(ctx).ExecuteAsync(new DateTime(2026, 11, 2, 12, 0, 0));
-        Assert.Equal(2, ctx.Notificacoes.Count(n => n.Titulo == "Mercado passou do limite")); // novembro é outro aviso
+        Assert.Equal(2, ctx.Notificacoes.Count(n => n.Titulo == "Mercado passou do planejado")); // novembro é outro aviso
     }
 
     [Fact]

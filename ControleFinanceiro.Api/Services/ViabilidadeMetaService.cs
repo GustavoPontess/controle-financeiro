@@ -109,13 +109,13 @@ public class ViabilidadeMetaService
         var pedemTxt = $"As metas pedem {Reais.Formatar(pedem)} por mês";
         if (renda is null)
             return new RespostaDto("neutro", $"{pedemTxt}. Diga quanto você espera receber pra saber se cabem.",
-                [new AcaoDto("Dizer a renda", "/renda")]);
+                [new AcaoDto("Dizer a renda", "/orcamento")]);
         if (gastoTipico is not { } g)
             return new RespostaDto("neutro", $"{pedemTxt}. Pra saber se cabem, lance os gastos de pelo menos um mês.", []);
         if (folga is not > 0)
             return g >= renda
                 ? new RespostaDto("negativo", $"{pedemTxt}, e hoje não sobra nada: o seu gasto normal ({Reais.Formatar(g)} por mês) já " +
-                    $"{(g > renda ? "passa da" : "leva toda a")} renda ({Reais.Formatar(renda.Value)}).", [new AcaoDto("Ver os limites", "/limites")])
+                    $"{(g > renda ? "passa da" : "leva toda a")} renda ({Reais.Formatar(renda.Value)}).", [new AcaoDto("Ver o orçamento", "/orcamento")])
                 : new RespostaDto("negativo", $"{pedemTxt}, e hoje não sobra nada: depois do gasto normal sobram {Uns(renda.Value - g)}, " +
                     $"e as parcelas já compradas levam {Reais.Formatar(parcelas)} por mês.", [new AcaoDto("Ver os cartões", "/cartoes")]);
         if (pedem <= folga)
@@ -152,7 +152,7 @@ public class ViabilidadeMetaService
 
         if (renda is null)
             return new RespostaDto("neutro", (pede is null ? "" : pede + ". ") + "Diga quanto você espera receber pra saber se cabe.",
-                [new AcaoDto("Dizer a renda", "/renda")]);
+                [new AcaoDto("Dizer a renda", "/orcamento")]);
         if (porMes > renda)
             return new RespostaDto("negativo", $"{pede}, mais do que você recebe ({Reais.Formatar(renda.Value)})." + (chega is null ? "" : " " + chega), []);
         if (!temGasto)
@@ -165,7 +165,7 @@ public class ViabilidadeMetaService
             var g = gastoTipico!.Value;
             var (porque, acao) = g >= renda
                 ? ($"o seu gasto normal ({Reais.Formatar(g)} por mês) já {(g > renda ? "passa da" : "leva toda a")} renda ({Reais.Formatar(renda.Value)}).",
-                   new AcaoDto("Ver os limites", "/limites"))
+                   new AcaoDto("Ver o orçamento", "/orcamento"))
                 : g + parcelas >= renda
                 ? ($"depois do gasto normal sobram {Uns(renda.Value - g)}, e as parcelas já compradas levam {Reais.Formatar(parcelas)} por mês.",
                    new AcaoDto("Ver os cartões", "/cartoes"))

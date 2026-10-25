@@ -15,7 +15,7 @@ const dados: CheckUp = {
     { ano: 2026, mes: 8, entrou: 5000, saiu: 700, sobrou: 4300 }, { ano: 2026, mes: 9, entrou: 5000, saiu: 700, sobrou: 4300 },
     { ano: 2026, mes: 10, entrou: 5000, saiu: 1000, sobrou: 4000 }],
   dinheiroGuardado: 12600, gastoNormal: 700, mesesDeReserva: 18,
-  resposta: { tom: "positivo", texto: "Em outubro entraram R$ 5.000,00 e saíram R$ 1.000,00: sobraram R$ 4.000,00 (80% do que entrou).", acoes: [{ rotulo: "Ver limites", para: "/limites" }] },
+  resposta: { tom: "positivo", texto: "Em outubro entraram R$ 5.000,00 e saíram R$ 1.000,00: sobraram R$ 4.000,00 (80% do que entrou).", acoes: [{ rotulo: "Ver o planejado", para: "/orcamento" }] },
 }
 vi.mock("../../services/relatorioService", () => ({
   getCheckUp: vi.fn(async () => dados),
@@ -30,7 +30,7 @@ describe("Relatórios = check-up do mês", () => {
 
     expect(await screen.findByText(/sobraram R\$ 4\.000,00/)).toBeInTheDocument()
     expect(getCheckUp).toHaveBeenCalled()
-    expect(screen.getByRole("button", { name: "Ver limites" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Ver o planejado" })).toBeInTheDocument()
     expect(screen.getByText("80% do que entrou")).toBeInTheDocument()
     expect(screen.getByText("10%")).toBeInTheDocument() // comprometido
 

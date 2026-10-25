@@ -149,10 +149,10 @@ public class CheckUpService
         if (acima is not null)
         {
             frases.Add($"{acima.Nome} veio {acima.VariacaoPercentual}% acima do normal.");
-            acoes.Add(new AcaoDto("Ver limites", "/limites"));
+            acoes.Add(new AcaoDto("Ver o planejado", "/orcamento"));
         }
         if (rendaEsperada <= 0)
-            acoes.Add(new AcaoDto("Dizer a renda", "/renda"));
+            acoes.Add(new AcaoDto("Dizer a renda", "/orcamento"));
         return new RespostaDto(tom, string.Join(" ", frases), acoes);
     }
 

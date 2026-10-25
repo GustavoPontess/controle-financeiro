@@ -31,6 +31,14 @@ public static class CategoriaSeeder
             new() { Id = Guid.NewGuid(), Descricao = "Apostas e jogos",        Finalidade = Finalidade.Despesa },
             new() { Id = Guid.NewGuid(), Descricao = "Doações",                Finalidade = Finalidade.Despesa },
             new() { Id = Guid.NewGuid(), Descricao = "Outros",                 Finalidade = Finalidade.Ambas },
+            // Investimento: aporte e resgate mexem no saldo, não são gasto nem renda (seção Investimentos do Orçamento).
+            // Uma categoria por tipo de aplicação; as fontes (o que a pessoa planeja por mês) são as subcategorias.
+            new() { Id = Guid.NewGuid(), Descricao = "Renda fixa",             Finalidade = Finalidade.Investimento },
+            new() { Id = Guid.NewGuid(), Descricao = "Renda variável",         Finalidade = Finalidade.Investimento },
+            new() { Id = Guid.NewGuid(), Descricao = "Previdência",            Finalidade = Finalidade.Investimento },
+            new() { Id = Guid.NewGuid(), Descricao = "Criptomoedas",           Finalidade = Finalidade.Investimento },
+            new() { Id = Guid.NewGuid(), Descricao = "Investimentos no exterior", Finalidade = Finalidade.Investimento },
+            new() { Id = Guid.NewGuid(), Descricao = "Outros investimentos",   Finalidade = Finalidade.Investimento },
         };
 
         context.Categorias.AddRange(defaults);

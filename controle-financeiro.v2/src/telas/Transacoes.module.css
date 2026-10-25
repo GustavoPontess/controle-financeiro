@@ -2,7 +2,7 @@
 
 /* Faixa de números (mesma anatomia dos números do palco, sobre a superfície) */
 .resumo { padding: 20px 24px; }
-.numeros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.numeros { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
 .numero { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .rotulo { font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-texto-2); }
 .numeroValor { font-size: var(--v2-fs-2xl); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }

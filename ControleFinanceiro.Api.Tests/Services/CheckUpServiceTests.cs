@@ -89,7 +89,7 @@ public class CheckUpServiceTests
         Assert.Contains("Mercado veio 80% acima do normal.", r.Resposta.Texto);
         Assert.Contains("cobre 18 meses", r.Resposta.Texto);
         Assert.DoesNotContain("levam 0%", r.Resposta.Texto); // sem conta fixa nem parcela, a frase sai
-        Assert.Contains(r.Resposta.Acoes, a => a.Para == "/limites");
+        Assert.Contains(r.Resposta.Acoes, a => a.Rotulo == "Ver o planejado" && a.Para == "/orcamento");
     }
 
     [Fact]
@@ -114,7 +114,7 @@ public class CheckUpServiceTests
         Assert.Contains("entraram R$ 1.000,00 e saíram R$ 1.500,00: R$ 500,00 a mais do que entrou.", r.Resposta.Texto);
         Assert.Contains("levam 50% da renda", r.Resposta.Texto);
         Assert.DoesNotContain("deve", r.Resposta.Texto);
-        Assert.Contains(r.Resposta.Acoes, a => a.Para == "/renda"); // sem renda esperada declarada
+        Assert.Contains(r.Resposta.Acoes, a => a.Rotulo == "Dizer a renda" && a.Para == "/orcamento"); // sem renda esperada declarada
     }
 
     [Fact]

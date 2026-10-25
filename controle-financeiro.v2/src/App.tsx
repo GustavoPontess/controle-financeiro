@@ -28,7 +28,7 @@ import EditarSubcategoria from "./telas/EditarSubcategoria"
 import ExcluirCategoria from "./telas/ExcluirCategoria"
 import ImportarExtrato from "./telas/ImportarExtrato"
 import Reconciliacao from "./telas/Reconciliacao"
-import Renda from "./telas/Renda"
+import Orcamento from "./telas/Orcamento"
 import Familias from "./telas/Familias"
 import NovaFamilia from "./telas/NovaFamilia"
 import FamiliaVisaoGeral from "./telas/FamiliaVisaoGeral"
@@ -40,8 +40,6 @@ import FamiliaRegras from "./telas/FamiliaRegras"
 import Metas from "./telas/Metas"
 import MetaFormulario from "./telas/MetaFormulario"
 import MetaPagina from "./telas/MetaPagina"
-import Limites from "./telas/Limites"
-import LimiteFormulario from "./telas/LimiteFormulario"
 import MovimentoMeta from "./telas/MovimentoMeta"
 import ConvidarMembro from "./telas/ConvidarMembro"
 import Dependente from "./telas/Dependente"
@@ -62,9 +60,7 @@ import ConvidarEmprestimo from "./telas/ConvidarEmprestimo"
 import ConfirmarPagamentoEmprestimo from "./telas/ConfirmarPagamentoEmprestimo"
 
 // Telas ainda não transformadas: navegam, mostram "em construção" e apontam pro app atual.
-const PENDENTES: [string, string, string][] = [
-  ["/relatorios", "Relatórios", "/reports"],
-]
+const PENDENTES: [string, string, string][] = []
 
 export default function App() {
   return (
@@ -92,7 +88,11 @@ export default function App() {
         <Route path="/categorias" element={<Categorias />} />
         <Route path="/importar" element={<ImportarExtrato />} />
         <Route path="/reconciliacao" element={<Reconciliacao />} />
-        <Route path="/renda" element={<Renda />} />
+        <Route path="/orcamento" element={<Orcamento />} />
+        <Route path="/orcamento/*" element={<Navigate to="/orcamento" replace />} />
+        {/* Renda e Limites viraram seções do Orçamento (2026-10-21): links e avisos antigos caem lá. */}
+        <Route path="/renda" element={<Navigate to="/orcamento" replace />} />
+        <Route path="/limites/*" element={<Navigate to="/orcamento" replace />} />
         <Route path="/metas" element={<Metas />} />
         <Route path="/emprestimos" element={<Emprestimos />} />
         <Route path="/emprestimos/novo" element={<EmprestimoFormulario />} />
@@ -101,9 +101,6 @@ export default function App() {
         <Route path="/emprestimos/pagamentos/:id/confirmar" element={<ConfirmarPagamentoEmprestimo />} />
         <Route path="/metas/nova" element={<MetaFormulario />} />
         <Route path="/metas/:id" element={<MetaPagina />} />
-        <Route path="/limites" element={<Limites />} />
-        <Route path="/limites/novo" element={<LimiteFormulario modo="novo" />} />
-        <Route path="/limites/editar" element={<LimiteFormulario modo="editar" />} />
         <Route path="/metas/:id/editar" element={<MetaFormulario />} />
         <Route path="/metas/:id/guardar" element={<MovimentoMeta modo="guardar" />} />
         <Route path="/metas/:id/resgatar" element={<MovimentoMeta modo="resgatar" />} />

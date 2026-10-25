@@ -1,5 +1,6 @@
-// Categorias do v2: a lista é a tela (modelo de Bancos). Despesas | Receitas em cima ("as duas" aparece nas duas
-// abas); as criadas pela pessoa primeiro, depois as padrão. Clicar abre a ficha na linha: as subcategorias (as
+// Categorias do v2: a lista é a tela (modelo de Bancos). Todas | Receitas | Despesas | Investimentos em cima (a ordem
+// do Orçamento). Abre em Todas: "Suas categorias" e "Padrão", e dentro de cada uma a divisão por tipo na mesma ordem;
+// nas abas, "as duas" aparece em Despesas e Receitas; as criadas pela pessoa primeiro, depois as padrão. Clicar abre a ficha na linha: as subcategorias (as
 // dela com Editar/Excluir) e "Nova subcategoria"; categoria dela tem Editar e Excluir no pé. Padrão não muda nem
 // sai, mas ganha subcategoria. Excluir em uso pergunta pra onde mover (página própria). Outra tela pode mandar
 // `state.abrir` (id) e `state.tipo` pra chegar com aquela categoria aberta.
@@ -12,17 +13,28 @@ import type { Category } from "../types/Category"
 import type { Subcategory } from "../types/Subcategory"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import Botao from "../componentes/Botao"
-import { AcoesFicha, GrupoFicha, InicialFicha, ItemFicha, ListaFicha, VazioFicha } from "../componentes/ListaFicha"
+import { AcoesFicha, GrupoFicha, InicialFicha, ItemFicha, ListaFicha, VazioFicha, SubgrupoFicha } from "../componentes/ListaFicha"
 import Segmentos from "../componentes/Segmentos"
 import { FINALIDADE, serveParaTipo } from "../dominio/categoria"
 import styles from "./Categorias.module.css"
 
-type Aba = "despesa" | "receita"
+type Aba = "todas" | "despesa" | "receita" | "investimento"
 const ABAS: { valor: Aba; rotulo: string }[] = [
-  { valor: "despesa", rotulo: "Despesas" },
+  { valor: "todas", rotulo: "Todas" },
   { valor: "receita", rotulo: "Receitas" },
+  { valor: "despesa", rotulo: "Despesas" },
+  { valor: "investimento", rotulo: "Investimentos" },
 ]
+/** O tipo da aba ("Todas" não filtra; a categoria nova nasce de despesa, e a pessoa troca no formulário). */
+const FINALIDADE_DA_ABA: Record<Aba, number | null> = { todas: null, despesa: FINALIDADE.despesa, receita: FINALIDADE.receita, investimento: FINALIDADE.investimento }
+
 const porNome = <T,>(nome: (x: T) => string) => (a: T, b: T) => nome(a).localeCompare(nome(b), "pt-BR")
+/** A divisão por tipo da visão Todas: Receitas, Despesas ("as duas" junto) e Investimentos; só os que têm. */
+const porTipo = (cs: Category[]) => [
+  { rotulo: "Receitas", itens: cs.filter((c) => c.finalidade === FINALIDADE.receita) },
+  { rotulo: "Despesas", itens: cs.filter((c) => c.finalidade === FINALIDADE.despesa || c.finalidade === FINALIDADE.ambas) },
+  { rotulo: "Investimentos", itens: cs.filter((c) => c.finalidade === FINALIDADE.investimento) },
+].filter((t) => t.itens.length > 0)
 
 export default function Categorias() {
   const { state } = useLocation()
@@ -31,7 +43,8 @@ export default function Categorias() {
   const [categorias, setCategorias] = useState<Category[] | null>(null)
   const [subcategorias, setSubcategorias] = useState<Subcategory[]>([])
   const [erro, setErro] = useState(false)
-  const [aba, setAba] = useState<Aba>(chegou?.tipo === FINALIDADE.receita ? "receita" : "despesa")
+  const [aba, setAba] = useState<Aba>(chegou?.tipo === FINALIDADE.receita ? "receita" : chegou?.tipo === FINALIDADE.investimento ? "investimento"
+    : chegou?.tipo === FINALIDADE.despesa ? "despesa" : "todas")
   const [abertaId, setAbertaId] = useState<string | null>(chegou?.abrir ?? null)
 
   useEffect(() => {
@@ -42,9 +55,9 @@ export default function Categorias() {
     return () => { vivo = false }
   }, [])
 
-  const finalidade = aba === "receita" ? FINALIDADE.receita : FINALIDADE.despesa
+  const finalidade = FINALIDADE_DA_ABA[aba]
   const grupos = useMemo(() => {
-    const daAba = (categorias ?? []).filter((c) => serveParaTipo(c, finalidade)).sort(porNome((c) => c.descricao))
+    const daAba = (categorias ?? []).filter((c) => finalidade === null || serveParaTipo(c, finalidade)).sort(porNome((c) => c.descricao))
     // "Suas" aparece mesmo vazio: é o que marca a divisão com as padrão (que não se editam nem saem).
     return [
       { chave: "suas", rotulo: "Suas categorias", itens: daAba.filter((c) => !c.isPadrao) },
@@ -58,7 +71,7 @@ export default function Categorias() {
       <Bloco semRespiro>
         <div className={styles.toolbar}>
           <Segmentos ariaLabel="Tipo" valor={aba} onChange={(a) => { setAba(a); setAbertaId(null) }} opcoes={ABAS} />
-          <Botao compactoNoCelular onClick={() => navigate("/categorias/nova", { state: { voltarPara: "/categorias", tipo: finalidade } })}
+          <Botao compactoNoCelular onClick={() => navigate("/categorias/nova", { state: { voltarPara: "/categorias", tipo: finalidade ?? FINALIDADE.despesa } })}
             icone={<Plus size={15} strokeWidth={2.5} aria-hidden="true" />}>Nova categoria</Botao>
         </div>
         {categorias === null && !erro ? (
@@ -72,10 +85,14 @@ export default function Categorias() {
                 icone={g.chave === "padrao" ? <Lock size={13} strokeWidth={2.25} aria-hidden="true" /> : undefined}
                 extra={g.chave === "padrao" ? <span className={styles.grupoNota}>Não dá pra editar nem excluir</span> : undefined}>
                 {g.chave === "suas" && g.itens.length === 0 && <VazioFicha>Nenhuma ainda.</VazioFicha>}
-                {g.itens.map((c) => (
-                  <Linha key={c.id} c={c} subs={subsDe(c.id)} aberta={c.id === abertaId}
-                    aoAbrir={() => setAbertaId((atual) => (atual === c.id ? null : c.id))} />
-                ))}
+                {/* Todas: dentro de "Suas" e de "Padrão", a divisão por tipo, na ordem do Orçamento. */}
+                {(finalidade === null ? porTipo(g.itens) : [{ rotulo: null as string | null, itens: g.itens }]).map((t) => [
+                  t.rotulo && <SubgrupoFicha key={`t-${t.rotulo}`} rotulo={t.rotulo} />,
+                  ...t.itens.map((c) => (
+                    <Linha key={c.id} c={c} subs={subsDe(c.id)} aberta={c.id === abertaId}
+                      aoAbrir={() => setAbertaId((atual) => (atual === c.id ? null : c.id))} />
+                  )),
+                ])}
               </GrupoFicha>
             ))}
           </ListaFicha>

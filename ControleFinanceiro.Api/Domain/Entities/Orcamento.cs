@@ -17,6 +17,10 @@ public class Orcamento
     /// <summary>Categoria monitorada (null = orçamento geral sem categoria específica).</summary>
     public Guid? CategoriaId { get; set; }
 
+    /// <summary>Subcategoria (só nas Receitas: Salário, Freela… dentro de Renda; 2026-10-22). Null = a categoria
+    /// inteira. Sempre DA categoria.</summary>
+    public Guid? SubcategoriaId { get; set; }
+
     /// <summary>Mês (1–12) a partir do qual este valor vale.</summary>
     public int Mes { get; set; }
 
@@ -35,4 +39,5 @@ public class Orcamento
     // Navegação
     public Usuario Usuario { get; set; } = null!;
     public Categoria? Categoria { get; set; }
+    public Subcategoria? Subcategoria { get; set; }
 }

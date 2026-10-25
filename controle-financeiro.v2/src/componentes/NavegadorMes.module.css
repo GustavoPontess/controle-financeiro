@@ -1,3 +1,7 @@
-.barra { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.titulo { font-size: var(--v2-fs-md); font-weight: 600; }
-.setas { display: flex; gap: 4px; }
+.barra { display: flex; align-items: center; gap: 8px; }
+/* A pílula: seta · mês · seta (mesma anatomia do mês da Visão geral) */
+.mes { display: inline-flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--v2-linha-forte); border-radius: 999px; background: var(--v2-superficie); font-size: var(--v2-fs-sm); font-weight: 600; }
+.mes > span { min-width: 150px; padding: 0 8px; text-align: center; white-space: nowrap; }
+.mes button { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 0; border-radius: 999px; background: transparent; color: inherit; cursor: pointer; }
+.mes button:hover { background: var(--v2-hover-linha); }
+.mes button:focus-visible { outline: 2px solid var(--v2-acento); outline-offset: 1px; }

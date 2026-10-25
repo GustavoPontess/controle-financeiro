@@ -55,9 +55,9 @@ public class AlertaLimitesJob
             if (nivel is null) continue;
             var chave = $"limite:{l.CategoriaId?.ToString() ?? "todos"}:{ano:D4}-{mes:D2}:{nivel}";
             var (titulo, mensagem) = nivel == "passou"
-                ? ($"{l.Categoria} passou do limite", $"Em {nomeMes}: {Reais.Formatar(l.Gasto)} de {Reais.Formatar(l.Limite)}, {Reais.Formatar(-l.Sobra)} a mais.")
-                : ($"{l.Categoria} chegou a {Math.Floor(l.Percentual):0}% do limite", $"Em {nomeMes}: {Reais.Formatar(l.Gasto)} de {Reais.Formatar(l.Limite)}, sobram {Reais.Formatar(l.Sobra)}.");
-            await _notificacoes.CriarUmaVezAsync(usuarioId, chave, TipoNotificacao.OrcamentoEstourado, titulo, mensagem, "/limites");
+                ? ($"{l.Categoria} passou do planejado", $"Em {nomeMes}: {Reais.Formatar(l.Gasto)} de {Reais.Formatar(l.Limite)}, {Reais.Formatar(-l.Sobra)} a mais.")
+                : ($"{l.Categoria} chegou a {Math.Floor(l.Percentual):0}% do planejado", $"Em {nomeMes}: {Reais.Formatar(l.Gasto)} de {Reais.Formatar(l.Limite)}, sobram {Reais.Formatar(l.Sobra)}.");
+            await _notificacoes.CriarUmaVezAsync(usuarioId, chave, TipoNotificacao.OrcamentoEstourado, titulo, mensagem, "/orcamento");
         }
     }
 }

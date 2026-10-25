@@ -80,6 +80,37 @@ public class RendaServiceTests
     }
 
     [Fact]
+    public async Task ObterMes_SeparaFixaEVariavel_PelaSubcategoria()
+    {
+        var ctx = CreateContext();
+        var eu = SeedUsuario(ctx, "eu@test.com");
+        var renda = SeedCategoria(ctx, "Renda");
+        Guid Sub(string nome)
+        {
+            var s = new Subcategoria { Id = Guid.NewGuid(), Nome = nome, CategoriaId = renda.Id };
+            ctx.Subcategorias.Add(s);
+            ctx.SaveChanges();
+            return s.Id;
+        }
+        var salario = Sub("Salário");
+        var aluguel = Sub("Aluguel recebido");
+        var comissao = Sub("Comissão e variável");
+        var mes = new DateOnly(2026, 10, 1);
+        Receita(ctx, eu, 3000m, mes.AddDays(4), renda, ajusta: t => t.SubcategoriaId = salario);
+        Receita(ctx, eu, 250m, mes.AddDays(20), renda, StatusTransacao.Previsao, t => t.SubcategoriaId = aluguel); // fixa, ainda vem
+        Receita(ctx, eu, 400m, mes.AddDays(12), renda, ajusta: t => t.SubcategoriaId = comissao);
+        Receita(ctx, eu, 12m, mes.AddDays(1), renda);                                                            // sem subcategoria, avulsa: variável
+        Receita(ctx, eu, 100m, mes.AddDays(9), renda, ajusta: t => t.RecorrenteOrigemId = Guid.NewGuid());       // sem subcategoria, de conta fixa: fixa
+
+        var r = await new RendaService(ctx).ObterMesAsync(eu, 2026, 10);
+
+        Assert.Equal((3100m, 412m, 250m, 0m), (r.FixaRecebida, r.VariavelRecebida, r.FixaAindaVem, r.VariavelAindaVem));
+        Assert.Equal(3512m, r.Recebido);
+        Assert.True(r.Entradas.Single(e => e.Valor == 3000m).Fixa);
+        Assert.False(r.Entradas.Single(e => e.Valor == 12m).Fixa);
+    }
+
+    [Fact]
     public async Task ObterMes_PrevistoEhODeclarado_FixaMaisVariavel_EValeAteMudar()
     {
         var ctx = CreateContext();

@@ -128,7 +128,7 @@ public class ViabilidadeMetaServiceTests
         Assert.Equal("/metas", Assert.Single(d.Resposta.Acoes).Para);
 
         var b = await svc.CalcularAsync(semRenda, 600m, new DateTime(2026, 12, 1), null, Hoje);
-        Assert.Equal(("neutro", "/renda"), (b.Resposta.Tom, Assert.Single(b.Resposta.Acoes).Para));
+        Assert.Equal(("neutro", "/orcamento"), (b.Resposta.Tom, Assert.Single(b.Resposta.Acoes).Para));
 
         var c = await svc.CalcularAsync(semGasto, 600m, new DateTime(2026, 12, 1), null, Hoje);
         Assert.Equal("Precisa guardar R$ 200,00 por mês. Pra saber se cabe, lance os gastos de pelo menos um mês.", c.Resposta.Texto);
@@ -237,12 +237,12 @@ public class ViabilidadeMetaServiceTests
         var r = (await Servico(ctx).DasMetasAsync(semFolga, Hoje)).Resposta!;
         Assert.Equal(("negativo", "As metas pedem R$ 800,00 por mês, e hoje não sobra nada: o seu gasto normal (R$ 2.000,00 por mês) " +
                                   "já leva toda a renda (R$ 2.000,00)."), (r.Tom, r.Texto));
-        Assert.Equal("/limites", Assert.Single(r.Acoes).Para);
+        Assert.Equal("/orcamento", Assert.Single(r.Acoes).Para);
 
         var semRenda = Pessoa(ctx, renda: 0m);
         await OutraMeta(ctx, semRenda);
         var n = (await Servico(ctx).DasMetasAsync(semRenda, Hoje)).Resposta!;
-        Assert.Equal(("neutro", "/renda"), (n.Tom, Assert.Single(n.Acoes).Para));
+        Assert.Equal(("neutro", "/orcamento"), (n.Tom, Assert.Single(n.Acoes).Para));
 
         var nada = await Servico(ctx).DasMetasAsync(Pessoa(ctx), Hoje); // nenhuma meta pedindo nada por mês
         Assert.Equal((0m, (decimal?)null), (nada.PedemPorMes, nada.Folga));
