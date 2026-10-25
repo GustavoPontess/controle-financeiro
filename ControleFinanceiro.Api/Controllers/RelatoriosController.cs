@@ -13,11 +13,22 @@ namespace ControleFinanceiro.Api.Controllers;
 public class RelatoriosController : ControllerBase
 {
     private readonly RelatorioService _service;
+    private readonly CheckUpService _checkUp;
 
-    public RelatoriosController(RelatorioService service)
+    public RelatoriosController(RelatorioService service, CheckUpService checkUp)
     {
         _service = service;
+        _checkUp = checkUp;
     }
+
+    /// <summary>
+    /// O check-up do mês (Relatórios do v2): quanto entrou, saiu e sobrou, quanto da renda está comprometido, pra onde
+    /// foi o dinheiro (cada categoria contra o normal), os últimos 12 meses, a reserva em meses e a resposta em frase.
+    /// </summary>
+    [HttpGet("check-up")]
+    [ProducesResponseType(typeof(CheckUpDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> CheckUp([FromQuery] int ano, [FromQuery] int mes)
+        => Ok(await _checkUp.CalcularAsync(GetUserId(), ano, mes));
 
     private Guid GetUserId()
     {

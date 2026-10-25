@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from "react"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import {
   ArrowLeft, ArrowLeftRight, BarChart3, Bell, Check, ChevronsUpDown, CreditCard, Handshake, Landmark, LayoutDashboard, LogOut, Mail,
-  PanelLeftClose, PanelLeftOpen, Plus, Receipt, Repeat, Scale, Settings, SlidersHorizontal, Tags, Target, Upload, Users, Eye, EyeOff, Wallet,
+  PanelLeftClose, PanelLeftOpen, Plus, Receipt, Repeat, Scale, Settings, ShieldCheck, SlidersHorizontal, Tags, Target, Upload, Users, Eye, EyeOff, Wallet,
 } from "lucide-react"
 import Avatar, { urlFoto } from "../componentes/Avatar"
 import Botao from "../componentes/Botao"
@@ -21,6 +21,8 @@ import { familiaDaRota, useEspacos } from "../estado/espaco"
 import { useHideBalance } from "../estado/ocultar"
 import { useNaoLidas } from "../estado/notificacoes"
 import PainelNotificacoes from "./PainelNotificacoes"
+import SeloPontesDev from "../componentes/SeloPontesDev"
+import { NOME_PRODUTO } from "../config"
 import styles from "./V2Layout.module.css"
 
 type ItemMenu = { para: string; rotulo: string; icone: typeof LayoutDashboard; exato?: boolean }
@@ -41,6 +43,10 @@ const GERENCIAR: ItemMenu[] = [
   { para: "/bancos", rotulo: "Bancos", icone: Landmark },
   { para: "/categorias", rotulo: "Categorias", icone: Tags },
   { para: "/metas", rotulo: "Metas", icone: Target },
+]
+// Só pra quem é admin, no espaço pessoal (o gate do beta: aprovar cadastros, gerenciar usuários).
+const ADMIN: ItemMenu[] = [
+  { para: "/admin", rotulo: "Admin", icone: ShieldCheck },
 ]
 const FAMILIA = (id: string): ItemMenu[] => [
   { para: `/familias/${id}`, rotulo: "Visão geral", icone: LayoutDashboard, exato: true },
@@ -70,6 +76,7 @@ function secaoDaRota(pathname: string): Secao | undefined {
       ...PRINCIPAL, ...GERENCIAR,
       { para: "/familias", rotulo: "Famílias", semMenu: true },
       { para: "/configuracoes", rotulo: "Configurações" },
+      ...ADMIN,
       { para: "/notificacoes", rotulo: "Notificações", semMenu: true },
     ]
   return todos.filter((i) => pathname === i.para || pathname.startsWith(i.para + "/")).sort((a, b) => b.para.length - a.para.length)[0]
@@ -163,8 +170,14 @@ export default function V2Layout() {
           {principal.map((i) => <Item key={i.para} {...i} />)}
           <span className={styles.grupo}><span className={styles.itemRotulo}>Gerenciar</span></span>
           {gerenciar.map((i) => <Item key={i.para} {...i} />)}
+          {!familiaId && usuario?.isAdmin && <>
+            <span className={styles.grupo}><span className={styles.itemRotulo}>Administração</span></span>
+            {ADMIN.map((i) => <Item key={i.para} {...i} />)}
+          </>}
         </nav>
         <div className={styles.rodape}>
+          {/* Selo discreto do estúdio; some no trilho (só ícones). */}
+          <SeloPontesDev className={`${styles.selo} ${styles.itemRotulo}`} />
           <div className={styles.usuario} ref={usuarioRef}>
             {/* O bloco da pessoa diz em que espaço ela está (Pessoal ou a família); o menu troca de espaço. */}
             <button type="button" className={styles.usuarioBotao} aria-label={usuario?.nome ?? "Conta"} title={recolhido ? `${usuario?.nome} · ${nomeDoEspaco}` : undefined}
@@ -242,7 +255,7 @@ export default function V2Layout() {
             <Botao variante="texto" soIcone aria-label="Voltar" className={styles.voltar} onClick={() => navigate(voltarPara)}
               icone={<ArrowLeft size={18} strokeWidth={2.25} />} />
           )}
-          <h1 className={styles.tituloPagina}>{secao?.rotulo ?? "Pontes"}</h1>
+          <h1 className={styles.tituloPagina}>{secao?.rotulo ?? NOME_PRODUTO}</h1>
           <div className={styles.topoAcoes}>
             <Botao soIcone aria-label={oculto ? "Mostrar valores" : "Esconder valores"} onClick={alternarOculto}
               icone={oculto ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />} />

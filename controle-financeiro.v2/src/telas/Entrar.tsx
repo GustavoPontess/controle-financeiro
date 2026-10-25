@@ -13,8 +13,9 @@ import rosterService, { type ContaLembrada } from "../services/rosterService"
 import mfaService from "../services/mfaService"
 import { api } from "../api/cliente"
 import { useAuth } from "../auth/useAuth"
-import { APP_ATUAL } from "../config"
+import { NOME_PRODUTO, PAGINA_PRODUTO } from "../config"
 import styles from "./Auth.module.css"
+import SeloPontesDev from "../componentes/SeloPontesDev"
 
 // Senha padrão das contas de TESTE do seeder de dev (nunca uma senha real; não existe em produção).
 const DEV_SENHA = "Dev@123456"
@@ -181,7 +182,7 @@ export default function Entrar() {
             ))}
           </ul>
         </div>
-        <span className={styles.palcoRodape}>Pontes · finanças pessoais e familiares</span>
+        <SeloPontesDev className={styles.palcoRodape} />
       </aside>
 
       <main className={styles.painel}>
@@ -217,7 +218,7 @@ export default function Entrar() {
               </button>
             )
           ) : (
-            <a href={`${APP_ATUAL}/`} className={styles.voltar}><ArrowLeft size={16} strokeWidth={2.25} aria-hidden="true" /> Página inicial</a>
+            <a href={PAGINA_PRODUTO} className={styles.voltar}><ArrowLeft size={16} strokeWidth={2.25} aria-hidden="true" /> Conhecer o {NOME_PRODUTO}</a>
           )}
 
           <div className={styles.marcaMovel}><Logo size={26} /></div>
@@ -225,7 +226,7 @@ export default function Entrar() {
           {contaExcluida && (passo === "form" || passo === "escolher") && (
             <p className={styles.aviso} role="status">Sua conta foi marcada pra exclusão. Pra reativar, é só entrar de novo em até 30 dias.</p>
           )}
-          {passo === "form" && <p className={styles.sub}>Não tem conta? <Link to="/cadastro">Criar conta grátis</Link></p>}
+          {passo === "form" && <p className={styles.sub}>Ainda não tem acesso? <Link to="/cadastro">Pedir acesso</Link></p>}
           {passo === "mfa" && <p className={styles.sub}>Digite o código do seu app autenticador (ou um código de recuperação).</p>}
           {passo === "exclusao" && <p className={styles.sub}>Sua conta está marcada para exclusão. Você ainda pode reativá-la.</p>}
           {passo === "esqueci" && !esqueciEnviado && <p className={styles.sub}>Informe seu e-mail. Se existir uma conta, enviamos um link para criar uma senha nova.</p>}

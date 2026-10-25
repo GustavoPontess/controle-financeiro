@@ -22,14 +22,16 @@ public sealed class SmtpEmailSender : IPasswordResetEmailSender, IContaEmailSend
         _logger = logger;
     }
 
+    // De quem cada e-mail sai: recuperar senha e código são automáticos; o aviso de exclusão da conta é alerta
+    // de segurança (a pessoa precisa reconhecer se não foi ela).
     public Task EnviarAsync(string email, string token, DateTime expiresAt, CancellationToken ct = default) =>
-        EnviarAsync(email, ModelosEmail.ResetSenha(_opcoes.AppUrl, email, token, expiresAt), ct);
+        EnviarAsync(email, ModelosEmail.ResetSenha(_opcoes.AppUrl, email, token, expiresAt), TipoRemetente.Automatico, ct);
 
     public Task EnviarCodigoAsync(string email, string codigo, TipoOtpEmail finalidade, DateTime expiraEm, CancellationToken ct = default) =>
-        EnviarAsync(email, ModelosEmail.CodigoOtp(email, codigo, finalidade, expiraEm), ct);
+        EnviarAsync(email, ModelosEmail.CodigoOtp(email, codigo, finalidade, expiraEm), TipoRemetente.Automatico, ct);
 
     public Task EnviarAvisoExclusaoAsync(string email, DateTime marcadoEm, int diasCarencia, CancellationToken ct = default) =>
-        EnviarAsync(email, ModelosEmail.AvisoExclusao(_opcoes.AppUrl, email, marcadoEm, diasCarencia), ct);
+        EnviarAsync(email, ModelosEmail.AvisoExclusao(_opcoes.AppUrl, email, marcadoEm, diasCarencia), TipoRemetente.Seguranca, ct);
 
     /// <summary>O logo dos e-mails (PNG embutido no assembly), anexado inline com o Content-ID do layout.</summary>
     private static readonly Lazy<byte[]> Logo = new(() =>
@@ -41,16 +43,25 @@ public sealed class SmtpEmailSender : IPasswordResetEmailSender, IContaEmailSend
         return ms.ToArray();
     });
 
-    private async Task EnviarAsync(string para, MensagemEmail m, CancellationToken ct)
+    /// <summary>A mensagem pronta (remetente do tipo, Reply-To quando há, corpo com o logo inline).</summary>
+    public static MimeMessage Montar(SmtpOpcoes opcoes, string para, MensagemEmail m, TipoRemetente tipo)
     {
         var msg = new MimeMessage();
-        msg.From.Add(MailboxAddress.Parse(_opcoes.Remetente));
+        msg.From.Add(MailboxAddress.Parse(opcoes.RemetenteDe(tipo)));
+        if (opcoes.ResponderDe(tipo) is { } responder)
+            msg.ReplyTo.Add(MailboxAddress.Parse(responder));
         msg.To.Add(MailboxAddress.Parse(para));
         msg.Subject = m.Assunto;
         var corpo = new BodyBuilder { TextBody = m.Texto, HtmlBody = m.Html };
         var logo = corpo.LinkedResources.Add("logo-pontes.png", Logo.Value, new ContentType("image", "png"));
         logo.ContentId = ModelosEmail.CidLogo;
         msg.Body = corpo.ToMessageBody();
+        return msg;
+    }
+
+    private async Task EnviarAsync(string para, MensagemEmail m, TipoRemetente tipo, CancellationToken ct)
+    {
+        var msg = Montar(_opcoes, para, m, tipo);
 
         var seguranca = _opcoes.Seguranca switch
         {
