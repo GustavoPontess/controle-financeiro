@@ -351,7 +351,7 @@ public class AuthService
     private static RegisterResponseDto RespostaCadastroRecebido() => new()
     {
         Status = StatusUsuario.AguardandoAprovacao,
-        Mensagem = "Cadastro enviado! Sua conta está aguardando aprovação. "
+        Mensagem = "Pedido enviado! Sua conta está aguardando aprovação. "
                  + "Você receberá acesso assim que for liberada.",
     };
 
