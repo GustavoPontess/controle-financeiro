@@ -13,6 +13,7 @@ vi.mock("../../services/adminService", () => ({
   },
 }))
 import adminService from "../../services/adminService"
+import { setHideBalance } from "../../estado/ocultar"
 import Admin from "../../telas/Admin"
 
 const svc = vi.mocked(adminService)
@@ -25,10 +26,10 @@ const bia = pessoa("bia", "Bia Ativa", 1, { ultimoAcessoEm: "2026-10-23T10:00:00
 const caio = pessoa("caio", "Caio Bloqueado", 3)
 const eu = pessoa("eu", "Gustavo", 1)
 
-const renderizar = () => render(
-  <MemoryRouter initialEntries={["/admin"]}>
+const renderizar = (rota = "/admin/cadastros") => render(
+  <MemoryRouter initialEntries={[rota]}>
     <Routes>
-      <Route path="/admin" element={<Admin />} />
+      <Route path="/admin/*" element={<Admin />} />
       <Route path="/dashboard" element={<p>visão geral</p>} />
     </Routes>
   </MemoryRouter>,
@@ -78,7 +79,7 @@ describe("Admin", () => {
   })
 
   it("usuários: ações pela situação; a própria conta não tem ação", async () => {
-    renderizar()
+    renderizar("/admin/usuarios")
     const lista = await screen.findByRole("list", { name: "Usuários" })
     expect(within(lista).getByText("Gustavo (você)")).toBeInTheDocument()
     expect(within(lista).queryByRole("button", { name: /Gustavo/ })).not.toBeInTheDocument()
@@ -96,7 +97,7 @@ describe("Admin", () => {
   })
 
   it("trocar senha confirma e manda o link", async () => {
-    renderizar()
+    renderizar("/admin/usuarios")
     const lista = await screen.findByRole("list", { name: "Usuários" })
     await userEvent.click(within(lista).getByRole("button", { name: "Trocar a senha de Bia Ativa" }))
     await userEvent.click(screen.getByRole("button", { name: "Enviar link" }))
@@ -105,7 +106,7 @@ describe("Admin", () => {
   })
 
   it("busca vai pro servidor, da página 1", async () => {
-    renderizar()
+    renderizar("/admin/usuarios")
     await screen.findByRole("list", { name: "Usuários" })
     await userEvent.type(screen.getByRole("searchbox", { name: "Buscar por nome ou e-mail" }), "bia")
     await vi.waitFor(() => expect(svc.usuarios).toHaveBeenLastCalledWith("bia", 1, 25))
@@ -117,5 +118,30 @@ describe("Admin", () => {
     const cadastros = await screen.findByRole("list", { name: "Cadastros" })
     await userEvent.click(within(cadastros).getByRole("button", { name: "Aprovar Ana Pendente" }))
     expect(await screen.findByRole("alert")).toHaveTextContent("Este cadastro não está aguardando aprovação.")
+  })
+
+  it("olho fechado: e-mail mascarado nas duas páginas (dado de terceiro não fica à vista)", async () => {
+    setHideBalance(true)
+    try {
+      const { unmount } = renderizar()
+      const cadastros = await screen.findByRole("list", { name: "Cadastros" })
+      expect(within(cadastros).getByText("an•••@t•••.com")).toBeInTheDocument()
+      expect(within(cadastros).queryByText("ana@teste.com")).not.toBeInTheDocument()
+      unmount()
+      renderizar("/admin/usuarios")
+      const lista = await screen.findByRole("list", { name: "Usuários" })
+      expect(within(lista).getByText("bi•••@t•••.com")).toBeInTheDocument()
+    } finally { setHideBalance(false) }
+  })
+
+  it("área própria: menu só do admin (Cadastros, Usuários, Voltar ao app), cada página no seu endereço", async () => {
+    renderizar("/admin")
+    const menu = screen.getByRole("navigation", { name: "Administração" })
+    expect(within(menu).getByRole("link", { name: "Cadastros" })).toHaveAttribute("href", "/admin/cadastros")
+    expect(within(menu).getByRole("link", { name: "Usuários" })).toHaveAttribute("href", "/admin/usuarios")
+    expect(screen.getByRole("link", { name: "Voltar ao app" })).toHaveAttribute("href", "/dashboard")
+    expect(await screen.findByRole("list", { name: "Cadastros" })).toBeInTheDocument() // /admin abre Cadastros
+    expect(screen.queryByRole("list", { name: "Usuários" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Nova transação" })).not.toBeInTheDocument() // nada do app financeiro
   })
 })
