@@ -13,6 +13,9 @@ jobs:
   backend:
     name: Backend (.NET 10)
     runs-on: [self-hosted, pontes-local]
+    # O runner (container) não escreve em /usr/share/dotnet: o .NET fica na pasta do usuário dele (e é reaproveitado).
+    env:
+      DOTNET_INSTALL_DIR: /home/runner/.dotnet
 
     steps:
       - uses: actions/checkout@v6
@@ -99,6 +102,10 @@ jobs:
     name: E2E Playwright
     runs-on: [self-hosted, pontes-local]
     needs: [frontend]
+    # Desligado no runner local (2026-10-26): a imagem não tem `docker compose` e, de dentro do container, localhost
+    # não é a máquina (a API publicada no PC não responde em localhost:5293). Cobre só o front v1 (vai pra documentação).
+    # Pra ligar: variável do repo E2E_LOCAL=true, depois de resolver as duas coisas (ROADMAP).
+    if: ${{ vars.E2E_LOCAL == 'true' }}
 
     # Nível do job: todo `docker compose` (up/logs/down) precisa dessas vars pra
     # interpolar o compose (${POSTGRES_PASSWORD:?}/${JWT_SECRET:?}). Valores
