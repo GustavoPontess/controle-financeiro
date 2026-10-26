@@ -14,8 +14,6 @@ import {
 } from "lucide-react"
 import Avatar, { urlFoto } from "../componentes/Avatar"
 import Botao from "../componentes/Botao"
-import Logo from "../componentes/Logo"
-import LogoMark from "../componentes/LogoMark"
 import { useAuth } from "../auth/useAuth"
 import { familiaDaRota, useEspacos } from "../estado/espaco"
 import { useHideBalance } from "../estado/ocultar"
@@ -149,12 +147,12 @@ export default function V2Layout() {
       {menuAberto && <button type="button" className={styles.veu} aria-label="Fechar menu" onClick={() => setMenuAberto(false)} />}
       <aside className={styles.lateral} data-aberto={menuAberto ? "true" : undefined}>
         <div className={styles.marca}>
-          <span className={styles.logo}><Logo size={26} /></span>
+          <span className={styles.logo}><img src="/site/estaiada-laranja.svg" width={34} height={34} alt="" />Pontes</span>
           {/* No trilho a marca compacta É o botão: mostra o "P" e, ao passar o mouse, vira a seta de expandir.
               Mesma linha de 40px nos dois estados — nada embaixo da marca, o menu não desce. */}
           <button type="button" className={styles.recolher} aria-label={recolhido ? "Expandir menu" : "Recolher menu"} title={recolhido ? "Expandir menu" : "Recolher menu"}
             onClick={() => { setRecolhido((r) => !r); setMenuUsuario(false) }}>
-            <span className={styles.logoMini}><LogoMark size={26} /></span>
+            <span className={styles.logoMini}><img src="/site/estaiada-laranja.svg" width={34} height={34} alt="Pontes" /></span>
             <span className={styles.recolherIcone}>{recolhido ? <PanelLeftOpen size={18} strokeWidth={2} /> : <PanelLeftClose size={18} strokeWidth={2} />}</span>
           </button>
           <button type="button" className={styles.fecharMenu} aria-label="Fechar menu" onClick={() => setMenuAberto(false)}><PanelLeftClose size={18} strokeWidth={2} /></button>

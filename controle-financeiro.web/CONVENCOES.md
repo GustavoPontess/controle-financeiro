@@ -78,3 +78,15 @@ Peça que aparece em mais de uma tela vira componente aqui. A tela escolhe **var
 - Página de formulário/detalhe **não** tem `max-width`: o conteúdo termina na mesma linha dos botões do topo (fresta à direita parece erro de alinhamento).
 - Formulário de dinheiro = layout lateral com `PreviaLancamento` à direita. Criar e editar usam **o mesmo** componente (`telas/FormularioTransacao.tsx`, com ou sem `transacao`; `telas/FormularioContaFixa.tsx`, com ou sem `recorrente`) — nunca dois formulários parecidos que divergem.
 - Filtro de período: o back trata `to` como exclusivo (`Data < to`) — mande `diaSeguinte(ate)` pra o "até" incluir o dia.
+
+## Barra de estados (dev) — regra fixa (Gustavo, 2026-10-26)
+
+Toda tela com **mais de um jeito de ser vista** (passos de fluxo, vazio × com dados, erro, carregando, casos como os da /casa, modais) ganha a pílula preta embaixo que pula direto pra cada estado, **só em desenvolvimento**. Cada botão põe a tela no estado sem passar pelo fluxo real (sem login, sem API: dados de exemplo).
+
+- Peças em `src/dev/`: `BarraDev` (carrega a barra só com `import.meta.env.DEV`) e `useEstadoDev` (lê o `#estado` do endereço e chama a função da tela). Nunca importar `BarraEstadosDev` direto.
+- Na tela, **sempre** dentro de `import.meta.env.DEV`, pro build apagar tudo:
+  `useEstadoDev(import.meta.env.DEV ? (e) => { /* põe a tela no estado e */ } : undefined)` e
+  `{import.meta.env.DEV && <BarraDev atual={estadoDeAgora} grupos={[[{ rotulo: "Vazio", para: "/x#vazio" }, …]]} />}`.
+- Exemplos (contas, códigos…) moram em `src/dev/` e só são usados dentro desses ramos.
+- Trava: `scripts/conferirDevFora.mjs` roda no `npm run build` e falha se achar rótulos da barra no `dist`. Estado novo com rótulo próprio entra na lista de marcas dela.
+- Já tem: telas de acesso (`/entrar`, `/cadastro`, `/redefinir-senha`, `/proteja-sua-conta`, grupos em `dev/estadosAcesso.ts`) e a `/casa`.

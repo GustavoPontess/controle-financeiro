@@ -1,0 +1,13 @@
+/* Painel DEV do login (contas de teste do banco local; só em desenvolvimento), acima da barra de estados do dev. O resto das telas de acesso é o site.css do rascunho. */
+.dev { position: fixed; right: 16px; bottom: 76px; z-index: 30; width: 260px; max-height: calc(100vh - 100px); overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding: 10px; border: 1px dashed var(--v2-linha-forte); border-radius: 14px; background: var(--v2-superficie); box-shadow: var(--v2-sombra-palco); }
+.devTopo { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 6px; font-size: var(--v2-fs-xs); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--v2-texto-3); }
+.devTopo button { display: inline-flex; border: 0; background: transparent; color: var(--v2-texto-3); cursor: pointer; }
+.devItem { display: flex; flex-direction: column; gap: 1px; padding: 7px 8px; border: 0; border-radius: 8px; background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.devItem:hover { background: var(--v2-superficie-2); }
+.devNome { font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-texto); }
+.devEmail { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); }
+.devReabrir { position: fixed; right: 16px; bottom: 76px; z-index: 30; display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px dashed var(--v2-linha-forte); border-radius: 999px; background: var(--v2-superficie); font: inherit; font-size: var(--v2-fs-xs); font-weight: 700; color: var(--v2-texto-3); cursor: pointer; }
+
+@media (max-width: 900px) {
+  .dev, .devReabrir { right: 12px; bottom: 76px; }
+}

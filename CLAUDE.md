@@ -74,7 +74,8 @@ Pelo app: launch `web` (:5174) e `api` (:5293). O `/admin` no dev abre o mini-ap
 - **src/estado/** — estado entre telas com `useSyncExternalStore` (`ocultar`, `notificacoes`, `espaco`)
 - **src/types/** — interfaces espelhando os DTOs do back
 - **src/admin/** — mini-app do admin (`admin.html`, entrada própria no build, fora do pacote do app; ver "Beta fechado")
-- **src/site/** — site público (`/`), em construção na branch `feat/v2-site`
+- **src/site/** — site público (`/`, `/recursos`, `/casa`, `/contadores`, `/planos`, `/seguranca`, `/sobre`) e a moldura das telas de acesso, **idênticos ao rascunho aprovado no hub Pontes Dev** (`E:\VSCode\pontes\PontesDev\clientes\pontes-financas\site`): o HTML e o `site.css` vêm do rascunho por `scripts/importarSite.py` (não editar à mão; mudou o rascunho, roda o script), carregados sob demanda. Site é desenhado lá, aqui só integra
+- **src/dev/** — peças só de desenvolvimento (barra de estados: `BarraDev` + `useEstadoDev`; regra em `CONVENCOES.md`). Nunca vão pro build (trava `scripts/conferirDevFora.mjs`)
 - **src/test/** — vitest + testing-library; toda tela nova sai com teste (submit vazio bloqueia + fluxo feliz); travas que leem o código (`adminForaDoPacoteComum`)
 
 ### Key Domain Concepts

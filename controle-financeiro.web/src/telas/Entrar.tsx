@@ -1,19 +1,19 @@
-// Login do v2 — tudo que o app atual tem, redesenhado: contas lembradas (roster, e-mail preenchido ao
-// escolher), e-mail + senha (mostrar/ocultar), manter conectado, verificação em duas etapas (MFA, confiar no
-// dispositivo), conta em carência de exclusão (reativar), criar conta, termos, e o painel DEV de contas
-// de teste (só em desenvolvimento). Quem já entrou no app atual nem vê esta tela (cookie compartilhado).
+// Login: contas lembradas (roster, e-mail preenchido ao escolher), e-mail + senha (mostrar/ocultar), manter
+// conectado, verificação em duas etapas (MFA, confiar no dispositivo), conta em carência de exclusão (reativar),
+// pedir acesso, termos, e o painel DEV de contas de teste (só em desenvolvimento). O visual é o do rascunho aprovado
+// (rascunhos/entrar.html do hub Pontes Dev, 2026-10-26): cada estado é uma <section data-passo> da MolduraAcesso.
 import { useEffect, useRef, useState, type FormEvent } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
-import { ArrowLeft, ArrowRight, Check, ChevronDown, Eye, EyeOff, PanelRightClose, PanelRightOpen, Trash2, UserPlus } from "lucide-react"
-import Logo from "../componentes/Logo"
-import Botao from "../componentes/Botao"
-import Campo from "../componentes/Campo"
-import Entrada from "../componentes/Entrada"
+import { PanelRightClose, PanelRightOpen } from "lucide-react"
+import MolduraAcesso, { CampoAcesso, Seta, VoltarA } from "../site/MolduraAcesso"
+import css from "../site/Acesso.module.css"
+import { BarraDev, useEstadoDev } from "../dev/BarraDev"
+import { CONTAS_EXEMPLO, ESTADOS_ACESSO } from "../dev/estadosAcesso"
 import rosterService, { type ContaLembrada } from "../services/rosterService"
 import mfaService from "../services/mfaService"
 import { api } from "../api/cliente"
 import { useAuth } from "../auth/useAuth"
-import styles from "./Auth.module.css"
+import styles from "./Entrar.module.css"
 
 // Senha padrão das contas de TESTE do seeder de dev (nunca uma senha real; não existe em produção).
 const DEV_SENHA = "Dev@123456"
@@ -31,7 +31,6 @@ export default function Entrar() {
 
   const [email, setEmail] = useState("")
   const [senha, setSenha] = useState("")
-  const [mostrarSenha, setMostrarSenha] = useState(false)
   const [manter, setManter] = useState(false)
   const [erros, setErros] = useState<{ email?: string; senha?: string }>({})
   const [erro, setErro] = useState<string | null>(null)
@@ -59,14 +58,14 @@ export default function Entrar() {
   const [devAberto, setDevAberto] = useState(() => { try { return localStorage.getItem("devPanelRecolhido") !== "1" } catch { return true } })
   const alternarDev = (aberto: boolean) => { setDevAberto(aberto); try { localStorage.setItem("devPanelRecolhido", aberto ? "0" : "1") } catch { /* ignore */ } }
 
-  // `?previa` (só em dev): mostra a tela mesmo logado, pra olhar o visual sem precisar sair da conta.
-  const previa = import.meta.env.DEV && new URLSearchParams(window.location.search).has("previa")
+  // `?previa` ou o #estado da barra de dev (só em dev): mostra a tela mesmo logado, pra olhar o visual sem sair da conta.
+  const previa = import.meta.env.DEV && (new URLSearchParams(window.location.search).has("previa") || !!window.location.hash)
   // `?adicionar` (logado): conecta OUTRA conta sem sair desta (menu da conta → "Adicionar conta").
   const adicionar = autenticado && new URLSearchParams(window.location.search).has("adicionar")
   // Entrando agora: quem decide pra onde vai é o pós-login (convite de MFA ou Visão geral), não o "já logado".
   const entrando = useRef(false)
   useEffect(() => { if (!carregando && autenticado && !previa && !adicionar && !entrando.current) navigate("/dashboard", { replace: true }) }, [autenticado, carregando, navigate, previa, adicionar])
-  useEffect(() => { rosterService.listar().then(setRoster).catch(() => setRoster([])) }, [])
+  useEffect(() => { rosterService.listar().then((r) => setRoster((atual) => (r.length ? r : atual))).catch(() => { /* fica como está */ }) }, [])
   // Painel DEV: se a API ainda está subindo (reinício em dev), o proxy responde erro — tenta de novo a cada
   // 3s por até 1 min, em vez de ficar sem painel até recarregar a página.
   useEffect(() => {
@@ -81,6 +80,17 @@ export default function Entrar() {
     tentar(20)
     return () => { vivo = false; if (timer) clearTimeout(timer) }
   }, [])
+
+  // DEV: a barra de estados põe a tela direto em cada passo (sem login nem API). Some no build.
+  useEstadoDev(import.meta.env.DEV ? (e) => {
+    setMarcada(null); setMfaChallenge(null); setMfaCodigo(""); setEsqueci(false); setEsqueciEnviado(false)
+    setContaSelecionada(null); setUsarOutra(true); limparErros()
+    if (e === "contas") { setUsarOutra(false); setRoster((r) => (r.length ? r : CONTAS_EXEMPLO)) }
+    else if (e === "duas-etapas") setMfaChallenge("dev")
+    else if (e === "esqueci") setEsqueci(true)
+    else if (e === "link-enviado") { setEsqueci(true); setEsqueciEnviado(true) }
+    else if (e === "reativar") setMarcada({ dias: 23 })
+  } : undefined)
 
   const passo: Passo = marcada ? "exclusao" : mfaChallenge ? "mfa" : esqueci ? "esqueci" : roster.length > 0 && !usarOutra ? "escolher" : "form"
 
@@ -165,166 +175,140 @@ export default function Entrar() {
     finally { setEnviando(false) }
   }
 
-  const titulo = passo === "exclusao" ? "Reativar conta" : passo === "mfa" ? "Verificação em duas etapas" : passo === "esqueci" ? "Recuperar senha" : passo === "escolher" ? (adicionar ? "Qual conta conectar?" : "Escolha sua conta") : adicionar ? "Adicionar conta" : "Bem-vindo de volta"
+  const vista = passo === "escolher" ? "contas" : passo === "form" ? "entrar" : passo === "mfa" ? "duas-etapas" : passo === "exclusao" ? "reativar" : esqueciEnviado ? "link-enviado" : "esqueci"
+  const tituloContas = adicionar ? "Qual conta conectar?" : "Escolha sua conta"
+  const voltarAoLogin = {
+    mfa: () => { setMfaChallenge(null); setMfaCodigo(""); setMfaErro(null); setConfiar(false) },
+    exclusao: () => { setMarcada(null); setReativarErro(null); setSenha("") },
+    esqueci: () => { setEsqueci(false); setEsqueciEnviado(false); limparErros() },
+  }
+  const avisoExcluida = contaExcluida && <p className="aviso-a" role="status">Sua conta foi marcada pra exclusão. Pra reativar, é só entrar de novo em até 30 dias.</p>
 
   return (
-    <div className={`v2 ${styles.raiz}`}>
-      <aside className={styles.palco}>
-        <div className={styles.marca}><Logo size={28} /></div>
-        <div className={styles.palcoMeio}>
-          <p className={styles.frase}>Finanças em família, <span className={styles.fraseSuave}>sem briga.</span></p>
-          <p className={styles.lead}>Um lugar só para você, seu parceiro e seu contador. Rateio claro, aprovação de despesas, visão completa.</p>
-          <ul className={styles.beneficios}>
-            {["Rateio explícito: 50/50, % ou valor fixo", "Aprovação de despesa em 1 toque", "Conexão com Open Finance (em breve)"].map((t) => (
-              <li key={t}><span className={styles.check}><Check size={12} strokeWidth={3} aria-hidden="true" /></span>{t}</li>
-            ))}
-          </ul>
-        </div>
-        <span className={styles.palcoRodape}>Pontes · finanças pessoais e familiares</span>
-      </aside>
+    <MolduraAcesso titulo="Entrar · Pontes" foto="1740679954227-a0cd19c042a6-1400.jpg" frase="O dinheiro da casa," fraseSuave="sem briga."
+      lead="Um lugar só pra você e pra quem divide a casa com você. Divisão clara, aprovação de despesas e o acerto do mês pronto."
+      benef={["Divisão meio a meio, pela renda ou por porcentagem", "Aprovação de gasto grande em 1 toque", "Conexão com Open Finance (em breve)"]}>
 
-      <main className={styles.painel}>
-        <div className={styles.painelMiolo}>
-          {/* Um "voltar" só, contextual */}
-          {adicionar && (passo === "escolher" || (passo === "form" && roster.length === 0)) && (
-            <button type="button" className={styles.voltar} onClick={() => navigate("/dashboard")}>
-              <ArrowLeft size={16} strokeWidth={2.25} aria-hidden="true" /> Voltar
-            </button>
-          )}
-          {passo === "mfa" ? (
-            <button type="button" className={styles.voltar} onClick={() => { setMfaChallenge(null); setMfaCodigo(""); setMfaErro(null); setConfiar(false) }}>
-              <ArrowLeft size={16} strokeWidth={2.25} aria-hidden="true" /> Voltar ao login
-            </button>
-          ) : passo === "exclusao" ? (
-            <button type="button" className={styles.voltar} onClick={() => { setMarcada(null); setReativarErro(null); setSenha("") }}>
-              <ArrowLeft size={16} strokeWidth={2.25} aria-hidden="true" /> Voltar ao login
-            </button>
-          ) : passo === "esqueci" ? (
-            <button type="button" className={styles.voltar} onClick={() => { setEsqueci(false); setEsqueciEnviado(false); limparErros() }}>
-              <ArrowLeft size={16} strokeWidth={2.25} aria-hidden="true" /> Voltar ao login
-            </button>
-          ) : passo === "form" && roster.length > 0 ? (
-            contaSelecionada ? (
-              <button type="button" className={styles.chip} onClick={voltarEscolher} title="Trocar de conta">
-                <span className={styles.avatar}>{iniciais(contaSelecionada.nome)}</span>
-                <span className={styles.chipTexto}>{contaSelecionada.nome} · {contaSelecionada.emailMascarado}</span>
-                <ChevronDown size={16} strokeWidth={2.25} aria-hidden="true" />
-              </button>
-            ) : (
-              <button type="button" className={styles.voltar} onClick={voltarEscolher}>
-                <ArrowLeft size={16} strokeWidth={2.25} aria-hidden="true" /> Escolher conta salva
-              </button>
-            )
-          ) : null}
-
-          <div className={styles.marcaMovel}><Logo size={26} /></div>
-          <h1 className={styles.titulo}>{titulo}</h1>
-          {contaExcluida && (passo === "form" || passo === "escolher") && (
-            <p className={styles.aviso} role="status">Sua conta foi marcada pra exclusão. Pra reativar, é só entrar de novo em até 30 dias.</p>
-          )}
-          {passo === "form" && <p className={styles.sub}>Ainda não tem acesso? <Link to="/cadastro">Pedir acesso</Link></p>}
-          {passo === "mfa" && <p className={styles.sub}>Digite o código do seu app autenticador (ou um código de recuperação).</p>}
-          {passo === "exclusao" && <p className={styles.sub}>Sua conta está marcada para exclusão. Você ainda pode reativá-la.</p>}
-          {passo === "esqueci" && !esqueciEnviado && <p className={styles.sub}>Informe seu e-mail. Se existir uma conta, enviamos um link para criar uma senha nova.</p>}
-
-          {passo === "escolher" && (
-            <ul className={styles.lista}>
-              {roster.map((c) => (
-                <li key={c.usuarioId} className={styles.listaItem}>
-                  <button type="button" className={styles.escolher} onClick={() => void escolherConta(c)}>
-                    <span className={styles.avatar}>{iniciais(c.nome)}</span>
-                    <span className={styles.escolherTexto}><span className={styles.nome}>{c.nome}</span><span className={styles.mascarado}>{c.emailMascarado}</span></span>
-                    <ArrowRight size={16} strokeWidth={2.25} aria-hidden="true" className={styles.seta} />
-                  </button>
-                  <button type="button" className={styles.remover} title="Remover desta lista" aria-label={`Remover ${c.nome} desta lista`} onClick={() => void removerConta(c.usuarioId)}>
-                    <Trash2 size={15} strokeWidth={2} />
-                  </button>
-                </li>
-              ))}
-              <li className={styles.listaItem}>
-                <button type="button" className={`${styles.escolher} ${styles.outra}`} onClick={outraConta}>
-                  <span className={`${styles.avatar} ${styles.avatarNeutro}`}><UserPlus size={16} strokeWidth={2} aria-hidden="true" /></span>
-                  <span className={styles.nome}>Entrar em outra conta</span>
+      {/* Contas lembradas neste navegador */}
+      {passo === "escolher" && (
+        <section data-passo="contas" className="ativo">
+          {adicionar && <VoltarA onClick={() => navigate("/dashboard")}>Voltar</VoltarA>}
+          <h1>{tituloContas}</h1>
+          <p className="sub">Contas que já entraram neste navegador.</p>
+          {avisoExcluida}
+          <ul className="contas">
+            {roster.map((c) => (
+              <li key={c.usuarioId} className="conta">
+                <button type="button" className="conta-bt" onClick={() => void escolherConta(c)}>
+                  <span className="av-a">{iniciais(c.nome)}</span><span><b>{c.nome}</b><small>{c.emailMascarado}</small></span><span className="seta-c seta">→</span>
+                </button>
+                <button type="button" className="remover-bt" aria-label={`Remover ${c.nome} desta lista`} title="Remover desta lista" onClick={() => void removerConta(c.usuarioId)}>
+                  <svg><use href="#i-lixo" /></svg>
                 </button>
               </li>
-            </ul>
-          )}
+            ))}
+            <li className="conta">
+              <button type="button" className="conta-bt" onClick={outraConta}>
+                <span className="av-a neutro"><svg className="ic-a"><use href="#i-pessoa-mais" /></svg></span><span><b>Entrar em outra conta</b></span>
+              </button>
+            </li>
+          </ul>
+        </section>
+      )}
 
-          {passo === "form" && (
-            <form className={styles.form} onSubmit={enviar} noValidate>
-              {erro && <p className={styles.alerta} role="alert">{erro}</p>}
-              {!contaSelecionada && (
-                <Campo rotulo="E-mail" erro={erros.email}>
-                  <Entrada type="email" autoComplete="email" value={email}
-                    onChange={(e) => { setEmail(e.target.value); setErros((p) => ({ ...p, email: undefined })) }} />
-                </Campo>
-              )}
-              <Campo rotulo="Senha" erro={erros.senha}>
-                <Entrada type={mostrarSenha ? "text" : "password"} autoComplete="current-password" value={senha}
-                  autoFocus={!!contaSelecionada} onChange={(e) => { setSenha(e.target.value); setErros((p) => ({ ...p, senha: undefined })) }}
-                  sufixo={<Botao variante="texto" soIcone tabIndex={-1} aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
-                    onClick={() => setMostrarSenha((v) => !v)} icone={mostrarSenha ? <EyeOff size={16} strokeWidth={2} /> : <Eye size={16} strokeWidth={2} />} />} />
-              </Campo>
-              <div className={styles.linhaOpcoes}>
-                <label className={styles.lembrar}>
-                  <input type="checkbox" checked={manter} onChange={(e) => setManter(e.target.checked)} /> Manter-me conectado
-                </label>
-                <button type="button" className={styles.link} onClick={() => { setEsqueci(true); limparErros() }}>Esqueci a senha</button>
-              </div>
-              <Botao variante="primario" tamanho="lg" cheio type="submit" disabled={enviando}>
-                {enviando ? "Entrando…" : <>Entrar <ArrowRight size={16} strokeWidth={2.5} aria-hidden="true" /></>}
-              </Botao>
-            </form>
-          )}
-
-          {passo === "mfa" && (
-            <form className={styles.form} onSubmit={enviarMfa} noValidate>
-              <Campo rotulo="Código" erro={mfaErro}>
-                <Entrada type="text" autoComplete="one-time-code" autoCapitalize="characters" spellCheck={false} maxLength={10} autoFocus placeholder="000000" value={mfaCodigo}
-                  onChange={(e) => { setMfaCodigo(e.target.value); setMfaErro(null) }} />
-              </Campo>
-              <label className={styles.lembrar}>
-                <input type="checkbox" checked={confiar} onChange={(e) => setConfiar(e.target.checked)} /> Confiar neste dispositivo por 30 dias
-              </label>
-              <Botao variante="primario" tamanho="lg" cheio type="submit" disabled={enviando}>{enviando ? "Verificando…" : "Verificar"}</Botao>
-            </form>
-          )}
-
-          {passo === "esqueci" && (esqueciEnviado ? (
-            <p className={styles.ok}>Se existir uma conta com esse e-mail, o link para criar uma senha nova já foi enviado. Confira a caixa de entrada (e o spam).</p>
-          ) : (
-            <form className={styles.form} onSubmit={enviarEsqueci} noValidate>
-              {erro && <p className={styles.alerta} role="alert">{erro}</p>}
-              <Campo rotulo="E-mail" erro={erros.email}>
-                <Entrada type="email" autoComplete="email" autoFocus value={email}
-                  onChange={(e) => { setEmail(e.target.value); setErros((p) => ({ ...p, email: undefined })) }} />
-              </Campo>
-              <Botao variante="primario" tamanho="lg" cheio type="submit" disabled={enviando}>{enviando ? "Enviando…" : "Enviar link"}</Botao>
-            </form>
-          ))}
-
-          {passo === "exclusao" && (
-            <div className={styles.form}>
-              {reativarErro && <p className={styles.alerta} role="alert">{reativarErro}</p>}
-              <p className={styles.aviso}>
-                {marcada?.dias != null
-                  ? `Faltam ${marcada.dias} dia(s) para a remoção permanente. Reative para voltar a usar sua conta.`
-                  : "Reative para voltar a usar sua conta antes da remoção permanente."}
-              </p>
-              <Botao variante="primario" tamanho="lg" cheio disabled={enviando} onClick={() => void reativarConta()}>
-                {enviando ? "Reativando…" : "Reativar conta"}
-              </Botao>
+      {/* E-mail e senha */}
+      {passo === "form" && (
+        <section data-passo="entrar" className="ativo">
+          {adicionar && roster.length === 0 && <VoltarA onClick={() => navigate("/dashboard")}>Voltar</VoltarA>}
+          {roster.length > 0 && (contaSelecionada ? (
+            <button type="button" className="chip-a" title="Trocar de conta" onClick={voltarEscolher}>
+              <span className="av-a">{iniciais(contaSelecionada.nome)}</span><span>{contaSelecionada.nome}</span> ▾
+            </button>
+          ) : <VoltarA onClick={voltarEscolher}>Escolher conta salva</VoltarA>)}
+          <h1>{adicionar ? "Adicionar conta" : "Bem-vindo de volta"}</h1>
+          <p className="sub">Ainda não tem acesso? <Link to="/cadastro">Pedir acesso</Link></p>
+          {avisoExcluida}
+          <form className="form-a" onSubmit={enviar} noValidate>
+            {erro && <p className="erro" role="alert">{erro}</p>}
+            {!contaSelecionada && (
+              <CampoAcesso rotulo="E-mail" erro={erros.email} type="email" name="email" autoComplete="email" value={email}
+                onChange={(e) => { setEmail(e.target.value); setErros((p) => ({ ...p, email: undefined })) }} />
+            )}
+            <CampoAcesso rotulo="Senha" senha erro={erros.senha} name="senha" autoComplete="current-password" value={senha}
+              autoFocus={!!contaSelecionada} onChange={(e) => { setSenha(e.target.value); setErros((p) => ({ ...p, senha: undefined })) }} />
+            <div className="opcoes">
+              <label className="marcar"><input type="checkbox" checked={manter} onChange={(e) => setManter(e.target.checked)} /> Manter-me conectado</label>
+              <button type="button" className="link-a" onClick={() => { setEsqueci(true); limparErros() }}>Esqueci a senha</button>
             </div>
-          )}
+            <button className="btn btn--acc btn-cheio" type="submit" disabled={enviando}>{enviando ? "Entrando…" : <>Entrar <Seta /></>}</button>
+          </form>
+        </section>
+      )}
 
-          <p className={styles.rodape}>
-            Ao entrar você concorda com os <Link to="/termos-de-uso" target="_blank" rel="noreferrer">Termos de Uso</Link> e a{" "}
-            <Link to="/privacidade" target="_blank" rel="noreferrer">Política de Privacidade</Link>.
-          </p>
-        </div>
-      </main>
+      {/* Verificação em duas etapas */}
+      {passo === "mfa" && (
+        <section data-passo="duas-etapas" className="ativo">
+          <VoltarA onClick={voltarAoLogin.mfa}>Voltar ao login</VoltarA>
+          <h1>Verificação em duas etapas</h1>
+          <p className="sub">Digite o código do seu app autenticador (ou um código de recuperação).</p>
+          <form className="form-a" onSubmit={enviarMfa} noValidate>
+            <CampoAcesso rotulo="Código" codigo erro={mfaErro} name="codigo" autoComplete="one-time-code" autoCapitalize="characters" spellCheck={false}
+              maxLength={10} autoFocus placeholder="000000" value={mfaCodigo} onChange={(e) => { setMfaCodigo(e.target.value); setMfaErro(null) }} />
+            <label className="marcar"><input type="checkbox" checked={confiar} onChange={(e) => setConfiar(e.target.checked)} /> Confiar neste dispositivo por 30 dias</label>
+            <button className="btn btn--acc btn-cheio" type="submit" disabled={enviando}>{enviando ? "Verificando…" : "Verificar"}</button>
+          </form>
+        </section>
+      )}
 
-      {/* DEV: contas de teste do banco local — nunca em produção. */}
+      {/* Esqueci a senha */}
+      {passo === "esqueci" && !esqueciEnviado && (
+        <section data-passo="esqueci" className="ativo">
+          <VoltarA onClick={voltarAoLogin.esqueci}>Voltar ao login</VoltarA>
+          <h1>Recuperar senha</h1>
+          <p className="sub">Informe seu e-mail. Se existir uma conta, enviamos um link pra criar uma senha nova.</p>
+          <form className="form-a" onSubmit={enviarEsqueci} noValidate>
+            {erro && <p className="erro" role="alert">{erro}</p>}
+            <CampoAcesso rotulo="E-mail" erro={erros.email} type="email" name="email" autoComplete="email" autoFocus value={email}
+              onChange={(e) => { setEmail(e.target.value); setErros((p) => ({ ...p, email: undefined })) }} />
+            <button className="btn btn--acc btn-cheio" type="submit" disabled={enviando}>{enviando ? "Enviando…" : "Enviar link"}</button>
+          </form>
+        </section>
+      )}
+      {passo === "esqueci" && esqueciEnviado && (
+        <section data-passo="link-enviado" className="ativo">
+          <VoltarA onClick={voltarAoLogin.esqueci}>Voltar ao login</VoltarA>
+          <h1>Confira o seu e-mail</h1>
+          <p className="alerta-ok" role="status">Se existir uma conta com esse e-mail, o link pra criar uma senha nova já foi enviado. Confira a caixa de entrada (e o spam).</p>
+          <p className={`sub ${css.depois}`}>O link abre a tela de <Link to="/redefinir-senha">criar uma senha nova</Link>.</p>
+        </section>
+      )}
+
+      {/* Conta marcada pra exclusão */}
+      {passo === "exclusao" && (
+        <section data-passo="reativar" className="ativo">
+          <VoltarA onClick={voltarAoLogin.exclusao}>Voltar ao login</VoltarA>
+          <h1>Reativar conta</h1>
+          <p className="sub">Sua conta está marcada pra exclusão. Você ainda pode reativá-la.</p>
+          <div className="form-a">
+            {reativarErro && <p className="erro" role="alert">{reativarErro}</p>}
+            <p className="aviso-a">
+              {marcada?.dias != null
+                ? `Faltam ${marcada.dias} ${marcada.dias === 1 ? "dia" : "dias"} pra remoção permanente. Reative pra voltar a usar a sua conta.`
+                : "Reative pra voltar a usar a sua conta antes da remoção permanente."}
+            </p>
+            <button className="btn btn--acc btn-cheio" type="button" disabled={enviando} onClick={() => void reativarConta()}>{enviando ? "Reativando…" : "Reativar conta"}</button>
+          </div>
+        </section>
+      )}
+
+      <p className="rodape-a">
+        Ao entrar você concorda com os <Link to="/termos-de-uso" target="_blank" rel="noreferrer">Termos de Uso</Link> e a{" "}
+        <Link to="/privacidade" target="_blank" rel="noreferrer">Política de Privacidade</Link>.
+      </p>
+
+      {import.meta.env.DEV && <BarraDev grupos={ESTADOS_ACESSO} atual={vista} />}
+
+      {/* DEV: contas de teste do banco local, nunca em produção. */}
       {import.meta.env.DEV && devContas.length > 0 && (devAberto ? (
         <div className={styles.dev}>
           <div className={styles.devTopo}>
@@ -345,6 +329,6 @@ export default function Entrar() {
           <PanelRightOpen size={16} strokeWidth={2.2} /><span>DEV</span>
         </button>
       ))}
-    </div>
+    </MolduraAcesso>
   )
 }

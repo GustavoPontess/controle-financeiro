@@ -15,6 +15,10 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+### 📌 2026-10-26: site público + telas de acesso do rascunho + cores laranja (`feat/site-publico`)
+
+O site e as telas de acesso foram desenhados no chat do hub Pontes Dev e aprovados pelo Gustavo; aqui só integrei, idêntico (a `feat/v2-site` com a home feita aqui foi descartada a pedido dele). **Site:** 7 páginas como HTML do rascunho (`src/site/paginas/*.html` + `site.css`, gerados por `scripts/importarSite.py`), comportamentos do comum.js portados (`comportamentos.ts`), carregado sob demanda; `/` abre o site pra quem não entrou. **Acesso:** Entrar, Pedir acesso, Redefinir senha e Proteja com o markup do rascunho (`site/MolduraAcesso.tsx`), mesma lógica/API; ativar duas etapas virou `useAtivacaoMfa` (Configurações e Proteja). **Cores:** tokens laranja da proposta + ponte laranja no menu (aberto e fechado, centrada na coluna dos ícones). **Barra de estados só em dev** (regra nova em `CONVENCOES.md`; trava no build). Conferência com a ferramenta do rascunho: 0% no site e nas telas internas. Pendências e decisões na Fila do ROADMAP.
+
 ### 📌 2026-10-26: v1 arquivado, o v2 é o front (`controle-financeiro.web`)
 
 Decisão do Gustavo: "bora abandonar o v1". Tag `arquivo/v1-final` guarda o v1 inteiro; a pasta do v2 virou `controle-financeiro.web` (porta 5174, launch `web`); CI com um job de front só ("Frontend (Node / Vite)", o nome exigido pela main), sem o E2E do v1; `docker-compose` sem o serviço web do v1; CLAUDE.md, QUICK_REFERENCE e README descrevem o front atual. O que faltava portar do v1 está na Fila do ROADMAP. Branch `feat/v2-site` (home nova na identidade PontesDev, visão de empresas, Emitfy) ficou com um commit wip e precisa de rebase por cima do rename.

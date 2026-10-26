@@ -26,8 +26,8 @@ describe("RedefinirSenha", () => {
 
   it("sem token na URL: avisa e oferece pedir outro link", () => {
     renderizar("/redefinir-senha")
-    expect(screen.getByText("Link inválido")).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Pedir outro link" })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "Link inválido" })).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: /Pedir outro link/ })).toBeInTheDocument()
     expect(screen.queryByLabelText("Senha nova")).not.toBeInTheDocument()
   })
 
@@ -52,8 +52,8 @@ describe("RedefinirSenha", () => {
     await userEvent.type(screen.getByLabelText("Confirmar senha"), SENHA)
     await userEvent.click(salvar())
     expect(redefinirSenha).toHaveBeenCalledWith("abc+def", SENHA, SENHA)
-    expect(await screen.findByText("Senha alterada")).toBeInTheDocument()
-    await userEvent.click(screen.getByRole("button", { name: "Entrar" }))
+    expect(await screen.findByRole("heading", { name: "Senha alterada" })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole("link", { name: "Entrar →" }))
     expect(await screen.findByText("tela de entrar")).toBeInTheDocument()
   })
 
