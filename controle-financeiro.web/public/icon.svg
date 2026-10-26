@@ -1,5 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" rx="112" fill="#111827"/>
-  <text x="256" y="318" font-family="'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif" font-size="300" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="-12">P</text>
-  <path d="M128 384 Q256 312 384 384" fill="none" stroke="#ffffff" stroke-width="34" stroke-linecap="round"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512"><g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke="#ff4f00"><path pathLength="1" d="M27 26L8 50L27 74" stroke-width="8"/><path pathLength="1" d="M73 26L92 50L73 74" stroke-width="8"/><path pathLength="1" d="M59 14L41 86" stroke-width="8"/><path pathLength="1" d="M18 64H82" stroke-width="5"/><path pathLength="1" d="M57 22L24 64M55 30L34 64M58 22L80 64M56 30L70 64" stroke-width="2.2"/></g><title>Pontes Dev &lt;/&gt; estaiada</title></svg>
