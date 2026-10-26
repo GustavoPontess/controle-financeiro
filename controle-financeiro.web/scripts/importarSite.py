@@ -25,7 +25,13 @@ SITE = ['home', 'recursos', 'casa', 'contadores', 'planos', 'seguranca', 'sobre'
 
 # Ajustes pedidos pelo Gustavo direto no app, por cima do rascunho (vão no fim do site.css e sobrevivem a rodar o
 # script de novo). Quando o rascunho do hub receber o mesmo ajuste, sai daqui.
-AJUSTES = ""  # vazio: o rascunho já tem tudo (a logo maior de 2026-10-26 entrou no comum.css do hub)
+AJUSTES = """
+/* ===== Ajustes do app por cima do rascunho (scripts/importarSite.py, AJUSTES) ===== */
+/* 2026-10-26, Gustavo: com o topo apertado, fica o "Entrar" (quem já tem conta precisa dele pra chegar no login) e sai o
+   "Pedir acesso" do topo (ele continua no começo e no fim de toda página). O rascunho fazia o contrário. */
+@media (max-width: 1200px) and (min-width: 901px) { .nav .acoes .btn--linha { display: flex; } .nav .acoes .btn--acc { display: none; } }
+@media (max-width: 900px) { .acoes .btn--linha { display: flex; height: 46px; padding: 0 18px; } .acoes .btn--acc { display: none; } }
+"""
 
 
 def link(m):
