@@ -1,7 +1,5 @@
-import { lazy, Suspense } from "react"
 import { Navigate, Route, Routes, useParams } from "react-router-dom"
 import Protegido from "./auth/Protegido"
-import SoAdmin from "./auth/SoAdmin"
 import V2Layout from "./layout/V2Layout"
 import Entrar from "./telas/Entrar"
 import Cadastro from "./telas/Cadastro"
@@ -63,9 +61,6 @@ import RegistrarEmprestimo from "./telas/RegistrarEmprestimo"
 import ConvidarEmprestimo from "./telas/ConvidarEmprestimo"
 import ConfirmarPagamentoEmprestimo from "./telas/ConfirmarPagamentoEmprestimo"
 
-// Área de admin num pedaço à parte: quem não é admin nunca baixa a área nem o adminService.
-const Admin = lazy(() => import("./telas/Admin"))
-
 // Telas ainda não transformadas: navegam, mostram "em construção" e apontam pro app atual.
 const PENDENTES: [string, string, string][] = []
 
@@ -78,9 +73,6 @@ export default function App() {
       <Route path="/termos-de-uso" element={<TermosDeUso />} />
       <Route path="/privacidade" element={<Privacidade />} />
       <Route path="/proteja-sua-conta" element={<Protegido><ProtejaConta /></Protegido>} />
-      {/* Admin: área PRÓPRIA, fora da casca do app (como no v1). O app não tem item nem link pra cá. O porteiro decide
-          ANTES de baixar a área (lazy, pedaço à parte); o servidor confere IsAdmin em cada chamada. */}
-      <Route path="/admin/*" element={<Protegido><SoAdmin><Suspense fallback={null}><Admin /></Suspense></SoAdmin></Protegido>} />
       <Route element={<Protegido><V2Layout /></Protegido>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />

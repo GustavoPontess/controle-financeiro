@@ -135,6 +135,7 @@ jobs:
           VERSAO: ${{ inputs.versao }}
           KAMAL_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
           KAMAL_SSH_KEY: ${{ secrets.KAMAL_SSH_KEY }}
+          ADMIN_PATH: ${{ secrets.ADMIN_PATH }}
         run: |
           case "$ACAO" in
             deploy|setup) kamal deploy -c config/deploy.web.yml ;;

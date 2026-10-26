@@ -20,6 +20,9 @@ public class AdminRequirement : IAuthorizationRequirement
 /// (1) um token não pode ser forjado pra conceder admin; (2) revogar admin (UPDATE no banco)
 /// tem efeito imediato, sem esperar o token expirar. Mesmo espírito do
 /// <c>HangfireDashboardAuthFilter</c>, mas usando a flag em vez de allowlist de e-mail.
+/// Admin também exige as duas etapas LIGADAS (<c>MfaAtivo</c>, pedido do Gustavo 2026-10-25): sem o código do
+/// celular, nada de admin, mesmo com a flag. Desligar as duas etapas corta o admin na hora. O login de admin
+/// ignora "lembrar este dispositivo" (<c>AuthService.LoginAsync</c>), então toda sessão de admin passou pelo código.
 /// </summary>
 public class AdminAuthorizationHandler : AuthorizationHandler<AdminRequirement>
 {
@@ -35,7 +38,7 @@ public class AdminAuthorizationHandler : AuthorizationHandler<AdminRequirement>
             return; // não autenticado / claim inválida → não concede
 
         var ehAdmin = await _context.Usuarios
-            .Where(u => u.Id == usuarioId && u.IsAdmin && u.Status == StatusUsuario.Ativo)
+            .Where(u => u.Id == usuarioId && u.IsAdmin && u.MfaAtivo && u.Status == StatusUsuario.Ativo)
             .AnyAsync();
 
         if (ehAdmin)

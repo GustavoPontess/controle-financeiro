@@ -24,6 +24,25 @@
 	}
 
 	root * /srv/app
-	try_files {path} /index.html
-	file_server
+
+	# Admin: mini-app à parte (admin.html), servido SÓ no endereço secreto ADMIN_PATH, que vem do deploy (nunca do
+	# código). O app comum não tem nenhuma linha que leve pra cá; /admin cai no app como qualquer endereço que não
+	# existe. Sem ADMIN_PATH o Dockerfile apaga a página e aponta pra um caminho morto. A barreira de verdade segue
+	# no servidor: IsAdmin + duas etapas ligadas a cada chamada.
+	@admin path {$ADMIN_PATH} {$ADMIN_PATH}/*
+	handle @admin {
+		header Cache-Control "no-store"
+		header X-Robots-Tag "noindex, nofollow"
+		rewrite * /admin.html
+		file_server
+	}
+	# O arquivo direto, nunca (senão o endereço secreto não protegeria nada).
+	handle /admin.html {
+		respond 404
+	}
+
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
 }

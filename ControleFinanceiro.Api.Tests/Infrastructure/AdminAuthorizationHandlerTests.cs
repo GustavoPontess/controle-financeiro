@@ -26,7 +26,7 @@ public class AdminAuthorizationHandlerTests
         return new AppDbContext(options);
     }
 
-    private static Usuario Seed(AppDbContext ctx, bool isAdmin, bool ativo = true)
+    private static Usuario Seed(AppDbContext ctx, bool isAdmin, bool ativo = true, bool mfa = true)
     {
         var u = new Usuario
         {
@@ -37,6 +37,7 @@ public class AdminAuthorizationHandlerTests
             // "ativo" aqui = conta habilitada. Com o Status novo: Ativo permite, Bloqueado barra.
             Status = ativo ? StatusUsuario.Ativo : StatusUsuario.Bloqueado,
             IsAdmin = isAdmin,
+            MfaAtivo = mfa,
         };
         ctx.Usuarios.Add(u);
         ctx.SaveChanges();
@@ -61,6 +62,15 @@ public class AdminAuthorizationHandlerTests
         using var ctx = CreateContext();
         var u = Seed(ctx, isAdmin: true);
         Assert.True(await Autoriza(ctx, PrincipalFor(u.Id)));
+    }
+
+    [Fact]
+    public async Task AdminSemDuasEtapas_naoAutoriza()
+    {
+        // Admin exige o código do celular ligado: só a flag não basta.
+        using var ctx = CreateContext();
+        var u = Seed(ctx, isAdmin: true, mfa: false);
+        Assert.False(await Autoriza(ctx, PrincipalFor(u.Id)));
     }
 
     [Fact]

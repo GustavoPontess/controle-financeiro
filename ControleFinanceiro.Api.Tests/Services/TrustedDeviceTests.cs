@@ -153,6 +153,23 @@ public class TrustedDeviceTests
     }
 
     [Fact]
+    public async Task Admin_comDeviceConfiavel_naoPulaSegundoFator()
+    {
+        // Admin sempre digita o código: a policy de admin conta com toda sessão dele ter passado pelo 2º fator.
+        using var ctx = CreateContext();
+        var u = SeedUsuarioMfa(ctx, "admin@test.com");
+        u.IsAdmin = true;
+        await ctx.SaveChangesAsync();
+        var auth = CreateService(ctx);
+
+        var token = await auth.CriarTrustedDeviceAsync(u.Id);
+        var r = await auth.LoginAsync(Login("admin@test.com"), token);
+
+        Assert.True(r.MfaRequerido);
+        Assert.Null(r.Auth);
+    }
+
+    [Fact]
     public async Task DeviceConfiavelDeOutraConta_naoPulaMfa_antiCrossAccount()
     {
         using var ctx = CreateContext();
