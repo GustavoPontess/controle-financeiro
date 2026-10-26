@@ -72,8 +72,6 @@ export default function App() {
   return (
     <Routes>
       <Route path="/entrar" element={<Entrar />} />
-      {/* O site (pontesdev.com.br) aponta o "Entrar" pra /login. */}
-      <Route path="/login" element={<Navigate to="/entrar" replace />} />
       <Route path="/cadastro" element={<Cadastro />} />
       <Route path="/redefinir-senha" element={<RedefinirSenha />} />
       <Route path="/termos-de-uso" element={<TermosDeUso />} />

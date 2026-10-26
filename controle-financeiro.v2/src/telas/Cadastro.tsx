@@ -4,7 +4,7 @@
 // Mesmo palco e painel do Entrar (Auth.module.css).
 import { useEffect, useState, type FormEvent } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { ArrowLeft, Check, Eye, EyeOff, MailCheck } from "lucide-react"
+import { Check, Eye, EyeOff, MailCheck } from "lucide-react"
 import Logo from "../componentes/Logo"
 import Botao from "../componentes/Botao"
 import Campo from "../componentes/Campo"
@@ -12,10 +12,8 @@ import Entrada from "../componentes/Entrada"
 import { cadastrar } from "../services/cadastroService"
 import { mensagemDeErro } from "../api/cliente"
 import { useAuth } from "../auth/useAuth"
-import { NOME_PRODUTO, PAGINA_PRODUTO } from "../config"
 import { ehErroDaSenha, requisitosSenha, SENHA_MAX, senhaValida } from "../dominio/senha"
 import styles from "./Auth.module.css"
-import SeloPontesDev from "../componentes/SeloPontesDev"
 
 const MAX_NOME = 200
 const MAX_EMAIL = 255
@@ -105,12 +103,11 @@ export default function Cadastro() {
             ))}
           </ul>
         </div>
-        <SeloPontesDev className={styles.palcoRodape} />
+        <span className={styles.palcoRodape}>Pontes · finanças pessoais e familiares</span>
       </aside>
 
       <main className={styles.painel}>
         <div className={styles.painelMiolo}>
-          <a href={PAGINA_PRODUTO} className={styles.voltar}><ArrowLeft size={16} strokeWidth={2.25} aria-hidden="true" /> Conhecer o {NOME_PRODUTO}</a>
           <div className={styles.marcaMovel}><Logo size={26} /></div>
 
           {enviado ? (
@@ -124,7 +121,7 @@ export default function Cadastro() {
           ) : (
             <>
               <h1 className={styles.titulo}>Pedir acesso</h1>
-              <p className={styles.sub}>O {NOME_PRODUTO} está em beta fechado: você recebe acesso assim que o pedido for aprovado. Já tem conta? <Link to="/entrar">Entrar</Link></p>
+              <p className={styles.sub}>O Pontes está em beta fechado: você recebe acesso assim que o pedido for aprovado. Já tem conta? <Link to="/entrar">Entrar</Link></p>
 
               <form className={styles.form} onSubmit={enviar} noValidate>
                 {erro && <p className={styles.alerta} role="alert">{erro}</p>}

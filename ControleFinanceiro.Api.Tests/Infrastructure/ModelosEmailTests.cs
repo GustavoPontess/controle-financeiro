@@ -22,7 +22,7 @@ public class ModelosEmailTests
         Assert.Contains(link, m.Html);
         Assert.Contains("só funciona uma vez", m.Texto);
         Assert.DoesNotContain("ab+c/d=", m.Html); // nunca o token cru no HTML
-        Assert.Contains("Pontes Finanças", m.Assunto);
+        Assert.Contains("Pontes", m.Assunto);
         // Diz PRA QUAL conta é (quem tem mais de um e-mail reconhece; golpe genérico não sabe).
         Assert.Contains("ana@teste.com", m.Texto);
         Assert.Contains("ana@teste.com", m.Html);

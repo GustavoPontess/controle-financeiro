@@ -24,11 +24,11 @@ public static class ModelosEmail
     public static MensagemEmail ResetSenha(string appUrl, string email, string token, DateTime expiraEmUtc)
     {
         var link = $"{appUrl.TrimEnd('/')}/redefinir-senha?token={Uri.EscapeDataString(token)}";
-        var texto = $"Recebemos um pedido pra criar uma senha nova na conta do Pontes Finanças de {email}.";
+        var texto = $"Recebemos um pedido pra criar uma senha nova na conta do Pontes de {email}.";
         var validade = $"O link vale até {Hora(expiraEmUtc)} e só funciona uma vez.";
         const string naoFoi = "Não foi você? É só ignorar este e-mail: sua senha continua a mesma e ninguém entra sem este link.";
         return new MensagemEmail(
-            "Redefinir sua senha do Pontes Finanças",
+            "Redefinir sua senha do Pontes",
             $"{texto}\n\nCriar senha nova: {link}\n\n{validade}\n\n{naoFoi}{RodapeTexto(email)}",
             Html(
                 previa: "Use o link em até 1 hora. Se não foi você, ignore.",
@@ -50,14 +50,14 @@ public static class ModelosEmail
             _ => "confirmar uma ação na sua conta",
         };
         var texto = $"Use este código pra {acao} ({email}).";
-        var validade = $"O código vale até {Hora(expiraEmUtc)}. Não passe pra ninguém, nem pra quem diz ser do Pontes Finanças.";
+        var validade = $"O código vale até {Hora(expiraEmUtc)}. Não passe pra ninguém, nem pra quem diz ser do Pontes.";
         const string naoFoi = "Não foi você? Troque sua senha agora: alguém pode estar com acesso à sua conta.";
         var miolo =
             "<tr><td style=\"padding:24px 0 8px\">" +
             "<div style=\"display:inline-block;padding:14px 22px;border-radius:12px;background:#F5F5F3;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:32px;font-weight:700;letter-spacing:8px;color:#15161A\">" +
             Esc(codigo) + "</div></td></tr>";
         return new MensagemEmail(
-            $"Seu código do Pontes Finanças: {codigo}",
+            $"Seu código do Pontes: {codigo}",
             $"{texto}\n\n{codigo}\n\n{validade}\n\n{naoFoi}{RodapeTexto(email)}",
             Html(
                 previa: $"Código {codigo}. Vale por pouco tempo.",
@@ -74,11 +74,11 @@ public static class ModelosEmail
     public static MensagemEmail AvisoExclusao(string appUrl, string email, DateTime marcadoEmUtc, int diasCarencia)
     {
         var link = $"{appUrl.TrimEnd('/')}/entrar";
-        var texto = $"A conta do Pontes Finanças de {email} foi marcada pra exclusão em {Hora(marcadoEmUtc)}.";
+        var texto = $"A conta do Pontes de {email} foi marcada pra exclusão em {Hora(marcadoEmUtc)}.";
         var validade = $"Daqui a {diasCarencia} dias os dados são apagados de vez. Até lá, entrar na conta cancela a exclusão.";
         const string naoFoi = "Foi você? Não precisa fazer nada. Não foi? Entre antes do prazo e troque sua senha.";
         return new MensagemEmail(
-            "Sua conta do Pontes Finanças foi marcada pra exclusão",
+            "Sua conta do Pontes foi marcada pra exclusão",
             $"{texto}\n\n{validade}\n\n{naoFoi}\n\nEntrar: {link}{RodapeTexto(email)}",
             Html(
                 previa: $"Os dados são apagados em {diasCarencia} dias. Ainda dá pra voltar atrás.",
@@ -97,7 +97,7 @@ public static class ModelosEmail
         .Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;").Replace("'", "&#39;");
 
     private static string RodapeTexto(string email) =>
-        $"\n\nO Pontes Finanças nunca pede sua senha por e-mail, mensagem ou telefone.\nVocê recebeu este e-mail porque existe uma conta do Pontes Finanças com o endereço {email}.";
+        $"\n\nO Pontes nunca pede sua senha por e-mail, mensagem ou telefone.\nVocê recebeu este e-mail porque existe uma conta do Pontes com o endereço {email}.";
 
     private static string Hora(DateTime utc)
     {
@@ -150,9 +150,9 @@ public static class ModelosEmail
             "</table></td></tr>" +
             // Rodapé
             "<tr><td style=\"padding:20px 8px 0;font-size:12px;line-height:1.6;color:#9C9FA7\">" +
-            "<strong style=\"color:#65686F\">O Pontes Finanças nunca pede sua senha</strong> por e-mail, mensagem ou telefone.<br>" +
-            $"Você recebeu este e-mail porque existe uma conta do Pontes Finanças com o endereço {E(email)}.<br>" +
-            "Pontes Finanças · um produto Pontes Dev</td></tr>" +
+            "<strong style=\"color:#65686F\">O Pontes nunca pede sua senha</strong> por e-mail, mensagem ou telefone.<br>" +
+            $"Você recebeu este e-mail porque existe uma conta do Pontes com o endereço {E(email)}.<br>" +
+            "Pontes · finanças pessoais e familiares</td></tr>" +
             "</table></td></tr></table></body></html>";
     }
 }

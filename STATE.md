@@ -15,14 +15,14 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
-### 📌 Sessão 2026-10-24: produção, Pontes Finanças e beta fechado
+### 📌 Sessão 2026-10-24/25: produção, Admin e beta fechado
 
 **No ar:** VPS Hostinger (Boston) com Kamal 2; app em `app.pontesdev.com.br`, site do estúdio em `pontesdev.com.br`. Deploy por clique (Actions → Deploy na `main`); a máquina, o DNS e o backup são do chat de `E:\VSCode\pontes\servidor`.
 
 **PRs abertos desta leva (merge com o Gustavo):**
 - #349 e-mail pelo Resend (remetente por tipo; cabeçalho `Server` fora).
 - #350 tela de Admin no v2 (fila de cadastros e usuários).
-- `feat/pontes-financas`: o app vira **Pontes Finanças** (textos, e-mails, autenticador; logo igual até o Gustavo ajustar o do PontesDev), selo "um produto Pontes Dev", `/login` → login, e o cadastro vira **"Pedir acesso"** (mesmo fluxo: aguarda aprovação no Admin; o pedido NÃO vai pro site, decisão do Gustavo). Publicar **depois** que o site novo estiver no ar (o "Conhecer o Pontes Finanças" aponta pra `pontesdev.com.br/pontes`).
+- #351 (nome "Pontes Finanças", selo "um produto Pontes Dev", links pro site, `/login`) entrou e foi **desfeito** em 25/10 a pedido do Gustavo ("eu só queria colocar esse projeto no meu portfólio"). Ficou só o cadastro como **"Pedir acesso"** (aprovação no Admin).
 
 **Próximo:** primeiro admin em produção (P1 no ROADMAP, pelo chat do servidor); Admin do v2 sem LGPD/auditoria ainda.
 

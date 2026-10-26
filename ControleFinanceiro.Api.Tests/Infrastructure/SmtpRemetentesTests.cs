@@ -20,9 +20,9 @@ public class SmtpRemetentesTests
         ["SMTP_SECURITY"] = "starttls",
         ["SMTP_USER"] = "resend",
         ["SMTP_PASS"] = "re_falsa",
-        ["SMTP_FROM"] = "Pontes Finanças <naoresponda@pontesdev.com.br>",
-        ["SMTP_FROM_SEGURANCA"] = "Pontes Finanças <seguranca@pontesdev.com.br>",
-        ["SMTP_FROM_PRODUTO"] = "Pontes Finanças <pontes@pontesdev.com.br>",
+        ["SMTP_FROM"] = "Pontes <naoresponda@pontesdev.com.br>",
+        ["SMTP_FROM_SEGURANCA"] = "Pontes <seguranca@pontesdev.com.br>",
+        ["SMTP_FROM_PRODUTO"] = "Pontes <pontes@pontesdev.com.br>",
         ["SMTP_REPLY_TO_PRODUTO"] = "responde@exemplo.com",
     };
 
@@ -35,9 +35,9 @@ public class SmtpRemetentesTests
 
         Assert.True(o.Ativo);
         Assert.Equal("starttls", o.Seguranca);
-        Assert.Equal("Pontes Finanças <naoresponda@pontesdev.com.br>", o.RemetenteDe(TipoRemetente.Automatico));
-        Assert.Equal("Pontes Finanças <seguranca@pontesdev.com.br>", o.RemetenteDe(TipoRemetente.Seguranca));
-        Assert.Equal("Pontes Finanças <pontes@pontesdev.com.br>", o.RemetenteDe(TipoRemetente.Produto));
+        Assert.Equal("Pontes <naoresponda@pontesdev.com.br>", o.RemetenteDe(TipoRemetente.Automatico));
+        Assert.Equal("Pontes <seguranca@pontesdev.com.br>", o.RemetenteDe(TipoRemetente.Seguranca));
+        Assert.Equal("Pontes <pontes@pontesdev.com.br>", o.RemetenteDe(TipoRemetente.Produto));
         Assert.Null(o.ResponderDe(TipoRemetente.Automatico));
         Assert.Null(o.ResponderDe(TipoRemetente.Seguranca));
         Assert.Equal("responde@exemplo.com", o.ResponderDe(TipoRemetente.Produto));
@@ -46,9 +46,9 @@ public class SmtpRemetentesTests
     [Fact]
     public void Ler_SoComSmtpFrom_TudoSaiDele()
     {
-        var o = SmtpOpcoes.Ler(Env(new() { ["SMTP_HOST"] = "localhost", ["SMTP_FROM"] = "Pontes Finanças <dev@localhost>" }));
+        var o = SmtpOpcoes.Ler(Env(new() { ["SMTP_HOST"] = "localhost", ["SMTP_FROM"] = "Pontes <dev@localhost>" }));
 
-        Assert.All(Enum.GetValues<TipoRemetente>(), t => Assert.Equal("Pontes Finanças <dev@localhost>", o.RemetenteDe(t)));
+        Assert.All(Enum.GetValues<TipoRemetente>(), t => Assert.Equal("Pontes <dev@localhost>", o.RemetenteDe(t)));
         Assert.Null(o.ResponderDe(TipoRemetente.Produto));
     }
 
@@ -61,7 +61,7 @@ public class SmtpRemetentesTests
         var msg = SmtpEmailSender.Montar(SmtpOpcoes.Ler(Env(Producao)), "ana@teste.com", Mensagem, tipo);
 
         Assert.Equal(de, Assert.Single(msg.From.Mailboxes).Address);
-        Assert.Equal("Pontes Finanças", Assert.Single(msg.From.Mailboxes).Name);
+        Assert.Equal("Pontes", Assert.Single(msg.From.Mailboxes).Name);
         Assert.Equal("ana@teste.com", Assert.Single(msg.To.Mailboxes).Address);
         if (responder is null) Assert.Empty(msg.ReplyTo);
         else Assert.Equal(responder, Assert.Single(msg.ReplyTo.Mailboxes).Address);

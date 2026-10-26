@@ -21,7 +21,6 @@ import { familiaDaRota, useEspacos } from "../estado/espaco"
 import { useHideBalance } from "../estado/ocultar"
 import { useNaoLidas } from "../estado/notificacoes"
 import PainelNotificacoes from "./PainelNotificacoes"
-import { NOME_PRODUTO } from "../config"
 import styles from "./V2Layout.module.css"
 
 type ItemMenu = { para: string; rotulo: string; icone: typeof LayoutDashboard; exato?: boolean }
@@ -252,7 +251,7 @@ export default function V2Layout() {
             <Botao variante="texto" soIcone aria-label="Voltar" className={styles.voltar} onClick={() => navigate(voltarPara)}
               icone={<ArrowLeft size={18} strokeWidth={2.25} />} />
           )}
-          <h1 className={styles.tituloPagina}>{secao?.rotulo ?? NOME_PRODUTO}</h1>
+          <h1 className={styles.tituloPagina}>{secao?.rotulo ?? "Pontes"}</h1>
           <div className={styles.topoAcoes}>
             <Botao soIcone aria-label={oculto ? "Mostrar valores" : "Esconder valores"} onClick={alternarOculto}
               icone={oculto ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />} />

@@ -105,7 +105,7 @@ export default function Perfil() {
         {!editando ? (
           <dl className={styles.dados}>
             <div><dt>Data de nascimento</dt><dd>{nascimentoAtual ? dataBR(nascimentoAtual) : <span className={styles.vazio}>Não informada</span>}</dd></div>
-            {usuario?.criadoEm && <div><dt>No Pontes Finanças desde</dt><dd>{mesAno(usuario.criadoEm)}</dd></div>}
+            {usuario?.criadoEm && <div><dt>No Pontes desde</dt><dd>{mesAno(usuario.criadoEm)}</dd></div>}
           </dl>
         ) : (
           <form className={styles.form} noValidate onSubmit={(e) => { void salvar(e) }}>
