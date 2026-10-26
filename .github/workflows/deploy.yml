@@ -43,7 +43,7 @@ jobs:
   deploy:
     name: Kamal ${{ inputs.acao }}
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pontes-local]
     environment: production
     permissions:
       contents: read
@@ -82,8 +82,12 @@ jobs:
         env:
           HOSTS: ${{ secrets.KAMAL_KNOWN_HOSTS }}
         run: |
+          # Runner na máquina do Gustavo: só ACRESCENTA a chave do servidor, nunca sobrescreve o known_hosts dele.
           install -d -m 700 ~/.ssh
-          printf '%s\n' "$HOSTS" > ~/.ssh/known_hosts
+          touch ~/.ssh/known_hosts && chmod 600 ~/.ssh/known_hosts
+          printf '%s\n' "$HOSTS" | while IFS= read -r linha; do
+            [ -z "$linha" ] || grep -qxF "$linha" ~/.ssh/known_hosts || printf '%s\n' "$linha" >> ~/.ssh/known_hosts
+          done
 
       - uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
         with:
@@ -137,3 +141,8 @@ jobs:
             deploy|setup) kamal deploy -c config/deploy.web.yml ;;
             rollback)     kamal rollback "$VERSAO" -c config/deploy.web.yml ;;
           esac
+
+      # Runner na máquina do Gustavo: não deixa o login do registro (token do job) gravado nela.
+      - name: Sair do registro
+        if: always()
+        run: docker logout ghcr.io || true
