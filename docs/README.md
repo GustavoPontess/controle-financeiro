@@ -58,7 +58,8 @@ Cada feature complexa tem sua própria pasta com spec técnica e UX. Ao iniciar 
 | [cartao-credito](./features/cartao-credito/) | ✅ Ativo | [regras.md](./features/cartao-credito/regras.md) — ciclo, limite, fatura, pagamento |
 | [parcelamento](./features/parcelamento/) | ✅ Concluída (Q2 2026) | [arquitetura.md](./features/parcelamento/arquitetura.md), [ux.md](./features/parcelamento/ux.md) |
 | [familia](./features/familia/) | 🔵 Fosso de produto — rateio/papéis/dependentes (ver ROADMAP Lote 2) | [visao.md](./features/familia/visao.md) + sub-1..5 arquitetura |
-| [b2b-contadores](./features/b2b-contadores/) | 💡 Visão (ROADMAP Lote 4) | [visao.md](./features/b2b-contadores/visao.md) |
+| [empresas](./features/empresas/) | 💡 Visão (2026-10-26): que empresa, pelo que paga, o que já temos, ordem, preço e a camada de automação com IA ("Pilar") | [visao.md](./features/empresas/visao.md) |
+| [b2b-contadores](./features/b2b-contadores/) | 💡 Visão (ROADMAP Lote 4; é o passo 4 de `empresas`) | [visao.md](./features/b2b-contadores/visao.md) |
 | outras | — | importacao, notificacoes, onboarding, pwa |
 
 ---

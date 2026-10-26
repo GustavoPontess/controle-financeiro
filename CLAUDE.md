@@ -295,7 +295,8 @@ dotnet ef database update
     │   ├── parcelamento/        ← (concluída em Q2 2026)
     │   ├── familia/             ← visão do fosso (rateio/papéis/dependentes)
     │   │   └── visao.md
-    │   ├── b2b-contadores/      ← visão do eixo PJ/contador
+    │   ├── empresas/            ← visão do eixo PJ (que empresa, ordem, preço, automação com IA "Pilar")
+    │   ├── b2b-contadores/      ← visão do escritório de contabilidade (passo 4 de empresas/)
     │   └── cartao-credito/      ← regras de negócio
     │       └── regras.md
     ├── referencias/             ← prints de concorrentes + iterações de logo (gitignored)
