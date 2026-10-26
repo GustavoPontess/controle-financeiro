@@ -39,6 +39,7 @@ AJUSTES = """
 @media (max-width: 900px) { .acoes .btn--linha { display: flex; height: 46px; padding: 0 18px; } .acoes .btn--acc { display: none; } }
 
 /* 2026-10-26, revisão do celular (Gustavo). */
+.btns { display: flex; gap: 10px; flex-wrap: wrap; }
 /* Botão de tema no menu ☰ (o do topo some no celular). */
 .tema-menu { display: none; }
 .tema-menu svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
@@ -50,9 +51,14 @@ AJUSTES = """
   .hamb { flex: none; }                                            /* não encolhe: fica redondo */
   .acoes .tema-bt { display: none; }
   .nav nav .tema-menu { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 16px; margin-top: 6px; border: 0; border-top: 1px solid var(--line); border-radius: 0 0 14px 14px; background: none; font: 500 17px 'Plus Jakarta Sans', sans-serif; color: var(--fg); text-align: left; cursor: pointer; }
-  /* Abas dos prints: uma linha, rolando de lado se não couber. */
-  .abas { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
-  .abas button { flex: none; white-space: nowrap; padding: 9px 12px; font-size: 13px; }
+  /* Abas dos prints: as quatro cabem numa linha, metade do espaço pra cada (antes a última ficava cortada). */
+  .abas { width: 100%; max-width: 100%; gap: 3px; padding: 5px; }
+  .abas button { flex: 1 1 0; min-width: 0; white-space: nowrap; padding: 9px 3px; font-size: 11.5px; letter-spacing: -.01em; text-align: center; }
+  /* Rodapé: as três listas lado a lado, menores, e menos espaço vazio embaixo. */
+  .rodape { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px 10px; padding: 48px 0 40px; font-size: 14px; }
+  .rodape nav { gap: 8px; } .rodape nav b { font-size: 13px; }
+  .rod-marca p { max-width: none; }
+  .rod-base { gap: 4px 16px; padding-top: 20px; font-size: 12px; }
   /* Seletor preso da /casa: escondido de verdade até a pessoa rolar (antes sobrava um pedaço na tela). */
   .seletor-fixo { transform: translateY(calc(100% + 90px)); }
   /* Tabela de comparação cabe na tela, sem rolagem de lado. */
@@ -64,6 +70,9 @@ AJUSTES = """
   .comp thead th.nos { font-size: 12px; }
   .comp thead th.nos img { display: block; width: 18px; margin: 0 auto 4px; }
   .comp td .meio { font-size: 11px; }
+  /* Par de botões (topo, plano, chamada do fim) lado a lado, metade pra cada um; texto longo quebra dentro do botão. */
+  .btns, .topo .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .btns .btn { height: auto; min-height: 48px; padding: 10px 12px; justify-content: center; text-align: center; font-size: 14px; line-height: 1.2; }
   /* Painel do contador: número cabe no cartão. */
   .painel .kpis { grid-template-columns: 1fr 1fr; gap: 8px; } .painel .kpi:last-child { grid-column: 1 / -1; } .painel .kpi b { white-space: nowrap; }
 }
@@ -96,6 +105,8 @@ def converte(html):
     # o botão de tema sai do topo apertado e entra no menu ☰ (no lugar do "Entrar" do menu, que agora fica no topo).
     corpo = corpo.replace('Família com filhos', 'Família').replace('FAMÍLIA COM FILHOS', 'FAMÍLIA')
     corpo = corpo.replace('<a class="so-cel" href="/entrar">Entrar</a>', TEMA_NO_MENU)
+    # Par de botões (plano do beta, chamada do fim) ganha a mesma classe do par do topo, pra ficar lado a lado no celular.
+    corpo = corpo.replace('<div style="display:flex;gap:10px;flex-wrap:wrap">', '<div class="btns">')
     return corpo.strip() + '\n'
 
 
