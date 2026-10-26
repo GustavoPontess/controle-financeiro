@@ -14,17 +14,21 @@ export function ligarSite(raiz: HTMLElement, { tema, alternarTema }: Opcoes): ()
   const observar = (obs: IntersectionObserver) => { desligar.push(() => obs.disconnect()); return obs }
   const todos = <T extends Element = HTMLElement>(sel: string, de: ParentNode = raiz) => Array.from(de.querySelectorAll<T>(sel) as NodeListOf<T>)
 
-  // ----- Prints reais do app acompanham o modo da página. -----
-  const print = (nome: string) => `/site/telas/${nome}-${tema()}.png`
+  // ----- Prints reais do app acompanham o modo da página e o tamanho da tela (até 600px, o print de celular). -----
+  // (Sem matchMedia, como no jsdom dos testes, vale o print de computador.)
+  const movel: { matches: boolean } & Partial<EventTarget> = typeof window.matchMedia === "function" ? window.matchMedia("(max-width: 600px)") : { matches: false }
+  const print = (nome: string) => `/site/telas/${nome}-${tema()}${movel.matches ? "-movel" : ""}.png`
+  const marcaMovel = (img: HTMLImageElement) => { if (movel.matches) img.dataset.movel = ""; else delete img.dataset.movel }
   const aplicaPrints = () => {
-    todos<HTMLImageElement>("img[data-print]").forEach((i) => { i.src = print(i.dataset.print!) })
+    todos<HTMLImageElement>("img[data-print]").forEach((i) => { i.src = print(i.dataset.print!); marcaMovel(i) })
     todos(".abas").forEach((abas) => {
       const on = abas.querySelector<HTMLElement>("[data-tela].on") ?? abas.querySelector<HTMLElement>("[data-tela]")
       const img = abas.closest("section")?.querySelector<HTMLImageElement>("[data-tela-img]")
-      if (img && on) img.src = print(on.dataset.tela!)
+      if (img && on) { img.src = print(on.dataset.tela!); marcaMovel(img) }
     })
   }
   aplicaPrints()
+  if (movel.addEventListener) ouvir(movel as EventTarget, "change", aplicaPrints)
   todos("[data-tema-troca]").forEach((bt) => ouvir(bt, "click", () => { alternarTema(); requestAnimationFrame(aplicaPrints) }))
 
   // ----- Setas (→ ↗) dos botões e links ganham um <span> pra poderem andar no hover. -----
@@ -168,7 +172,7 @@ export function ligarSite(raiz: HTMLElement, { tema, alternarTema }: Opcoes): ()
     const desliga = () => { if (relogio) clearInterval(relogio); relogio = null; abas.classList.remove("auto") }
     const mostra = (b: HTMLElement) => {
       bts.forEach((x) => x.classList.toggle("on", x === b))
-      img.src = print(b.dataset.tela!)
+      img.src = print(b.dataset.tela!); marcaMovel(img)
       img.alt = "Tela " + b.textContent + " do Pontes"
     }
     function proxima() {

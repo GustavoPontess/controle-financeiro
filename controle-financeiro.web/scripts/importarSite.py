@@ -23,6 +23,12 @@ ROTAS = {
 }
 SITE = ['home', 'recursos', 'casa', 'contadores', 'planos', 'seguranca', 'sobre']
 
+# Botão de tema dentro do menu ☰ do celular (o mesmo [data-tema-troca] que o comportamentos.ts liga).
+TEMA_NO_MENU = ('<button class="so-cel tema-menu" type="button" data-tema-troca aria-label="Alternar modo claro e escuro">'
+                '<svg class="sol" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></svg>'
+                '<svg class="lua" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/></svg>'
+                '<span class="se-claro">Modo escuro</span><span class="se-escuro">Modo claro</span></button>')
+
 # Ajustes pedidos pelo Gustavo direto no app, por cima do rascunho (vão no fim do site.css e sobrevivem a rodar o
 # script de novo). Quando o rascunho do hub receber o mesmo ajuste, sai daqui.
 AJUSTES = """
@@ -31,6 +37,36 @@ AJUSTES = """
    "Pedir acesso" do topo (ele continua no começo e no fim de toda página). O rascunho fazia o contrário. */
 @media (max-width: 1200px) and (min-width: 901px) { .nav .acoes .btn--linha { display: flex; } .nav .acoes .btn--acc { display: none; } }
 @media (max-width: 900px) { .acoes .btn--linha { display: flex; height: 46px; padding: 0 18px; } .acoes .btn--acc { display: none; } }
+
+/* 2026-10-26, revisão do celular (Gustavo). */
+/* Botão de tema no menu ☰ (o do topo some no celular). */
+.tema-menu { display: none; }
+.tema-menu svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tema-menu .lua, .tema-menu .se-escuro, [data-tema="escuro"] .tema-menu .sol, [data-tema="escuro"] .tema-menu .se-claro { display: none; }
+[data-tema="escuro"] .tema-menu .lua, [data-tema="escuro"] .tema-menu .se-escuro { display: block; }
+/* Print do app em tamanho de celular (public/site/telas/*-movel.png, scripts/printsMoveis.mjs): moldura vira um celular. */
+.moldura:has(img[data-movel]) { max-width: 300px; margin-left: auto; margin-right: auto; }
+@media (max-width: 900px) {
+  .hamb { flex: none; }                                            /* não encolhe: fica redondo */
+  .acoes .tema-bt { display: none; }
+  .nav nav .tema-menu { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 16px; margin-top: 6px; border: 0; border-top: 1px solid var(--line); border-radius: 0 0 14px 14px; background: none; font: 500 17px 'Plus Jakarta Sans', sans-serif; color: var(--fg); text-align: left; cursor: pointer; }
+  /* Abas dos prints: uma linha, rolando de lado se não couber. */
+  .abas { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .abas button { flex: none; white-space: nowrap; padding: 9px 12px; font-size: 13px; }
+  /* Seletor preso da /casa: escondido de verdade até a pessoa rolar (antes sobrava um pedaço na tela). */
+  .seletor-fixo { transform: translateY(calc(100% + 90px)); }
+  /* Tabela de comparação cabe na tela, sem rolagem de lado. */
+  .comp { overflow: visible; border-radius: 22px; }
+  .comp table { min-width: 0; width: 100%; table-layout: fixed; font-size: 13px; }
+  .comp th, .comp td { padding: 12px 8px; }
+  .comp th:first-child, .comp td:first-child { width: 44%; padding-left: 14px; }
+  .comp thead th { font-size: 11px; line-height: 1.2; padding: 10px 4px; vertical-align: bottom; }
+  .comp thead th.nos { font-size: 12px; }
+  .comp thead th.nos img { display: block; width: 18px; margin: 0 auto 4px; }
+  .comp td .meio { font-size: 11px; }
+  /* Painel do contador: número cabe no cartão. */
+  .painel .kpis { grid-template-columns: 1fr 1fr; gap: 8px; } .painel .kpi:last-child { grid-column: 1 / -1; } .painel .kpi b { white-space: nowrap; }
+}
 """
 
 
@@ -56,6 +92,10 @@ def converte(html):
     corpo = corpo.replace('<a href="#">Privacidade</a>', '<a href="/privacidade">Privacidade</a>')
     # "Pedir acesso" (topo e chamada do fim) leva pro cadastro do app (decisão do Gustavo, 2026-10-26; antes ficava sem ação).
     corpo = re.sub(r'href="#(?:acesso)?">Pedir acesso', 'href="/cadastro">Pedir acesso', corpo)
+    # Celular (revisão do Gustavo, 2026-10-26): "Família com filhos" vira "Família" (quebrava em duas linhas no seletor e no menu);
+    # o botão de tema sai do topo apertado e entra no menu ☰ (no lugar do "Entrar" do menu, que agora fica no topo).
+    corpo = corpo.replace('Família com filhos', 'Família').replace('FAMÍLIA COM FILHOS', 'FAMÍLIA')
+    corpo = corpo.replace('<a class="so-cel" href="/entrar">Entrar</a>', TEMA_NO_MENU)
     return corpo.strip() + '\n'
 
 
@@ -84,6 +124,12 @@ def main():
     open(os.path.join(WEB, 'src', 'site', 'site.css'), 'w', encoding='utf-8', newline='\n').write(cab + css + AJUSTES)
 
     # Imagens: logos, fotos, prints do app e a imagem de compartilhamento.
+    # Os prints de celular (telas/*-movel.png) são gerados aqui (scripts/printsMoveis.mjs), não vêm do rascunho: ficam.
+    moveis = {}
+    if os.path.isdir(os.path.join(PUBLICO, 'telas')):
+        for arq in os.listdir(os.path.join(PUBLICO, 'telas')):
+            if arq.endswith('-movel.png'):
+                moveis[arq] = open(os.path.join(PUBLICO, 'telas', arq), 'rb').read()
     if os.path.isdir(PUBLICO):
         shutil.rmtree(PUBLICO)
     shutil.copytree(os.path.join(ORIGEM, 'assets', 'fotos'), os.path.join(PUBLICO, 'fotos'))
@@ -93,6 +139,8 @@ def main():
             shutil.copy(os.path.join(ORIGEM, 'telas-app', 'proposta', arq), os.path.join(PUBLICO, 'telas', arq))
     for arq in ['estaiada-laranja.svg', 'estaiada-claro.svg', 'estaiada-escuro.svg', 'estaiada-icone.svg', 'og-pontes.jpg']:
         shutil.copy(os.path.join(ORIGEM, 'assets', arq), os.path.join(PUBLICO, arq))
+    for arq, dados in moveis.items():
+        open(os.path.join(PUBLICO, 'telas', arq), 'wb').write(dados)
 
     sys.stdout.reconfigure(encoding='utf-8')
     print('páginas:', ', '.join(SITE))

@@ -603,3 +603,33 @@
    "Pedir acesso" do topo (ele continua no começo e no fim de toda página). O rascunho fazia o contrário. */
 @media (max-width: 1200px) and (min-width: 901px) { .nav .acoes .btn--linha { display: flex; } .nav .acoes .btn--acc { display: none; } }
 @media (max-width: 900px) { .acoes .btn--linha { display: flex; height: 46px; padding: 0 18px; } .acoes .btn--acc { display: none; } }
+
+/* 2026-10-26, revisão do celular (Gustavo). */
+/* Botão de tema no menu ☰ (o do topo some no celular). */
+.tema-menu { display: none; }
+.tema-menu svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tema-menu .lua, .tema-menu .se-escuro, [data-tema="escuro"] .tema-menu .sol, [data-tema="escuro"] .tema-menu .se-claro { display: none; }
+[data-tema="escuro"] .tema-menu .lua, [data-tema="escuro"] .tema-menu .se-escuro { display: block; }
+/* Print do app em tamanho de celular (public/site/telas/*-movel.png, scripts/printsMoveis.mjs): moldura vira um celular. */
+.moldura:has(img[data-movel]) { max-width: 300px; margin-left: auto; margin-right: auto; }
+@media (max-width: 900px) {
+  .hamb { flex: none; }                                            /* não encolhe: fica redondo */
+  .acoes .tema-bt { display: none; }
+  .nav nav .tema-menu { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 16px; margin-top: 6px; border: 0; border-top: 1px solid var(--line); border-radius: 0 0 14px 14px; background: none; font: 500 17px 'Plus Jakarta Sans', sans-serif; color: var(--fg); text-align: left; cursor: pointer; }
+  /* Abas dos prints: uma linha, rolando de lado se não couber. */
+  .abas { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .abas button { flex: none; white-space: nowrap; padding: 9px 12px; font-size: 13px; }
+  /* Seletor preso da /casa: escondido de verdade até a pessoa rolar (antes sobrava um pedaço na tela). */
+  .seletor-fixo { transform: translateY(calc(100% + 90px)); }
+  /* Tabela de comparação cabe na tela, sem rolagem de lado. */
+  .comp { overflow: visible; border-radius: 22px; }
+  .comp table { min-width: 0; width: 100%; table-layout: fixed; font-size: 13px; }
+  .comp th, .comp td { padding: 12px 8px; }
+  .comp th:first-child, .comp td:first-child { width: 44%; padding-left: 14px; }
+  .comp thead th { font-size: 11px; line-height: 1.2; padding: 10px 4px; vertical-align: bottom; }
+  .comp thead th.nos { font-size: 12px; }
+  .comp thead th.nos img { display: block; width: 18px; margin: 0 auto 4px; }
+  .comp td .meio { font-size: 11px; }
+  /* Painel do contador: número cabe no cartão. */
+  .painel .kpis { grid-template-columns: 1fr 1fr; gap: 8px; } .painel .kpi:last-child { grid-column: 1 / -1; } .painel .kpi b { white-space: nowrap; }
+}
