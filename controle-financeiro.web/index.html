@@ -16,7 +16,9 @@
         var t = "claro"
         try {
           var s = localStorage.getItem("v2:tema")
-          t = s === "claro" || s === "escuro" ? s : (matchMedia("(prefers-color-scheme: dark)").matches ? "escuro" : "claro")
+          // Site público e telas de acesso abrem no claro sem escolha salva (decisão do Gustavo); o app segue o sistema.
+          var publica = /^\/($|recursos|casa|contadores|planos|seguranca|sobre|entrar|cadastro|redefinir-senha|proteja-sua-conta)/.test(location.pathname)
+          t = s === "claro" || s === "escuro" ? s : (!publica && matchMedia("(prefers-color-scheme: dark)").matches ? "escuro" : "claro")
         } catch (e) {}
         document.documentElement.dataset.tema = t
       })()

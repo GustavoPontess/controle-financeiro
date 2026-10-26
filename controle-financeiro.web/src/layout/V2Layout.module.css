@@ -6,8 +6,10 @@
 /* padding-top 12: a marca (40px) fica centrada em y=32, o mesmo centro do título e dos botões do topo (64/2). */
 .lateral { position: sticky; top: 0; z-index: 6; height: 100vh; display: flex; flex-direction: column; gap: 18px; padding: 12px 14px 18px; border-right: 1px solid var(--v2-linha); background: var(--v2-bg); }
 /* padding-left 12: a palavra começa no mesmo x do ícone dos itens (14 + 12). */
-.marca { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 10px 0 12px; color: var(--v2-texto); }
+.marca { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 10px 0 4px; color: var(--v2-texto); }
 .logo, .logoMini, .recolherIcone { display: inline-flex; min-width: 0; }
+/* Marca do menu: estaiada laranja + "Pontes" (aprovado pelo Gustavo em 2026-10-26, igual ao site). */
+.logo { align-items: center; gap: 9px; font-weight: 800; font-size: var(--v2-fs-2xl); letter-spacing: -0.02em; }
 .logoMini { display: none; }
 .recolher, .fecharMenu, .abrirMenu { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex-shrink: 0; border: 0; border-radius: 8px; background: transparent; color: var(--v2-texto-3); cursor: pointer; }
 .recolher { margin-left: auto; }
@@ -61,13 +63,13 @@
    sem isso os ícones centralizavam no painel ainda largo e deslizavam de volta enquanto encolhia. */
 .raiz[data-menu="trilho"] .itemRotulo, .raiz[data-menu="trilho"] .logo { display: none; }
 .raiz[data-menu="trilho"] .menuUsuario { left: calc(100% + 10px); bottom: 6px; }
-/* "P" ancorado à esquerda, no mesmo x e tamanho do P de "Pontes": recolher parece o "ontes" sumindo.
-   (Centralizar faria o P centralizar no painel ainda largo e deslizar junto com a animação.) */
+/* Ponte no mesmo x nos dois estados, centrada na coluna dos ícones do menu (marca com 4px + ponte de 34px = centro dos ícones):
+   recolher parece o "Pontes" sumindo, sem a ponte mexer. Centralizar no painel faria ela deslizar junto com a animação. */
 .raiz[data-menu="trilho"] .marca { justify-content: flex-start; padding: 0; }
-.raiz[data-menu="trilho"] .recolher { margin-left: 0; width: 40px; height: 40px; padding: 0 0 0 11px; justify-content: flex-start; color: var(--v2-texto); }
+.raiz[data-menu="trilho"] .recolher { margin-left: 0; width: 40px; height: 40px; padding: 0 0 0 4px; justify-content: flex-start; color: var(--v2-texto); }
 .raiz[data-menu="trilho"] .recolher:hover { background: transparent; }
 .raiz[data-menu="trilho"] .logoMini { display: inline-flex; }
-.raiz[data-menu="trilho"] .recolherIcone { display: none; }
+.raiz[data-menu="trilho"] .recolherIcone { display: none; width: 34px; justify-content: center; } /* mesma caixa da ponte: a seta aparece no centro dela */
 .raiz[data-menu="trilho"] .recolher:hover .logoMini, .raiz[data-menu="trilho"] .recolher:focus-visible .logoMini { display: none; }
 .raiz[data-menu="trilho"] .recolher:hover .recolherIcone, .raiz[data-menu="trilho"] .recolher:focus-visible .recolherIcone { display: inline-flex; }
 .raiz[data-menu="trilho"] .grupo { height: 1px; margin: 19px 0; background: var(--v2-linha); }

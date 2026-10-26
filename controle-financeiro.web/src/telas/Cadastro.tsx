@@ -1,30 +1,22 @@
-// Criar conta do v2 (/cadastro): nome, e-mail, data de nascimento, senha (regra NIST: 15+ caracteres,
-// mostrar/ocultar) e confirmação, aceite da Política de Privacidade (LGPD — nunca pré-marcado). No beta o
-// cadastro não loga: a conta nasce aguardando aprovação e a tela vira a confirmação com a mensagem da API.
-// Mesmo palco e painel do Entrar (Auth.module.css).
+// Pedir acesso (/cadastro): nome, e-mail, data de nascimento, senha (regra NIST: 15+ caracteres, mostrar/ocultar)
+// e confirmação, aceite da Política de Privacidade (LGPD: nunca pré-marcado). No beta o cadastro não loga: a conta
+// nasce aguardando aprovação e a tela vira a confirmação. O visual é o do rascunho aprovado (rascunhos/acesso.html do
+// hub Pontes Dev, 2026-10-26): passos `pedir` e `enviado` da MolduraAcesso.
 import { useEffect, useState, type FormEvent } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { Check, Eye, EyeOff, MailCheck } from "lucide-react"
-import Logo from "../componentes/Logo"
-import Botao from "../componentes/Botao"
-import Campo from "../componentes/Campo"
-import Entrada from "../componentes/Entrada"
+import MolduraAcesso, { CampoAcesso, Seta } from "../site/MolduraAcesso"
+import css from "../site/Acesso.module.css"
+import { BarraDev, useEstadoDev } from "../dev/BarraDev"
+import { ESTADOS_ACESSO } from "../dev/estadosAcesso"
 import { cadastrar } from "../services/cadastroService"
 import { mensagemDeErro } from "../api/cliente"
 import { useAuth } from "../auth/useAuth"
-import { ehErroDaSenha, requisitosSenha, SENHA_MAX, senhaValida } from "../dominio/senha"
-import styles from "./Auth.module.css"
+import { ehErroDaSenha, SENHA_MAX, senhaValida } from "../dominio/senha"
 
 const MAX_NOME = 200
 const MAX_EMAIL = 255
 const emailValido = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
 type Erros = Partial<Record<"nome" | "email" | "nascimento" | "senha" | "confirmar" | "privacidade", string>>
-
-const PLANOS = [
-  { nome: "Solo", preco: "Grátis", desc: "1 conta + 1 cartão, lançamentos ilimitados" },
-  { nome: "Família", preco: "R$ 15/mês", desc: "Até 6 membros, rateio e aprovação" },
-  { nome: "Contador", preco: "R$ 39/mês", desc: "Multi-cliente, relatórios contábeis" },
-]
 
 export default function Cadastro() {
   const { autenticado, carregando } = useAuth()
@@ -34,18 +26,22 @@ export default function Cadastro() {
   const [nascimento, setNascimento] = useState("")
   const [senha, setSenha] = useState("")
   const [confirmar, setConfirmar] = useState("")
-  const [mostrarSenha, setMostrarSenha] = useState(false)
-  const [mostrarConfirmar, setMostrarConfirmar] = useState(false)
   const [aceita, setAceita] = useState(false)
   const [erros, setErros] = useState<Erros>({})
   const [erro, setErro] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
-  // Deu certo: a mensagem da API ("aguardando aprovação") no lugar do formulário.
-  const [enviado, setEnviado] = useState<string | null>(null)
+  const [enviado, setEnviado] = useState(false)
   const limpa = (k: keyof Erros) => setErros((e) => ({ ...e, [k]: undefined }))
   const hoje = new Date().toISOString().slice(0, 10)
 
-  useEffect(() => { if (!carregando && autenticado) navigate("/dashboard", { replace: true }) }, [autenticado, carregando, navigate])
+  // DEV: a barra de estados põe a tela direto em cada passo (sem API). Some no build.
+  useEstadoDev(import.meta.env.DEV ? (e) => { setEnviado(e === "enviado"); setErros({}); setErro(null) } : undefined)
+
+  // Logado vai pra Visão geral (em dev, aberto pela barra de estados, fica pra ver o passo).
+  useEffect(() => {
+    if (import.meta.env.DEV && window.location.hash) return
+    if (!carregando && autenticado) navigate("/dashboard", { replace: true })
+  }, [autenticado, carregando, navigate])
 
   const validar = (): Erros => {
     const e: Erros = {}
@@ -71,8 +67,8 @@ export default function Cadastro() {
     if (Object.keys(e).length > 0) return
     setEnviando(true)
     try {
-      const r = await cadastrar({ nome: nome.trim(), email: email.trim(), dataNascimento: nascimento || null, password: senha, confirmPassword: confirmar })
-      setEnviado(r.mensagem)
+      await cadastrar({ nome: nome.trim(), email: email.trim(), dataNascimento: nascimento || null, password: senha, confirmPassword: confirmar })
+      setEnviado(true)
     } catch (err) {
       const msg = mensagemDeErro(err)
       if (ehErroDaSenha(msg)) setErros({ senha: msg })
@@ -82,91 +78,50 @@ export default function Cadastro() {
     }
   }
 
-  const olho = (aberto: boolean, alternar: () => void) => (
-    <Botao variante="texto" soIcone tabIndex={-1} aria-label={aberto ? "Ocultar senha" : "Mostrar senha"} onClick={alternar}
-      icone={aberto ? <EyeOff size={16} strokeWidth={2} /> : <Eye size={16} strokeWidth={2} />} />
-  )
-
   return (
-    <div className={`v2 ${styles.raiz}`}>
-      <aside className={styles.palco}>
-        <div className={styles.marca}><Logo size={28} /></div>
-        <div className={styles.palcoMeio}>
-          <p className={styles.frase}>Comece grátis. <span className={styles.fraseSuave}>Cresça com sua família.</span></p>
-          <p className={styles.lead}>Crie sua conta em 2 minutos. Sem cartão, sem fidelidade.</p>
-          <ul className={styles.planos}>
-            {PLANOS.map((p) => (
-              <li key={p.nome} className={styles.plano}>
-                <span className={styles.planoTexto}><span className={styles.planoNome}>{p.nome}</span><span className={styles.planoDesc}>{p.desc}</span></span>
-                <span className={styles.planoPreco}>{p.preco}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <span className={styles.palcoRodape}>Pontes · finanças pessoais e familiares</span>
-      </aside>
-
-      <main className={styles.painel}>
-        <div className={styles.painelMiolo}>
-          <div className={styles.marcaMovel}><Logo size={26} /></div>
-
-          {enviado ? (
-            <div className={styles.form} role="status">
-              <span className={styles.selo}><MailCheck size={26} strokeWidth={2} aria-hidden="true" /></span>
-              <h1 className={styles.titulo}>Pedido enviado!</h1>
-              <p className={styles.ok}>{enviado}</p>
-              <p className={styles.sub}>Assim que o pedido for aprovado, você já poderá entrar normalmente.</p>
-              <Botao variante="primario" tamanho="lg" cheio onClick={() => navigate("/entrar")}>Ir para o login</Botao>
-            </div>
-          ) : (
-            <>
-              <h1 className={styles.titulo}>Pedir acesso</h1>
-              <p className={styles.sub}>O Pontes está em beta fechado: você recebe acesso assim que o pedido for aprovado. Já tem conta? <Link to="/entrar">Entrar</Link></p>
-
-              <form className={styles.form} onSubmit={enviar} noValidate>
-                {erro && <p className={styles.alerta} role="alert">{erro}</p>}
-                <Campo rotulo="Nome completo" erro={erros.nome}>
-                  <Entrada autoComplete="name" maxLength={MAX_NOME} value={nome} autoFocus onChange={(e) => { setNome(e.target.value); limpa("nome") }} />
-                </Campo>
-                <Campo rotulo="E-mail" erro={erros.email}>
-                  <Entrada type="email" autoComplete="email" maxLength={MAX_EMAIL} value={email} onChange={(e) => { setEmail(e.target.value); limpa("email") }} />
-                </Campo>
-                <Campo rotulo="Data de nascimento" erro={erros.nascimento}>
-                  <Entrada type="date" autoComplete="bday" max={hoje} value={nascimento} onChange={(e) => { setNascimento(e.target.value); limpa("nascimento") }} />
-                </Campo>
-                <Campo rotulo="Senha" erro={erros.senha}>
-                  <Entrada type={mostrarSenha ? "text" : "password"} autoComplete="new-password" maxLength={SENHA_MAX} value={senha}
-                    onChange={(e) => { setSenha(e.target.value); limpa("senha") }} sufixo={olho(mostrarSenha, () => setMostrarSenha((v) => !v))} />
-                </Campo>
-                {!erros.senha && (
-                  <ul className={styles.requisitos} aria-label="Requisitos da senha">
-                    {requisitosSenha(senha).map((r) => (
-                      <li key={r.rotulo} data-ok={r.ok || undefined}><Check size={14} strokeWidth={3} aria-hidden="true" />{r.rotulo}</li>
-                    ))}
-                  </ul>
-                )}
-                <Campo rotulo="Confirmar senha" erro={erros.confirmar}>
-                  <Entrada type={mostrarConfirmar ? "text" : "password"} autoComplete="new-password" maxLength={SENHA_MAX} value={confirmar}
-                    onChange={(e) => { setConfirmar(e.target.value); limpa("confirmar") }} sufixo={olho(mostrarConfirmar, () => setMostrarConfirmar((v) => !v))} />
-                </Campo>
-                <div className={styles.consentimento}>
-                  <label className={styles.lembrar}>
-                    <input type="checkbox" checked={aceita} aria-invalid={erros.privacidade ? true : undefined}
-                      onChange={(e) => { setAceita(e.target.checked); limpa("privacidade") }} />
-                    <span>Li e aceito a <Link to="/privacidade" target="_blank" rel="noreferrer">Política de Privacidade</Link>.</span>
-                  </label>
-                  {erros.privacidade && <p className={styles.erroCampo} role="alert">{erros.privacidade}</p>}
-                </div>
-                <Botao variante="primario" tamanho="lg" cheio type="submit" disabled={enviando}>{enviando ? "Enviando…" : "Enviar pedido"}</Botao>
-              </form>
-
-              <p className={styles.rodape}>
-                Ao criar sua conta você também concorda com os <Link to="/termos-de-uso" target="_blank" rel="noreferrer">Termos de Uso</Link>.
-              </p>
-            </>
-          )}
-        </div>
-      </main>
-    </div>
+    <MolduraAcesso titulo="Pedir acesso · Pontes" foto="1694185752018-2ff397cb99b4-1800.jpg" frase="Comece grátis." fraseSuave="Cresça com a sua casa."
+      lead="Peça o seu acesso em 2 minutos. Sem cartão de crédito, sem fidelidade."
+      benef={["Grátis durante o beta", "Convide quem divide a casa sem custo extra", "Seus dados são seus: exporte ou apague quando quiser"]}>
+      {enviado ? (
+        <section data-passo="enviado" className="ativo" role="status">
+          <h1>Pedido enviado!</h1>
+          <p className="alerta-ok">Recebemos o seu pedido. Você recebe um e-mail quando o acesso for liberado.</p>
+          <p className={`sub ${css.depois}`}>Assim que o pedido for aprovado, você já pode entrar normalmente.</p>
+          <Link className="btn btn--acc btn-cheio" to="/entrar">Ir para o login <Seta /></Link>
+        </section>
+      ) : (
+        <section data-passo="pedir" className="ativo">
+          <h1>Pedir acesso</h1>
+          <p className="sub">O Pontes está em beta fechado: você recebe acesso assim que o pedido for aprovado. Já tem conta? <Link to="/entrar">Entrar</Link></p>
+          <form className="form-a" onSubmit={enviar} noValidate>
+            {erro && <p className="erro" role="alert">{erro}</p>}
+            <CampoAcesso rotulo="Nome completo" erro={erros.nome} name="nome" autoComplete="name" maxLength={MAX_NOME} value={nome} autoFocus
+              onChange={(e) => { setNome(e.target.value); limpa("nome") }} />
+            <CampoAcesso rotulo="E-mail" erro={erros.email} type="email" name="email" autoComplete="email" maxLength={MAX_EMAIL} value={email}
+              onChange={(e) => { setEmail(e.target.value); limpa("email") }} />
+            <CampoAcesso rotulo="Data de nascimento" erro={erros.nascimento} type="date" name="nascimento" autoComplete="bday" max={hoje} value={nascimento}
+              onChange={(e) => { setNascimento(e.target.value); limpa("nascimento") }} />
+            <CampoAcesso rotulo="Senha" senha erro={erros.senha} name="senha" autoComplete="new-password" maxLength={SENHA_MAX} value={senha}
+              onChange={(e) => { setSenha(e.target.value); limpa("senha") }} />
+            {!erros.senha && (
+              <ul className="req" aria-label="Requisitos da senha">
+                <li data-ok={senhaValida(senha) || undefined}>Mínimo 15 caracteres. Pode ser uma frase, fácil de lembrar.</li>
+              </ul>
+            )}
+            <CampoAcesso rotulo="Confirmar senha" senha erro={erros.confirmar} name="confirmar" autoComplete="new-password" maxLength={SENHA_MAX} value={confirmar}
+              onChange={(e) => { setConfirmar(e.target.value); limpa("confirmar") }} />
+            <label className="marcar consentimento">
+              <input type="checkbox" checked={aceita} aria-invalid={erros.privacidade ? true : undefined}
+                onChange={(e) => { setAceita(e.target.checked); limpa("privacidade") }} />
+              <span>Li e aceito a <Link to="/privacidade" target="_blank" rel="noreferrer">Política de Privacidade</Link>.</span>
+              {erros.privacidade && <span className="erro">{erros.privacidade}</span>}
+            </label>
+            <button className="btn btn--acc btn-cheio" type="submit" disabled={enviando}>{enviando ? "Enviando…" : "Enviar pedido"}</button>
+          </form>
+          <p className="rodape-a">Ao pedir acesso você concorda com os <Link to="/termos-de-uso" target="_blank" rel="noreferrer">Termos de Uso</Link>.</p>
+        </section>
+      )}
+      {import.meta.env.DEV && <BarraDev grupos={ESTADOS_ACESSO} atual={enviado ? "enviado" : "pedir"} />}
+    </MolduraAcesso>
   )
 }
