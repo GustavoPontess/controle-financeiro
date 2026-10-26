@@ -7,10 +7,12 @@ on:
   # sem nenhum teste (#285/#286 nunca tinham rodado). Os NOMES dos jobs não mudam (proteção da main).
   pull_request:
 
+# Runner: a máquina do Gustavo (self-hosted, rótulo pontes-local), pra não depender dos minutos pagos do GitHub
+# (2026-10-25, cobrança travou os jobs). O repo é privado: PR de fora não roda código lá.
 jobs:
   backend:
     name: Backend (.NET 10)
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pontes-local]
 
     steps:
       - uses: actions/checkout@v6
@@ -38,7 +40,7 @@ jobs:
 
   frontend:
     name: Frontend (Node / Vite)
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pontes-local]
 
     defaults:
       run:
@@ -68,7 +70,7 @@ jobs:
 
   frontend-v2:
     name: Frontend v2 (Node / Vite)
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pontes-local]
 
     defaults:
       run:
@@ -95,7 +97,7 @@ jobs:
 
   e2e:
     name: E2E Playwright
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pontes-local]
     needs: [frontend]
 
     # Nível do job: todo `docker compose` (up/logs/down) precisa dessas vars pra
@@ -105,6 +107,9 @@ jobs:
       ASPNETCORE_ENVIRONMENT: Development
       JWT_SECRET: ci-secret-key-minimum-32-characters-long!
       POSTGRES_PASSWORD: ci-postgres-pw
+      # Na máquina do Gustavo: nome próprio pro compose, senão o `down -v` do fim apagaria o Postgres de dev dele
+      # (mesma pasta = mesmo nome de projeto). Com o dev no ar (5432/5293 ocupadas), este job falha; não é obrigatório.
+      COMPOSE_PROJECT_NAME: pontes-ci-e2e
 
     steps:
       - uses: actions/checkout@v6
@@ -122,7 +127,7 @@ jobs:
 
       - name: Install Playwright browsers
         working-directory: controle-financeiro.web
-        run: npx playwright install chromium --with-deps
+        run: npx playwright install chromium  # sem --with-deps: pediria sudo na máquina do runner
 
       - name: Subir Postgres + API via docker compose
         run: |
