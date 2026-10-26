@@ -60,8 +60,13 @@ jobs:
           cache: 'npm'
           cache-dependency-path: controle-financeiro.web/package-lock.json
 
+      # Sempre `npm ci` (instala exatamente o package-lock), nunca `npm install`.
       - name: Install dependencies
         run: npm ci
+
+      # Confere a assinatura do registro npm de cada pacote instalado (pacote adulterado no caminho falha aqui).
+      - name: Verify package signatures
+        run: npm audit signatures
 
       - name: Test
         run: npm test
