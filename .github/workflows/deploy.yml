@@ -89,12 +89,13 @@ jobs:
             [ -z "$linha" ] || grep -qxF "$linha" ~/.ssh/known_hosts || printf '%s\n' "$linha" >> ~/.ssh/known_hosts
           done
 
-      - uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
-        with:
-          ruby-version: '3.4'
-
-      - name: Instalar o Kamal
-        run: gem install kamal -v 2.12.0 --no-document
+      # O runner (imagem em E:\VSCode\pontes\PontesDev\base\runner-github) já traz Ruby e o Kamal 2.12.0; o setup-ruby
+      # não tem permissão de instalar lá. Só confere a versão.
+      - name: Conferir o Kamal
+        run: |
+          v=$(kamal version)
+          echo "Kamal $v"
+          [ "$v" = "2.12.0" ] || { echo "::error::o runner tem Kamal $v; o deploy espera 2.12.0"; exit 1; }
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
         if: inputs.acao != 'rollback'
