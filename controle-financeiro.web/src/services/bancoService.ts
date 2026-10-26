@@ -1,4 +1,4 @@
-import { api } from "../api/axiosConfig"
+import { api } from "../api/cliente"
 import type { Banco } from "../types/Banco"
 
 export const getBancos = async (): Promise<Banco[]> => {

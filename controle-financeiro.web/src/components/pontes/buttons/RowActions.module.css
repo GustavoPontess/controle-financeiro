@@ -1,2 +1,0 @@
-/* RowActions — só o invólucro do ⋮ (o menu é o PontesPopover). Não encolhe na linha flex. */
-.wrap { display: inline-flex; flex-shrink: 0; }

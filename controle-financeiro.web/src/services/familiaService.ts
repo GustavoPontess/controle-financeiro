@@ -1,10 +1,10 @@
-import { api } from "../api/axiosConfig"
+import { api } from "../api/cliente"
 import type {
-  Familia, FamiliaDetalhe, ConviteFamilia, MembroFamilia,
+  Familia, FamiliaDetalhe, ConviteFamilia, MembroFamilia, PapelFamilia,
   DespesaCompartilhada, BalancoFamilia,
   Dependente, GastoDependente, TipoDependente,
   ModoRateio, RateioItem, RateioTransacao,
-  AcertoContas,
+  AcertoContas, ContaFixaDaCasa, AindaVemDaCasa,
 } from "../types/Familia"
 
 export interface DependenteInput {
@@ -45,9 +45,17 @@ export const removerMembro = async (familiaId: string, membroId: string): Promis
 }
 
 export const convidarMembro = async (
-  familiaId: string, email: string, papel: string,
+  familiaId: string, email: string, papel: string, papelPermissao: PapelFamilia = 2,
 ): Promise<ConviteFamilia> => {
-  const res = await api.post(`/familias/${familiaId}/convites`, { email, papel })
+  const res = await api.post(`/familias/${familiaId}/convites`, { email, papel, papelPermissao })
+  return res.data
+}
+
+/** Admin promove/rebaixa a permissão de um membro (o criador não muda). */
+export const editarPermissao = async (
+  familiaId: string, membroId: string, papelPermissao: PapelFamilia,
+): Promise<MembroFamilia> => {
+  const res = await api.put(`/familias/${familiaId}/membros/${membroId}/permissao`, { papelPermissao })
   return res.data
 }
 
@@ -80,11 +88,13 @@ export const descompartilharTransacao = async (transacaoId: string): Promise<voi
   await api.delete(`/transacoes/${transacaoId}/compartilhamento`)
 }
 
+/** Despesas divididas do mês. Filtros no servidor: quem pagou, categoria, situação (esperando | dividida | recusada). */
 export const getDespesasFamilia = async (
-  familiaId: string, mes: number, ano: number, responsavelId?: string,
+  familiaId: string, mes: number, ano: number,
+  filtros: { responsavelId?: string; pagadorId?: string; categoriaId?: string; situacao?: "esperando" | "dividida" | "recusada" } = {},
 ): Promise<DespesaCompartilhada[]> => {
   const res = await api.get(`/familias/${familiaId}/despesas`, {
-    params: { mes, ano, responsavelId },
+    params: { mes, ano, ...filtros },
   })
   return res.data
 }
@@ -152,12 +162,6 @@ export const definirModoRateio = async (
   await api.put(`/familias/${familiaId}/modo-rateio`, { modo })
 }
 
-export const definirRendaMembro = async (
-  familiaId: string, membroId: string, rendaMensal: number | null,
-): Promise<void> => {
-  await api.put(`/familias/${familiaId}/membros/${membroId}/renda`, { rendaMensal })
-}
-
 export const getRateioTransacao = async (
   transacaoId: string,
 ): Promise<RateioTransacao> => {
@@ -187,6 +191,10 @@ export interface RegistrarAcertoInput {
   // Idempotência: UUID estável por tentativa de quitação. Reusar no retry pra
   // não duplicar o acerto no servidor (o backend exige e deduplica por ele).
   idempotencyKey: string
+  /** De qual conta saiu (passei) ou em qual entrou (recebi); null = não lança em conta. */
+  contaId?: string | null
+  /** Dia em que o dinheiro passou ("YYYY-MM-DD"). */
+  data?: string | null
 }
 
 export const registrarAcerto = async (
@@ -198,10 +206,11 @@ export const registrarAcerto = async (
   return res.data
 }
 
+/** `deUsuarioId`: o filtro "quem pagou" (no acerto, quem passou o dinheiro). */
 export const getAcertos = async (
-  familiaId: string, mes?: number, ano?: number,
+  familiaId: string, mes?: number, ano?: number, deUsuarioId?: string,
 ): Promise<AcertoContas[]> => {
-  const res = await api.get(`/familias/${familiaId}/acertos`, { params: { mes, ano } })
+  const res = await api.get(`/familias/${familiaId}/acertos`, { params: { mes, ano, deUsuarioId } })
   return res.data
 }
 
@@ -209,6 +218,44 @@ export const cancelarAcerto = async (
   familiaId: string, acertoId: string,
 ): Promise<void> => {
   await api.delete(`/familias/${familiaId}/acertos/${acertoId}`)
+}
+
+/** Conta da casa: as despesas que nascem nela daqui pra frente já nascem divididas (null = deixa de ser). */
+export const marcarContaDaCasa = async (contaId: string, familiaId: string | null): Promise<void> => {
+  await api.put(`/familias/contas/${contaId}/casa`, { familiaId })
+}
+
+/** Cartão da casa: as compras à vista nele daqui pra frente já nascem divididas (null = deixa de ser). */
+export const marcarCartaoDaCasa = async (cartaoId: string, familiaId: string | null): Promise<void> => {
+  await api.put(`/familias/cartoes/${cartaoId}/casa`, { familiaId })
+}
+
+/** O que ainda vem da casa no mês: as cobranças das contas fixas da casa que ainda não saíram, total e a sua parte. */
+export const getAindaVemFamilia = async (familiaId: string, mes: number, ano: number): Promise<AindaVemDaCasa> => {
+  const res = await api.get(`/familias/${familiaId}/ainda-vem`, { params: { mes, ano } })
+  return res.data
+}
+
+/** Contas fixas da casa no mês: quem paga, o dia, a cobrança do mês e a sua parte. */
+export const getContasFixasFamilia = async (familiaId: string, mes: number, ano: number): Promise<ContaFixaDaCasa[]> => {
+  const res = await api.get(`/familias/${familiaId}/contas-fixas`, { params: { mes, ano } })
+  return res.data
+}
+
+/** Quem recebeu confirma (só aí entra no equilíbrio); com conta, nasce a entrada. */
+export const confirmarAcerto = async (
+  familiaId: string, acertoId: string, contaId: string | null, data?: string | null,
+): Promise<AcertoContas> => {
+  const res = await api.post(`/familias/${familiaId}/acertos/${acertoId}/confirmar`, { contaId, data: data ?? null })
+  return res.data
+}
+
+/** Lança o SEU lado depois (a saída de quem passou ou a entrada de quem recebeu). */
+export const lancarAcerto = async (
+  familiaId: string, acertoId: string, contaId: string, data?: string | null,
+): Promise<AcertoContas> => {
+  const res = await api.post(`/familias/${familiaId}/acertos/${acertoId}/lancar`, { contaId, data: data ?? null })
+  return res.data
 }
 
 // ── Aprovação de despesa (2.4) ──

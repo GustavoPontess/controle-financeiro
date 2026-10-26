@@ -1,5 +1,6 @@
-import { api } from "../api/axiosConfig"
-import type { EstornoPagamentoResultado, Fatura, FaturaDetalhe, PagarFaturaPayload } from "../types/Fatura"
+import { api } from "../api/cliente"
+import type { EstornoPagamentoResultado, Fatura, FaturaDetalhe, LancamentoFatura, PagarFaturaPayload, TipoLancamentoFatura } from "../types/Fatura"
+import type { PagedResult } from "../types/Paged"
 
 export const getFaturasByCartao = async (cartaoCreditoId: string): Promise<Fatura[]> => {
   const res = await api.get(`/cartoes/${cartaoCreditoId}/faturas`)
@@ -8,6 +9,19 @@ export const getFaturasByCartao = async (cartaoCreditoId: string): Promise<Fatur
 
 export const getFaturaDetalhe = async (cartaoCreditoId: string, faturaId: string): Promise<FaturaDetalhe> => {
   const res = await api.get(`/cartoes/${cartaoCreditoId}/faturas/${faturaId}`)
+  return res.data
+}
+
+/** Lançamentos da fatura (compras, parcelas, pagamentos) — busca, tipo e página no servidor. */
+export const getLancamentosFatura = async (
+  cartaoCreditoId: string,
+  faturaId: string,
+  filtro: { q?: string; tipo?: TipoLancamentoFatura | ""; page: number; pageSize: number },
+): Promise<PagedResult<LancamentoFatura>> => {
+  const params: Record<string, unknown> = { page: filtro.page, pageSize: filtro.pageSize }
+  if (filtro.q) params.q = filtro.q
+  if (filtro.tipo) params.tipo = filtro.tipo
+  const res = await api.get(`/cartoes/${cartaoCreditoId}/faturas/${faturaId}/lancamentos`, { params })
   return res.data
 }
 

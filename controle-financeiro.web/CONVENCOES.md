@@ -1,4 +1,6 @@
-# Convenções do front v2
+# Convenções do front (controle-financeiro.web)
+
+> É o front "v2" de 2026-10, único desde 2026-10-26 (o v1, com a biblioteca Pontes, está na tag `arquivo/v1-final`). Os tokens continuam `--v2-*` e a classe raiz `v2`: nome histórico, não versão.
 
 Regras curtas pra toda tela nova seguir o mesmo padrão. Se uma regra daqui atrapalhar, muda a regra aqui — não abre exceção na tela.
 

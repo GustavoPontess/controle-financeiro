@@ -1,4 +1,4 @@
-import { api } from "@/api/axiosConfig"
+import { api } from "../api/cliente"
 import type { AdminAuditLog, ExportacaoUsuario, MetricasAdmin, UsuarioAdmin } from "@/types/Admin"
 import type { ContagemNotificacaoAdmin, NotificacaoAdmin } from "@/types/NotificacaoAdmin"
 import type { PagedResult } from "@/types/Paged"

@@ -1,4 +1,4 @@
-import { api } from "@/api/axiosConfig"
+import { api } from "../api/cliente"
 
 /** Item do chooser pré-login (roster). Nunca traz e-mail inteiro — só o mascarado. */
 export interface ContaLembrada {

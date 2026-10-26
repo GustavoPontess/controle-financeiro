@@ -1,4 +1,4 @@
-import { api } from "../api/axiosConfig"
+import { api } from "../api/cliente"
 import type { Recorrente, CriarRecorrente, EditarProximaDto, CancelarRecorrenteDto, FiltroStatusRecorrente } from "../types/Recorrente"
 import type { PagedResult } from "../types/Paged"
 
@@ -34,6 +34,12 @@ export type RecorrenteStats = {
 /** KPIs agregados — ativas, custo mensal, próximas 30 dias, total. */
 export const getRecorrenteStats = async (): Promise<RecorrenteStats> => {
   const res = await api.get(`${BASE}/stats`)
+  return res.data
+}
+
+/** Uma conta fixa (com situação e próxima cobrança). Excluída/inexistente → 404. */
+export const getRecorrente = async (id: string): Promise<Recorrente> => {
+  const res = await api.get(`${BASE}/${id}`)
   return res.data
 }
 

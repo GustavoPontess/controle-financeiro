@@ -1,4 +1,4 @@
-import { api } from "@/api/axiosConfig"
+import { api } from "../api/cliente"
 import type { Sessao } from "@/types/Sessao"
 
 /**

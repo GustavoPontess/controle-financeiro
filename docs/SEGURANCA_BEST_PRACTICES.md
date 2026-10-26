@@ -164,7 +164,7 @@ Pesquisados, **não confirmados** por fonte primária nesta rodada. Defaults aba
 |---|---|---|---|
 | C1 | Reset token não pode vir na resposta + e-mail fire-and-forget | **Vaza na resposta** (account takeover) | 🔴 |
 | — | JWT validation (assinatura/exp/iss/aud) | ✅ já fazemos (ClockSkew=0) | ok |
-| — | CORS `WithOrigins` | ✅ restrito a localhost:5173 (falta allowlist prod) | 🟡 |
+| — | CORS `WithOrigins` | ✅ restrito ao front de dev (o vite faz proxy da API, mesma origem); produção via `CORS_ALLOWED_ORIGINS` | 🟡 |
 | — | Token em cookie HttpOnly+SameSite=Strict | ✅ jwt **e** refresh em cookie HttpOnly+Secure(HTTPS)+SameSite=Strict | ✔ |
 | A1/A2 | PBKDF2 ≥600k OU Argon2id | ✅ **Argon2id m=19456/t=2/p=1, salt 16B, saída 32B, rehash no login** | ✔ |
 | — | Reset token hasheado no banco | ✅ **SHA-256 (OpaqueTokenHasher); bruto só no e-mail** | ✔ |
@@ -173,7 +173,7 @@ Pesquisados, **não confirmados** por fonte primária nesta rodada. Defaults aba
 | — | Política senha 15 chars (sem MFA) | ✅ **15 + teto 128** (front e back) | ✔ |
 | — | Re-auth em trocar e-mail/senha | ✅ troca de senha exige senha atual; não há troca de e-mail/delete de conta | ✔ |
 | — | CSP estrita + headers de segurança (API) | ✅ `SecurityHeadersMiddleware` (CSP, nosniff, X-Frame DENY, Referrer, Permissions, HSTS sob HTTPS) | ✔ |
-| — | CSP + headers no SPA (prod) | ✅ `controle-financeiro.web/nginx.conf` (CSP estrita, nosniff, X-Frame DENY, Referrer, Permissions). Prod real: ajustar `connect-src`. | ✔ |
+| — | CSP + headers no SPA (prod) | ✅ `controle-financeiro.web/Caddyfile` (CSP estrita, HSTS, nosniff, X-Frame DENY, Referrer, Permissions). Prod real: ajustar `connect-src`. | ✔ |
 
 ### Sprint de Auth Hardening recomendado (cada um = branch → PR → CI)
 1. ✅ **C1** — tira reset token da resposta + e-mail fire-and-forget (mata account takeover + timing enum)

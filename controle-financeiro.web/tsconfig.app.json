@@ -7,21 +7,13 @@
     "module": "ESNext",
     "types": ["vite/client"],
     "skipLibCheck": true,
-
-    /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
-
-    /* Path mapping (no baseUrl — deprecated in TS7; paths resolve from tsconfig dir) */
-    "paths": {
-      "@/*": ["./src/*"]
-    },
-
-    /* Linting */
+    "paths": { "@/*": ["./src/*"] },
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,

@@ -196,8 +196,8 @@ Os dois salvam o lote num `SaveChanges`; com o `xmin` na `Fatura`, um conflito (
 | Limite usado/disponível | `Services/RegrasFinanceiras.cs` — `LimitesUsadosDosCartoesAsync` (usado por `CartaoCreditoService` e `LimiteCalculatorService`) |
 | Validação de criação de cartão | `Services/CartaoCreditoService.cs` — `CriarAsync`, `AtualizarAsync` |
 | Estados da fatura (enums) | `Domain/Enums/EstadoCicloFatura.cs`, `EstadoPagamentoFatura.cs` |
-| UI — histórico de faturas | `controle-financeiro.web/src/pages/CreditCards/CreditCardsPage.tsx` |
-| Tipos frontend | `controle-financeiro.web/src/types/Fatura.ts`, `CartaoCredito.ts` |
+| UI — cartão e faturas | `controle-financeiro.web/src/telas/Cartao.tsx`, `Cartoes.tsx`, `PagarFatura.tsx`, `Parcelamento.tsx` (v1 na tag `arquivo/v1-final`) |
+| Tipos frontend | `controle-financeiro.web/src/types/` |
 
 ---
 

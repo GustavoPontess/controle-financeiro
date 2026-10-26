@@ -76,3 +76,23 @@ export interface EstornoPagamentoResultado {
   valorPagoFatura: number
   restanteFatura: number
 }
+
+export type TipoLancamentoFatura = "compra" | "parcela" | "pagamento"
+
+/** Um lançamento da fatura na lista paginada do servidor: compra à vista, parcela ou pagamento. */
+export interface LancamentoFatura {
+  id: string
+  tipo: TipoLancamentoFatura
+  descricao: string
+  valor: number
+  data: string
+  criadoEm: string
+  categoriaId?: string
+  categoriaDescricao?: string
+  /** Parcela: o "2" e o "3" de 2/3. */
+  numero?: number
+  quantidadeTotal?: number
+  parcelamentoId?: string
+  /** Pagamento: o meio (Pix, débito…). */
+  meioPagamentoDescricao?: string
+}

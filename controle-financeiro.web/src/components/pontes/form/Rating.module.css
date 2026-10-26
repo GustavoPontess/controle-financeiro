@@ -1,7 +1,0 @@
-/* Rating.module.css — estrelas. Cor via var(--pontes-accent). */
-.wrap { display: inline-flex; gap: 4px; align-items: center; }
-.star { background: transparent; border: none; padding: 4px; }
-.star:not(:disabled) { cursor: pointer; }
-.star svg { stroke: var(--pontes-accent); fill: none; }
-.star[data-filled="true"] svg { fill: var(--pontes-accent); }
-.label { margin-left: 10px; font-size: var(--pontes-fs-base); color: var(--pontes-text); font-weight: 600; font-family: var(--pontes-font); }

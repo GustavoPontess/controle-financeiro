@@ -19,6 +19,8 @@ função pura do tempo, `renderAt(t)`).
 
 ## Como gerar (vertical)
 
+> **Desatualizado (2026-10-26):** o tour foi gravado no front v1, arquivado na tag `arquivo/v1-final`. Refazer pro front atual (porta 5174) quando for gravar de novo.
+
 Pré-requisitos: app rodando (`localhost:5173` + API), Playwright instalado (o do `controle-financeiro.web`
 serve: rode os scripts com `NODE_PATH` apontando pro `node_modules` dele, ou de dentro dele), Python 3 com
 `numpy`, e `ffmpeg` pra juntar quadros + áudio.

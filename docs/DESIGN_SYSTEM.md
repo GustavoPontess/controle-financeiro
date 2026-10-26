@@ -52,7 +52,7 @@ const colors = {
 - **Marca:** `--pontes-font-marca` (Fraunces) — só no título da página (Navbar) e no site público.
 
 ### Tamanho — escala central `--pontes-fs-*` (2026-10-05) ⭐
-**Todo tamanho de letra sai de `controle-financeiro.web/src/components/pontes/styles/tokens.css`. Mudou lá, muda no app todo.**
+**Todo tamanho de letra sai de `controle-financeiro.web/src/estilo/tokens.css` (`--v2-fs-*`). Mudou lá, muda no app todo.** (Este documento descreve a biblioteca Pontes do front v1, arquivado em 2026-10-26 na tag `arquivo/v1-final`; o front atual segue `controle-financeiro.web/CONVENCOES.md`.)
 Nunca escrever `font-size: 13px` num componente/tela — usar o token. Vitrine ao vivo: `/design-system` → aba Tokens.
 
 **Escala (degraus que existem):** `2xs` 10 · `xs` 11 · `sm` 12 · `md` 13 · `base` 14 · `lg` 16 · `xl` 18 · `2xl` 20 · `3xl` 24 · `4xl` 28 · `5xl` 32 · `6xl` 40.

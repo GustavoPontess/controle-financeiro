@@ -14,7 +14,7 @@ Guia para Claude trabalhar eficientemente com este repositório. **Leia este arq
 Produto B2C de finanças pessoais e familiares, com diferencial em **gestão financeira de casais e famílias** (ver `docs/features/familia/visao.md`).
 
 - **Backend:** .NET 10 Web API com EF Core. **Postgres é o único provider** (dev e prod — paridade total, via `docker compose up -d postgres`). SQLite foi removido no #114 — rodar a API **exige** Postgres no ar
-- **Frontend:** React 19 + TypeScript + Vite + biblioteca própria **Pontes** (`src/components/pontes/`). **Zero MUI** — purgado no PR #166
+- **Frontend:** `controle-financeiro.web/` (React 19 + TypeScript + Vite), componentes próprios em `src/componentes/` e tokens `--v2-*`. É o "v2" de 2026-10, **único front desde 2026-10-26**; o v1 (biblioteca Pontes, MUI purgado) está na tag `arquivo/v1-final`. Convenções: `controle-financeiro.web/CONVENCOES.md`
 - **Banco de dados:** 40 entidades. Postgres único (SQLite removido no #114); `docker-compose.yml` sobe Postgres local
 - **Autenticação:** JWT Bearer (HS256) + refresh token (rotação, 7 dias) + reset password (1h)
 - **API versionada:** rotas em `/api/v1/...` (via `Asp.Versioning.Mvc`)
@@ -40,14 +40,15 @@ dotnet ef migrations add <Name>
 ### Frontend (controle-financeiro.web/)
 ```powershell
 npm install
-npm run dev     # Dev server at http://localhost:5173
-npm run build
-npm run lint
+npm run dev     # http://localhost:5174 (a API entra por proxy em /api; o cookie do login vale direto)
+npm test        # vitest + testing-library
+npm run build   # tsc + vite + trava do admin fora do pacote (scripts/conferirAdminFora.mjs)
 ```
+Pelo app: launch `web` (:5174) e `api` (:5293). O `/admin` no dev abre o mini-app do admin.
 
 ## Architecture
 
-> **Nome honesto:** monólito em camadas (N-tier: Controllers → Services → EF Core) com Service Layer + Transaction Script e domínio anêmico; o `AppDbContext` faz o papel de Repository/Unit of Work. Front: SPA React organizada por página + design system Pontes. **Não é** Clean/Onion, DDD, CQRS nem monólito modular — e não é pra virar. Avaliação completa (notas, forças, fraquezas, o que NÃO fazer): **`docs/ARQUITETURA.md`**.
+> **Nome honesto:** monólito em camadas (N-tier: Controllers → Services → EF Core) com Service Layer + Transaction Script e domínio anêmico; o `AppDbContext` faz o papel de Repository/Unit of Work. Front: SPA React organizada por tela + componentes próprios (`CONVENCOES.md`). **Não é** Clean/Onion, DDD, CQRS nem monólito modular — e não é pra virar. Avaliação completa (notas, forças, fraquezas, o que NÃO fazer): **`docs/ARQUITETURA.md`**.
 
 ### Backend Structure
 - **Controllers/** — thin HTTP layer; 23 controllers mapping to each domain area
@@ -61,18 +62,20 @@ npm run lint
 - **Data/** — seeders: `BancoSeeder` (BCB live API), `CategoriaSeeder`; `DevDataSeeder` (conta de exemplo `dev@`/`conjuge@` do atlas/E2E; `SEED_DADOS_DEV=false` desliga) e `DemoSeeder` (registros de demonstração do front v2 nessa conta, via services — só com `SEED_DEMO=true` no `.env` local; **toda tela nova do v2 ganha um bloco aqui** com registros em todos os estados, pro Gustavo ver a usabilidade)
 - **Infrastructure/Jobs/** — Hangfire jobs (`FaturaFechamento`, `FaturaAtraso`, `ExpandirRecorrentes`, `ExecutarRecorrentes`, `RecalcularLimites`, `PasswordResetEmail`, `PurgaExclusaoExpirada`, `PurgaRegistroAcessoExpirado`)
 
-### Frontend Structure
-- **src/api/axiosConfig.ts** — single Axios instance; request interceptor injects CSRF token; response interceptor redirects to `/auth/login` on 401 (exceto em paths públicos: `/auth/`, `/site`, `/design-system`, `/logo-concepts`)
-- **src/services/** — one service file per API resource, all using axiosClient
-- **src/contexts/** — auth state context
-- **src/routes/** — React Router v7 configuration
-- **src/types/** — TypeScript interfaces mirroring backend DTOs
-- **src/components/Logo/Logo.tsx** — logo oficial Pontes (conceito 20). Props: `color`, `size`, `variant` ("full" | "wordmark" | "mark"). Fonte da marca: Plus Jakarta Sans (fixa, global em `index.html`).
-- **src/components/pontes/** — ⭐ **Biblioteca oficial e ÚNICA fonte de UI.** 37+ componentes (`PontesButton`, `PontesField`, `PontesInput`, `PontesMoneyInput`, `PontesSelect` (busca default + auto-placement), `PontesDateInput` (popover do PontesDatePicker), `PontesModal`, `PontesDialog`, `PontesNavbar`, `PontesFooter`, `PontesBankBadge`, `PontesStatCard` (com `tone`), `PontesLogo`, etc) + tokens em `theme.ts` (15 paletas, 7 fontes, spacing, radii, shadows, semantic). Import via barrel `@/components/pontes`. **Todas as telas importam SOMENTE daqui.** Ícones via `lucide-react` (14-16px / strokeWidth 2.5). Demo: rota `/design-system`. Componentes novos reutilizáveis (2+ telas) **DEVEM** ser adicionados aqui — regra detalhada em `PROMPT_NOVA_SESSAO.md` §5.
-- **src/components/Auth/** — `RootRoute.tsx` + `ProtectedRoute.tsx` (lógica de rota, não UI). Únicos arquivos fora de `pontes/` em `src/components/` desde a purga do PR #166 (sessão 2026-05-29) que apagou todo o legado (`CustomButton`, `BackButton`, MUI direto, `tokens.ts` antigo) e desinstalou `@mui` completamente (`-212 KiB` no bundle).
-- **src/pages/Site/** — todas as páginas públicas do site institucional (HomePage, CouplesPage, ContadoresPage, RecursosPage, SobrePage). Rotas `/`, `/casais`, `/contadores`, `/recursos`, `/sobre`.
-- **src/pages/DesignSystem/** — showroom da biblioteca em rota dedicada `/design-system`, com paleta + fonte trocáveis ao vivo.
-- **src/pages/Auth/, Dashboard/, Transactions/, etc** — telas internas autenticadas, todas refatoradas Q5 (CSS Modules + var(--pontes-*) + PontesField validation + zero MUI).
+### Frontend Structure (`controle-financeiro.web/`)
+- **src/api/cliente.ts** — único Axios: cookie httpOnly + CSRF no header, refresh **single-flight** no 401, redirect pro `/entrar` quando a sessão cai (fora das rotas públicas)
+- **src/services/** — um arquivo por recurso da API (`transacoesService`, `familiasService`, `mfaService`…), todos pelo `cliente`
+- **src/auth/** — `AuthProvider` (sessão, multi-conta, MFA), `Protegido` (só logado), `useAuth`
+- **src/layout/** — `V2Layout` (menu lateral, topo com olho/sino/Nova transação, menu da conta, espaços Pessoal/Família), `useTema`
+- **src/telas/** — uma tela por arquivo, `.module.css` ao lado; criar e editar são o MESMO formulário (`FormularioTransacao`, `FormularioContaFixa`, `MetaFormulario`)
+- **src/componentes/** — ⭐ peças reutilizáveis: `Botao`, `Campo`, `Entrada`, `Selecao`, `SeletorData`, `EntradaValor`, `Segmentos`, `Interruptor`, `Marcar`, `Etiqueta`, `Planilha`/`SecaoPlanilha`, `ListaFicha`, `ListaPorDia`, `Confirmar`, `Dialogo`, `Menu`, `Paginacao`, `Resposta`, `Mosaico`… Peça em 2+ telas **nasce aqui**; a tela escolhe variante e tamanho, nunca cor ou medida
+- **src/estilo/** — `tokens.css` (cores, `--v2-fs-*`, raios, sombras, séries de gráfico; tema `data-tema` no `<html>`) e `global.css`
+- **src/dominio/** — regras de tela compartilhadas (`conta.ts`, `fatura.ts`, `meta.ts`, `familia.ts`, `transacao.ts`, `senha.ts`…): nunca copiadas por tela
+- **src/estado/** — estado entre telas com `useSyncExternalStore` (`ocultar`, `notificacoes`, `espaco`)
+- **src/types/** — interfaces espelhando os DTOs do back
+- **src/admin/** — mini-app do admin (`admin.html`, entrada própria no build, fora do pacote do app; ver "Beta fechado")
+- **src/site/** — site público (`/`), em construção na branch `feat/v2-site`
+- **src/test/** — vitest + testing-library; toda tela nova sai com teste (submit vazio bloqueia + fluxo feliz); travas que leem o código (`adminForaDoPacoteComum`)
 
 ### Key Domain Concepts
 
@@ -87,7 +90,7 @@ npm run lint
 ### Auth Flow
 - JWT Bearer (HS256), access token de **15 min** em cookie httpOnly (claim `sid`; a cada request confere se a sessão está viva) + refresh opaco rotativo de 7 dias com reuse-detection. O front renova **single-flight** (N 401 → 1 refresh, `axiosConfig.ts`); o back tolera reapresentação do token recém-rotacionado **< 30s e do mesmo dispositivo** (401 `REFRESH_EM_CORRIDA`, sem derrubar a família, com log de segurança) — fora disso, reuse-detection estrita
 - Claims: `NameIdentifier` (user ID), `Email`, `Name`, `sid`
-- CORS allows only `http://localhost:5173` em dev (produção via `CORS_ALLOWED_ORIGINS`)
+- CORS: em dev o front (:5174) fala com a API por proxy do vite (mesma origem); produção via `CORS_ALLOWED_ORIGINS`
 - **Beta fechado:** o cadastro do app É o pedido de acesso ("Pedir acesso"): nasce `AguardandoAprovacao` e o admin aprova no **Admin, um mini-app à parte** (`controle-financeiro.v2/admin.html` + `src/admin/`, entrada própria no build): o app comum não tem rota, link nem código dele (travas `adminForaDoPacoteComum.test.ts` + `scripts/conferirAdminFora.mjs` no build). Em produção só abre no endereço secreto `ADMIN_PATH` (secret do deploy, lido pelo Caddy; nunca no código); no dev, `/admin`. Admin exige **duas etapas ligadas** (`AdminAuthorizationHandler`: IsAdmin + `MfaAtivo` + Ativo) e o login de admin ignora "lembrar este dispositivo". O nome do app é "Pontes" (o "Pontes Finanças" com selo e links pro site da Pontes Dev foi desfeito em 2026-10-25, a pedido do Gustavo: o site só mostra o projeto no portfólio)
 - **API nega por padrão** (`FallbackPolicy`): tudo exige login, exceto o que declara `[AllowAnonymous]` — os endpoints públicos do `AuthController` (login, registro, MFA do login, refresh, switch, logout, roster, reativar conta, esqueci/redefinir senha) e `/health`, `/health/ready`
 
@@ -157,96 +160,17 @@ npm run lint
 
 ## Frontend Patterns & Conventions
 
-### Estilização — CSS Modules + CSS variables (PADRÃO OBRIGATÓRIO Q5+) ⭐
+**A fonte é `controle-financeiro.web/CONVENCOES.md`** (regras curtas, uma por decisão, com data). Resumo do que não se negocia:
 
-**Decidido na #122. Daqui em diante, toda tela nova ou refatorada segue:**
-
-- **Zero `style={{}}` para cor/fonte/tema.** Estilo vai em `*.module.css` ao lado do `.tsx` (`import styles from "./X.module.css"`, `className={styles.foo}`).
-- **Cor/fonte SEMPRE via `var(--pontes-*)`** (`--pontes-primary`, `--pontes-text`, `--pontes-bg`, `--pontes-font`, semânticas `--pontes-success|warning|danger|info`). Vars injetadas no `:root` pelo `PontesThemeProvider`. Nunca hex/fonte hardcoded de tema.
-- **Tamanho de letra SEMPRE via `var(--pontes-fs-*)`** (escala central em `tokens.css`; use o PAPEL: `rotulo`, `linha`, `secundario`, `corpo`, `controle`, `titulo-caixa`…). Nunca `font-size: 13px`. Tabela de papéis em `docs/DESIGN_SYSTEM.md` → "Tamanho — escala central"; trava em `src/test/components/tipografiaTokens.test.ts`.
-- **Telas não passam mais `p`/`font` pros componentes Pontes** — eles leem as vars sozinhos (`<PontesButton variant="primary">`). Props `p`/`font` continuam opcionais só pra override/compat.
-- **`usePontesTheme()`/`useSiteTheme()` só onde precisa de cor REAL (hex):** atributos SVG e `recharts` (`fill`/`stroke`/`Cell`/gradiente) — `var()` não resolve em atributo SVG. Ex.: `DashboardPage`, `HomePage`.
-- **Estado → CSS:** hover/foco via `:hover`/`:focus`, ativo/aberto via `data-*`, não state JS.
-- **Inline só pra valor dinâmico runtime:** `width: %`, cor do banco (`conta.cor`), vars escopadas do `/design-system`.
-- **Boy-scout (obrigatório):** achou `style={{}}` de tema/estático (legado ou novo), arruma na hora pra CSS Module — não deixa virar dívida técnica.
-
-Detalhe completo + exemplos em `docs/STANDARDS.md` → "Estilização — CSS Modules + CSS variables".
-
-> **Regras de campo/input (limite de caracteres, obrigatório, tipo, faixa) — backend E frontend:** ver **`docs/REGRAS_CAMPOS.md`** (checklist + tabela de limites padrão). Obrigatório ao criar campo/formulário novo — evita "caracteres infinitos" e dado inválido.
-
-### Validação de formulários (PADRÃO OBRIGATÓRIO) ⭐
-
-Todo form valida por campo e mostra erro **visual** via DS: `PontesField error="..."` + `invalid` no controle. Valida antes de submeter e **bloqueia** se inválido; erro de campo é inline vermelho (nunca toast — toast só sucesso/erro de servidor); erro limpa ao editar; mensagem ≠ placeholder; toast acima do modal. Teste obrigatório (submit vazio bloqueia + mostra erros). Detalhe + snippet: `docs/STANDARDS.md` → "Validação de formulários". Referência viva: `src/test/components/TransactionForm.test.tsx`.
-
-### Adicionar Novo Recurso Frontend
-
-```
-src/pages/NovaFuncionalidade/
-├── index.tsx                  # Container principal
-├── Form.tsx                   # Formulário reutilizável
-├── List.tsx                   # Lista/tabela
-├── Detail.tsx                 # Detalhe de um item
-└── NovaFuncionalidade.module.css  # CSS Modules + var(--pontes-*)
-
-src/services/NovaFuncionalidadeService.ts
-src/types/NovaFuncionalidade.ts
-```
-
-### Padrão de Componente React
-
-```typescript
-// Biblioteca Pontes — zero MUI. Estilo em CSS Modules + var(--pontes-*), validação por campo.
-import { useState } from 'react';
-import { PontesField, PontesInput, PontesButton } from '@/components/pontes';
-import NovaFuncionalidadeService from '@/services/NovaFuncionalidadeService';
-import styles from './NovaFuncionalidade.module.css';
-
-export const NovaFuncionalidade = () => {
-  const [loading, setLoading] = useState(false);
-  const [erro, setErro] = useState<string | undefined>();
-
-  const handleSubmit = async (formData: FormData) => {
-    setLoading(true);
-    try {
-      await NovaFuncionalidadeService.criar(formData);
-    } catch {
-      setErro('Erro ao salvar');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className={styles.wrap}>
-      <PontesField label="Nome" error={erro}>
-        <PontesInput invalid={!!erro} onChange={() => setErro(undefined)} />
-      </PontesField>
-      <PontesButton variant="primary" loading={loading} onClick={() => handleSubmit(formData)}>
-        Salvar
-      </PontesButton>
-    </div>
-  );
-};
-```
-
-### Service Pattern
-
-```typescript
-// src/services/NovaFuncionalidadeService.ts
-import axiosClient from '@/api/axiosClient';
-
-const NovaFuncionalidadeService = {
-  obterTodos: () => axiosClient.get('/api/nova-funcionalidade'),
-  obterPorId: (id: string) => axiosClient.get(`/api/nova-funcionalidade/${id}`),
-  criar: (dto) => axiosClient.post('/api/nova-funcionalidade', dto),
-  atualizar: (id: string, dto) => axiosClient.put(`/api/nova-funcionalidade/${id}`, dto),
-  deletar: (id: string) => axiosClient.delete(`/api/nova-funcionalidade/${id}`),
-};
-
-export default NovaFuncionalidadeService;
-```
-
----
+- **Estilo:** CSS Module ao lado do `.tsx`, sempre `var(--v2-*)` (cor, fonte, `--v2-fs-*`, raio, sombra). Nada de cor ou tamanho cru, nada de `style={{}}` de tema. Visual do app inteiro mora em `estilo/global.css`.
+- **Componentes:** peça que aparece em 2+ telas vira componente em `src/componentes/`; a tela passa variante e tamanho, `className` só pra posição. Conferir o que já existe antes de criar (`Planilha`, `ListaFicha`, `Segmentos`, `Menu`…).
+- **Formulário:** todo campo dentro de `Campo`; valida ao enviar, erro **no campo** (vermelho, uma linha, não ocupa altura), limpa ao editar, não chama o servidor inválido; erro do servidor num aviso no topo. Limite de caracteres igual ao do back (`docs/REGRAS_CAMPOS.md`). Dinheiro nunca negativo (`EntradaValor`), nunca `type="number"`.
+- **Layout:** ações da página no pé, à direita (`RodapeFormulario`); "Voltar" é a seta do topo (o layout põe); página de formulário sem `max-width`; formulário dentro de caixa preenche a caixa (`LinhaCampos`).
+- **Listas:** busca, filtro e página **no servidor**; busca com espera de digitação (`useAtrasado`); lista com ficha na linha = `ListaFicha` (modelo Bancos), nunca dropdown de ficha; cadastros são "ficha + ações na linha", sem página de detalhe.
+- **Texto:** PT-BR simples, sem travessão; dinheiro entre pessoas é fato ("pagou a mais", "pra equilibrar o mês X passa Y pra Z"), nunca deve/dívida/cobrar; sem subtítulo explicativo nem contador redundante.
+- **Respostas:** a frase que responde ("vai dar?") vem pronta do servidor (`RespostaDto`); o front mostra (`componentes/Resposta`), nunca calcula.
+- **Teste:** toda tela nova sai com teste (vitest + testing-library): submit vazio bloqueia + fluxo feliz; fluxos de dinheiro têm o seu.
+- **Dados demo:** toda tela nova ganha um bloco no `DemoSeeder` (conta Gabriel Dev, `SEED_DEMO=true`), com registros em todos os estados.
 
 ## Backend Patterns & Conventions
 
@@ -362,7 +286,7 @@ dotnet ef database update
     ├── STANDARDS.md             ← convenções de código (naming, error handling, etc.)
     ├── DATABASE.md              ← schema, ER, delete behavior
     ├── FLOWS.md                 ← fluxos de negócio
-    ├── DESIGN_SYSTEM.md         ← paleta, tipografia, biblioteca Pontes
+    ├── DESIGN_SYSTEM.md         ← biblioteca Pontes do v1 (histórico; o front atual segue controle-financeiro.web/CONVENCOES.md)
     ├── GIT_WORKFLOW.md          ← padrão de branches e commits
     ├── CONTROLLER_TEMPLATE.md   ← scaffold de controller novo
     ├── ANALISE_PRODUTO.md       ← análise crítica de produto (maio/2026)

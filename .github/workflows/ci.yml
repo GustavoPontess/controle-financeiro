@@ -9,6 +9,7 @@ on:
 
 # Runner: a máquina do Gustavo (self-hosted, rótulo pontes-local), pra não depender dos minutos pagos do GitHub
 # (2026-10-25, cobrança travou os jobs). O repo é privado: PR de fora não roda código lá.
+# O front v1 e o E2E Playwright dele saíram em 2026-10-26 (tag arquivo/v1-final); E2E do front atual: ROADMAP.
 jobs:
   backend:
     name: Backend (.NET 10)
@@ -55,39 +56,9 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: controle-financeiro.web/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Test
-        run: npm test
-
-      - name: Build
-        run: npm run build
-
-  frontend-v2:
-    name: Frontend v2 (Node / Vite)
-    runs-on: [self-hosted, pontes-local]
-
-    defaults:
-      run:
-        working-directory: controle-financeiro.v2
-
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: controle-financeiro.v2/package-lock.json
+          cache-dependency-path: controle-financeiro.web/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -95,81 +66,6 @@ jobs:
       - name: Test
         run: npm test
 
+      # O build também roda a trava do admin fora do pacote (scripts/conferirAdminFora.mjs).
       - name: Build
         run: npm run build
-
-  e2e:
-    name: E2E Playwright
-    runs-on: [self-hosted, pontes-local]
-    needs: [frontend]
-    # Desligado no runner local (2026-10-26): a imagem não tem `docker compose` e, de dentro do container, localhost
-    # não é a máquina (a API publicada no PC não responde em localhost:5293). Cobre só o front v1 (vai pra documentação).
-    # Pra ligar: variável do repo E2E_LOCAL=true, depois de resolver as duas coisas (ROADMAP).
-    if: ${{ vars.E2E_LOCAL == 'true' }}
-
-    # Nível do job: todo `docker compose` (up/logs/down) precisa dessas vars pra
-    # interpolar o compose (${POSTGRES_PASSWORD:?}/${JWT_SECRET:?}). Valores
-    # efêmeros de CI (DB descartável) — não são segredos reais.
-    env:
-      ASPNETCORE_ENVIRONMENT: Development
-      JWT_SECRET: ci-secret-key-minimum-32-characters-long!
-      POSTGRES_PASSWORD: ci-postgres-pw
-      # Na máquina do Gustavo: nome próprio pro compose, senão o `down -v` do fim apagaria o Postgres de dev dele
-      # (mesma pasta = mesmo nome de projeto). Com o dev no ar (5432/5293 ocupadas), este job falha; não é obrigatório.
-      COMPOSE_PROJECT_NAME: pontes-ci-e2e
-
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: controle-financeiro.web/package-lock.json
-
-      - name: Install frontend dependencies
-        working-directory: controle-financeiro.web
-        run: npm ci
-
-      - name: Install Playwright browsers
-        working-directory: controle-financeiro.web
-        run: npx playwright install chromium  # sem --with-deps: pediria sudo na máquina do runner
-
-      - name: Subir Postgres + API via docker compose
-        run: |
-          # Usa o MESMO docker-compose.yml do dev. API em container (host 5293),
-          # roda migrations + seeders no startup. Postgres ja tem healthcheck.
-          docker compose up -d --build postgres api
-          echo "Aguardando API em http://localhost:5293/health ..."
-          ok=""
-          for i in $(seq 1 90); do
-            if curl -sf http://localhost:5293/health > /dev/null; then ok=1; break; fi
-            sleep 2
-          done
-          if [ -z "$ok" ]; then
-            echo "::error::API nao respondeu em /health apos 180s"
-            docker compose logs api | tail -120
-            exit 1
-          fi
-          echo "API no ar."
-
-      - name: Run E2E tests
-        working-directory: controle-financeiro.web
-        run: npm run test:e2e
-
-      - name: docker compose logs (se falhou)
-        if: failure()
-        run: docker compose logs
-
-      - name: docker compose down
-        if: always()
-        run: docker compose down -v
-
-      - name: Upload Playwright report
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: playwright-report
-          path: controle-financeiro.web/playwright-report/
-          retention-days: 7

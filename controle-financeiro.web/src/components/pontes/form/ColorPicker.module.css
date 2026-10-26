@@ -1,7 +1,0 @@
-/* ColorPicker.module.css — swatches. Cor da amostra é por-instância (inline). */
-.wrap { display: flex; gap: 8px; flex-wrap: wrap; }
-.swatch {
-  width: 36px; height: 36px; border-radius: 10px; cursor: pointer; outline: none;
-  border: 2px solid var(--pontes-surface); box-shadow: 0 0 0 1px var(--pontes-border);
-}
-.swatch[data-selected="true"] { border: 3px solid var(--pontes-text); }

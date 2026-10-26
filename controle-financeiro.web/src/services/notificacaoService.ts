@@ -1,4 +1,4 @@
-import { api } from "../api/axiosConfig"
+import { api } from "../api/cliente"
 import type { Notificacao, ContagemNotificacao } from "../types/Notificacao"
 
 export const getNotificacoes = async (): Promise<Notificacao[]> => {
