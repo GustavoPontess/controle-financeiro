@@ -48,6 +48,8 @@ def converte(html):
     # Rodapé do site: Termos e Privacidade apontam pras páginas legais do app (o resto segue "#" até existir).
     corpo = corpo.replace('<a href="#">Termos de uso</a>', '<a href="/termos-de-uso">Termos de uso</a>')
     corpo = corpo.replace('<a href="#">Privacidade</a>', '<a href="/privacidade">Privacidade</a>')
+    # "Pedir acesso" (topo e chamada do fim) leva pro cadastro do app (decisão do Gustavo, 2026-10-26; antes ficava sem ação).
+    corpo = re.sub(r'href="#(?:acesso)?">Pedir acesso', 'href="/cadastro">Pedir acesso', corpo)
     return corpo.strip() + '\n'
 
 
