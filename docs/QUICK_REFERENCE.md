@@ -21,7 +21,7 @@
 cd ControleFinanceiro.Api
 dotnet run
 
-# Frontend (http://localhost:5173)
+# Frontend (http://localhost:5174)
 cd controle-financeiro.web
 npm run dev
 
@@ -46,16 +46,18 @@ ControleFinanceiro.Api/
 └── Data/                 # Seeders (Banco, Categoria)
 
 controle-financeiro.web/
-├── src/pages/            # Page containers (Site/ público + internas autenticadas)
-├── src/components/pontes/ # ⭐ Biblioteca Pontes — ÚNICA fonte de UI (37+ componentes)
-├── src/components/       # Só infra: Logo/, Auth/ (rotas), Navbar/, Sidebar/, Pwa/
-├── src/services/         # API clients (axiosClient)
-├── src/types/            # DTOs (mirror backend)
-├── src/api/axiosConfig.ts # Axios + JWT/CSRF interceptor
-└── src/routes/           # React Router v7 config
+├── src/telas/            # Uma tela por arquivo (+ .module.css ao lado)
+├── src/componentes/      # ⭐ Peças reutilizáveis (Botao, Campo, Entrada, Selecao, Planilha…)
+├── src/estilo/           # tokens.css (--v2-*) + global.css
+├── src/dominio/          # Regras de tela compartilhadas (conta, fatura, meta, família…)
+├── src/services/         # Um por recurso da API (api/cliente.ts = Axios + CSRF + refresh)
+├── src/estado/           # Estado entre telas (useSyncExternalStore)
+├── src/auth/, src/layout/ # Login/sessão e a casca (menu, topo)
+├── src/admin/            # Mini-app do admin (admin.html, fora do pacote do app)
+└── src/site/             # Site público (/, em construção)
 ```
 
-> **Regra:** toda UI vem de `@/components/pontes`. Estilo em `*.module.css` com `var(--pontes-*)`. Detalhes em `docs/STANDARDS.md` e `PROMPT_NOVA_SESSAO.md` §5-6.
+> **Regra:** peça que aparece em 2+ telas vira componente em `src/componentes/`. Estilo em `*.module.css` com `var(--v2-*)`. Convenções completas em `controle-financeiro.web/CONVENCOES.md`.
 
 ---
 

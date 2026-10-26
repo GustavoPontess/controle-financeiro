@@ -49,8 +49,34 @@ export function isoParaHoraHHMM(iso: string): string {
   return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`
 }
 
+// "YYYY-MM-DD" + n dias (meio-dia local: mudança de horário nunca empurra pro dia vizinho).
+export function somaDias(iso: string, n: number): string {
+  const [a, m, d] = iso.split("-").map(Number)
+  return dataLocalISO(new Date(a, m - 1, d + n, 12))
+}
+
+// Dia seguinte de "YYYY-MM-DD" (pra filtro "até" inclusivo: o back trata `to` como exclusivo, Data < to).
+export function diaSeguinte(iso: string): string {
+  const [a, m, d] = iso.split("-").map(Number)
+  return dataLocalISO(new Date(a, m - 1, d + 1, 12))
+}
+
 // Máscara de digitação "HH:MM" (só dígitos → HH:MM), pro campo de hora.
 export function mascararHora(raw: string): string {
   const d = raw.replace(/\D/g, "").slice(0, 4)
   return d.length <= 2 ? d : `${d.slice(0, 2)}:${d.slice(2)}`
+}
+
+/** Instante do servidor (UTC, com ou sem "Z": `criadoEm`, `atualizadoEm`…) → "15/10/2026" no dia de quem vê.
+ *  `dataBR` lê o dia escrito e, das 21h à meia-noite em Brasília, mostrava o dia seguinte. */
+export function diaDeInstante(isoUtc: string): string {
+  const temFuso = /(Z|[+-]\d{2}:?\d{2})$/i.test(isoUtc)
+  const d = new Date(temFuso ? isoUtc : `${isoUtc}Z`)
+  return Number.isNaN(d.getTime()) ? "" : dataBR(dataLocalISO(d))
+}
+
+/** "2026-10-15T00:00:00" ou "2026-10-15" → "15/10/2026" (sem fuso: o dia é o que está escrito). */
+export function dataBR(iso: string): string {
+  const [a, m, d] = iso.slice(0, 10).split("-")
+  return `${d}/${m}/${a}`
 }

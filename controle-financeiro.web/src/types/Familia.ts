@@ -1,3 +1,6 @@
+/** Permissão na família (PapelFamilia do servidor): 1 Admin, 2 Membro, 3 Dependente (só vê). */
+export type PapelFamilia = 1 | 2 | 3
+
 export interface Familia {
   id: string
   nome: string
@@ -14,10 +17,13 @@ export interface MembroFamilia {
   emailUsuario: string
   papel: string
   entrouEm: string
-  /** Só vem com valor pro PRÓPRIO membro (renda é dado pessoal); pros outros é null. */
-  rendaMensal: number | null
-  /** Se o membro já informou a renda (o peso do rateio proporcional), sem revelar o valor. */
-  rendaInformada: boolean
+  papelPermissao: PapelFamilia
+  /** O que a família vê da renda desta pessoa (0 nada · 1 só o peso · 2 valor pra alguns · 3 valor pra todos). */
+  visibilidadeRenda: 0 | 1 | 2 | 3
+  /** Quem vê o valor (com "pra alguns"). Só vem pro PRÓPRIO membro; pros outros é null. */
+  rendaVisivelPara: string[] | null
+  /** Versão da foto de perfil (null = sem foto). */
+  fotoEm?: string | null
 }
 
 // ── Modos de rateio (#25) ──
@@ -33,6 +39,10 @@ export interface RateioMembro {
   usuarioId: string
   nome: string
   percentual: number
+  /** A parte gravada em reais. */
+  valor: number
+  /** Saiu da família (continua nas despesas em que estava). */
+  saiuEm: string | null
 }
 
 export interface RateioTransacao {
@@ -53,6 +63,7 @@ export interface ConviteFamilia {
   expiraEm: string
   criadoEm: string
   token: string
+  papelPermissao: PapelFamilia
 }
 
 export interface FamiliaDetalhe {
@@ -65,6 +76,8 @@ export interface FamiliaDetalhe {
   membros: MembroFamilia[]
   convitesPendentes: ConviteFamilia[]
   limiteAprovacao: number | null
+  /** Quem já esteve e saiu (ou excluiu a conta: "Membro que saiu"), com a data. Continua no histórico. */
+  quemSaiu?: { usuarioId: string; nome: string; saiuEm: string | null }[]
 }
 
 // ── Aprovação de despesa (2.4) ──
@@ -83,6 +96,32 @@ export interface DespesaCompartilhada {
   aprovadoPorNome: string | null
   responsavelUsuarioId: string | null
   responsavelNome: string | null
+  /** A parte gravada de quem olha (null quando não entra na divisão). */
+  minhaParte: number | null
+  categoriaId?: string | null
+}
+
+/** Conta fixa da casa (aba Contas fixas da família). A conta de onde sai não vem pros outros. */
+export interface ContaFixaDaCasa {
+  recorrenteId: string
+  descricao: string
+  valor: number
+  dia: number
+  pagadorUsuarioId: string
+  pagadorNome: string
+  categoriaNome: string | null
+  ehMinha: boolean
+  /** A cobrança do mês ("YYYY-MM-DD"); null = sem cobrança neste mês. */
+  cobrancaData: string | null
+  cobrancaPaga: boolean | null
+  minhaParte: number | null
+}
+
+/** O que ainda vem da casa no mês (Visão geral): total e a sua parte calculados no servidor. */
+export interface AindaVemDaCasa {
+  total: number
+  minhaParte: number
+  itens: ContaFixaDaCasa[]
 }
 
 export interface SaldoMembro {
@@ -91,6 +130,8 @@ export interface SaldoMembro {
   pagou: number
   cota: number
   saldo: number
+  /** Saiu da família; continua no equilíbrio dos meses em que dividiu. */
+  saiuEm: string | null
 }
 
 export interface BalancoFamilia {
@@ -137,4 +178,10 @@ export interface AcertoContas {
   ano: number
   observacao: string | null
   criadoEm: string
+  /** Dia em que o dinheiro passou ("YYYY-MM-DD"). */
+  data: string | null
+  /** Null = esperando quem recebeu confirmar (fora do equilíbrio). */
+  confirmadoEm: string | null
+  /** O SEU lançamento desse dinheiro (saída se passou, entrada se recebeu); null = não lançou em conta. */
+  minhaTransacaoId: string | null
 }

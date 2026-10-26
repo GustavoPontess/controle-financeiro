@@ -189,11 +189,11 @@ dotnet ef migrations add <Name>
 dotnet ef database update
 dotnet test
 
-# Frontend (porta 5173)
+# Frontend (porta 5174)
 cd E:\VSCode\pontes\controle-financeiro\controle-financeiro.web
 npm install
 npm run build
-npm run dev                         # http://localhost:5173
+npm run dev                         # http://localhost:5174
 npm run lint
 npm test -- --run
 ```

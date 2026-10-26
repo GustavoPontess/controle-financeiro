@@ -1,4 +1,4 @@
-export type TipoNotificacao = 1 | 2 | 3 | 4 | 5 | 99
+export type TipoNotificacao = 1 | 2 | 3 | 4 | 5 | 14 | 99
 
 export interface Notificacao {
   id: string

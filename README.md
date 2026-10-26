@@ -20,7 +20,7 @@ O projeto está dividido em dois repositórios independentes:
 ```
 controle-financeiro/
 ├── ControleFinanceiro.Api/     # Backend (.NET 10)
-└── controle-financeiro.web/    # Frontend (React + TypeScript)
+└── controle-financeiro.web/    # Frontend (React 19 + TypeScript + Vite)
 ```
 
 ## Tecnologias Utilizadas
@@ -28,12 +28,12 @@ controle-financeiro/
 **Backend:**
 - .NET 10 Web API
 - Entity Framework Core
-- SQLite
+- PostgreSQL
 - Swagger
 
 **Frontend:**
 - React 19 com TypeScript
-- Material-UI
+- Componentes próprios (CSS Modules + tokens)
 - React Router
 - Axios
 - Vite
@@ -62,7 +62,7 @@ npm run dev
 ```
 
 ### Acessos
-- Frontend: http://localhost:5173
+- Frontend: http://localhost:5174
 - API: http://localhost:5293
 - Swagger: http://localhost:5293/swagger
 
@@ -71,7 +71,7 @@ npm run dev
 Cada parte do projeto possui documentação detalhada:
 
 - [Backend](./ControleFinanceiro.Api/README.md) - Regras de negócio e endpoints da API
-- [Frontend](./controle-financeiro.web/README.md) - Estrutura de componentes e páginas
+- [Frontend](./controle-financeiro.web/CONVENCOES.md) - Convenções, componentes e telas
 
 ## Funcionalidades Implementadas
 

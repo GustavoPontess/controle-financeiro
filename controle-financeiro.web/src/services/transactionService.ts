@@ -1,6 +1,7 @@
-import { api } from "../api/axiosConfig"
+import { api } from "../api/cliente"
 import type { Transaction } from "../types/Transaction"
 import type { PagedResult } from "../types/Paged"
+import type { AvisoDeCompra } from "../types/DinheiroDoMes"
 
 export type ListTransactionsFilter = {
   /** ISO date — `Data >= from`. */
@@ -29,6 +30,17 @@ export type ListTransactionsFilter = {
   apenasCaixa?: boolean
   /** Natureza do lançamento: entrada | saida | transferencia | fatura. */
   natureza?: string
+  /** "gastos": o que a pessoa gastou, na data em que gastou (conta e cartão; compra parcelada uma vez, com o total). */
+  visao?: "gastos"
+}
+
+/** Topo da visão Gastos: o total do que a lista mostra (mesmos filtros), em conta e no cartão. */
+export type ResumoGastos = { total: number; emConta: number; noCartao: number }
+
+export const getResumoGastos = async (filter: ListTransactionsFilter = {}): Promise<ResumoGastos> => {
+  const { from, to, categoriaId, q, contaId, cartaoId, valorMin, valorMax, status, meioPagamento } = filter
+  const res = await api.get("/transacoes/gastos/resumo", { params: { from, to, categoriaId, q, contaId, cartaoId, valorMin, valorMax, status, meioPagamento } })
+  return res.data
 }
 
 export type TransacaoStats = {
@@ -83,6 +95,7 @@ export const listTransactionsPage = async (
   if (filter.ordenacao) params.ordenacao = filter.ordenacao
   if (filter.apenasCaixa) params.apenasCaixa = true
   if (filter.natureza) params.natureza = filter.natureza
+  if (filter.visao) params.visao = filter.visao
   const res = await api.get("/transacoes", { params })
   return res.data
 }
@@ -97,13 +110,50 @@ export const getTransactions = async (): Promise<Transaction[]> => {
   return res.data.items
 }
 
-export const createTransaction = async (transaction: Omit<Transaction, "id">) => {
-  const res = await api.post("/transacoes", transaction)
+/**
+ * Antes de salvar uma compra: ela tira o dinheiro das contas fixas dos próximos 30 dias? No cartão o servidor olha o
+ * limite, na conta o saldo. Devolve o aviso pronto (frase, contas, saldo/limite de hoje) ou null quando não aperta nada
+ * (204). Só avisa.
+ */
+export const avisoDeCompra = async (valor: number, origem: { contaId?: string; cartaoId?: string }): Promise<AvisoDeCompra | null> => {
+  const res = await api.get("/transacoes/aviso", { params: { valor, ...origem } })
+  return res.status === 204 || !res.data ? null : res.data
+}
+
+const comChave = (idempotencyKey?: string) => (idempotencyKey ? { headers: { "Idempotency-Key": idempotencyKey } } : undefined)
+
+/** Idempotency-Key (uma por abertura da tela): repetir o pedido (duplo clique, retry) não lança duas vezes. */
+export const createTransaction = async (transaction: Omit<Transaction, "id">, idempotencyKey?: string) => {
+  const res = await api.post("/transacoes", transaction, comChave(idempotencyKey))
   return res.data
 }
 
-export const updateTransaction = async (id: string, transaction: Omit<Transaction, "id">): Promise<void> => {
-  await api.put(`/transacoes/${id}`, transaction)
+/**
+ * Edição completa — o mesmo formulário de criar. Conta, cartão e status mudam no lugar; `transferencia`,
+ * `contaFixa` ou `parcelas > 1` trocam o registro numa transação só do servidor (o antigo é cancelado).
+ * Campos nulos de conta/cartão e `efetivado` mantêm o que está.
+ */
+export type EditarLancamento = {
+  descricao: string
+  valor: number
+  tipo: number
+  categoriaId?: string | null
+  subcategoriaId?: string | null
+  contaId?: string | null
+  cartaoCreditoId?: string | null
+  meioPagamento?: number | null
+  parcelas?: number | null
+  efetivado?: boolean | null
+  data: string
+  hora?: string | null
+  transferencia?: { contaOrigemId: string; contaDestinoId: string } | null
+  contaFixa?: { frequencia: number; dataFim?: string | null } | null
+}
+export type EdicaoLancamentoResultado = { tipo: "transacao" | "transferencia" | "contaFixa" | "parcelamento"; id: string }
+
+export const updateTransaction = async (id: string, dados: EditarLancamento, idempotencyKey?: string): Promise<EdicaoLancamentoResultado> => {
+  const res = await api.put(`/transacoes/${id}`, dados, comChave(idempotencyKey))
+  return res.data
 }
 
 export const deleteTransaction = async (id: string): Promise<void> => {

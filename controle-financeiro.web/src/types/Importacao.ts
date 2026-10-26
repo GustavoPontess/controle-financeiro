@@ -17,10 +17,32 @@ export interface ExtratoLinha {
   pagaFaturaFechamento?: string | null
 }
 
+/** Qual coluna (índice, a partir de 0) do CSV é o quê. Valor numa coluna OU entrada + saída. */
+export interface MapeamentoCsv {
+  data: number
+  descricao: number
+  valor: number | null
+  entrada: number | null
+  saida: number | null
+  id: number | null
+  inverterSinal: boolean
+}
+
 export interface PreviewImportacao {
   linhas: ExtratoLinha[]
   total: number
   duplicadas: number
+  formato?: "ofx" | "csv"
+  /** CSV que não deu pra reconhecer: a tela pergunta qual coluna é o quê e lê de novo. */
+  precisaMapear?: boolean
+  colunas?: string[] | null
+  /** Até 5 linhas do arquivo, como estão. */
+  amostra?: string[][] | null
+  /** O mapeamento usado (ou a sugestão parcial). */
+  mapeamento?: MapeamentoCsv | null
+  assinatura?: string | null
+  /** As colunas vieram do que a pessoa já escolheu nessa conta. */
+  mapeamentoLembrado?: boolean
 }
 
 export interface LinhaImportar {
@@ -34,4 +56,8 @@ export interface LinhaImportar {
 
 export interface ResultadoImportacao {
   importadas: number
+  /** Linhas puladas porque já estavam na conta (mesmo código do banco). */
+  jaExistiam?: number
+  /** A mesma confirmação já tinha sido feita: nada foi gravado de novo. */
+  repetido?: boolean
 }

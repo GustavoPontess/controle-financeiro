@@ -15,6 +15,10 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+### 📌 2026-10-26: v1 arquivado, o v2 é o front (`controle-financeiro.web`)
+
+Decisão do Gustavo: "bora abandonar o v1". Tag `arquivo/v1-final` guarda o v1 inteiro; a pasta do v2 virou `controle-financeiro.web` (porta 5174, launch `web`); CI com um job de front só ("Frontend (Node / Vite)", o nome exigido pela main), sem o E2E do v1; `docker-compose` sem o serviço web do v1; CLAUDE.md, QUICK_REFERENCE e README descrevem o front atual. O que faltava portar do v1 está na Fila do ROADMAP. Branch `feat/v2-site` (home nova na identidade PontesDev, visão de empresas, Emitfy) ficou com um commit wip e precisa de rebase por cima do rename.
+
 ### 📌 Sessão 2026-10-24/25: produção, Admin e beta fechado
 
 **No ar:** VPS Hostinger (Boston) com Kamal 2; app em `app.pontesdev.com.br`, site do estúdio em `pontesdev.com.br`. Deploy por clique (Actions → Deploy na `main`); a máquina, o DNS e o backup são do chat de `E:\VSCode\pontes\servidor`.

@@ -1,22 +1,10 @@
-import '@testing-library/jest-dom'
-import { vi } from 'vitest'
+// Setup dos testes do v2 (vitest + testing-library, jsdom).
+import "@testing-library/jest-dom/vitest"
+import { afterEach } from "vitest"
+import { cleanup } from "@testing-library/react"
 
-// jsdom não tem IntersectionObserver — polyfill no-op (Reveal, animações on-scroll).
-class IOStub {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-  takeRecords() { return [] }
-}
-vi.stubGlobal('IntersectionObserver', IOStub)
+// Sem `globals`, a testing-library não se registra sozinha pra limpar a tela entre os testes.
+afterEach(() => cleanup())
 
-// jsdom não tem ResizeObserver — polyfill no-op (medições de layout).
-class ROStub {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
-vi.stubGlobal('ResizeObserver', ROStub)
-
-// jsdom não implementa scrollTo.
-vi.stubGlobal('scrollTo', () => {})
+// jsdom não implementa scrollIntoView (Selecao, faixa de meses do cartão).
+Element.prototype.scrollIntoView = function scrollIntoView() {}

@@ -21,6 +21,8 @@ export interface CartaoCredito {
   bancoLogoUrl?: string
   bancoCor?: string
   ativo: boolean
+  /** Cartão da casa: as compras à vista nele já nascem divididas com essa família. */
+  familiaId?: string | null
 }
 
 export interface CriarCartaoCredito {

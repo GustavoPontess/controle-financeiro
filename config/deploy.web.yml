@@ -1,4 +1,4 @@
-# Kamal 2: front v2 do Pontes (Caddy interno servindo o build). Contrato em
+# Kamal 2: front do Pontes (Caddy interno servindo o build). Contrato em
 # E:\VSCode\pontes\servidor\deploy\PLANO-KAMAL.md. Uso: kamal deploy -c config/deploy.web.yml (pelo workflow Deploy).
 service: pontes-web
 image: gustavopontess/controle-financeiro-web
@@ -23,8 +23,8 @@ registry:
 
 builder:
   arch: amd64
-  context: controle-financeiro.v2
-  dockerfile: controle-financeiro.v2/Dockerfile
+  context: controle-financeiro.web
+  dockerfile: controle-financeiro.web/Dockerfile
   cache:
     type: gha
     options: mode=max
@@ -41,7 +41,7 @@ proxy:
 
 # Endereço do admin: só existe no servidor (secret ADMIN_PATH do environment "production", ex. /a1b2c3...; barra +
 # 20 ou mais letras, números, - ou _). Nunca no código nem na imagem: o Caddy lê na hora de subir. Sem ele, o admin
-# não existe em produção (o Dockerfile apaga a página). Ver controle-financeiro.v2/Caddyfile.
+# não existe em produção (o Dockerfile apaga a página). Ver controle-financeiro.web/Caddyfile.
 env:
   secret:
     - ADMIN_PATH

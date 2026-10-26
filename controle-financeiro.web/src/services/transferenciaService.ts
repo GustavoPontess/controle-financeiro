@@ -1,12 +1,13 @@
-import { api } from "../api/axiosConfig"
+import { api } from "../api/cliente"
 import type { Transferencia, CriarTransferencia } from "../types/Transferencia"
 
 // Transferência entre contas próprias. Criada pelo modal "Nova transação"
 // (natureza = transferência); aparece no extrato (Transações) como 2 pernas
 // neutras. Não há tela dedicada — o extrato + o filtro "Tipo de lançamento" cobrem.
 
-export const createTransferencia = async (dto: CriarTransferencia): Promise<Transferencia> => {
-  const res = await api.post("/transferencias", dto)
+/** Idempotency-Key (uma por abertura da tela): repetir o pedido não move o dinheiro duas vezes. */
+export const createTransferencia = async (dto: CriarTransferencia, idempotencyKey?: string): Promise<Transferencia> => {
+  const res = await api.post("/transferencias", dto, idempotencyKey ? { headers: { "Idempotency-Key": idempotencyKey } } : undefined)
   return res.data
 }
 

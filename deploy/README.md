@@ -45,7 +45,7 @@ A API aplica as migrações sozinha ao subir (`MigrateAsync` no `Program.cs`, an
 
 - `config/deploy.api.yml`, `config/deploy.web.yml`, `.kamal/secrets`, `.kamal/hooks/pre-deploy`, `.github/workflows/deploy.yml`.
 - `ControleFinanceiro.Api/Dockerfile`: imagem da API.
-- `controle-financeiro.v2/Dockerfile` + `Caddyfile`: front v2 servido por um Caddy interno (sem HTTPS), com CSP e HSTS.
+- `controle-financeiro.web/Dockerfile` + `Caddyfile`: front servido por um Caddy interno (sem HTTPS), com CSP e HSTS.
 - `deploy/scripts/segredos.sh`: **histórico**. Foi como as chaves de produção nasceram (23/10/2026). Os valores hoje moram nos secrets do GitHub e no cofre; não rodar de novo (trocar o pepper invalida todas as senhas).
 
 ## Fora do ar de propósito

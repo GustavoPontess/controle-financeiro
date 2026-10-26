@@ -1,4 +1,4 @@
-import { api } from "../api/axiosConfig"
+import { api } from "../api/cliente"
 import type { DashboardData } from "../types/Dashboard"
 
 export const getDashboard = async (ano?: number, mes?: number): Promise<DashboardData> => {

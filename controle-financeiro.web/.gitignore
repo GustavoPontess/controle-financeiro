@@ -2,34 +2,8 @@
 logs
 *.log
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
 node_modules
 dist
 dist-ssr
 *.local
-
-# Atlas Playwright (#59) — gerado sob demanda, nao comitar
-screenshots/
-
-# Playwright E2E (#92) — storageState com cookie de sessão, nunca comitar
-playwright/.auth/
-test-results/
-playwright-report/
-
-# Monarch Session Recorder (#60) — perfil de browser persistente
-.playwright-monarch-profile/
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?

@@ -1,4 +1,4 @@
-import { api } from "../api/axiosConfig"
+import { api } from "../api/cliente"
 import type { CartaoCredito, CriarCartaoCredito } from "../types/CartaoCredito"
 
 export const getCartoes = async (): Promise<CartaoCredito[]> => {

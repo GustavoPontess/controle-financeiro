@@ -1,4 +1,0 @@
-/* LoadingDots.module.css — 3 pontinhos pulsando. Cor via var(--pontes-*). */
-.wrap { display: inline-flex; }
-.dot { border-radius: 50%; background: var(--pontes-primary); display: inline-block; animation: pontes-glow 1.2s ease-in-out infinite; }
-@keyframes pontes-glow { 0%, 100% { opacity: .5; } 50% { opacity: .85; } }

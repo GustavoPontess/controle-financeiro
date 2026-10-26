@@ -1,9 +1,11 @@
-import { api } from '@/api/axiosConfig'
+import { api } from "../api/cliente"
 
 export interface MfaStatus {
   ativo: boolean
   ativadoEm: string | null
   backupCodesRestantes: number
+  /** Mostrar o convite "Proteja sua conta" depois do login (MFA desligado, não dispensado, fora do "agora não"). */
+  mostrarConvite: boolean
 }
 
 export interface MfaIniciarAtivacao {
@@ -22,6 +24,10 @@ const mfaService = {
 
   desativar: (senhaAtual: string, codigo: string) =>
     api.post('/auth/mfa/desativar', { senhaAtual, codigo }),
+
+  /** Resposta ao convite: nuncaMais = não perguntar mais; senão adia 30 dias. */
+  responderConvite: (nuncaMais: boolean) =>
+    api.post('/auth/mfa/convite', { nuncaMais }, { skipErrorToast: true }),
 }
 
 export default mfaService
