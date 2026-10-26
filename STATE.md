@@ -26,7 +26,7 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 **Admin escondido (branch `feat/admin-oculto`, PR a partir do #354):** o admin virou mini-app à parte (`admin.html`), sem rota nem código no app; em produção só no endereço secreto `ADMIN_PATH` (secret novo no environment `production`); o servidor exige duas etapas ligadas pra admin e o login de admin sempre pede o código. Antes do próximo deploy: criar o secret `ADMIN_PATH` e ligar as duas etapas na conta admin.
 
-**Próximo:** primeiro admin em produção (P1 no ROADMAP, pelo chat do servidor); Admin do v2 sem LGPD/auditoria ainda.
+**Feito em 26/10:** #352 a #357 na main (mosaico, volta ao nome Pontes, admin escondido com duas etapas); CI e Deploy no runner do PC do Gustavo (`pc-gustavo-app`, #356); primeiro admin em produção (chat do servidor). **Próximo:** Gustavo liga as duas etapas na conta de produção e dispara o deploy; Admin do v2 sem LGPD/auditoria ainda.
 
 ### 📌 Sessão 2026-10-14 — front com cara de produto · branch `feat/ds-premium` (a partir da `main`)
 
