@@ -14,6 +14,7 @@ import { Dinheiro, diaCurto, variacao, type TomDinheiro } from "../componentes/D
 import LogoMarca from "../componentes/LogoMarca"
 import { TIPO_CONTA } from "../dominio/conta"
 import GraficoLinha from "../componentes/GraficoLinha"
+import Mosaico from "../componentes/Mosaico"
 import styles from "./Dashboard.module.css"
 
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
@@ -70,24 +71,17 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <Bloco titulo={`Renda de ${MESES[ref.mes - 1].toLowerCase()}`} acao="Ver renda" para="/renda">
+      {/* Mosaico (estilo Pinterest): cada caixa cai na coluna mais curta, sem buraco entre elas. No celular, uma embaixo da outra. */}
+      <Mosaico>
+        <Bloco titulo={`Renda de ${MESES[ref.mes - 1].toLowerCase()}`} acao="Ver renda" para="/orcamento">
         {erroMes ? <p className={styles.erroMes} role="alert">Não deu pra carregar a renda do mês.</p>
           : !mesDinheiro ? <Esqueleto linhas={4} altura={18} /> : <UsoDaRenda dados={mesDinheiro} />}
-      </Bloco>
-
-      {/* "Maiores gastos do mês" saiu: as categorias moram no cartão da renda (mesma regra do limite, com o cartão);
-          o bloco antigo contava só o que saiu da conta e mostrava outro número pro mesmo nome. */}
-      <Bloco titulo="Saldo nos últimos meses">
-        {d ? <GraficoLinha pontos={d.evolucaoSaldo.map((p) => ({ rotulo: p.label, valor: p.saldo }))} /> : <Esqueleto linhas={4} altura={18} />}
-      </Bloco>
-
-      <div className={styles.grade}>
-        <Bloco titulo="Transações recentes" acao="Ver todas" para="/transacoes" semRespiro>
-          {!d ? <div className={styles.respiro}><Esqueleto linhas={5} /></div> : d.transacoesRecentes.length === 0 ? <div className={styles.respiro}><Vazio texto="Nada lançado neste mês." /></div> : (
-            <ul className={styles.lista}>{d.transacoesRecentes.slice(0, 8).map((t) => <LinhaTransacao key={t.id} t={t} />)}</ul>
-          )}
         </Bloco>
-        <div className={styles.coluna}>
+        {/* "Maiores gastos do mês" saiu: as categorias moram no cartão da renda (mesma regra do limite, com o cartão);
+            o bloco antigo contava só o que saiu da conta e mostrava outro número pro mesmo nome. */}
+        <Bloco titulo="Saldo nos últimos meses">
+          {d ? <GraficoLinha pontos={d.evolucaoSaldo.map((p) => ({ rotulo: p.label, valor: p.saldo }))} /> : <Esqueleto linhas={4} altura={18} />}
+        </Bloco>
           <Bloco titulo="Contas" acao="Ver todas" para="/bancos" semRespiro>
             {!d ? <div className={styles.respiro}><Esqueleto linhas={3} /></div> : (
               <ul className={styles.lista}>
@@ -130,8 +124,12 @@ export default function Dashboard() {
               </ul>
             )}
           </Bloco>
-        </div>
-      </div>
+        <Bloco titulo="Transações recentes" acao="Ver todas" para="/transacoes" semRespiro>
+          {!d ? <div className={styles.respiro}><Esqueleto linhas={5} /></div> : d.transacoesRecentes.length === 0 ? <div className={styles.respiro}><Vazio texto="Nada lançado neste mês." /></div> : (
+            <ul className={styles.lista}>{d.transacoesRecentes.slice(0, 8).map((t) => <LinhaTransacao key={t.id} t={t} />)}</ul>
+          )}
+        </Bloco>
+      </Mosaico>
     </div>
   )
 }
