@@ -5,9 +5,9 @@ import path from "node:path"
 
 const dist = path.resolve(import.meta.dirname, "..", "dist")
 
-// Marcas só da barra de dev: o rótulo de acessibilidade, a classe dela, os estados e os exemplos.
+// Marcas só do painel de dev: o rótulo de acessibilidade, a chave dele, o componente, os estados e os exemplos.
 const MARCAS = [
-  /Estados da tela \(só em desenvolvimento\)/, /BarraEstadosDev/, /Contas salvas/, /Link vencido/,
+  /Painel de dev \(só em desenvolvimento\)/, /Contas de teste \(preenche o login\)/, /dev:barraEstados/, /BarraEstadosDev/, /Contas salvas/, /Link vencido/,
   /Pedido enviado"/, /Ativar 2 etapas/, /Ana Souza/, /4F7K-92QA/, /JBSWY3DPEHPK3PXP/, /redefinir-senha\?token=dev/,
 ]
 
