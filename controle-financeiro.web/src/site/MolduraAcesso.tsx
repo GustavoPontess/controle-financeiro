@@ -47,13 +47,15 @@ export default function MolduraAcesso({ titulo, foto, frase, fraseSuave, lead, b
         <main className="painel-a">
           <div className="topo-a">
             <Link className="marca marca-movel" to="/"><img src="/site/estaiada-laranja.svg" alt="" />Pontes</Link>
-            <Link className="voltar-site" to="/"><span className="seta-volta">←</span> Voltar ao site</Link>
             <button type="button" className="tema-bt" data-tema-troca aria-label="Alternar modo claro e escuro" onClick={alternarTema}>
               <svg className="sol" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" /><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4" /></svg>
               <svg className="lua" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z" /></svg>
             </button>
           </div>
-          <div className="miolo">{children}</div>
+          <div className="miolo">
+            <Link className={`voltar-a ${css.voltarSite}`} to="/"><span className="seta-volta">←</span> Voltar ao site</Link>
+            {children}
+          </div>
         </main>
       </div>
     </>
