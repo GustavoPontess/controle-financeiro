@@ -54,7 +54,8 @@ public class AuthService
         NotificacaoAdminService notificacaoAdmin,
         IHttpContextAccessor? httpContextAccessor = null,
         ILogger<AuthService>? logger = null,
-        IVerificadorSenhaVazada? verificadorSenha = null)
+        IVerificadorSenhaVazada? verificadorSenha = null,
+        IEmailCadastroDispatcher? emailCadastro = null)
     {
         _context = context;
         _tokenProvider = tokenProvider;
@@ -66,7 +67,11 @@ public class AuthService
         _logger = logger ?? NullLogger<AuthService>.Instance;
         // Opcional pelo mesmo motivo; sem ele (testes que constroem na mão) só a lista local vale.
         _verificadorSenha = verificadorSenha ?? SemVerificacaoDeVazamento.Instancia;
+        // Opcional pelo mesmo motivo; sem ele, o cadastro não manda o e-mail de pedido recebido.
+        _emailCadastro = emailCadastro ?? SemEmailCadastro.Instancia;
     }
+
+    private readonly IEmailCadastroDispatcher _emailCadastro;
 
     private readonly IVerificadorSenhaVazada _verificadorSenha;
 
@@ -343,6 +348,11 @@ public class AuthService
             $"{usuario.Nome} está aguardando aprovação.",
             "/admin/pendentes",
             alvoId: usuario.Id); // acionável: some do sino quando o cadastro for aprovado/recusado
+
+        // E-mail "pedido recebido" pra pessoa, pela fila (o SMTP na requisição vazaria pelo tempo quem já tem conta).
+        // E-mail que já tinha conta não recebe nada: a resposta da tela é a mesma e a caixa de quem já é cliente
+        // não ganha e-mail que outra pessoa disparou.
+        _emailCadastro.PedidoRecebido(usuario.Id);
 
         return RespostaCadastroRecebido();
     }

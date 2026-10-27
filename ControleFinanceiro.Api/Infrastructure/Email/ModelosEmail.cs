@@ -94,6 +94,29 @@ public static class ModelosEmail
                 email: email));
     }
 
+    /// <summary>
+    /// Pedido de acesso recebido (beta fechado): confirma pra pessoa que o pedido chegou e diz o que vem depois
+    /// (o e-mail de acesso liberado). Sem botão: não há nada pra fazer até a aprovação.
+    /// </summary>
+    public static MensagemEmail PedidoRecebido(string email)
+    {
+        var texto = $"Recebemos o seu pedido de acesso ao Pontes com o e-mail {email}. O Pontes está em beta fechado e cada pedido é aprovado à mão.";
+        const string validade = "Você recebe outro e-mail assim que o acesso for liberado. Até lá não precisa fazer nada.";
+        const string naoFoi = "Não pediu acesso ao Pontes? Pode ignorar este e-mail. A conta só entra no ar com aprovação, e ninguém entra sem a senha.";
+        return new MensagemEmail(
+            "Recebemos seu pedido de acesso ao Pontes",
+            $"{texto}\n\n{validade}\n\n{naoFoi}{RodapeTexto(email)}",
+            Html(
+                previa: "Seu pedido chegou. Avisamos assim que o acesso for liberado.",
+                titulo: "Pedido recebido",
+                texto: texto,
+                miolo: "",
+                validade: validade,
+                naoFoi: naoFoi,
+                linkReserva: null,
+                email: email));
+    }
+
     /// <summary>Aviso fora do app de que a conta foi marcada pra exclusão (a pessoa ainda pode reagir).</summary>
     public static MensagemEmail AvisoExclusao(string appUrl, string email, DateTime marcadoEmUtc, int diasCarencia)
     {

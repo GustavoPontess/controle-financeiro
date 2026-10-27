@@ -125,6 +125,8 @@ else
 }
 builder.Services.AddScoped<IPasswordResetDispatcher, HangfirePasswordResetDispatcher>();
 builder.Services.AddScoped<PasswordResetEmailJob>();
+builder.Services.AddScoped<IEmailCadastroDispatcher, HangfireEmailCadastroDispatcher>();
+builder.Services.AddScoped<EmailPedidoRecebidoJob>();
 builder.Services.AddScoped<CsrfTokenService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<RelatorioService>();

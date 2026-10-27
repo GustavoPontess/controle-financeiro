@@ -62,6 +62,20 @@ public class ModelosEmailTests
     }
 
     [Fact]
+    public void PedidoRecebido_DizPraQualConta_EOQueVemDepois_SemBotao()
+    {
+        var m = ModelosEmail.PedidoRecebido("ana@teste.com");
+
+        Assert.Contains("pedido", m.Assunto);
+        Assert.Contains("ana@teste.com", m.Texto);
+        Assert.Contains("ana@teste.com", m.Html);
+        Assert.Contains("assim que o acesso for liberado", m.Texto);
+        Assert.DoesNotContain("<a href", m.Html); // nada pra clicar até a aprovação
+        Assert.DoesNotContain("—", m.Texto);
+        Assert.DoesNotContain("—", m.Html);
+    }
+
+    [Fact]
     public void Html_EscapaOQueVemDeFora()
     {
         var m = ModelosEmail.CodigoOtp("x@<i>y</i>.com", "<b>x</b>", TipoOtpEmail.ExcluirConta, Expira);

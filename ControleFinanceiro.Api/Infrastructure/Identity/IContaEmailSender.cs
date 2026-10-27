@@ -17,4 +17,7 @@ public interface IContaEmailSender
 
     /// <summary>Pedido de acesso aprovado no Admin (beta fechado): a pessoa já pode entrar.</summary>
     Task EnviarAcessoLiberadoAsync(string email, CancellationToken ct = default);
+
+    /// <summary>Pedido de acesso recebido (beta fechado): confirma que o cadastro chegou e espera aprovação.</summary>
+    Task EnviarPedidoRecebidoAsync(string email, CancellationToken ct = default);
 }

@@ -17,6 +17,7 @@ public class EmailOtpServiceTests
     // Sender stub que captura o último código enviado (pra o teste conhecer o PIN gerado).
     private sealed class SenderSpy : IContaEmailSender
     {
+        public Task EnviarPedidoRecebidoAsync(string email, CancellationToken ct = default) => Task.CompletedTask;
         public Task EnviarAcessoLiberadoAsync(string email, CancellationToken ct = default) => Task.CompletedTask;
         public string? UltimoCodigo;
         public int Avisos;

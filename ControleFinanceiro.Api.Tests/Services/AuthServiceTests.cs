@@ -586,6 +586,65 @@ public class AuthServiceTests
         Assert.Equal(1, await ctx.Usuarios.CountAsync(u => u.Email == "duplicado@test.com"));
     }
 
+    // ── Register: e-mail "pedido recebido" vai pela fila, só pra cadastro novo ──
+
+    private static AuthService CreateServiceComEmail(AppDbContext ctx, IEmailCadastroDispatcher email)
+    {
+        var jwt = new JwtTokenProvider("chave-de-teste-suficientemente-grande-0123456789", "test", "test");
+        return new AuthService(ctx, jwt, new Mock<IPasswordResetDispatcher>().Object, new MfaService(ctx),
+            TestHelpers.NotifAdmin(ctx), emailCadastro: email);
+    }
+
+    [Fact]
+    public async Task Register_novo_enfileiraEmailDePedidoRecebido_comOIdDaPessoa()
+    {
+        using var ctx = CreateContext();
+        var email = new Mock<IEmailCadastroDispatcher>();
+        var auth = CreateServiceComEmail(ctx, email.Object);
+
+        await auth.RegisterAsync(new DTOs.Auth.RegisterDto
+        {
+            Email = "novo@test.com", Nome = "Novo", Password = "SenhaForte!2026", ConfirmPassword = "SenhaForte!2026",
+        });
+
+        var u = await ctx.Usuarios.SingleAsync(x => x.Email == "novo@test.com");
+        email.Verify(e => e.PedidoRecebido(u.Id), Times.Once);
+    }
+
+    [Fact]
+    public async Task Register_emailQueJaTemConta_naoMandaEmail()
+    {
+        using var ctx = CreateContext();
+        SeedUsuario(ctx, "duplicado@test.com");
+        var email = new Mock<IEmailCadastroDispatcher>();
+        var auth = CreateServiceComEmail(ctx, email.Object);
+
+        await auth.RegisterAsync(new DTOs.Auth.RegisterDto
+        {
+            Email = "duplicado@test.com", Nome = "Outro", Password = "SenhaForte!2026", ConfirmPassword = "SenhaForte!2026",
+        });
+
+        email.Verify(e => e.PedidoRecebido(It.IsAny<Guid>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(StatusUsuario.AguardandoAprovacao, true)]
+    [InlineData(StatusUsuario.Ativo, false)]
+    [InlineData(StatusUsuario.Recusado, false)]
+    public async Task JobPedidoRecebido_soMandaSeAindaEspera(StatusUsuario status, bool manda)
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuario(ctx, "fila@test.com");
+        u.Status = status;
+        await ctx.SaveChangesAsync();
+        var sender = new Mock<IContaEmailSender>();
+
+        await new ControleFinanceiro.Api.Infrastructure.Jobs.EmailPedidoRecebidoJob(ctx, sender.Object).ExecuteAsync(u.Id);
+
+        sender.Verify(s => s.EnviarPedidoRecebidoAsync("fila@test.com", It.IsAny<CancellationToken>()),
+            manda ? Times.Once() : Times.Never());
+    }
+
     // ── /auth/me expõe IsAdmin (o front usa pra gate/entrada do painel admin) ──
 
     [Fact]
