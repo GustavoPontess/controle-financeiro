@@ -16,9 +16,29 @@ const adminNoDev = (): Plugin => ({
   },
 })
 
+// Site público (2026-10-26, pra abrir rápido no celular): o index.html já pede o pedaço do site e a folha dele junto
+// com o resto, em vez de esperar o app descobrir a rota. Quem entra direto no app baixa esses ~30 KB uma vez (cache de
+// um ano); o HTML do site continua fora do pacote do app.
+const preloadDoSite = (): Plugin => ({
+  name: 'preload-do-site',
+  apply: 'build',
+  transformIndexHtml: {
+    order: 'post',
+    handler(_html, ctx) {
+      if (!ctx.bundle || !ctx.path.endsWith('index.html')) return []
+      const tags = []
+      for (const nome of Object.keys(ctx.bundle)) {
+        if (/^assets\/PaginaSite-[\w-]+\.js$/.test(nome)) tags.push({ tag: 'link', attrs: { rel: 'modulepreload', href: '/' + nome }, injectTo: 'head' as const })
+        if (/^assets\/site-[\w-]+\.css$/.test(nome)) tags.push({ tag: 'link', attrs: { rel: 'preload', as: 'style', href: '/' + nome }, injectTo: 'head' as const })
+      }
+      return tags
+    },
+  },
+})
+
 // Front do Pontes (o v2 de 2026-10, único desde 2026-10-26; o v1 está na tag arquivo/v1-final). Porta 5174.
 export default defineConfig({
-  plugins: [react(), adminNoDev()],
+  plugins: [react(), adminNoDev(), preloadDoSite()],
   resolve: { alias: { '@': path.resolve(__dirname, './src') } },
   // Duas páginas: o app (index.html) e o admin (admin.html). O pedaço do admin se chama "painel" (sem "admin" no nome).
   build: { rollupOptions: { input: { main: path.resolve(__dirname, 'index.html'), painel: path.resolve(__dirname, 'admin.html') } } },

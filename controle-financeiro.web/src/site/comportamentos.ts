@@ -17,7 +17,7 @@ export function ligarSite(raiz: HTMLElement, { tema, alternarTema }: Opcoes): ()
   // ----- Prints reais do app acompanham o modo da página e o tamanho da tela (até 600px, o print de celular). -----
   // (Sem matchMedia, como no jsdom dos testes, vale o print de computador.)
   const movel: { matches: boolean } & Partial<EventTarget> = typeof window.matchMedia === "function" ? window.matchMedia("(max-width: 600px)") : { matches: false }
-  const print = (nome: string) => `/site/telas/${nome}-${tema()}${movel.matches ? "-movel" : ""}.png`
+  const print = (nome: string) => `/site/telas/${nome}-${tema()}${movel.matches ? "-movel" : ""}.webp`
   const marcaMovel = (img: HTMLImageElement) => { if (movel.matches) img.dataset.movel = ""; else delete img.dataset.movel }
   const aplicaPrints = () => {
     todos<HTMLImageElement>("img[data-print]").forEach((i) => { i.src = print(i.dataset.print!); marcaMovel(i) })

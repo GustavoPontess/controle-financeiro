@@ -12,7 +12,7 @@ import css from "./Acesso.module.css"
 type Moldura = {
   /** Título da aba. */
   titulo: string
-  /** Foto do palco (arquivo em /site/fotos/). */
+  /** Foto do palco (arquivo em /site/fotos/, WebP). No celular o palco some e, com lazy, a foto nem baixa. */
   foto: string
   frase: string
   fraseSuave: string
@@ -32,7 +32,7 @@ export default function MolduraAcesso({ titulo, foto, frase, fraseSuave, lead, b
       <Icones />
       <div className="acesso">
         <aside className="palco-a">
-          <img src={`/site/fotos/${foto}`} alt="" />
+          <img src={`/site/fotos/${foto}`} alt="" loading="lazy" decoding="async" />
           <div className="palco-txt">
             <Link className="marca" to="/"><img src="/site/estaiada-claro.svg" alt="" />Pontes</Link>
             <div>

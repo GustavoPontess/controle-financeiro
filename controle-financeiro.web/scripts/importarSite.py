@@ -8,6 +8,8 @@ Fonte da verdade: E:\\VSCode\\pontes\\PontesDev\\clientes\\pontes-financas\\site
 Rodar de novo sempre que o rascunho mudar:  python scripts/importarSite.py   (da pasta controle-financeiro.web)
 """
 import os, re, shutil, sys
+from io import BytesIO
+from PIL import Image, ImageOps
 
 ORIGEM = r'E:\VSCode\pontes\PontesDev\clientes\pontes-financas\site'
 AQUI = os.path.dirname(os.path.abspath(__file__))
@@ -22,6 +24,9 @@ ROTAS = {
     'entrar.html': '/entrar', 'acesso.html': '/cadastro', 'nova-senha.html': '/redefinir-senha', 'proteja.html': '/proteja-sua-conta',
 }
 SITE = ['home', 'recursos', 'casa', 'contadores', 'planos', 'seguranca', 'sobre']
+LARGURA_CELULAR = 800   # versão '-m' das fotos grandes (celular de 390px com tela 2x)
+LARGURA_MAXIMA = 1400   # nenhuma foto precisa de mais que isso (metade de uma tela 2x de 1440)
+QUALIDADE_WEBP = 78
 
 # Botão de tema dentro do menu ☰ do celular (o mesmo [data-tema-troca] que o comportamentos.ts liga).
 TEMA_NO_MENU = ('<button class="so-cel tema-menu" type="button" data-tema-troca aria-label="Alternar modo claro e escuro">'
@@ -113,7 +118,23 @@ def converte(html):
     corpo = corpo.replace('<a class="so-cel" href="/entrar">Entrar</a>', TEMA_NO_MENU)
     # Par de botões (plano do beta, chamada do fim) ganha a mesma classe do par do topo, pra ficar lado a lado no celular.
     corpo = corpo.replace('<div style="display:flex;gap:10px;flex-wrap:wrap">', '<div class="btns">')
+    # Imagens (2026-10-26, site rápido no celular): tudo em WebP; foto grande ganha uma versão de 800px pro celular
+    # (srcset); print do app e foto fora da primeira tela carregam só quando chegam perto (lazy); a primeira foto da
+    # página tem prioridade alta.
+    corpo = re.sub(r'(src="/site/(?:fotos|telas)/[^"]+)\.(?:jpg|png)"', r'\1.webp"', corpo)
+    def srcset(m):
+        nome, larg = m.group(1), int(m.group(2))
+        if larg < LARGURA_CELULAR * 1.25:
+            return m.group(0)
+        return f'src="/site/fotos/{nome}-{larg}.webp" srcset="/site/fotos/{nome}-{larg}-m.webp {LARGURA_CELULAR}w, /site/fotos/{nome}-{larg}.webp {larg}w" sizes="(max-width: 900px) 100vw, 60vw"'
+    corpo = re.sub(r'src="/site/fotos/([^"]+)-(\d+)\.webp"', srcset, corpo)
+    corpo = re.sub(r'<img (?=[^>]*data-(?:print|tela-img))(?![^>]*loading=)', '<img loading="lazy" decoding="async" ', corpo)
+    corpo = re.sub(r'<img (?=[^>]*src="/site/fotos/[^"]*-(?:[6-9]\d\d|\d{4})\.webp)(?![^>]*(?:loading=|fetchpriority=))', '<img fetchpriority="high" ', corpo, count=1)
     return corpo.strip() + '\n'
+
+
+def webp(im, destino):
+    im.save(destino, 'WEBP', quality=QUALIDADE_WEBP, method=6)
 
 
 def titulo(html):
@@ -141,23 +162,40 @@ def main():
     open(os.path.join(WEB, 'src', 'site', 'site.css'), 'w', encoding='utf-8', newline='\n').write(cab + css + AJUSTES)
 
     # Imagens: logos, fotos, prints do app e a imagem de compartilhamento.
-    # Os prints de celular (telas/*-movel.png) são gerados aqui (scripts/printsMoveis.mjs), não vêm do rascunho: ficam.
+    # Os prints de celular (telas/*-movel.*) são gerados aqui (scripts/printsMoveis.mjs), não vêm do rascunho: ficam.
     moveis = {}
     if os.path.isdir(os.path.join(PUBLICO, 'telas')):
         for arq in os.listdir(os.path.join(PUBLICO, 'telas')):
-            if arq.endswith('-movel.png'):
+            if re.search(r'-movel\.(png|webp)$', arq):
                 moveis[arq] = open(os.path.join(PUBLICO, 'telas', arq), 'rb').read()
     if os.path.isdir(PUBLICO):
         shutil.rmtree(PUBLICO)
-    shutil.copytree(os.path.join(ORIGEM, 'assets', 'fotos'), os.path.join(PUBLICO, 'fotos'))
+    os.makedirs(os.path.join(PUBLICO, 'fotos'))
     os.makedirs(os.path.join(PUBLICO, 'telas'))
+    # Fotos: WebP no tamanho original e, nas grandes, uma versão pro celular.
+    for arq in os.listdir(os.path.join(ORIGEM, 'assets', 'fotos')):
+        nome, ext = os.path.splitext(arq)
+        if ext.lower() not in ('.jpg', '.jpeg', '.png'):
+            shutil.copy(os.path.join(ORIGEM, 'assets', 'fotos', arq), os.path.join(PUBLICO, 'fotos', arq))
+            continue
+        im = ImageOps.exif_transpose(Image.open(os.path.join(ORIGEM, 'assets', 'fotos', arq))).convert('RGB')
+        if im.width > LARGURA_MAXIMA:
+            im = im.resize((LARGURA_MAXIMA, round(im.height * LARGURA_MAXIMA / im.width)), Image.LANCZOS)
+        webp(im, os.path.join(PUBLICO, 'fotos', nome + '.webp'))
+        if im.width >= LARGURA_CELULAR * 1.25:
+            m = im.resize((LARGURA_CELULAR, round(im.height * LARGURA_CELULAR / im.width)), Image.LANCZOS)
+            webp(m, os.path.join(PUBLICO, 'fotos', nome + '-m.webp'))
+    # Prints do app (computador, do rascunho) em WebP.
     for arq in os.listdir(os.path.join(ORIGEM, 'telas-app', 'proposta')):
         if arq.endswith('.png'):
-            shutil.copy(os.path.join(ORIGEM, 'telas-app', 'proposta', arq), os.path.join(PUBLICO, 'telas', arq))
+            webp(Image.open(os.path.join(ORIGEM, 'telas-app', 'proposta', arq)).convert('RGB'), os.path.join(PUBLICO, 'telas', arq[:-4] + '.webp'))
     for arq in ['estaiada-laranja.svg', 'estaiada-claro.svg', 'estaiada-escuro.svg', 'estaiada-icone.svg', 'og-pontes.jpg']:
         shutil.copy(os.path.join(ORIGEM, 'assets', arq), os.path.join(PUBLICO, arq))
     for arq, dados in moveis.items():
-        open(os.path.join(PUBLICO, 'telas', arq), 'wb').write(dados)
+        if arq.endswith('.png'):
+            webp(Image.open(BytesIO(dados)).convert('RGB'), os.path.join(PUBLICO, 'telas', arq[:-4] + '.webp'))
+        else:
+            open(os.path.join(PUBLICO, 'telas', arq), 'wb').write(dados)
 
     sys.stdout.reconfigure(encoding='utf-8')
     print('páginas:', ', '.join(SITE))

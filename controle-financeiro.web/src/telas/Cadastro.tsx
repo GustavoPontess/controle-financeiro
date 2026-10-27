@@ -79,7 +79,7 @@ export default function Cadastro() {
   }
 
   return (
-    <MolduraAcesso titulo="Pedir acesso · Pontes" foto="1694185752018-2ff397cb99b4-1800.jpg" frase="Comece grátis." fraseSuave="Cresça com a sua casa."
+    <MolduraAcesso titulo="Pedir acesso · Pontes" foto="1694185752018-2ff397cb99b4-1800.webp" frase="Comece grátis." fraseSuave="Cresça com a sua casa."
       lead="Peça o seu acesso em 2 minutos. Sem cartão de crédito, sem fidelidade."
       benef={["Grátis durante o beta", "Convide quem divide a casa sem custo extra", "Seus dados são seus: exporte ou apague quando quiser"]}>
       {enviado ? (

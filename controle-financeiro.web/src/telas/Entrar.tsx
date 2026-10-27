@@ -181,7 +181,7 @@ export default function Entrar() {
   const avisoExcluida = contaExcluida && <p className="aviso-a" role="status">Sua conta foi marcada pra exclusão. Pra reativar, é só entrar de novo em até 30 dias.</p>
 
   return (
-    <MolduraAcesso titulo="Entrar · Pontes" foto="1740679954227-a0cd19c042a6-1400.jpg" frase="O dinheiro da casa," fraseSuave="sem briga."
+    <MolduraAcesso titulo="Entrar · Pontes" foto="1740679954227-a0cd19c042a6-1400.webp" frase="O dinheiro da casa," fraseSuave="sem briga."
       lead="Um lugar só pra você e pra quem divide a casa com você. Divisão clara, aprovação de despesas e o acerto do mês pronto."
       benef={["Divisão meio a meio, pela renda ou por porcentagem", "Aprovação de gasto grande em 1 toque", "Conexão com Open Finance (em breve)"]}>
 
