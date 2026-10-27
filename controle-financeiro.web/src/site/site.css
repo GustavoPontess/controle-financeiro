@@ -604,6 +604,12 @@
 @media (max-width: 1200px) and (min-width: 901px) { .nav .acoes .btn--linha { display: flex; } .nav .acoes .btn--acc { display: none; } }
 @media (max-width: 900px) { .acoes .btn--linha { display: flex; height: 46px; padding: 0 18px; } .acoes .btn--acc { display: none; } }
 
+/* 2026-10-26, Gustavo: chamada do fim com texto em cima e botões embaixo do cartão, em qualquer tamanho de tela
+   (o rascunho encostava tudo embaixo). */
+.cta { align-items: stretch; }
+.cta .txt { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 460px; }
+.cta .txt .btns { margin-top: auto; }
+
 /* 2026-10-26, revisão do celular (Gustavo). */
 .btns { display: flex; gap: 10px; flex-wrap: wrap; }
 /* Botão de tema no menu ☰ (o do topo some no celular). */
@@ -639,10 +645,6 @@
   /* Par de botões (topo, plano, chamada do fim) lado a lado, metade pra cada um; texto longo quebra dentro do botão. */
   .btns, .topo .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .btns .btn { height: auto; min-height: 48px; padding: 10px 12px; justify-content: center; text-align: center; font-size: 14px; line-height: 1.2; }
-  /* Chamada do fim: texto em cima e botões embaixo do cartão (não tudo encostado embaixo). */
-  .cta { align-items: stretch; }
-  .cta .txt { display: flex; flex-direction: column; width: 100%; min-height: 460px; }
-  .cta .txt .btns { margin-top: auto; }
   /* Painel do contador: número cabe no cartão. */
   .painel .kpis { grid-template-columns: 1fr 1fr; gap: 8px; } .painel .kpi:last-child { grid-column: 1 / -1; } .painel .kpi b { white-space: nowrap; }
 }
