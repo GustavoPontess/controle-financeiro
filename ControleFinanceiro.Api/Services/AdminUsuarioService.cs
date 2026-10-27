@@ -19,14 +19,19 @@ public class AdminUsuarioService
     private readonly IPasswordResetDispatcher _resetDispatcher;
     private readonly AdminAuditService _audit;
     private readonly NotificacaoAdminService _notificacaoAdmin;
+    private readonly IContaEmailSender _contaEmail;
+    private readonly ILogger<AdminUsuarioService> _logger;
 
     public AdminUsuarioService(AppDbContext context, IPasswordResetDispatcher resetDispatcher,
-        AdminAuditService audit, NotificacaoAdminService notificacaoAdmin)
+        AdminAuditService audit, NotificacaoAdminService notificacaoAdmin, IContaEmailSender contaEmail,
+        ILogger<AdminUsuarioService> logger)
     {
         _context = context;
         _resetDispatcher = resetDispatcher;
         _audit = audit;
         _notificacaoAdmin = notificacaoAdmin;
+        _contaEmail = contaEmail;
+        _logger = logger;
     }
 
     /// <summary>Fila de cadastros aguardando decisão — mais antigos primeiro (ordem de chegada).</summary>
@@ -77,6 +82,14 @@ public class AdminUsuarioService
         // Cadastro tratado → dá baixa na notificação "novo cadastro" desse usuário (some do sino).
         await _notificacaoAdmin.MarcarLidasPorAlvoAsync(usuario.Id);
         await _context.SaveChangesAsync();
+
+        // Aprovado: avisa a pessoa por e-mail (a tela "Pedido enviado" promete isso). Depois de gravar e sem travar a
+        // aprovação: se o e-mail falhar, o acesso já está liberado e ela consegue entrar do mesmo jeito.
+        if (novoStatus == StatusUsuario.Ativo)
+        {
+            try { await _contaEmail.EnviarAcessoLiberadoAsync(usuario.Email); }
+            catch (Exception ex) { _logger.LogError(ex, "Falha ao enviar o e-mail de acesso liberado do usuário {UsuarioId}.", usuario.Id); }
+        }
 
         return MapToDto(usuario);
     }

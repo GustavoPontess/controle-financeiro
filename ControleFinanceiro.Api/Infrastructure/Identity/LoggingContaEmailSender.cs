@@ -30,6 +30,12 @@ public class LoggingContaEmailSender : IContaEmailSender
         return Task.CompletedTask;
     }
 
+    public Task EnviarAcessoLiberadoAsync(string email, CancellationToken ct = default)
+    {
+        _logger.LogInformation("E-mail de acesso liberado disparado (sem SMTP configurado; destinatário omitido do log).");
+        return Task.CompletedTask;
+    }
+
     public Task EnviarAvisoExclusaoAsync(string email, DateTime marcadoEm, int diasCarencia, CancellationToken ct = default)
     {
         // Aviso não é segredo — pode logar em qualquer ambiente (sem código).

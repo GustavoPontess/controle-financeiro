@@ -14,4 +14,7 @@ public interface IContaEmailSender
 
     /// <summary>Aviso out-of-band de que a conta foi marcada para exclusão (permite a vítima reagir).</summary>
     Task EnviarAvisoExclusaoAsync(string email, DateTime marcadoEm, int diasCarencia, CancellationToken ct = default);
+
+    /// <summary>Pedido de acesso aprovado no Admin (beta fechado): a pessoa já pode entrar.</summary>
+    Task EnviarAcessoLiberadoAsync(string email, CancellationToken ct = default);
 }
