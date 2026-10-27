@@ -45,7 +45,7 @@ export default function RedefinirSenha() {
   }
 
   return (
-    <MolduraAcesso titulo="Criar senha nova · Pontes" foto="1758523417185-5d46089b870a-1400.jpg" frase="Uma senha nova," fraseSuave="e pronto."
+    <MolduraAcesso titulo="Criar senha nova · Pontes" foto="1758523417185-5d46089b870a-1400.webp" frase="Uma senha nova," fraseSuave="e pronto."
       lead="Pode ser uma frase, fácil de lembrar e difícil de adivinhar. Só precisa ter 15 caracteres ou mais.">
       {pronto ? (
         <section data-passo="alterada" className="ativo" role="status">

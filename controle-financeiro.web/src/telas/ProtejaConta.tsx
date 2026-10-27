@@ -43,7 +43,7 @@ export default function ProtejaConta() {
   const confirmar = async () => { if (await at.confirmar()) setPasso("codigos") }
 
   return (
-    <MolduraAcesso titulo="Proteja sua conta · Pontes" foto="1752652015365-52bf1f527e01-900.jpg" frase="Sua senha," fraseSuave="e mais uma tranca."
+    <MolduraAcesso titulo="Proteja sua conta · Pontes" foto="1752652015365-52bf1f527e01-900.webp" frase="Sua senha," fraseSuave="e mais uma tranca."
       lead="Num app com o dinheiro da sua casa, a verificação em duas etapas é a proteção que mais faz diferença.">
       {passo === "proteja" && (
         <section data-passo="proteja" className="ativo">

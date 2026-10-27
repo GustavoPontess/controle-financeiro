@@ -8,10 +8,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <!-- Fonte do site público e das telas de acesso (a fonte em si só baixa quando a página usa). -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <title>Pontes</title>
     <script>
       // Tema antes do 1º desenho (sem piscar claro pra quem usa escuro). Mesma regra do useTema:
-      // escolha salva, senão o sistema. Se entrar CSP no deploy, liberar este script por hash.
+      // escolha salva, senão o sistema. O CSP do Caddyfile libera este script pelo hash (scripts/conferirCspInline.mjs).
       (function () {
         var t = "claro"
         try {

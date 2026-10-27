@@ -75,7 +75,7 @@ function Pagina({ nome }: { nome: NomePagina }) {
       {import.meta.env.DEV && nome === "casa" && (
         <BarraDev atual={hash.slice(1) || "casal"} grupos={[{ grupo: "Pra sua casa", estados: [
           { rotulo: "Casal", para: "/casa#casal" },
-          { rotulo: "Família com filhos", para: "/casa#familia" },
+          { rotulo: "Família", para: "/casa#familia" },
           { rotulo: "Divide o apê", para: "/casa#ape" },
         ] }]} />
       )}
