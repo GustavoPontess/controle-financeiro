@@ -54,7 +54,7 @@ public static class ModelosEmail
         const string naoFoi = "Não foi você? Troque sua senha agora: alguém pode estar com acesso à sua conta.";
         var miolo =
             "<tr><td style=\"padding:24px 0 8px\">" +
-            "<div style=\"display:inline-block;padding:14px 22px;border-radius:12px;background:#F5F5F3;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:32px;font-weight:700;letter-spacing:8px;color:#15161A\">" +
+            "<div style=\"display:inline-block;padding:14px 22px;border-radius:16px;background:#fff1e7;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:32px;font-weight:700;letter-spacing:8px;color:#22160f\">" +
             Esc(codigo) + "</div></td></tr>";
         return new MensagemEmail(
             $"Seu código do Pontes: {codigo}",
@@ -140,7 +140,7 @@ public static class ModelosEmail
 
     private static string Botao(string link, string rotulo) =>
         "<tr><td style=\"padding:24px 0 8px\">" +
-        $"<a href=\"{Esc(link)}\" style=\"display:inline-block;padding:14px 24px;border-radius:12px;background:#15161A;color:#FFFFFF;font-size:15px;font-weight:600;text-decoration:none\">{Esc(rotulo)}</a>" +
+        $"<a href=\"{Esc(link)}\" style=\"display:inline-block;padding:15px 28px;border-radius:999px;background:#ff6a1f;color:#FFFFFF;font-size:15px;font-weight:700;text-decoration:none\">{Esc(rotulo)}</a>" +
         "</td></tr>";
 
     /// <summary>
@@ -150,33 +150,34 @@ public static class ModelosEmail
     private static string Html(string previa, string titulo, string texto, string miolo, string validade, string naoFoi, string? linkReserva, string email)
     {
         string E(string t) => Esc(t);
-        const string fonte = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+        const string fonte = "'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
         return
             "<!doctype html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
-            "<meta name=\"color-scheme\" content=\"light\"><meta name=\"supported-color-schemes\" content=\"light\"></head>" +
-            $"<body style=\"margin:0;padding:0;background:#F5F5F3;font-family:{fonte};color:#15161A\">" +
+            "<meta name=\"color-scheme\" content=\"light\"><meta name=\"supported-color-schemes\" content=\"light\">" +
+            "<link href=\"https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap\" rel=\"stylesheet\"></head>" +
+            $"<body style=\"margin:0;padding:0;background:#fffaf6;font-family:{fonte};color:#22160f\">" +
             $"<div style=\"display:none;max-height:0;overflow:hidden;opacity:0\">{E(previa)}</div>" +
-            "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#F5F5F3\"><tr><td align=\"center\" style=\"padding:32px 16px\">" +
+            "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#fffaf6\"><tr><td align=\"center\" style=\"padding:32px 16px\">" +
             "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:520px\">" +
             // Logo
-            $"<tr><td style=\"padding:0 4px 20px\"><img src=\"cid:{CidLogo}\" width=\"104\" height=\"30\" alt=\"Pontes\" style=\"display:block;border:0;width:104px;height:auto\"></td></tr>" +
+            $"<tr><td style=\"padding:0 4px 20px\"><img src=\"cid:{CidLogo}\" width=\"138\" height=\"42\" alt=\"Pontes\" style=\"display:block;border:0;width:138px;height:auto\"></td></tr>" +
             // Cartão
-            "<tr><td style=\"padding:32px 28px;border-radius:20px;background:#FFFFFF\">" +
+            "<tr><td style=\"padding:32px 28px;border-radius:28px;background:#FFFFFF\">" +
             "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">" +
-            $"<tr><td style=\"padding:0 0 12px;font-size:24px;font-weight:700;letter-spacing:-0.02em\">{E(titulo)}</td></tr>" +
-            $"<tr><td style=\"font-size:15px;line-height:1.6;color:#3A3C42\">{E(texto)}</td></tr>" +
+            $"<tr><td style=\"padding:0 0 12px;font-size:26px;font-weight:800;letter-spacing:-0.03em\">{E(titulo)}</td></tr>" +
+            $"<tr><td style=\"font-size:15px;line-height:1.6;color:#4a3528\">{E(texto)}</td></tr>" +
             miolo +
-            $"<tr><td style=\"padding:12px 0 0;font-size:13px;line-height:1.6;color:#65686F\">{E(validade)}</td></tr>" +
-            "<tr><td style=\"padding:20px 0 0\"><div style=\"height:1px;background:#E7E7E3;line-height:1px;font-size:1px\">&nbsp;</div></td></tr>" +
-            $"<tr><td style=\"padding:16px 0 0;font-size:13px;line-height:1.6;color:#65686F\">{E(naoFoi)}</td></tr>" +
+            $"<tr><td style=\"padding:12px 0 0;font-size:13px;line-height:1.6;color:#7a6557\">{E(validade)}</td></tr>" +
+            "<tr><td style=\"padding:20px 0 0\"><div style=\"height:1px;background:#f1e3d8;line-height:1px;font-size:1px\">&nbsp;</div></td></tr>" +
+            $"<tr><td style=\"padding:16px 0 0;font-size:13px;line-height:1.6;color:#7a6557\">{E(naoFoi)}</td></tr>" +
             (linkReserva is null ? "" :
-                $"<tr><td style=\"padding:16px 0 0;font-size:12px;line-height:1.5;color:#9C9FA7\">Se o botão não abrir, copie este endereço no navegador:<br><span style=\"word-break:break-all;color:#65686F\">{E(linkReserva)}</span></td></tr>") +
+                $"<tr><td style=\"padding:16px 0 0;font-size:12px;line-height:1.5;color:#a8958a\">Se o botão não abrir, copie este endereço no navegador:<br><span style=\"word-break:break-all;color:#7a6557\">{E(linkReserva)}</span></td></tr>") +
             "</table></td></tr>" +
             // Rodapé
-            "<tr><td style=\"padding:20px 8px 0;font-size:12px;line-height:1.6;color:#9C9FA7\">" +
-            "<strong style=\"color:#65686F\">O Pontes nunca pede sua senha</strong> por e-mail, mensagem ou telefone.<br>" +
+            "<tr><td style=\"padding:20px 8px 0;font-size:12px;line-height:1.6;color:#a8958a\">" +
+            "<strong style=\"color:#7a6557\">O Pontes nunca pede sua senha</strong> por e-mail, mensagem ou telefone.<br>" +
             $"Você recebeu este e-mail porque existe uma conta do Pontes com o endereço {E(email)}.<br>" +
-            "Pontes · finanças pessoais e familiares</td></tr>" +
+            "Pontes · o dinheiro da casa</td></tr>" +
             "</table></td></tr></table></body></html>";
     }
 }
