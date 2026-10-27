@@ -597,3 +597,9 @@
     .comu .fotos { height: 360px; } .plano-topo .foto { min-height: 320px; }
     .comp { overflow-x: auto; } .comp table { min-width: 620px; font-size: 14px; } .comp th, .comp td { padding: 14px; }
   }
+
+/* ===== Ajustes do app por cima do rascunho (scripts/importarSite.py, AJUSTES) ===== */
+/* 2026-10-26, Gustavo: com o topo apertado, fica o "Entrar" (quem já tem conta precisa dele pra chegar no login) e sai o
+   "Pedir acesso" do topo (ele continua no começo e no fim de toda página). O rascunho fazia o contrário. */
+@media (max-width: 1200px) and (min-width: 901px) { .nav .acoes .btn--linha { display: flex; } .nav .acoes .btn--acc { display: none; } }
+@media (max-width: 900px) { .acoes .btn--linha { display: flex; height: 46px; padding: 0 18px; } .acoes .btn--acc { display: none; } }
