@@ -33,6 +33,28 @@ public class PasswordHasherTests
     }
 
     [Fact]
+    public void FakeVerify_sempreFalse_e_gastaOCustoDoArgon2()
+    {
+        // Contra enumeração por timing no login: quando a conta não existe, FakeVerify gasta o mesmo trabalho de
+        // um VerifyPassword real (Argon2id), em vez de retornar na hora. Sempre false.
+        Assert.False(PasswordHasher.FakeVerify("qualquer senha"));
+        Assert.False(PasswordHasher.FakeVerify(""));
+
+        var hash = PasswordHasher.HashPassword("S3nh@Forte!2026");
+        var real = System.Diagnostics.Stopwatch.StartNew();
+        PasswordHasher.VerifyPassword("senha errada", hash);
+        real.Stop();
+        var fake = System.Diagnostics.Stopwatch.StartNew();
+        PasswordHasher.FakeVerify("senha errada");
+        fake.Stop();
+
+        // O fake tem que estar na MESMA ordem de grandeza do verify real (ambos computam Argon2id, ~dezenas de ms),
+        // não ser um retorno imediato de microssegundos. Margem folgada pra não ficar instável no CI.
+        Assert.True(fake.Elapsed.TotalMilliseconds > real.Elapsed.TotalMilliseconds * 0.3,
+            $"FakeVerify ({fake.Elapsed.TotalMilliseconds:F1} ms) deveria custar como o verify real ({real.Elapsed.TotalMilliseconds:F1} ms).");
+    }
+
+    [Fact]
     public void Hash_e_Verify_Argon2_roundtrip()
     {
         var hash = PasswordHasher.HashPassword("S3nh@Forte!2026");

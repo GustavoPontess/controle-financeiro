@@ -378,7 +378,12 @@ public class AuthService
         // Find user
         var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == dto.Email.ToLower());
         if (usuario == null)
+        {
+            // Gasta o mesmo tempo de verificar uma senha de verdade, pra o tempo de resposta não revelar se o
+            // e-mail tem conta (enumeração de usuário por timing — a mensagem já é genérica, o tempo não era).
+            PasswordHasher.FakeVerify(dto.Password);
             throw new UnauthorizedAccessException("Email ou senha inválidos");
+        }
 
         // Bloqueio permanente (excedeu o teto de tentativas erradas) — só reset de senha libera.
         if (usuario.FalhasLoginConsecutivas >= FalhasParaBloqueioPermanente)
