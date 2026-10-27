@@ -23,6 +23,7 @@ public static class ModelosEmail
     /// <summary>Recuperar senha: o link leva pra tela de redefinir do front com o token bruto na query.</summary>
     public static MensagemEmail ResetSenha(string appUrl, string email, string token, DateTime expiraEmUtc)
     {
+        email = Escondido(email);
         var link = $"{appUrl.TrimEnd('/')}/redefinir-senha?token={Uri.EscapeDataString(token)}";
         var texto = $"Recebemos um pedido pra criar uma senha nova na conta do Pontes de {email}.";
         var validade = $"O link vale até {Hora(expiraEmUtc)} e só funciona uma vez.";
@@ -44,6 +45,7 @@ public static class ModelosEmail
     /// <summary>Código OTP de uma ação sensível (hoje: excluir a conta).</summary>
     public static MensagemEmail CodigoOtp(string email, string codigo, TipoOtpEmail finalidade, DateTime expiraEmUtc)
     {
+        email = Escondido(email);
         var acao = finalidade switch
         {
             TipoOtpEmail.ExcluirConta => "confirmar a exclusão da sua conta",
@@ -76,6 +78,7 @@ public static class ModelosEmail
     /// </summary>
     public static MensagemEmail AcessoLiberado(string appUrl, string email)
     {
+        email = Escondido(email);
         var link = $"{appUrl.TrimEnd('/')}/entrar";
         const string texto = "Seu pedido de acesso ao Pontes foi aprovado. Já dá pra entrar com o e-mail e a senha que você cadastrou.";
         const string validade = "Na primeira entrada, o Pontes sugere ligar a verificação em duas etapas. Leva um minuto e protege a sua conta.";
@@ -100,6 +103,7 @@ public static class ModelosEmail
     /// </summary>
     public static MensagemEmail PedidoRecebido(string email)
     {
+        email = Escondido(email);
         var texto = $"Recebemos o seu pedido de acesso ao Pontes com o e-mail {email}. O Pontes está em beta fechado e cada pedido é aprovado à mão.";
         const string validade = "Você recebe outro e-mail assim que o acesso for liberado. Até lá não precisa fazer nada.";
         const string naoFoi = "Não pediu acesso ao Pontes? Pode ignorar este e-mail. A conta só entra no ar com aprovação, e ninguém entra sem a senha.";
@@ -120,6 +124,7 @@ public static class ModelosEmail
     /// <summary>Aviso fora do app de que a conta foi marcada pra exclusão (a pessoa ainda pode reagir).</summary>
     public static MensagemEmail AvisoExclusao(string appUrl, string email, DateTime marcadoEmUtc, int diasCarencia)
     {
+        email = Escondido(email);
         var link = $"{appUrl.TrimEnd('/')}/entrar";
         var texto = $"A conta do Pontes de {email} foi marcada pra exclusão em {Hora(marcadoEmUtc)}.";
         var validade = $"Daqui a {diasCarencia} dias os dados são apagados de vez. Até lá, entrar na conta cancela a exclusão.";
@@ -137,6 +142,12 @@ public static class ModelosEmail
                 linkReserva: link,
                 email: email));
     }
+
+    /// <summary>
+    /// O e-mail da pessoa aparece escondido, igual ao olho fechado do app (gu•••@gmail.com): quem tem a caixa sabe
+    /// que é dela, e um e-mail encaminhado ou visto por cima do ombro não entrega o endereço inteiro.
+    /// </summary>
+    private static string Escondido(string email) => ControleFinanceiro.Api.Services.RosterService.MascararEmail(email);
 
     /// <summary>Escapa só o que quebra HTML (texto e atributo entre aspas). Acento fica como está — o
     /// WebUtility.HtmlEncode viraria "até" em "at&amp;#233;" e incharia o e-mail sem ganho nenhum.</summary>

@@ -24,8 +24,11 @@ public class ModelosEmailTests
         Assert.DoesNotContain("ab+c/d=", m.Html); // nunca o token cru no HTML
         Assert.Contains("Pontes", m.Assunto);
         // Diz PRA QUAL conta é (quem tem mais de um e-mail reconhece; golpe genérico não sabe).
-        Assert.Contains("ana@teste.com", m.Texto);
-        Assert.Contains("ana@teste.com", m.Html);
+        Assert.Contains("an•••@teste.com", m.Texto);
+        Assert.Contains("an•••@teste.com", m.Html);
+        // Escondido como o olho fechado do app: o endereço inteiro nunca aparece.
+        Assert.DoesNotContain("ana@teste.com", m.Texto);
+        Assert.DoesNotContain("ana@teste.com", m.Html);
     }
 
     [Fact]
@@ -67,8 +70,9 @@ public class ModelosEmailTests
         var m = ModelosEmail.PedidoRecebido("ana@teste.com");
 
         Assert.Contains("pedido", m.Assunto);
-        Assert.Contains("ana@teste.com", m.Texto);
-        Assert.Contains("ana@teste.com", m.Html);
+        Assert.Contains("an•••@teste.com", m.Texto);
+        Assert.Contains("an•••@teste.com", m.Html);
+        Assert.DoesNotContain("ana@teste.com", m.Html);
         Assert.Contains("assim que o acesso for liberado", m.Texto);
         Assert.DoesNotContain("<a href", m.Html); // nada pra clicar até a aprovação
         Assert.DoesNotContain("—", m.Texto);
