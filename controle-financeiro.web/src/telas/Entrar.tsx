@@ -4,7 +4,6 @@
 // (rascunhos/entrar.html do hub Pontes Dev, 2026-10-26): cada estado é uma <section data-passo> da MolduraAcesso.
 import { useEffect, useRef, useState, type FormEvent } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
-import { PanelRightClose, PanelRightOpen } from "lucide-react"
 import MolduraAcesso, { CampoAcesso, Seta, VoltarA } from "../site/MolduraAcesso"
 import css from "../site/Acesso.module.css"
 import { BarraDev, useEstadoDev } from "../dev/BarraDev"
@@ -13,7 +12,6 @@ import rosterService, { type ContaLembrada } from "../services/rosterService"
 import mfaService from "../services/mfaService"
 import { api } from "../api/cliente"
 import { useAuth } from "../auth/useAuth"
-import styles from "./Entrar.module.css"
 
 // Senha padrão das contas de TESTE do seeder de dev (nunca uma senha real; não existe em produção).
 const DEV_SENHA = "Dev@123456"
@@ -55,8 +53,6 @@ export default function Entrar() {
 
   // Painel DEV: contas reais do banco local (endpoint só de dev); clique preenche.
   const [devContas, setDevContas] = useState<DevConta[]>([])
-  const [devAberto, setDevAberto] = useState(() => { try { return localStorage.getItem("devPanelRecolhido") !== "1" } catch { return true } })
-  const alternarDev = (aberto: boolean) => { setDevAberto(aberto); try { localStorage.setItem("devPanelRecolhido", aberto ? "0" : "1") } catch { /* ignore */ } }
 
   // `?previa` ou o #estado da barra de dev (só em dev): mostra a tela mesmo logado, pra olhar o visual sem sair da conta.
   const previa = import.meta.env.DEV && (new URLSearchParams(window.location.search).has("previa") || !!window.location.hash)
@@ -306,29 +302,21 @@ export default function Entrar() {
         <Link to="/privacidade" target="_blank" rel="noreferrer">Política de Privacidade</Link>.
       </p>
 
-      {import.meta.env.DEV && <BarraDev grupos={ESTADOS_ACESSO} atual={vista} />}
-
-      {/* DEV: contas de teste do banco local, nunca em produção. */}
-      {import.meta.env.DEV && devContas.length > 0 && (devAberto ? (
-        <div className={styles.dev}>
-          <div className={styles.devTopo}>
-            <span>DEV · clique pra preencher</span>
-            <button type="button" aria-label="Recolher contas de teste" title="Recolher" onClick={() => alternarDev(false)}><PanelRightClose size={16} strokeWidth={2.2} /></button>
-          </div>
-          {devContas.map((c) => (
-            <button key={c.email} type="button" className={styles.devItem}
-              title={c.senhaPadrao ? `Entrar como ${c.nome}` : `Preencher e-mail de ${c.nome} (senha própria, digite)`}
-              onClick={() => { setEmail(c.email); setSenha(c.senhaPadrao ? DEV_SENHA : ""); setContaSelecionada(null); setUsarOutra(true); limparErros() }}>
-              <span className={styles.devNome}>{c.nome}{c.senhaPadrao ? "" : " · senha própria"}</span>
-              <span className={styles.devEmail}>{c.email}</span>
-            </button>
-          ))}
-        </div>
-      ) : (
-        <button type="button" className={styles.devReabrir} aria-label="Mostrar contas de teste (DEV)" title="Contas de teste (DEV)" onClick={() => alternarDev(true)}>
-          <PanelRightOpen size={16} strokeWidth={2.2} /><span>DEV</span>
-        </button>
-      ))}
+      {/* DEV: painel único (estados da tela + contas de teste do banco local), nunca em produção. */}
+      {import.meta.env.DEV && (
+        <BarraDev grupos={ESTADOS_ACESSO} atual={vista} extras={{
+          titulo: "Contas de teste (preenche o login)",
+          itens: devContas.map((c) => ({
+            rotulo: c.nome + (c.senhaPadrao ? "" : " · senha própria"),
+            detalhe: c.email,
+            dica: c.senhaPadrao ? `Entrar como ${c.nome}` : `Preencher e-mail de ${c.nome} (senha própria, digite)`,
+            aoClicar: () => {
+              setEmail(c.email); setSenha(c.senhaPadrao ? DEV_SENHA : ""); setContaSelecionada(null); setUsarOutra(true); limparErros()
+              setMarcada(null); setMfaChallenge(null); setEsqueci(false); setEsqueciEnviado(false)
+            },
+          })),
+        }} />
+      )}
     </MolduraAcesso>
   )
 }

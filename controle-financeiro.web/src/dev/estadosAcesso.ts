@@ -2,24 +2,28 @@
 import type { GruposEstadosDev } from "./tipos"
 
 export const ESTADOS_ACESSO: GruposEstadosDev = [
-  [
+  { grupo: "Entrar", estados: [
     { rotulo: "Entrar", para: "/entrar#entrar" },
     { rotulo: "Contas salvas", para: "/entrar#contas" },
     { rotulo: "Duas etapas", para: "/entrar#duas-etapas" },
     { rotulo: "Esqueci a senha", para: "/entrar#esqueci" },
     { rotulo: "Link enviado", para: "/entrar#link-enviado" },
     { rotulo: "Reativar", para: "/entrar#reativar" },
-  ],
-  [
+  ] },
+  { grupo: "Pedir acesso", estados: [
     { rotulo: "Pedir acesso", para: "/cadastro#pedir" },
     { rotulo: "Pedido enviado", para: "/cadastro#enviado" },
+  ] },
+  { grupo: "Senha nova", estados: [
     { rotulo: "Nova senha", para: "/redefinir-senha?token=dev#nova" },
     { rotulo: "Senha alterada", para: "/redefinir-senha?token=dev#alterada" },
     { rotulo: "Link vencido", para: "/redefinir-senha#invalido" },
+  ] },
+  { grupo: "Proteja a conta", estados: [
     { rotulo: "Proteja a conta", para: "/proteja-sua-conta#proteja" },
     { rotulo: "Ativar 2 etapas", para: "/proteja-sua-conta#ativar" },
     { rotulo: "Códigos", para: "/proteja-sua-conta#codigos" },
-  ],
+  ] },
 ]
 
 /** Contas de exemplo pro passo "Contas salvas" quando o navegador não tem nenhuma (as do rascunho). */

@@ -1,19 +1,21 @@
-// Ponte segura pra barra de estados de dev. Regra (CONVENCOES.md → "Barra de estados (dev)"): toda tela com mais de um
-// jeito de ser vista declara os seus estados assim, SEMPRE dentro de `import.meta.env.DEV &&`:
+// Ponte segura pro painel de dev (seletor de estados + atalhos da tela). Regra (CONVENCOES.md → "Painel de dev"): toda
+// tela com mais de um jeito de ser vista declara os seus estados assim, SEMPRE dentro de `import.meta.env.DEV &&`:
 //
 //   const estadoDev = useEstadoDev(import.meta.env.DEV ? (e) => { /* põe a tela no estado e */ } : undefined)
 //   …
-//   {import.meta.env.DEV && <BarraDev atual={vista} grupos={[[{ rotulo: "Vazio", para: "/x#vazio" }, …]]} />}
+//   {import.meta.env.DEV && <BarraDev atual={vista} grupos={[{ grupo: "Lista", estados: [{ rotulo: "Vazio", para: "/x#vazio" }, …] }]} />}
+//
+// Atalhos extras da tela (ex.: contas de teste do login) vão em `extras`, no mesmo painel.
 //
 // No `npm run build` o DEV vira false: o JSX, a lista de estados e o import dinâmico somem do pacote (a trava
 // scripts/conferirDevFora.mjs procura os rótulos no dist e falha se achar).
 import { lazy, Suspense, useEffect } from "react"
 import { useLocation } from "react-router-dom"
-import type { GruposEstadosDev } from "./tipos"
+import type { ExtrasDev, GruposEstadosDev } from "./tipos"
 
 const Barra = import.meta.env.DEV ? lazy(() => import("./BarraEstadosDev")) : null
 
-export function BarraDev(props: { grupos: GruposEstadosDev; atual: string }) {
+export function BarraDev(props: { grupos: GruposEstadosDev; atual: string; extras?: ExtrasDev }) {
   if (!Barra) return null
   return <Suspense fallback={null}><Barra {...props} /></Suspense>
 }

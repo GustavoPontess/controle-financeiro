@@ -9,14 +9,24 @@ on:
 
 # Runner: a máquina do Gustavo (self-hosted, rótulo pontes-local), pra não depender dos minutos pagos do GitHub
 # (2026-10-25, cobrança travou os jobs). O repo é privado: PR de fora não roda código lá.
+#
+# Banda (2026-10-27): o runner é um container no PC e roda UM job por vez. Os caches (NuGet, npm, .NET) ficam no disco
+# do runner (/dados, volume que sobrevive a recriar o container), NUNCA no cache remoto do GitHub (actions/cache): o
+# cache do NuGet tem 1,9 GB e, baixado e subido a cada execução, consumiu 37 GB da internet de casa num dia.
+# Push novo na mesma branch cancela a execução anterior ainda na fila (concurrency).
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 # O front v1 e o E2E Playwright dele saíram em 2026-10-26 (tag arquivo/v1-final); E2E do front atual: ROADMAP.
 jobs:
   backend:
     name: Backend (.NET 10)
     runs-on: [self-hosted, pontes-local]
-    # O runner (container) não escreve em /usr/share/dotnet: o .NET fica na pasta do usuário dele (e é reaproveitado).
+    # Tudo no volume do runner (/dados): o .NET instalado e os pacotes do NuGet ficam de uma execução pra outra.
     env:
-      DOTNET_INSTALL_DIR: /home/runner/.dotnet
+      DOTNET_INSTALL_DIR: /dados/dotnet
+      NUGET_PACKAGES: /dados/nuget
 
     steps:
       - uses: actions/checkout@v6
@@ -25,13 +35,6 @@ jobs:
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
-
-      - name: Cache NuGet packages
-        uses: actions/cache@v5
-        with:
-          path: ~/.nuget/packages
-          key: nuget-${{ hashFiles('**/*.csproj') }}
-          restore-keys: nuget-
 
       - name: Restore
         run: dotnet restore controle-financeiro.sln
@@ -49,6 +52,9 @@ jobs:
     defaults:
       run:
         working-directory: controle-financeiro.web
+    # Cache do npm no volume do runner (/dados), não no cache remoto do GitHub.
+    env:
+      npm_config_cache: /dados/npm
 
     steps:
       - uses: actions/checkout@v6
@@ -57,8 +63,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: controle-financeiro.web/package-lock.json
 
       # Sempre `npm ci` (instala exatamente o package-lock), nunca `npm install`.
       - name: Install dependencies

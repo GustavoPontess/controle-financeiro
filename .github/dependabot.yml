@@ -1,7 +1,10 @@
 # Atualizações automáticas de dependência (npm do front, NuGet da API, actions do CI).
-# Cada PR do Dependabot roda o CI no runner do PC (pontes-local): por isso semanal, agrupado e com poucos PRs abertos.
+# Cada PR do Dependabot roda o CI no runner do PC (pontes-local), na mesma fila do deploy. Por isso (2026-10-26,
+# depois da 1ª leva de 5 PRs travar o deploy): UM PR por ecossistema, com tudo junto, e sem atualização GRANDE
+# (versão major quebra código e é feita à mão, quando a gente decidir). Correção de segurança é outro fluxo (alertas
+# do Dependabot) e não depende desta lista.
 # `cooldown`: só propõe versão publicada há pelo menos 7 dias. Pacote malicioso costuma ser pego e retirado nesse
-# tempo (ex.: campanha MALFEX / `imgdecode`, 2026-10). Correção de segurança (alerta do GitHub) não espera.
+# tempo (ex.: campanha MALFEX / `imgdecode`, 2026-10).
 version: 2
 updates:
   - package-ecosystem: npm
@@ -11,10 +14,13 @@ updates:
       day: monday
     cooldown:
       default-days: 7
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 1
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
     groups:
-      npm-menores:
-        update-types: [minor, patch]
+      npm:
+        patterns: ["*"]
 
   - package-ecosystem: nuget
     directory: /
@@ -23,10 +29,13 @@ updates:
       day: monday
     cooldown:
       default-days: 7
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 1
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
     groups:
-      nuget-menores:
-        update-types: [minor, patch]
+      nuget:
+        patterns: ["*"]
 
   - package-ecosystem: github-actions
     directory: /
@@ -34,7 +43,7 @@ updates:
       interval: monthly
     cooldown:
       default-days: 7
-    open-pull-requests-limit: 2
+    open-pull-requests-limit: 1
     groups:
       actions:
         patterns: ["*"]
