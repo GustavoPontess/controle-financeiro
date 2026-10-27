@@ -1,28 +1,25 @@
-// Páginas legais do v2 — Termos de Uso (/termos-de-uso) e Política de Privacidade (/privacidade). Copy portada
+// Páginas legais: Termos de Uso (/termos-de-uso) e Política de Privacidade (/privacidade), com a roupa do site. Copy portada
 // do app atual (2026-08-18/19, fundamentada em docs/CONFORMIDADE_BR.md: LGPD, CDC, Marco Civil). Públicas.
 //
 // TODO (Gustavo, antes do lançamento público): trocar o "fale com quem te convidou" por um canal de contato de
 // verdade (e-mail da empresa) — sem CNPJ/conta de empresa ainda, e-mail pessoal não deve ir pra página pública.
 import type { ReactNode } from "react"
 import { Link } from "react-router-dom"
-import Logo from "../componentes/Logo"
+import MolduraSite from "../site/MolduraSite"
 import styles from "./Legal.module.css"
 
+// Mesmo topo e rodapé do site (MolduraSite); o texto com a fonte e as cores do site.
 function PaginaLegal({ titulo, atualizado, beta, children }: { titulo: string; atualizado: string; beta: ReactNode; children: ReactNode }) {
   return (
-    <div className={`v2 ${styles.raiz}`}>
-      <header className={styles.topo}>
-        <Link to="/entrar" aria-label="Pontes: ir pro login"><Logo size={26} /></Link>
-        <Link to="/entrar">Entrar</Link>
-      </header>
+    <MolduraSite titulo={`${titulo} · Pontes`}>
       <main className={styles.miolo}>
-        <p className={styles.eyebrow}>Legal</p>
+        <span className="olho">Legal</span>
         <h1 className={styles.titulo}>{titulo}</h1>
         <p className={styles.atualizado}>Última atualização: {atualizado}</p>
         <div className={styles.beta}><strong>O Pontes está em beta fechado.</strong> {beta}</div>
         {children}
       </main>
-    </div>
+    </MolduraSite>
   )
 }
 

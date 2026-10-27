@@ -6,5 +6,10 @@
 /* <p class="sub" style="margin-top:18px"> depois do .alerta-ok. */
 .depois { margin-top: 18px; }
 
+/* "← Voltar ao site" em cima do título, no mesmo lugar do "← Escolher conta salva" dos passos. Passo que tem o
+   próprio voltar (botão .voltar-a) esconde este, pra não ficar dois. */
+.voltarSite { align-self: flex-start; }
+:global(.miolo):has(:global(.ativo) button:global(.voltar-a)) .voltarSite { display: none; }
+
 /* QR de verdade (imagem gerada pelo app) dentro da caixa .qr do rascunho. */
 .qrImg { display: block; width: 100%; height: 100%; }
