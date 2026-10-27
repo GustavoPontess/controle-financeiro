@@ -33,6 +33,10 @@ public sealed class SmtpEmailSender : IPasswordResetEmailSender, IContaEmailSend
     public Task EnviarAvisoExclusaoAsync(string email, DateTime marcadoEm, int diasCarencia, CancellationToken ct = default) =>
         EnviarAsync(email, ModelosEmail.AvisoExclusao(_opcoes.AppUrl, email, marcadoEm, diasCarencia), TipoRemetente.Seguranca, ct);
 
+    // Acesso liberado é boas-vindas do produto: sai do pontes@ e a resposta vai pro Reply-To (uma caixa que recebe).
+    public Task EnviarAcessoLiberadoAsync(string email, CancellationToken ct = default) =>
+        EnviarAsync(email, ModelosEmail.AcessoLiberado(_opcoes.AppUrl, email), TipoRemetente.Produto, ct);
+
     /// <summary>O logo dos e-mails (PNG embutido no assembly), anexado inline com o Content-ID do layout.</summary>
     private static readonly Lazy<byte[]> Logo = new(() =>
     {

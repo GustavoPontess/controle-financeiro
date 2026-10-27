@@ -25,8 +25,11 @@ public class AdminUsuarioServiceTests
         return new AppDbContext(options);
     }
 
-    private static AdminUsuarioService CreateService(AppDbContext ctx, IPasswordResetDispatcher? dispatcher = null)
-        => new(ctx, dispatcher ?? new Mock<IPasswordResetDispatcher>().Object, new AdminAuditService(ctx), TestHelpers.NotifAdmin(ctx));
+    private static AdminUsuarioService CreateService(AppDbContext ctx, IPasswordResetDispatcher? dispatcher = null,
+        IContaEmailSender? email = null)
+        => new(ctx, dispatcher ?? new Mock<IPasswordResetDispatcher>().Object, new AdminAuditService(ctx), TestHelpers.NotifAdmin(ctx),
+            email ?? new Mock<IContaEmailSender>().Object,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<AdminUsuarioService>.Instance);
 
     private static Usuario Seed(AppDbContext ctx, StatusUsuario status, string? email = null, DateTime? criadoEm = null)
     {
@@ -96,6 +99,49 @@ public class AdminUsuarioServiceTests
 
         // A notificação daquele cadastro foi baixada (não fica no sino como pendente).
         Assert.True(ctx.NotificacoesAdmin.Single(n => n.AlvoId == pendente.Id).Lida);
+    }
+
+    [Fact]
+    public async Task Aprovar_mandaOEmailDeAcessoLiberado_pro_emailDaPessoa()
+    {
+        using var ctx = CreateContext();
+        var pendente = Seed(ctx, StatusUsuario.AguardandoAprovacao, email: "nova@test.com");
+        var email = new Mock<IContaEmailSender>();
+        var svc = CreateService(ctx, email: email.Object);
+
+        await svc.AprovarAsync(pendente.Id, Guid.NewGuid(), "admin@test.com");
+
+        email.Verify(e => e.EnviarAcessoLiberadoAsync("nova@test.com", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Recusar_naoMandaEmailDeAcessoLiberado()
+    {
+        using var ctx = CreateContext();
+        var pendente = Seed(ctx, StatusUsuario.AguardandoAprovacao);
+        var email = new Mock<IContaEmailSender>();
+        var svc = CreateService(ctx, email: email.Object);
+
+        await svc.RecusarAsync(pendente.Id, Guid.NewGuid(), "admin@test.com");
+
+        email.Verify(e => e.EnviarAcessoLiberadoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Aprovar_emailFalha_aprovacaoValeDoMesmoJeito()
+    {
+        using var ctx = CreateContext();
+        var pendente = Seed(ctx, StatusUsuario.AguardandoAprovacao);
+        var email = new Mock<IContaEmailSender>();
+        email.Setup(e => e.EnviarAcessoLiberadoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("SMTP fora do ar"));
+        var svc = CreateService(ctx, email: email.Object);
+
+        // O e-mail cair não pode desfazer a aprovação: a pessoa entra do mesmo jeito.
+        var dto = await svc.AprovarAsync(pendente.Id, Guid.NewGuid(), "admin@test.com");
+
+        Assert.Equal(StatusUsuario.Ativo, dto.Status);
+        Assert.Equal(StatusUsuario.Ativo, (await ctx.Usuarios.FindAsync(pendente.Id))!.Status);
     }
 
     [Fact]

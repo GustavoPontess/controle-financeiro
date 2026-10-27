@@ -19,6 +19,7 @@ public class MinhaContaServiceTests
 {
     private sealed class SenderSpy : IContaEmailSender
     {
+        public Task EnviarAcessoLiberadoAsync(string email, CancellationToken ct = default) => Task.CompletedTask;
         public string? UltimoCodigo;
         public int Avisos;
         public Task EnviarCodigoAsync(string email, string codigo, TipoOtpEmail finalidade, DateTime expiraEm, CancellationToken ct = default)

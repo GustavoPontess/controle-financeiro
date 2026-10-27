@@ -70,6 +70,30 @@ public static class ModelosEmail
                 email: email));
     }
 
+    /// <summary>
+    /// Pedido de acesso aprovado no Admin: a pessoa já pode entrar. É o e-mail que a tela "Pedido enviado" promete
+    /// ("Você recebe um e-mail quando o acesso for liberado"). Sem dado nenhum além do próprio e-mail dela.
+    /// </summary>
+    public static MensagemEmail AcessoLiberado(string appUrl, string email)
+    {
+        var link = $"{appUrl.TrimEnd('/')}/entrar";
+        const string texto = "Seu pedido de acesso ao Pontes foi aprovado. Já dá pra entrar com o e-mail e a senha que você cadastrou.";
+        const string validade = "Na primeira entrada, o Pontes sugere ligar a verificação em duas etapas. Leva um minuto e protege a sua conta.";
+        const string naoFoi = "Não pediu acesso ao Pontes? Pode ignorar este e-mail. Ninguém entra sem a senha.";
+        return new MensagemEmail(
+            "Seu acesso ao Pontes foi liberado",
+            $"{texto}\n\n{validade}\n\nEntrar: {link}\n\n{naoFoi}{RodapeTexto(email)}",
+            Html(
+                previa: "Seu pedido foi aprovado. Já dá pra entrar.",
+                titulo: "Seu acesso foi liberado",
+                texto: texto,
+                miolo: Botao(link, "Entrar no Pontes"),
+                validade: validade,
+                naoFoi: naoFoi,
+                linkReserva: link,
+                email: email));
+    }
+
     /// <summary>Aviso fora do app de que a conta foi marcada pra exclusão (a pessoa ainda pode reagir).</summary>
     public static MensagemEmail AvisoExclusao(string appUrl, string email, DateTime marcadoEmUtc, int diasCarencia)
     {
