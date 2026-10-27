@@ -69,9 +69,17 @@ export function ligarSite(raiz: HTMLElement, { tema, alternarTema }: Opcoes): ()
     fixo.appendChild(seletor.cloneNode(true))
     fixo.querySelector(".seletor")?.removeAttribute("aria-label")
     raiz.appendChild(fixo)
+    // Aparece depois que o seletor da página sobe, e some quando a chamada do fim entra na tela (Gustavo, 2026-10-26: no
+    // celular ela tampava o rodapé; o rascunho deixava até o fim).
+    let passouSeletor = false, chegouNoFim = false
+    const atualiza = () => fixo.classList.toggle("mostra", passouSeletor && !chegouNoFim)
     observar(new IntersectionObserver((es) => {
-      fixo.classList.toggle("mostra", !es[0].isIntersecting && es[0].boundingClientRect.top < 0)
+      passouSeletor = !es[0].isIntersecting && es[0].boundingClientRect.top < 0; atualiza()
     })).observe(seletor)
+    const fim = raiz.querySelector(".cta") ?? raiz.querySelector("footer")
+    if (fim) observar(new IntersectionObserver((es) => {
+      chegouNoFim = es[0].isIntersecting || es[0].boundingClientRect.top < 0; atualiza()
+    })).observe(fim)
 
     let atual: string | null = null
     const escolhe = (caso: string, animar: boolean) => {

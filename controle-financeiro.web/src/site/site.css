@@ -639,6 +639,10 @@
   /* Par de botões (topo, plano, chamada do fim) lado a lado, metade pra cada um; texto longo quebra dentro do botão. */
   .btns, .topo .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .btns .btn { height: auto; min-height: 48px; padding: 10px 12px; justify-content: center; text-align: center; font-size: 14px; line-height: 1.2; }
+  /* Chamada do fim: texto em cima e botões embaixo do cartão (não tudo encostado embaixo). */
+  .cta { align-items: stretch; }
+  .cta .txt { display: flex; flex-direction: column; width: 100%; min-height: 460px; }
+  .cta .txt .btns { margin-top: auto; }
   /* Painel do contador: número cabe no cartão. */
   .painel .kpis { grid-template-columns: 1fr 1fr; gap: 8px; } .painel .kpi:last-child { grid-column: 1 / -1; } .painel .kpi b { white-space: nowrap; }
 }
