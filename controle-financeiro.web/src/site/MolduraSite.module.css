@@ -1,0 +1,4 @@
+/* Cabeçalho das páginas com a roupa do site (Termos, Privacidade): o mesmo topo do site, mas sem o brilho laranja
+   (.topo::before). Num cabeçalho baixo como este, o círculo do brilho fica cortado na borda de baixo e desenha uma
+   linha (pedido do Gustavo, 2026-10-27). Classe dobrada pra ganhar do site.css, que carrega depois. */
+.cabeca.cabeca::before { display: none; }

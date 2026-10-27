@@ -9,6 +9,7 @@ import { ligarSite } from "./comportamentos"
 import { usarFolhaDoSite } from "./usarFolhaDoSite"
 import topo from "./paginas/_topo.html?raw"
 import rodape from "./paginas/_rodape.html?raw"
+import css from "./MolduraSite.module.css"
 
 export default function MolduraSite({ titulo, children }: { titulo: string; children: ReactNode }) {
   const raiz = useRef<HTMLDivElement>(null)
@@ -36,7 +37,7 @@ export default function MolduraSite({ titulo, children }: { titulo: string; chil
 
   return (
     <div ref={raiz} onClick={aoClicar}>
-      <header className="topo interna" dangerouslySetInnerHTML={{ __html: topo }} />
+      <header className={`topo interna ${css.cabeca}`} dangerouslySetInnerHTML={{ __html: topo }} />
       {children}
       <div className="wrap" dangerouslySetInnerHTML={{ __html: rodape }} />
     </div>
