@@ -83,6 +83,27 @@ public class AuthServiceTests
     // ── SolicitarResetSenhaAsync ───────────────────────────────────────────────
 
     [Fact]
+    public async Task Login_emailInexistente_e_senhaErrada_mesmaMensagem_semEnumeracao()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuario(ctx, "existe@test.com");
+        u.PasswordHash = PasswordHasher.HashPassword("a senha certa bem longa");
+        ctx.SaveChanges();
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+
+        // Conta que existe, senha errada → mesma mensagem que conta que não existe. O tempo também tem que ser
+        // parecido (login chama PasswordHasher.FakeVerify quando a conta não existe), mas aqui provamos só a mensagem:
+        // mensagem ou status diferentes já seriam oráculo de enumeração.
+        var existeErro = await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "existe@test.com", Password = "senha errada qualquer" }));
+        var naoExisteErro = await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "naoexiste@test.com", Password = "senha errada qualquer" }));
+
+        Assert.Equal("Email ou senha inválidos", existeErro.Message);
+        Assert.Equal(existeErro.Message, naoExisteErro.Message);
+    }
+
+    [Fact]
     public async Task SolicitarReset_naoRetornaToken_e_mensagemGenerica()
     {
         using var ctx = CreateContext();
