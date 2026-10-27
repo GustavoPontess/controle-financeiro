@@ -1,6 +1,6 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-10-24
+last_reviewed: 2026-10-27
 status: EM_PROGRESSO
 foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DECIDIDA (caminho A/Hostinger, 2026-08-24), mas execução ADIADA por orçamento (contrata quando receber) e NENHUM DEPLOY ACONTECEU. Detalhe em `docs/features/hospedagem-beta/decisao.md`. O código é neutro (Dockerfiles, nginx.conf, health checks, ForwardedHeaders, CORS/baseURL por env var) e serve pra qualquer host de container. Trabalho de segurança já fechado localmente: (1) conformidade LGPD/BACEN pesquisada (`docs/CONFORMIDADE_BR.md` — BACEN fora do escopo, DPO dispensado); (2) sweep de segurança (Hangfire fechado, rotas demo DEV-only, força bruta por conta, cookie Secure atrás de proxy TLS); (3) hardening de auth em 2026-08-23: **MFA opt-in (TOTP + backup codes)**, **pepper de senha**, **remoção da regra de composição** (NIST), **JWT local rotacionado**; (4) pentest ao vivo (2 achados corrigidos: cookie Secure, duplicidade de e-mail case-insensitive); (5) `/privacidade` + `/termos-de-uso` (rascunho) + consentimento no cadastro. Criptografia de campo em repouso: catalogada P2 (análise pronta no ROADMAP), decisão do Gustavo de não fazer agora. TUDO MERGEADO na `main` (`b482c93`): base beta (#236-#241) + multi-conta P0 (#246) + empty-states (#247) + 5 services testados (#248) + **trusted-device MFA (#249)** + **login-experience: manter-conectado + roster (#252)** + **UX toolbars + primitivos DS PontesSegmented/Stack/Inline (#251)**. Auth agora tem: troca real de conta, sessões/dispositivos, reuse-detection, revogação INSTANTÂNEA (access 15min + claim `sid` + OnTokenValidated), trusted-device opt-in, manter-conectado + roster. Pré-condição de PROD (gate 1.0.0, não-código): rotacionar `Jwt:Key`. Histórico no corpo abaixo.'
 ---
@@ -15,9 +15,11 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
-### 📌 2026-10-26: site público + telas de acesso do rascunho + cores laranja (`feat/site-publico`)
+### 📌 2026-10-27: site novo NO AR (site público + acesso + celular + rápido), CI consertado, 2 runners
 
-O site e as telas de acesso foram desenhados no chat do hub Pontes Dev e aprovados pelo Gustavo; aqui só integrei, idêntico (a `feat/v2-site` com a home feita aqui foi descartada a pedido dele). **Site:** 7 páginas como HTML do rascunho (`src/site/paginas/*.html` + `site.css`, gerados por `scripts/importarSite.py`), comportamentos do comum.js portados (`comportamentos.ts`), carregado sob demanda; `/` abre o site pra quem não entrou. **Acesso:** Entrar, Pedir acesso, Redefinir senha e Proteja com o markup do rascunho (`site/MolduraAcesso.tsx`), mesma lógica/API; ativar duas etapas virou `useAtivacaoMfa` (Configurações e Proteja). **Cores:** tokens laranja da proposta + ponte laranja no menu (aberto e fechado, centrada na coluna dos ícones). **Barra de estados só em dev** (regra nova em `CONVENCOES.md`; trava no build). Conferência com a ferramenta do rascunho: 0% no site e nas telas internas. Pendências e decisões na Fila do ROADMAP.
+**No ar em app.pontesdev.com.br** (deploy 01:25 UTC, 22:25 em Brasília): site público e telas de acesso idênticos ao rascunho do hub Pontes Dev (#363), "Pedir acesso" leva pro cadastro + "Entrar" no topo apertado + ícone da aba (#373), revisão completa do celular e site rápido (#376: prints do app em tamanho de celular, tema no menu ☰, "Família", tabela/abas/rodapé/pares de botões, seletor preso some na chamada do fim, cartão do fim com texto em cima; app logado num pacote à parte `src/RotasApp.tsx`, imagens em WebP, preload do site no index, cache no Caddy, CSP liberando o script do tema por hash). Painel de dev único (#371), segurança do npm + Dependabot (#364, #372). **CI (#377):** caches no `/dados` do runner (o `actions/cache` do NuGet gastou 37 GB da internet de casa num dia), push novo cancela o anterior; **segundo runner** `pc-gustavo-app-2` (compose em `E:\VSCode\pontes\PontesDev\base\runner-github`): back e front rodam juntos, CI completo em ~1,5 min. Dependabot: 374/375/378 entraram.
+
+**Próximo:** o que sobrou na Fila do ROADMAP (barra de dev nas telas internas, decisões de conteúdo do site, E2E no front atual). Regra nova: um push por PR (cada push é um CI no PC do Gustavo).
 
 ### 📌 2026-10-26: v1 arquivado, o v2 é o front (`controle-financeiro.web`)
 
