@@ -149,6 +149,14 @@ def main():
         open(os.path.join(PAGINAS, nome + '.html'), 'w', encoding='utf-8', newline='\n').write(converte(html))
         titulos[nome] = titulo(html)
 
+    # Topo (logo, menu, Entrar) e rodapé do site, pras páginas do app que vestem a roupa do site (Termos, Privacidade:
+    # src/site/MolduraSite.tsx). Saem da home, que não marca nenhum item do menu como a página atual.
+    home = converte(open(os.path.join(ORIGEM, 'rascunhos', 'home.html'), encoding='utf-8').read())
+    topo = re.search(r'<div class="nav">[\s\S]*?<div class="acoes">[\s\S]*?</div>\s*</div>', home).group(0)
+    rodape = re.search(r'<footer class="rodape">[\s\S]*?</footer>', home).group(0)
+    open(os.path.join(PAGINAS, '_topo.html'), 'w', encoding='utf-8', newline='\n').write(topo + '\n')
+    open(os.path.join(PAGINAS, '_rodape.html'), 'w', encoding='utf-8', newline='\n').write(rodape + '\n')
+
     # Títulos das abas (o <head> do rascunho não vem junto).
     with open(os.path.join(PAGINAS, 'titulos.json'), 'w', encoding='utf-8', newline='\n') as f:
         f.write('{\n' + ',\n'.join(f'  "{k}": "{v}"' for k, v in titulos.items()) + '\n}\n')

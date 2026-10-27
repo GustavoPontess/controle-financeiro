@@ -1,23 +1,19 @@
-/* Páginas legais do v2 (Termos de Uso, Política de Privacidade): públicas, texto corrido pra ler. */
-.raiz { min-height: 100vh; background: var(--v2-bg); color: var(--v2-texto); font-family: var(--v2-font); }
-.topo { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 720px; margin: 0 auto; padding: 20px 24px; }
-.topo a { font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-texto-2); text-decoration: none; }
-.topo a:hover { color: var(--v2-texto); }
-.miolo { max-width: 720px; margin: 0 auto; padding: 16px 24px 64px; }
-.eyebrow { font-size: var(--v2-fs-xs); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--v2-texto-3); }
-.titulo { margin: 8px 0 4px; font-size: var(--v2-fs-3xl); font-weight: 600; letter-spacing: -0.02em; }
-.atualizado { margin: 0 0 24px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
-.beta { margin: 0 0 28px; padding: 14px 16px; border-radius: var(--v2-r-md); background: var(--v2-alerta-suave); color: var(--v2-alerta); font-size: var(--v2-fs-sm); line-height: 1.55; }
-.secao { margin: 0 0 24px; }
-.h2 { margin: 0 0 8px; font-size: var(--v2-fs-lg); font-weight: 600; }
-.p { margin: 0 0 10px; font-size: var(--v2-fs-base); line-height: 1.6; color: var(--v2-texto-2); }
-.p strong, .lista strong { color: var(--v2-texto); }
-.p a { color: var(--v2-texto); font-weight: 600; text-decoration: underline; }
-.lista { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: var(--v2-fs-base); line-height: 1.6; color: var(--v2-texto-2); }
-.contato { padding: 14px 16px; border-radius: var(--v2-r-md); background: var(--v2-superficie); box-shadow: var(--v2-sombra); font-size: var(--v2-fs-sm); line-height: 1.55; color: var(--v2-texto-2); }
+/* Páginas legais (Termos de Uso, Política de Privacidade) com a roupa do site: o topo e o rodapé vêm da MolduraSite
+   e o texto usa as cores do site.css (--fg, --mute, --line, --card-2, --acc-2), que mudam sozinhas no tema escuro.
+   Tamanho de letra no mesmo ritmo do site (o site.css usa px, não os --v2-fs do app logado). */
+.miolo { max-width: 760px; margin: 0 auto; padding: 12px clamp(18px, 4vw, 48px) 32px; color: var(--fg); }
+.titulo { margin: 0 0 8px; font-weight: 800; font-size: clamp(36px, 4.4vw, 56px); line-height: 1.05; letter-spacing: -.04em; }
+.atualizado { margin: 0 0 28px; font-size: 15px; color: var(--mute); }
+.beta { margin: 0 0 36px; padding: 16px 20px; border-radius: 20px; background: var(--card-2); font-size: 15px; line-height: 1.6; color: var(--fg); }
+.secao { margin: 0 0 32px; }
+.h2 { margin: 0 0 10px; font-weight: 800; font-size: 22px; letter-spacing: -.02em; }
+.p { margin: 0 0 12px; font-size: 17px; line-height: 1.65; color: var(--mute); }
+.p strong, .lista strong { color: var(--fg); }
+.p a { color: var(--acc-2); font-weight: 700; }
+.lista { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 10px; font-size: 17px; line-height: 1.65; color: var(--mute); }
+.contato { padding: 16px 20px; border-radius: 20px; border: 1px solid var(--line); background: var(--card); font-size: 15px; line-height: 1.6; color: var(--fg); }
 
 @media (max-width: 900px) {
-  .topo { padding: 16px; }
-  .miolo { padding: 8px 16px 48px; }
-  .titulo { font-size: var(--v2-fs-2xl); }
+  .miolo { padding-top: 4px; }
+  .p, .lista { font-size: 16px; }
 }
