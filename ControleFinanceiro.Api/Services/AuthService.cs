@@ -809,6 +809,23 @@ public class AuthService
     /// <summary>
     /// Valida o token de reset e altera a senha do usuário.
     /// </summary>
+    /// <summary>
+    /// "Não fui eu" do e-mail de senha nova: o dono da caixa cancela o link (ele para de valer). Não bloqueia a conta
+    /// (senão qualquer um travaria a conta alheia só digitando o e-mail no "Esqueci a senha"). Resposta sempre igual,
+    /// exista o link ou não.
+    /// </summary>
+    public async Task CancelarResetSenhaAsync(string? token)
+    {
+        if (string.IsNullOrWhiteSpace(token) || token.Length > 256) return;
+        var hash = OpaqueTokenHasher.Hash(token.Trim());
+        var prt = await _context.PasswordResetTokens.FirstOrDefaultAsync(t => t.Token == hash);
+        if (prt is null || prt.Usado || prt.ExpiresAt <= DateTime.UtcNow) return;
+        prt.Usado = true;
+        await _context.SaveChangesAsync();
+        // Sinal de segurança (alguém pediu senha nova pra uma conta e o dono negou), sem e-mail nem token no log.
+        _logger.LogWarning("Link de senha nova cancelado pelo dono do e-mail (Não fui eu). Usuario {UsuarioId}.", prt.UsuarioId);
+    }
+
     public async Task ResetSenhaAsync(ResetPasswordDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Token))

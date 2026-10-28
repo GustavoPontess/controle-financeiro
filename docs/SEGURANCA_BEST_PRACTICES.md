@@ -76,6 +76,9 @@ reconhecimento para o atacante. "Não dá pra ele acessar" **NÃO** basta.
 - Token **aleatório-cripto** (`RandomNumberGenerator`, 64 bytes), **hasheado no banco** (SHA-256 via `OpaqueTokenHasher` — basta p/ token de alta entropia, não precisa KDF lento), **uso único**, **expiry curto** (1h), **ligado a um user**, invalidado após uso. **Aplicado:** `PasswordResetEmailJob` guarda o hash, envia o bruto por e-mail; `ResetSenhaAsync` faz lookup pelo hash. Se o banco vazar, os hashes não dão tokens utilizáveis.
 - **Anti-enumeração:** resposta **idêntica** p/ conta existente vs inexistente **e timing uniforme** — e-mail em **fire-and-forget** (C1, já feito).
 - **Rate-limit por conta** (não só por IP): **aplicado** — `PasswordResetEmailJob` limita a 3 tokens por conta por hora (no worker, sem vazar timing), somado ao limite por-IP (1/15min) no endpoint.
+- **"Não fui eu" no e-mail de senha nova (2026-10-27):** `POST /auth/reset-password/cancelar` queima o link (sempre 204, não diz se existia) e loga aviso de segurança. NÃO bloqueia a conta (senão qualquer um travaria a conta alheia pelo "Esqueci a senha").
+- **Código por e-mail (OTP de 6 números, 2026-10-27):** resumo é HMAC-SHA256 com chave fora do banco (`CodigoOtpHasher`, derivada do `JWT_SECRET` por HKDF) + id da pessoa; SHA-256 puro de 6 dígitos sairia em segundos com o banco vazado. Teto de 3 códigos por hora por pessoa e finalidade (`EmailOtpService.MaxCodigosPorHora`), além de 5 tentativas por código.
+- **Pedido de acesso (2026-10-27):** link de confirmar e-mail / "Não fui eu" no molde do reset (64 bytes, hash, uso único, 7 dias, só pedido pendente); página com botão, nunca age ao abrir. Ver `ConfirmacaoCadastroService`.
 - _Fonte: OWASP Forgot Password Cheat Sheet._
 
 ## 4. Armazenamento de token (frontend) ✅

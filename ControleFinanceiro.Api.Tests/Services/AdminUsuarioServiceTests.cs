@@ -41,6 +41,7 @@ public class AdminUsuarioServiceTests
             PasswordHash = "x",
             Status = status,
             CriadoEm = criadoEm ?? DateTime.UtcNow,
+            EmailConfirmadoEm = DateTime.UtcNow,
         };
         ctx.Usuarios.Add(u);
         ctx.SaveChanges();
@@ -142,6 +143,23 @@ public class AdminUsuarioServiceTests
 
         Assert.Equal(StatusUsuario.Ativo, dto.Status);
         Assert.Equal(StatusUsuario.Ativo, (await ctx.Usuarios.FindAsync(pendente.Id))!.Status);
+    }
+
+    [Fact]
+    public async Task Aprovar_semEmailConfirmado_recusa_eRecusarPodeSempre()
+    {
+        using var ctx = CreateContext();
+        var pendente = Seed(ctx, StatusUsuario.AguardandoAprovacao);
+        pendente.EmailConfirmadoEm = null;
+        await ctx.SaveChangesAsync();
+        var svc = CreateService(ctx);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.AprovarAsync(pendente.Id, Guid.NewGuid(), "admin@test.com"));
+        Assert.Equal(StatusUsuario.AguardandoAprovacao, (await ctx.Usuarios.FindAsync(pendente.Id))!.Status);
+        Assert.False((await svc.ListarPendentesAsync()).Single().EmailConfirmado);
+
+        var dto = await svc.RecusarAsync(pendente.Id, Guid.NewGuid(), "admin@test.com");
+        Assert.Equal(StatusUsuario.Recusado, dto.Status);
     }
 
     [Fact]

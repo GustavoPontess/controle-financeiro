@@ -47,7 +47,7 @@ describe("RedefinirSenha", () => {
   })
 
   it("fluxo feliz: manda token + senhas, mostra 'Senha alterada' e leva pro login", async () => {
-    renderizar("/redefinir-senha?token=abc%2Bdef")
+    renderizar("/redefinir-senha#token=abc%2Bdef")
     await userEvent.type(screen.getByLabelText("Senha nova"), SENHA)
     await userEvent.type(screen.getByLabelText("Confirmar senha"), SENHA)
     await userEvent.click(salvar())

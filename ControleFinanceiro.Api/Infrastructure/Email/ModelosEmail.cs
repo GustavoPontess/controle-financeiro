@@ -21,25 +21,29 @@ public static class ModelosEmail
     private static readonly TimeZoneInfo Brasilia = Fuso();
 
     /// <summary>Recuperar senha: o link leva pra tela de redefinir do front com o token bruto na query.</summary>
+    // Todo link com código secreto leva o código depois do "#": essa parte nunca sai do navegador (nenhum servidor, proxy
+    // ou log recebe). A tela lê e tira da barra de endereço (useTokenDoLink no front).
     public static MensagemEmail ResetSenha(string appUrl, string email, string token, DateTime expiraEmUtc)
     {
         email = Escondido(email);
-        var link = $"{appUrl.TrimEnd('/')}/redefinir-senha?token={Uri.EscapeDataString(token)}";
+        var link = $"{appUrl.TrimEnd('/')}/redefinir-senha#token={Uri.EscapeDataString(token)}";
         var texto = $"Recebemos um pedido pra criar uma senha nova na conta do Pontes de {email}.";
         var validade = $"O link vale até {Hora(expiraEmUtc)} e só funciona uma vez.";
-        const string naoFoi = "Não foi você? É só ignorar este e-mail: sua senha continua a mesma e ninguém entra sem este link.";
+        const string naoFoi = "Não foi você? Alguém digitou o seu e-mail no \"Esqueci a senha\", mas ninguém entra sem este link. Cancele o link no botão abaixo e ele para de valer. Sua senha continua a mesma.";
+        var cancelar = $"{appUrl.TrimEnd('/')}/nao-pedi-senha#token={Uri.EscapeDataString(token)}";
         return new MensagemEmail(
             "Redefinir sua senha do Pontes",
-            $"{texto}\n\nCriar senha nova: {link}\n\n{validade}\n\n{naoFoi}{RodapeTexto(email)}",
+            $"{texto}\n\nCriar senha nova: {link}\n\n{validade}\n\n{naoFoi}\nNão fui eu: {cancelar}{RodapeTexto(email)}",
             Html(
-                previa: "Use o link em até 1 hora. Se não foi você, ignore.",
+                previa: "Use o link em até 1 hora. Não foi você? Cancele o link.",
                 titulo: "Redefinir sua senha",
                 texto: texto,
                 miolo: Botao(link, "Criar senha nova"),
                 validade: validade,
                 naoFoi: naoFoi,
                 linkReserva: link,
-                email: email));
+                email: email,
+                acaoNaoFoi: BotaoDiscreto(cancelar, "Não fui eu, cancelar este link")));
     }
 
     /// <summary>Código OTP de uma ação sensível (hoje: excluir a conta).</summary>
@@ -98,27 +102,37 @@ public static class ModelosEmail
     }
 
     /// <summary>
-    /// Pedido de acesso recebido (beta fechado): confirma pra pessoa que o pedido chegou e diz o que vem depois
-    /// (o e-mail de acesso liberado). Sem botão: não há nada pra fazer até a aprovação.
+    /// Pedido de acesso recebido (beta fechado). O cadastro não prova que o e-mail é de quem pediu, então o e-mail leva
+    /// as duas saídas do dono da caixa: "Confirmar meu e-mail" (o pedido segue pra aprovação) e "Não fui eu" (apaga o
+    /// pedido e os dados). Os links abrem uma página com o botão: nada acontece só de abrir (leitor de e-mail e antivírus
+    /// abrem links sozinhos).
     /// </summary>
-    public static MensagemEmail PedidoRecebido(string email)
+    public static MensagemEmail PedidoRecebido(string appUrl, string email, string token, DateTime expiraEmUtc)
     {
         email = Escondido(email);
-        var texto = $"Recebemos o seu pedido de acesso ao Pontes com o e-mail {email}. O Pontes está em beta fechado e cada pedido é aprovado à mão.";
-        const string validade = "Você recebe outro e-mail assim que o acesso for liberado. Até lá não precisa fazer nada.";
-        const string naoFoi = "Não pediu acesso ao Pontes? Pode ignorar este e-mail. A conta só entra no ar com aprovação, e ninguém entra sem a senha.";
+        var raiz = appUrl.TrimEnd('/');
+        var t = Uri.EscapeDataString(token);
+        var confirmar = $"{raiz}/confirmar-email#token={t}";
+        var naoFuiEu = $"{raiz}/nao-fui-eu#token={t}";
+        var texto = $"Recebemos o seu pedido de acesso ao Pontes com o e-mail {email}. Confirme que o e-mail é seu pra o pedido seguir pra aprovação.";
+        var validade = $"O link vale até {Hora(expiraEmUtc)}. Sem confirmação, o pedido é apagado nesse dia. Depois de aprovado, você recebe outro e-mail.";
+        const string naoFoi = "Não pediu acesso ao Pontes? Alguém pode ter usado o seu e-mail. Toque em \"Não fui eu\" e o pedido é apagado, com os dados que vieram com ele.";
+        // "Não fui eu" fica LONGE do botão de confirmar (embaixo da linha, junto do texto de quem não pediu), pra
+        // ninguém apagar o próprio pedido sem querer.
+        var acaoNaoFui = BotaoDiscreto(naoFuiEu, "Não fui eu, apagar este pedido");
         return new MensagemEmail(
-            "Recebemos seu pedido de acesso ao Pontes",
-            $"{texto}\n\n{validade}\n\n{naoFoi}{RodapeTexto(email)}",
+            "Confirme seu pedido de acesso ao Pontes",
+            $"{texto}\n\nConfirmar meu e-mail: {confirmar}\n\n{validade}\n\n{naoFoi}\nNão fui eu: {naoFuiEu}{RodapeTexto(email)}",
             Html(
-                previa: "Seu pedido chegou. Avisamos assim que o acesso for liberado.",
-                titulo: "Pedido recebido",
+                previa: "Confirme que o e-mail é seu. Não pediu? Apague o pedido.",
+                titulo: "Confirme seu e-mail",
                 texto: texto,
-                miolo: "",
+                miolo: Botao(confirmar, "Confirmar meu e-mail"),
                 validade: validade,
                 naoFoi: naoFoi,
-                linkReserva: null,
-                email: email));
+                linkReserva: confirmar,
+                email: email,
+                acaoNaoFoi: acaoNaoFui));
     }
 
     /// <summary>Aviso fora do app de que a conta foi marcada pra exclusão (a pessoa ainda pode reagir).</summary>
@@ -155,7 +169,11 @@ public static class ModelosEmail
         .Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;").Replace("'", "&#39;");
 
     private static string RodapeTexto(string email) =>
-        $"\n\nO Pontes nunca pede sua senha por e-mail, mensagem ou telefone.\nVocê recebeu este e-mail porque existe uma conta do Pontes com o endereço {email}.";
+        $"\n\nO Pontes nunca pede sua senha por e-mail, mensagem ou telefone.\nVocê recebeu este e-mail porque existe uma conta do Pontes com o endereço {email}." +
+        "\n\n" + string.Join("\n", Empresa());
+
+    /// <summary>Linhas da empresa no rodapé (dados em <see cref="DadosEmpresa"/>).</summary>
+    private static IReadOnlyList<string> Empresa() => DadosEmpresa.Linhas(DadosEmpresa.Atual, HorarioBrasil.Hoje().Year);
 
     private static string Hora(DateTime utc)
     {
@@ -172,6 +190,11 @@ public static class ModelosEmail
         return TimeZoneInfo.Utc;
     }
 
+    /// <summary>Botão secundário (contorno, cinza) do "Não fui eu": fica longe do botão principal, embaixo da linha.</summary>
+    private static string BotaoDiscreto(string link, string rotulo) =>
+        "<tr><td style=\"padding:12px 0 0\">" +
+        $"<a href=\"{Esc(link)}\" style=\"display:inline-block;padding:10px 18px;border-radius:999px;border:1px solid #e9d6c8;color:#7a6557;font-size:13px;font-weight:700;text-decoration:none\">{Esc(rotulo)}</a></td></tr>";
+
     private static string Botao(string link, string rotulo) =>
         "<tr><td style=\"padding:24px 0 8px\">" +
         $"<a href=\"{Esc(link)}\" style=\"display:inline-block;padding:15px 28px;border-radius:999px;background:#ff6a1f;color:#FFFFFF;font-size:15px;font-weight:700;text-decoration:none\">{Esc(rotulo)}</a>" +
@@ -181,7 +204,7 @@ public static class ModelosEmail
     /// Layout único. <paramref name="previa"/> é o texto que aparece ao lado do assunto na caixa de entrada
     /// (escondido no corpo); <paramref name="miolo"/> já vem como linha de tabela (botão ou código).
     /// </summary>
-    private static string Html(string previa, string titulo, string texto, string miolo, string validade, string naoFoi, string? linkReserva, string email)
+    private static string Html(string previa, string titulo, string texto, string miolo, string validade, string naoFoi, string? linkReserva, string email, string acaoNaoFoi = "")
     {
         string E(string t) => Esc(t);
         const string fonte = "'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
@@ -204,6 +227,7 @@ public static class ModelosEmail
             $"<tr><td style=\"padding:12px 0 0;font-size:13px;line-height:1.6;color:#7a6557\">{E(validade)}</td></tr>" +
             "<tr><td style=\"padding:20px 0 0\"><div style=\"height:1px;background:#f1e3d8;line-height:1px;font-size:1px\">&nbsp;</div></td></tr>" +
             $"<tr><td style=\"padding:16px 0 0;font-size:13px;line-height:1.6;color:#7a6557\">{E(naoFoi)}</td></tr>" +
+            acaoNaoFoi +
             (linkReserva is null ? "" :
                 $"<tr><td style=\"padding:16px 0 0;font-size:12px;line-height:1.5;color:#a8958a\">Se o botão não abrir, copie este endereço no navegador:<br><span style=\"word-break:break-all;color:#7a6557\">{E(linkReserva)}</span></td></tr>") +
             "</table></td></tr>" +
@@ -212,6 +236,10 @@ public static class ModelosEmail
             "<strong style=\"color:#7a6557\">O Pontes nunca pede sua senha</strong> por e-mail, mensagem ou telefone.<br>" +
             $"Você recebeu este e-mail porque existe uma conta do Pontes com o endereço {E(email)}.<br>" +
             "Pontes · o dinheiro da casa</td></tr>" +
+            // Dados da empresa (DadosEmpresa), separados por uma linha fina, como o rodapé do site.
+            "<tr><td style=\"padding:14px 8px 0\"><div style=\"height:1px;background:#f1e3d8;line-height:1px;font-size:1px\">&nbsp;</div></td></tr>" +
+            "<tr><td style=\"padding:12px 8px 0;font-size:11px;line-height:1.6;color:#a8958a\">" +
+            string.Join("<br>", Empresa().Select(E)) + "</td></tr>" +
             "</table></td></tr></table></body></html>";
     }
 }

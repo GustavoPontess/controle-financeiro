@@ -1,9 +1,10 @@
-// Redefinir senha (/redefinir-senha?token=…): a tela do link que chega por e-mail. Nova senha (regra NIST,
+// Redefinir senha (/redefinir-senha#token=…): a tela do link que chega por e-mail. Nova senha (regra NIST,
 // mostrar/ocultar) + confirmação → POST /auth/reset-password. Token vale 1 hora e uma vez só; inválido ou
 // vencido, a API responde "Token inválido ou expirado" e a tela oferece pedir outro. O visual é o do rascunho
 // aprovado (rascunhos/nova-senha.html do hub Pontes Dev, 2026-10-26): passos `nova`, `alterada` e `invalido`.
 import { useState, type FormEvent } from "react"
-import { Link, useSearchParams } from "react-router-dom"
+import { Link } from "react-router-dom"
+import { useTokenDoLink } from "../auth/useTokenDoLink"
 import MolduraAcesso, { CampoAcesso, Seta } from "../site/MolduraAcesso"
 import css from "../site/Acesso.module.css"
 import { BarraDev, useEstadoDev } from "../dev/BarraDev"
@@ -15,8 +16,7 @@ import { ehErroDaSenha, SENHA_MAX, senhaValida } from "../dominio/senha"
 type Erros = Partial<Record<"senha" | "confirmar", string>>
 
 export default function RedefinirSenha() {
-  const [params] = useSearchParams()
-  const token = params.get("token")?.trim() ?? ""
+  const token = useTokenDoLink()
   const [senha, setSenha] = useState("")
   const [confirmar, setConfirmar] = useState("")
   const [erros, setErros] = useState<Erros>({})

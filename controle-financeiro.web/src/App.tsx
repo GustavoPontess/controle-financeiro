@@ -6,6 +6,7 @@ import Entrar from "./telas/Entrar"
 import Cadastro from "./telas/Cadastro"
 import RedefinirSenha from "./telas/RedefinirSenha"
 import { Privacidade, TermosDeUso } from "./telas/Legal"
+import { ConfirmarEmail, NaoFuiEu, NaoPediSenha } from "./telas/LinkDoPedido"
 import ProtejaConta from "./telas/ProtejaConta"
 
 // Dois pacotes à parte, cada um baixado só quando precisa (2026-10-26, pro site abrir rápido no celular):
@@ -34,6 +35,9 @@ export default function App() {
       <Route path="/entrar" element={<Entrar />} />
       <Route path="/cadastro" element={<Cadastro />} />
       <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+      <Route path="/confirmar-email" element={<ConfirmarEmail />} />
+      <Route path="/nao-fui-eu" element={<NaoFuiEu />} />
+      <Route path="/nao-pedi-senha" element={<NaoPediSenha />} />
       <Route path="/termos-de-uso" element={<TermosDeUso />} />
       <Route path="/privacidade" element={<Privacidade />} />
       <Route path="/proteja-sua-conta" element={<RotaProteja />} />

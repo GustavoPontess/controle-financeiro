@@ -17,7 +17,7 @@ public class ModelosEmailTests
     {
         var m = ModelosEmail.ResetSenha("http://localhost:5174/", "ana@teste.com", "ab+c/d=", Expira);
 
-        const string link = "http://localhost:5174/redefinir-senha?token=ab%2Bc%2Fd%3D";
+        const string link = "http://localhost:5174/redefinir-senha#token=ab%2Bc%2Fd%3D";
         Assert.Contains(link, m.Texto);
         Assert.Contains(link, m.Html);
         Assert.Contains("só funciona uma vez", m.Texto);
@@ -29,6 +29,16 @@ public class ModelosEmailTests
         // Escondido como o olho fechado do app: o endereço inteiro nunca aparece.
         Assert.DoesNotContain("ana@teste.com", m.Texto);
         Assert.DoesNotContain("ana@teste.com", m.Html);
+    }
+
+    [Fact]
+    public void ResetSenha_TemONaoFuiEu_QueCancelaOLink()
+    {
+        var m = ModelosEmail.ResetSenha("http://localhost:5174/", "ana@teste.com", "ab+c/d=", Expira);
+
+        Assert.Contains("http://localhost:5174/nao-pedi-senha#token=ab%2Bc%2Fd%3D", m.Html);
+        Assert.Contains("http://localhost:5174/nao-pedi-senha#token=ab%2Bc%2Fd%3D", m.Texto);
+        Assert.Contains("Não fui eu, cancelar este link", m.Html);
     }
 
     [Fact]
@@ -65,18 +75,58 @@ public class ModelosEmailTests
     }
 
     [Fact]
-    public void PedidoRecebido_DizPraQualConta_EOQueVemDepois_SemBotao()
+    public void PedidoRecebido_LevaConfirmarENaoFuiEu_ComOTokenEscapado()
     {
-        var m = ModelosEmail.PedidoRecebido("ana@teste.com");
+        var m = ModelosEmail.PedidoRecebido("https://app.pontes.test/", "ana@teste.com", "ab+c/d=", Expira);
 
         Assert.Contains("pedido", m.Assunto);
         Assert.Contains("an•••@teste.com", m.Texto);
         Assert.Contains("an•••@teste.com", m.Html);
         Assert.DoesNotContain("ana@teste.com", m.Html);
-        Assert.Contains("assim que o acesso for liberado", m.Texto);
-        Assert.DoesNotContain("<a href", m.Html); // nada pra clicar até a aprovação
+        Assert.Contains("https://app.pontes.test/confirmar-email#token=ab%2Bc%2Fd%3D", m.Html);
+        Assert.Contains("https://app.pontes.test/nao-fui-eu#token=ab%2Bc%2Fd%3D", m.Html);
+        Assert.Contains("https://app.pontes.test/nao-fui-eu#token=ab%2Bc%2Fd%3D", m.Texto);
+        Assert.DoesNotContain("ab+c/d=", m.Html); // nunca o token cru
+        Assert.Contains("Confirmar meu e-mail", m.Html);
+        Assert.Contains("Não fui eu", m.Html);
         Assert.DoesNotContain("—", m.Texto);
         Assert.DoesNotContain("—", m.Html);
+    }
+
+    [Fact]
+    public void Empresa_SemCnpj_SoMostraOQueEVerdade()
+    {
+        var e = new Empresa("Pontes", null, null, null, null, "app.pontes.test");
+
+        var linhas = DadosEmpresa.Linhas(e, 2026);
+
+        Assert.Equal(new[] { "© 2026 Pontes", "app.pontes.test" }, linhas);
+    }
+
+    [Fact]
+    public void Empresa_ComCnpj_MostraRazaoSocialCnpjEnderecoEContato()
+    {
+        var e = new Empresa("Pontes", "Pontes Tecnologia Ltda.", "12.345.678/0001-90", "Rua A, 1 · Centro · BH/MG", "oi@pontes.test", "app.pontes.test");
+
+        var linhas = DadosEmpresa.Linhas(e, 2026);
+
+        Assert.Equal(new[]
+        {
+            "© 2026 Pontes Tecnologia Ltda. · CNPJ 12.345.678/0001-90",
+            "Rua A, 1 · Centro · BH/MG",
+            "oi@pontes.test · app.pontes.test",
+        }, linhas);
+    }
+
+    [Fact]
+    public void Rodape_LevaOsDadosDaEmpresa_NoTextoENoHtml()
+    {
+        var m = ModelosEmail.PedidoRecebido("http://localhost:5174", "ana@teste.com", "tok", Expira);
+
+        Assert.Contains(DadosEmpresa.Atual.Site, m.Texto);
+        Assert.Contains(DadosEmpresa.Atual.Site, m.Html);
+        Assert.Contains(DadosEmpresa.Atual.Cnpj!, m.Html);
+        Assert.Contains(DadosEmpresa.Atual.Endereco!, m.Html);
     }
 
     [Fact]

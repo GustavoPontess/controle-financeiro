@@ -200,7 +200,7 @@ function PainelAdmin({ meuId, secao }: { meuId: string; secao: Secao }) {
     <div className={styles.pagina}>
       {aviso && <p className={styles.aviso} data-erro={aviso.erro ? "true" : undefined} role={aviso.erro ? "alert" : "status"}>{aviso.texto}</p>}
 
-      {secao === "cadastros" && <SecaoPlanilha titulo="Cadastros" rotuloNome="Pessoa" colunas={["Cadastro em"]} semBarra larguraAcao="200px"
+      {secao === "cadastros" && <SecaoPlanilha titulo="Cadastros" rotuloNome="Pessoa" colunas={["Cadastro em", "E-mail"]} semBarra larguraAcao="200px"
         carregando={!pendentes} erro={erroCadastros}
         vazio={pendentes?.length === 0 ? "Nenhum cadastro esperando aprovação." : undefined}
         numeros={[
@@ -211,13 +211,16 @@ function PainelAdmin({ meuId, secao }: { meuId: string; secao: Secao }) {
         {pendentes?.map((u) => (
           <LinhaPlanilha key={u.id} marca={<InicialFicha texto={u.nome} />} nome={<span>{u.nome}</span>} detalhe={email(u.email)}
             acao={<>
-              <Botao variante="primario" disabled={ocupado} icone={<Check size={15} strokeWidth={2.5} aria-hidden="true" />}
+              <Botao variante="primario" disabled={ocupado || !u.emailConfirmado} icone={<Check size={15} strokeWidth={2.5} aria-hidden="true" />}
                 aria-label={`Aprovar ${u.nome}`}
                 onClick={() => void rodar(() => adminService.aprovar(u.id), `${u.nome} pode entrar.`)}>Aprovar</Botao>
               <Botao disabled={ocupado} icone={<X size={15} strokeWidth={2.5} aria-hidden="true" />}
                 aria-label={`Recusar ${u.nome}`} onClick={() => setPedido({ tipo: "recusar", u })}>Recusar</Botao>
             </>}>
             <CelulaPlanilha rotulo="Cadastro em">{dataBR(u.criadoEm)}</CelulaPlanilha>
+            <CelulaPlanilha rotulo="E-mail">
+              {u.emailConfirmado ? <Etiqueta tom="positivo">Confirmado</Etiqueta> : <Etiqueta tom="alerta">Não confirmado</Etiqueta>}
+            </CelulaPlanilha>
           </LinhaPlanilha>
         ))}
       </SecaoPlanilha>}

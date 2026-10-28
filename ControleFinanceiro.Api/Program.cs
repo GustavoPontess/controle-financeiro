@@ -127,6 +127,8 @@ builder.Services.AddScoped<IPasswordResetDispatcher, HangfirePasswordResetDispat
 builder.Services.AddScoped<PasswordResetEmailJob>();
 builder.Services.AddScoped<IEmailCadastroDispatcher, HangfireEmailCadastroDispatcher>();
 builder.Services.AddScoped<EmailPedidoRecebidoJob>();
+builder.Services.AddScoped<ConfirmacaoCadastroService>();
+builder.Services.AddScoped<PurgaCadastroNaoConfirmadoJob>();
 builder.Services.AddScoped<CsrfTokenService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<RelatorioService>();
@@ -242,6 +244,17 @@ builder.Services.AddRateLimiter(options =>
             {
                 PermitLimit = 3,
                 Window = TimeSpan.FromHours(1),
+                QueueLimit = 0,
+            }));
+
+    // Links de e-mail sem sessão: pedido recebido (confirmar e-mail / não fui eu) e "não fui eu" da senha nova. O token tem 512 bits, então isto só
+    // segura abuso; folga pra quem abre o link mais de uma vez.
+    options.AddPolicy("auth-link-cadastro", ctx =>
+        RateLimitPartition.GetFixedWindowLimiter(PartitionByIp(ctx), _ =>
+            new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = isDev ? 100 : 10,
+                Window = TimeSpan.FromMinutes(15),
                 QueueLimit = 0,
             }));
 
@@ -605,6 +618,8 @@ if (!isTesting)
         recManager.AddOrUpdate<PurgaExclusaoExpiradaJob>("purga-exclusao-lgpd", job => job.ExecuteAsync(), "0 4 * * *", utc);
         // Retenção Marco Civil (Art. 15): 4h30 UTC, purga registros de acesso com guarda de 6 meses vencida.
         recManager.AddOrUpdate<PurgaRegistroAcessoExpiradoJob>("purga-registro-acesso-marco-civil", job => job.ExecuteAsync(), "30 4 * * *", utc);
+        // Pedido de acesso que ninguém confirmou no prazo (o e-mail pode ser de quem nunca pediu nada).
+        recManager.AddOrUpdate<PurgaCadastroNaoConfirmadoJob>("purga-cadastro-nao-confirmado", job => job.ExecuteAsync(), "45 4 * * *", utc);
     });
 }
 

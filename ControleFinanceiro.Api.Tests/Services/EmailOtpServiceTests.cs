@@ -17,7 +17,7 @@ public class EmailOtpServiceTests
     // Sender stub que captura o último código enviado (pra o teste conhecer o PIN gerado).
     private sealed class SenderSpy : IContaEmailSender
     {
-        public Task EnviarPedidoRecebidoAsync(string email, CancellationToken ct = default) => Task.CompletedTask;
+        public Task EnviarPedidoRecebidoAsync(string email, string token, DateTime expiraEm, CancellationToken ct = default) => Task.CompletedTask;
         public Task EnviarAcessoLiberadoAsync(string email, CancellationToken ct = default) => Task.CompletedTask;
         public string? UltimoCodigo;
         public int Avisos;
@@ -117,5 +117,36 @@ public class EmailOtpServiceTests
 
         Assert.False(await svc.ValidarAsync(u.Id, TipoOtpEmail.ExcluirConta, primeiro)); // antigo não vale
         Assert.True(await svc.ValidarAsync(u.Id, TipoOtpEmail.ExcluirConta, spy.UltimoCodigo)); // só o último
+    }
+
+    [Fact]
+    public async Task GerarEnviar_maisDe3PorHora_recusa_semMandarEmail()
+    {
+        using var ctx = CreateContext();
+        var spy = new SenderSpy();
+        var svc = new EmailOtpService(ctx, spy);
+        var u = Seed(ctx);
+        for (var i = 0; i < EmailOtpService.MaxCodigosPorHora; i++)
+            await svc.GerarEnviarAsync(u, TipoOtpEmail.ExcluirConta);
+        var ultimo = spy.UltimoCodigo;
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => svc.GerarEnviarAsync(u, TipoOtpEmail.ExcluirConta));
+
+        Assert.Equal(EmailOtpService.MensagemMuitosCodigos, ex.Message);
+        Assert.Equal(ultimo, spy.UltimoCodigo); // nenhum e-mail novo
+        Assert.True(await svc.ValidarAsync(u.Id, TipoOtpEmail.ExcluirConta, ultimo)); // o último pedido segue valendo
+    }
+
+    [Fact]
+    public void Hash_doCodigo_naoEhOSha256Puro_eDependeDaPessoa()
+    {
+        var a = Guid.NewGuid();
+        var b = Guid.NewGuid();
+
+        // Com SHA-256 puro, 1 milhão de códigos saíam do banco vazado em segundos: o resumo leva chave do servidor.
+        Assert.NotEqual(OpaqueTokenHasher.Hash("123456"), CodigoOtpHasher.Hash(a, "123456"));
+        Assert.NotEqual(CodigoOtpHasher.Hash(a, "123456"), CodigoOtpHasher.Hash(b, "123456"));
+        Assert.True(CodigoOtpHasher.Confere(CodigoOtpHasher.Hash(a, "123456"), a, "123456"));
+        Assert.False(CodigoOtpHasher.Confere(CodigoOtpHasher.Hash(a, "123456"), b, "123456"));
     }
 }

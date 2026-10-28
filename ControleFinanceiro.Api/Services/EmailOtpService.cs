@@ -9,14 +9,18 @@ namespace ControleFinanceiro.Api.Services;
 
 /// <summary>
 /// Serviço genérico de código OTP (PIN) por e-mail — 2º fator de RESERVA em ações sensíveis (nunca
-/// login). Código de 6 dígitos (CSPRNG), guardado só como hash, validade curta, uso único, escopado
-/// por finalidade, teto de tentativas. Ver `docs/SEGURANCA_BEST_PRACTICES.md` §0. E-mail é fator
+/// login). Código de 6 dígitos (CSPRNG), guardado só como HMAC com chave fora do banco (<see cref="CodigoOtpHasher"/>),
+/// validade curta, uso único, escopado por finalidade, teto de tentativas e de códigos por hora. Ver `docs/SEGURANCA_BEST_PRACTICES.md` §0. E-mail é fator
 /// fraco: só somado à senha atual, nunca como bypass de TOTP ativo.
 /// </summary>
 public class EmailOtpService
 {
     public const int ValidadeMinutos = 10;
     public const int MaxTentativas = 5;
+    /// <summary>Teto de códigos por hora (por pessoa e finalidade). Sem ele, pedir código novo dava mais 5 chutes
+    /// a cada pedido.</summary>
+    public const int MaxCodigosPorHora = 3;
+    public const string MensagemMuitosCodigos = "Você já pediu muitos códigos. Espere uma hora e peça de novo.";
 
     private readonly AppDbContext _context;
     private readonly IContaEmailSender _sender;
@@ -31,6 +35,12 @@ public class EmailOtpService
     /// hash e envia por e-mail. Só o hash fica no banco.</summary>
     public async Task GerarEnviarAsync(Usuario usuario, TipoOtpEmail finalidade)
     {
+        var umaHora = DateTime.UtcNow.AddHours(-1);
+        var recentes = await _context.EmailOtps
+            .CountAsync(o => o.UsuarioId == usuario.Id && o.Finalidade == finalidade && o.CriadoEm > umaHora);
+        if (recentes >= MaxCodigosPorHora)
+            throw new InvalidOperationException(MensagemMuitosCodigos);
+
         // Só o último código vale: queima os pendentes da mesma finalidade.
         var pendentes = await _context.EmailOtps
             .Where(o => o.UsuarioId == usuario.Id && o.Finalidade == finalidade && !o.Usado)
@@ -43,7 +53,7 @@ public class EmailOtpService
             Id = Guid.NewGuid(),
             UsuarioId = usuario.Id,
             Finalidade = finalidade,
-            CodigoHash = OpaqueTokenHasher.Hash(codigo),
+            CodigoHash = CodigoOtpHasher.Hash(usuario.Id, codigo),
             ExpiraEm = DateTime.UtcNow.AddMinutes(ValidadeMinutos),
             Usado = false,
             Tentativas = 0,
@@ -68,7 +78,7 @@ public class EmailOtpService
         if (otp is null)
             return false;
 
-        if (!string.IsNullOrEmpty(codigo) && otp.CodigoHash == OpaqueTokenHasher.Hash(codigo))
+        if (!string.IsNullOrEmpty(codigo) && codigo.Length <= 12 && CodigoOtpHasher.Confere(otp.CodigoHash, usuarioId, codigo))
         {
             otp.Usado = true;
             await _context.SaveChangesAsync();

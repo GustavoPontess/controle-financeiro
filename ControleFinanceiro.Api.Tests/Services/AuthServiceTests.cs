@@ -638,11 +638,39 @@ public class AuthServiceTests
         u.Status = status;
         await ctx.SaveChangesAsync();
         var sender = new Mock<IContaEmailSender>();
+        var confirmacao = new ConfirmacaoCadastroService(ctx, Microsoft.Extensions.Logging.Abstractions.NullLogger<ConfirmacaoCadastroService>.Instance);
 
-        await new ControleFinanceiro.Api.Infrastructure.Jobs.EmailPedidoRecebidoJob(ctx, sender.Object).ExecuteAsync(u.Id);
+        await new ControleFinanceiro.Api.Infrastructure.Jobs.EmailPedidoRecebidoJob(ctx, confirmacao, sender.Object).ExecuteAsync(u.Id);
 
-        sender.Verify(s => s.EnviarPedidoRecebidoAsync("fila@test.com", It.IsAny<CancellationToken>()),
+        sender.Verify(s => s.EnviarPedidoRecebidoAsync("fila@test.com", It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
             manda ? Times.Once() : Times.Never());
+    }
+
+    // ── "Não fui eu" do e-mail de senha nova ──
+
+    [Fact]
+    public async Task CancelarResetSenha_linkParaDeValer_eAContaNaoTrava()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuario(ctx, "cancela@test.com");
+        const string bruto = "token-bruto-de-teste";
+        ctx.PasswordResetTokens.Add(new PasswordResetToken
+        {
+            Id = Guid.NewGuid(), UsuarioId = u.Id, Token = OpaqueTokenHasher.Hash(bruto),
+            ExpiresAt = DateTime.UtcNow.AddHours(1), Usado = false,
+        });
+        await ctx.SaveChangesAsync();
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+
+        await auth.CancelarResetSenhaAsync(bruto);
+        await auth.CancelarResetSenhaAsync("nao-existe"); // link inventado: mesma resposta, sem erro
+
+        Assert.True((await ctx.PasswordResetTokens.SingleAsync()).Usado);
+        await Assert.ThrowsAsync<ArgumentException>(() => auth.ResetSenhaAsync(new DTOs.Auth.ResetPasswordDto
+        {
+            Token = bruto, NovaSenha = "uma frase longa e boa", ConfirmarNovaSenha = "uma frase longa e boa",
+        }));
+        Assert.Equal(StatusUsuario.Ativo, (await ctx.Usuarios.FindAsync(u.Id))!.Status); // conta não trava
     }
 
     // ── /auth/me expõe IsAdmin (o front usa pra gate/entrada do painel admin) ──

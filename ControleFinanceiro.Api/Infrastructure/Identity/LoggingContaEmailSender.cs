@@ -36,9 +36,13 @@ public class LoggingContaEmailSender : IContaEmailSender
         return Task.CompletedTask;
     }
 
-    public Task EnviarPedidoRecebidoAsync(string email, CancellationToken ct = default)
+    public Task EnviarPedidoRecebidoAsync(string email, string token, DateTime expiraEm, CancellationToken ct = default)
     {
-        _logger.LogInformation("E-mail de pedido recebido disparado (sem SMTP configurado; destinatário omitido do log).");
+        if (_env.IsDevelopment())
+            _logger.LogWarning("[DEV] Pedido recebido de {Email}: /confirmar-email#token={Token} ou /nao-fui-eu#token={Token}. Em produção iria por e-mail.",
+                email, token, token);
+        else
+            _logger.LogInformation("E-mail de pedido recebido disparado (sem SMTP configurado; destinatário e link omitidos do log).");
         return Task.CompletedTask;
     }
 
