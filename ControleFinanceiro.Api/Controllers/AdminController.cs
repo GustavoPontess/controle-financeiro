@@ -1,3 +1,5 @@
+using ControleFinanceiro.Api.Infrastructure.Security;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 using ControleFinanceiro.Api.DTOs.Admin;
 using ControleFinanceiro.Api.DTOs.Common;
@@ -112,6 +114,7 @@ public class AdminController : ControllerBase
 
     /// <summary>Exporta os dados pessoais do usuário (direito de acesso/portabilidade, LGPD Art. 18).</summary>
     [HttpGet("usuarios/{id:guid}/exportar")]
+    [EnableRateLimiting(LimitesDeUso.PoliticaPesada)]
     public async Task<ActionResult<ExportacaoUsuarioDto>> Exportar(Guid id)
         => Ok(await _lgpd.ExportarAsync(id, AdminId(), AdminEmail()));
 

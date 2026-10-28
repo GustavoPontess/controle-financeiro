@@ -577,6 +577,7 @@ public class AuthController : ControllerBase
     /// <summary>Baixa os próprios dados (LGPD acesso/portabilidade). Auditado como ação do titular.</summary>
     [Authorize]
     [HttpGet("conta/exportar")]
+    [EnableRateLimiting(LimitesDeUso.PoliticaPesada)]
     public async Task<ActionResult<DTOs.Admin.ExportacaoUsuarioDto>> ExportarMeusDados()
         => Ok(await _contaService.ExportarMeusDadosAsync(ExigirUsuarioId()));
 

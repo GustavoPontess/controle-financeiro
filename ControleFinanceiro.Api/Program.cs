@@ -218,8 +218,8 @@ var healthChecks = builder.Services.AddHealthChecks()
 if (!isTesting)
     healthChecks.AddHangfire(options => options.MinimumAvailableServers = 1, name: "hangfire", tags: new[] { "ready" });
 
-// Rate Limiting — protege endpoints de autenticação contra brute force.
-// Todas as políticas particionam por IP de origem.
+// Rate Limiting — limite geral de uso (LimitesDeUso) + políticas das portas de entrada contra brute force.
+// As políticas de entrada particionam por IP de origem; a geral e a "pesado", pela pessoa logada.
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -288,6 +288,11 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(10),
                 QueueLimit = 0,
             }));
+
+    // Limite geral: todo pedido conta (por pessoa logada, ou por IP sem login). Ver LimitesDeUso.
+    options.GlobalLimiter = LimitesDeUso.Geral(isDev);
+    // Rotas pesadas (importar extrato, exportar dados): limite a mais, por pessoa.
+    options.AddPolicy(LimitesDeUso.PoliticaPesada, ctx => LimitesDeUso.Pesado(ctx, isDev));
 
     options.OnRejected = async (context, token) =>
     {
@@ -490,15 +495,19 @@ builder.Services.AddCors(options =>
 // container recebe HTTP puro internamente), `Request.IsHttps` fica sempre false, mesmo
 // o usuário estando em HTTPS de verdade. Isso quebrava o `Secure` do cookie de sessão
 // (AuthController.SetAuthCookies usa Request.IsHttps), confirmado simulando o header
-// X-Forwarded-Proto sem esse middleware. KnownNetworks/KnownProxies limpos porque o
-// container só é alcançável pelo proxy do próprio host (rede interna isolada), sem IP
-// fixo de proxy pra fixar. IMPORTANTE: se a hospedagem escolhida NÃO isolar assim a
-// rede do container, restringir KnownProxies ao IP do proxy antes de confiar no header.
+// X-Forwarded-Proto sem esse middleware.
+// QUEM PODE DIZER O IP DO CLIENTE (2026-10-28): só quem fala com a API de dentro de uma rede interna (as faixas
+// privadas que o Docker usa e a própria máquina; ProxiesConfiaveis.Redes). Ninguém da internet chega com IP de rede
+// interna (o container só é alcançável pelo kamal-proxy), então cabeçalho X-Forwarded-For de fora é ignorado e
+// ninguém troca o próprio IP pra escapar dos limites por IP. Sem número de rede pra configurar: a rede Docker do
+// kamal-proxy pode mudar que nada quebra. Teste de fora em 2026-10-28: o kamal-proxy já descarta o X-Forwarded-For
+// forjado; isto é a segunda trava, na API.
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-    options.KnownIPNetworks.Clear(); // .NET 10: KnownNetworks obsoleto → KnownIPNetworks (mesmo backing, comportamento idêntico)
+    options.KnownIPNetworks.Clear(); // .NET 10: KnownNetworks obsoleto → KnownIPNetworks
     options.KnownProxies.Clear();
+    foreach (var rede in ProxiesConfiaveis.Redes) options.KnownIPNetworks.Add(rede);
 });
 
 var app = builder.Build();
@@ -580,10 +589,12 @@ app.UseCors("AllowFrontend");
 
 // Rate limiter desligado em teste (a suíte HTTP faz vários logins na mesma instância e bateria no
 // 429). Não muda dev/prod. As políticas seguem registradas (AddRateLimiter); só o middleware sai.
+app.UseAuthentication();
+
+// Depois da autenticação: o limite geral conta pela PESSOA logada (precisa do login já lido do cookie).
 if (!isTesting)
     app.UseRateLimiter();
 
-app.UseAuthentication();
 app.UseAuthorization();
 
 // Guarda multi-aba (multi-conta): barra escrita quando a aba está numa conta diferente da ativa

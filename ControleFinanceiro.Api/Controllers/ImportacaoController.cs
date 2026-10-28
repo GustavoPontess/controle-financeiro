@@ -1,3 +1,5 @@
+using ControleFinanceiro.Api.Infrastructure.Security;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
@@ -44,6 +46,7 @@ public class ImportacaoController : ControllerBase
     /// <c>precisaMapear</c>, as colunas e uma amostra; a tela manda de novo com <c>mapeamento</c>.
     /// </summary>
     [HttpPost("preview")]
+    [EnableRateLimiting(LimitesDeUso.PoliticaPesada)]
     [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(PreviewImportacaoDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Preview([FromForm] PreviewUploadForm form)
@@ -60,6 +63,7 @@ public class ImportacaoController : ControllerBase
     /// Idempotency-Key (uma por prévia): repetir não importa de novo.
     /// </summary>
     [HttpPost("confirmar")]
+    [EnableRateLimiting(LimitesDeUso.PoliticaPesada)]
     [ProducesResponseType(typeof(ResultadoImportacaoDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Confirmar([FromBody] ConfirmarImportacaoDto dto,
         [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey)
