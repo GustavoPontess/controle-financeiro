@@ -15,12 +15,14 @@ public class MigrationReorganizaCategoriasDeInvestimentoTests
         new(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql("Host=unused").Options);
 
     [Fact]
-    public void Migration_EstaRegistrada_EEhAMaisRecente()
+    public void Migration_EstaRegistrada_DepoisDaAddCategoriaInvestimento()
     {
         using var ctx = ContextoNpgsqlSemBanco();
         var ids = ctx.Database.GetMigrations().ToList();
-        Assert.EndsWith("_ReorganizaCategoriasDeInvestimento", ids[^1]); // nada gerado por cima sem querer
-        Assert.EndsWith("_AddCategoriaInvestimento", ids[^2]);
+        // Logo depois de AddCategoriaInvestimento (a mais recente agora é a ConfirmacaoEmailCadastro, 2026-10-27).
+        var i = ids.FindIndex(id => id.EndsWith("_ReorganizaCategoriasDeInvestimento"));
+        Assert.True(i > 0 && ids[i - 1].EndsWith("_AddCategoriaInvestimento"));
+        Assert.EndsWith("_ConfirmacaoEmailCadastro", ids[^1]); // nada gerado por cima sem querer
     }
 
     [Fact]
