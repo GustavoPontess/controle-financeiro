@@ -1,6 +1,6 @@
 // Cliente HTTP do v2 — a mesma API do app atual, pelo proxy do Vite (/api → :5293). Cookies httpOnly
 // (jwt + refresh), CSRF no header, refresh single-flight no 401 e redirect pro login quando a sessão
-// morre. Versão enxuta do axiosConfig do app atual (sem multi-conta).
+// morre. Multi-conta: cada aba diz qual conta ela acha ativa (X-Active-Account).
 import axios from "axios"
 
 declare module "axios" {
@@ -18,10 +18,18 @@ function cookie(nome: string): string | null {
   return null
 }
 
+// Conta que ESTA aba acha ativa. O cookie da sessão é um só pra todas as abas: depois de trocar de conta
+// numa aba, outra aba aberta antes gravaria na conta nova achando que é a antiga. Com o header, a API
+// recusa a escrita (409 conta_desatualizada) quando a conta da aba não bate com a da sessão.
+// O AuthProvider atualiza a cada /auth/me (login, MFA, troca de conta, abrir o app) e limpa no sair.
+let contaDaAba: string | null = null
+export function definirContaDaAba(id: string | null) { contaDaAba = id }
+
 api.interceptors.request.use((config) => {
   if (["post", "put", "delete", "patch"].includes(config.method?.toLowerCase() ?? "")) {
     const csrf = cookie("X-CSRF-Token")
     if (csrf) config.headers["X-CSRF-Token"] = csrf
+    if (contaDaAba) config.headers["X-Active-Account"] = contaDaAba
   }
   return config
 })
@@ -43,6 +51,7 @@ export function mensagemDeErro(erro: unknown): string {
 let refreshEmVoo: Promise<unknown> | null = null
 const renovarSessao = () => (refreshEmVoo ??= api.post("/auth/refresh").finally(() => { refreshEmVoo = null }))
 const REFRESH_EM_CORRIDA = "REFRESH_EM_CORRIDA"
+const CONTA_DESATUALIZADA = "conta_desatualizada"
 const codigo = (e: unknown) => (e as { response?: { data?: { code?: unknown } } })?.response?.data?.code
 
 api.interceptors.response.use(
@@ -65,7 +74,8 @@ api.interceptors.response.use(
       if (!window.location.pathname.startsWith("/entrar") && !ehAuth) window.location.href = "/entrar"
       return Promise.reject(erro)
     }
-    if (!erro.config?.skipErrorToast)
+    // Aba defasada (trocou de conta em outra aba): avisa sempre, mesmo em tela que mostra o erro no campo.
+    if (!erro.config?.skipErrorToast || codigo(erro) === CONTA_DESATUALIZADA)
       window.dispatchEvent(new CustomEvent("apiError", { detail: { message: mensagemDeErro(erro) } }))
     return Promise.reject(erro)
   },
