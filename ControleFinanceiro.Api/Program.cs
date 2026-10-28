@@ -572,6 +572,9 @@ if (app.Environment.IsDevelopment())
 // Primeiro middleware de todos — precisa rodar antes de qualquer coisa que
 // leia Request.Scheme/IsHttps (cookie Secure, HTTPS redirect, etc).
 app.UseForwardedHeaders();
+// Atrás da Cloudflare, o IP real vem no CF-Connecting-IP, mas só vale se quem entregou o pedido é a Cloudflare
+// (faixas oficiais em IpRealCloudflare). Antes da Cloudflare ligar, não muda nada. Precisa vir antes dos limites por IP.
+app.Use((ctx, next) => { IpRealCloudflare.Aplicar(ctx); return next(ctx); });
 
 app.UseMiddleware<CorrelationIdMiddleware>();
 
