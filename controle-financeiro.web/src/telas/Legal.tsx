@@ -82,7 +82,7 @@ export function Privacidade() {
         <p className={styles.p}>Você pode pedir acesso, correção, exclusão ou exportação dos seus dados a qualquer momento, inclusive dados de empréstimo sobre você registrados por outra pessoa, mesmo sem ter conta no Pontes. É só falar com a gente (contato abaixo); respondemos dentro do prazo legal.</p>
       </Secao>
       <Secao titulo="Com quem compartilhamos">
-        <p className={styles.p}>Com ninguém, exceto: a outra pessoa de um empréstimo vinculado (ela vê o que você registrou sobre a dívida entre vocês dois) e provedores técnicos que hospedam o app (banco de dados, servidor e envio de e-mail). Eles não usam seus dados pra nada além de manter o Pontes no ar.</p>
+        <p className={styles.p}>Com ninguém, exceto: a outra pessoa de um empréstimo vinculado (ela vê o que você registrou sobre a dívida entre vocês dois) e provedores técnicos que hospedam e protegem o app (banco de dados, servidor, envio de e-mail e a Cloudflare, que fica na frente do site contra ataques e, nas telas de entrar, pedir acesso e recuperar senha, confere que quem preenche não é um robô; pra isso ela vê o endereço IP e dados do navegador). Eles não usam seus dados pra nada além de manter o Pontes no ar e seguro.</p>
       </Secao>
       <Secao titulo="Segurança">
         <p className={styles.p}>Senha protegida com Argon2id (padrão recomendado pela OWASP), conexão sempre criptografada (HTTPS), sessão em cookie seguro. Detalhe técnico completo em nossa documentação de segurança, disponível sob pedido.</p>

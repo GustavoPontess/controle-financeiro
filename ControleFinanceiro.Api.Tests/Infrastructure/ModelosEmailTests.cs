@@ -152,6 +152,20 @@ public class ModelosEmailTests
     }
 
     [Fact]
+    public void TentativasLogin_DizQueNinguemEntrou_SemRevelarOEmailInteiro()
+    {
+        var m = ModelosEmail.TentativasLogin("https://app.pontes.test", "ana@teste.com", 5, Expira);
+
+        Assert.Contains("tentou entrar", m.Assunto);
+        Assert.Contains("5 vezes", m.Texto);
+        Assert.Contains("Ninguém entrou", m.Html);
+        Assert.Contains("an•••@teste.com", m.Texto);
+        Assert.DoesNotContain("ana@teste.com", m.Html);
+        Assert.Contains("https://app.pontes.test/entrar", m.Html);
+        Assert.DoesNotContain("—", m.Texto);
+    }
+
+    [Fact]
     public void Html_EscapaOQueVemDeFora()
     {
         var m = ModelosEmail.CodigoOtp("x@<i>y</i>.com", "<b>x</b>", TipoOtpEmail.ExcluirConta, Expira);

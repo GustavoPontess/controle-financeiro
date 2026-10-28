@@ -1,8 +1,11 @@
 # Rodam no Linux (VPS / containers): fim de linha Unix sempre, mesmo com checkout no Windows.
 *.sh text eol=lf
 deploy/** text eol=lf
-controle-financeiro.v2/Caddyfile text eol=lf
-controle-financeiro.v2/Dockerfile text eol=lf
+controle-financeiro.web/Caddyfile text eol=lf
+controle-financeiro.web/Dockerfile text eol=lf
+# O CSP do Caddyfile libera o script inline do index.html pelo hash, que muda com o fim de linha: sem isto o build no
+# Windows (CRLF) acusava hash errado (scripts/conferirCspInline.mjs) mesmo com o arquivo certo.
+controle-financeiro.web/index.html text eol=lf
 ControleFinanceiro.Api/Dockerfile text eol=lf
 .kamal/** text eol=lf
 config/deploy.*.yml text eol=lf

@@ -33,10 +33,6 @@ const contaService = {
   excluirConta: (senhaAtual: string, codigo: string) =>
     api.post("/auth/conta/excluir", { senhaAtual, codigo }, { skipErrorToast: true }).then(() => undefined),
 
-  /** Reativa a própria conta na carência (usuário deslogado). Depois é só logar de novo. */
-  reativarConta: (email: string, senha: string) =>
-    api.post<{ mensagem: string }>("/auth/conta/reativar", { email, senha }, { skipErrorToast: true }).then((r) => r.data),
-
   /** Baixa os próprios dados (LGPD acesso/portabilidade). */
   exportarMeusDados: () =>
     api.get<ExportacaoUsuario>("/auth/conta/exportar", { skipErrorToast: true }).then((r) => r.data),

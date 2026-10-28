@@ -41,6 +41,9 @@ public sealed class SmtpEmailSender : IPasswordResetEmailSender, IContaEmailSend
     public Task EnviarExclusaoCanceladaAsync(string email, CancellationToken ct = default) =>
         EnviarAsync(email, ModelosEmail.ExclusaoCancelada(_opcoes.AppUrl, email, DateTime.UtcNow), TipoRemetente.Seguranca, ct);
 
+    public Task EnviarTentativasLoginAsync(string email, int falhas, DateTime quandoUtc, CancellationToken ct = default) =>
+        EnviarAsync(email, ModelosEmail.TentativasLogin(_opcoes.AppUrl, email, falhas, quandoUtc), TipoRemetente.Seguranca, ct);
+
     public Task EnviarContaApagadaAsync(string email, CancellationToken ct = default) =>
         EnviarAsync(email, ModelosEmail.ContaApagada(email, DateTime.UtcNow), TipoRemetente.Seguranca, ct);
 

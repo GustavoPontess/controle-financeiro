@@ -4,7 +4,7 @@
 // como o cookie é httpOnly, a LISTA (nome, e-mail) mora no navegador. Login frio começa a lista do zero
 // (o servidor já revogou as contas de quem usou o navegador antes); "Sair" sai de todas.
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
-import { api, definirContaDaAba, mensagemDeErro } from "../api/cliente"
+import { api, codigoDoErro, definirContaDaAba, esperaDoLimite, mensagemDeErro } from "../api/cliente"
 import { AuthContext, type ContaConectada, type ResultadoEntrar, type Usuario } from "./contexto"
 
 const SEM_TOAST = { skipErrorToast: true } as const
@@ -37,15 +37,17 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { void recarregar() }, [recarregar])
 
-  const entrar = useCallback(async (email: string, senha: string, manterConectado: boolean): Promise<ResultadoEntrar> => {
-    let d: { mfaRequerido?: boolean; mfaChallengeToken?: string; contaMarcadaExclusao?: boolean; diasRestantes?: number | null }
+  const entrar = useCallback(async (email: string, senha: string, manterConectado: boolean, turnstileToken?: string | null): Promise<ResultadoEntrar> => {
+    let d: { mfaRequerido?: boolean; mfaChallengeToken?: string; contaMarcadaExclusao?: boolean; diasRestantes?: number | null; reativacaoToken?: string | null }
     try {
-      d = (await api.post("/auth/login", { email, password: senha, manterConectado }, SEM_TOAST)).data ?? {}
+      d = (await api.post("/auth/login", { email, password: senha, manterConectado, turnstileToken: turnstileToken ?? undefined }, SEM_TOAST)).data ?? {}
     } catch (e) {
-      throw new Error(mensagemDeErro(e))
+      // 429: leva junto quantos segundos esperar (a tela mostra o contador e trava o botão). O code diz se faltou a
+      // verificação "não sou robô".
+      throw Object.assign(new Error(mensagemDeErro(e)), { esperarSegundos: esperaDoLimite(e), codigo: codigoDoErro(e) })
     }
     if (d.mfaRequerido && d.mfaChallengeToken) return { tipo: "mfa", challengeToken: d.mfaChallengeToken }
-    if (d.contaMarcadaExclusao) return { tipo: "exclusao", diasRestantes: d.diasRestantes ?? null }
+    if (d.contaMarcadaExclusao) return { tipo: "exclusao", diasRestantes: d.diasRestantes ?? null, reativacaoToken: d.reativacaoToken ?? null }
     guardar([]) // login frio: a lista começa só com esta conta
     await recarregar()
     return { tipo: "ok" }
@@ -61,9 +63,10 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     await recarregar()
   }, [recarregar, guardar])
 
-  const reativar = useCallback(async (email: string, senha: string) => {
+  // Reativar na carência: só o passe que o login devolveu ao provar a senha (nunca e-mail e senha de novo).
+  const reativar = useCallback(async (reativacaoToken: string) => {
     try {
-      await api.post("/auth/conta/reativar", { email, senha }, SEM_TOAST)
+      await api.post("/auth/conta/reativar", { token: reativacaoToken }, SEM_TOAST)
     } catch (e) {
       throw new Error(mensagemDeErro(e))
     }
@@ -76,12 +79,12 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     setUsuario(null)
   }, [guardar])
 
-  const adicionarConta = useCallback(async (email: string, senha: string) => {
+  const adicionarConta = useCallback(async (email: string, senha: string, turnstileToken?: string | null) => {
     let d: { contaMarcadaExclusao?: boolean }
     try {
-      d = (await api.post("/auth/add-account", { email, password: senha }, SEM_TOAST)).data ?? {}
+      d = (await api.post("/auth/add-account", { email, password: senha, turnstileToken: turnstileToken ?? undefined }, SEM_TOAST)).data ?? {}
     } catch (e) {
-      throw new Error(mensagemDeErro(e))
+      throw Object.assign(new Error(mensagemDeErro(e)), { esperarSegundos: esperaDoLimite(e), codigo: codigoDoErro(e) })
     }
     if (d.contaMarcadaExclusao) throw new Error("Essa conta está marcada pra exclusão. Entre por ela na tela de login pra reativar.")
     await recarregar()

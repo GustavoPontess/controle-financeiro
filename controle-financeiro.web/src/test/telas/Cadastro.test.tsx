@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
 
 vi.mock("../../services/cadastroService", () => ({ cadastrar: vi.fn() }))
+vi.mock("../../services/verificacaoService", () => ({ chaveDaVerificacao: () => Promise.resolve(null) }))
 vi.mock("../../auth/useAuth", () => ({ useAuth: () => ({ autenticado: false, carregando: false }) }))
 import { cadastrar } from "../../services/cadastroService"
 import Cadastro from "../../telas/Cadastro"

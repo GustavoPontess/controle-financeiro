@@ -12,6 +12,7 @@ import { cadastrar } from "../services/cadastroService"
 import { mensagemDeErro } from "../api/cliente"
 import { useAuth } from "../auth/useAuth"
 import { ehErroDaSenha, SENHA_MAX, senhaValida } from "../dominio/senha"
+import VerificacaoHumana, { useVerificacaoHumana } from "../componentes/VerificacaoHumana"
 
 const MAX_NOME = 200
 const MAX_EMAIL = 255
@@ -32,6 +33,8 @@ export default function Cadastro() {
   const [enviando, setEnviando] = useState(false)
   const [enviado, setEnviado] = useState(false)
   const limpa = (k: keyof Erros) => setErros((e) => ({ ...e, [k]: undefined }))
+  // Pedir acesso manda e-mail pro endereço digitado: sempre com o "não sou robô" (quando ligado).
+  const verif = useVerificacaoHumana()
   const hoje = new Date().toISOString().slice(0, 10)
 
   // DEV: a barra de estados põe a tela direto em cada passo (sem API). Some no build.
@@ -65,14 +68,17 @@ export default function Cadastro() {
     const e = validar()
     setErros(e)
     if (Object.keys(e).length > 0) return
+    if (verif.chave && !verif.token) { setErro("Confirme que você não é um robô."); return }
     setEnviando(true)
     try {
-      await cadastrar({ nome: nome.trim(), email: email.trim(), dataNascimento: nascimento || null, password: senha, confirmPassword: confirmar })
+      await cadastrar({ nome: nome.trim(), email: email.trim(), dataNascimento: nascimento || null, password: senha, confirmPassword: confirmar,
+        turnstileToken: verif.token ?? undefined })
       setEnviado(true)
     } catch (err) {
       const msg = mensagemDeErro(err)
       if (ehErroDaSenha(msg)) setErros({ senha: msg })
       else setErro(msg)
+      verif.novaRodada() // o token já foi gasto
     } finally {
       setEnviando(false)
     }
@@ -116,6 +122,7 @@ export default function Cadastro() {
               <span>Li e aceito a <Link to="/privacidade" target="_blank" rel="noreferrer">Política de Privacidade</Link>.</span>
               {erros.privacidade && <span className="erro">{erros.privacidade}</span>}
             </label>
+            {verif.chave && <VerificacaoHumana chave={verif.chave} rodada={verif.rodada} aoMudar={verif.setToken} />}
             <button className="btn btn--acc btn-cheio" type="submit" disabled={enviando}>{enviando ? "Enviando…" : "Enviar pedido"}</button>
           </form>
           <p className="rodape-a">Ao pedir acesso você concorda com os <Link to="/termos-de-uso" target="_blank" rel="noreferrer">Termos de Uso</Link>.</p>

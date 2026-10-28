@@ -65,14 +65,16 @@ public class Usuario
     /// onboarding guiado. Evita reexibir o fluxo de primeiros passos.</summary>
     public bool OnboardingConcluido { get; set; }
 
-    /// <summary>Proteção contra força bruta (OWASP Authentication Cheat Sheet) — contador
-    /// por CONTA, não por IP (rate-limit por IP já existe, mas é contornável trocando IP).
-    /// Zerado no login bem-sucedido e no reset de senha.</summary>
+    /// <summary>Senhas erradas SEGUIDAS desta conta (sem janela de tempo). Na 100ª a conta pede senha nova
+    /// (NIST SP 800-63B rev4: no máximo 100). Zerado no login certo e na senha nova. A espera e o Turnstile
+    /// contam pelo e-mail digitado (<see cref="TentativaLogin"/>), não por aqui.</summary>
     public int FalhasLoginConsecutivas { get; set; }
 
-    /// <summary>Timestamp da última falha de login — base do delay progressivo
-    /// (dobra a cada erro, OWASP) calculado em <c>AuthService.LoginAsync</c>.</summary>
+    /// <summary>Quando foi a última senha errada desta conta (só registro; a espera usa <see cref="TentativaLogin"/>).</summary>
     public DateTime? UltimaFalhaLoginEm { get; set; }
+
+    /// <summary>Último e-mail "Alguém tentou entrar na sua conta" (no máximo 1 a cada 24 h).</summary>
+    public DateTime? AvisoTentativasEm { get; set; }
 
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 

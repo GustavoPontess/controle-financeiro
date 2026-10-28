@@ -42,6 +42,12 @@ public class LoggingContaEmailSender : IContaEmailSender
         return Task.CompletedTask;
     }
 
+    public Task EnviarTentativasLoginAsync(string email, int falhas, DateTime quandoUtc, CancellationToken ct = default)
+    {
+        _logger.LogInformation("E-mail de tentativas de login disparado (sem SMTP configurado; destinatário omitido do log).");
+        return Task.CompletedTask;
+    }
+
     public Task EnviarContaApagadaAsync(string email, CancellationToken ct = default)
     {
         _logger.LogInformation("E-mail de conta apagada disparado (sem SMTP configurado; destinatário omitido do log).");

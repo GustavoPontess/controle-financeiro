@@ -15,6 +15,14 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+### 📌 2026-10-28: Cloudflare na frente + login sem trava (branch `feat/login-sem-trava`, sem commit)
+
+**No ar hoje:** #383-#388 (e-mails do pedido/exclusão, limite geral, IP real da Cloudflare, Admin em tabela, conta da aba no `X-Active-Account`). Chat do servidor: Cloudflare com proxy, origem só aceitando a Cloudflare, limite de rajada no `/auth/login` (10 em 10 s), TLS 1.2+.
+
+**Na branch (pedido do Gustavo, desenho aprovado na página "Login do Pontes"):** contador na tela pro 429 (Cloudflare/API/espera) + login novo em `Services/TentativasLogin.cs`: pelo e-mail digitado com ou sem conta, Turnstile do 1º erro, espera que dobra do 5º (aparelho conhecido fora, cookie `ac`), aviso ao dono no 5º em 24 h, senha nova só na 100ª seguida, 20/IP, frase única "E-mail ou senha incorretos.", Turnstile sempre em Pedir acesso e Esqueci a senha, CSP e Privacidade citando a Cloudflare. Migration `TentativasLogin` (aditiva). Achados resolvidos na mesma branch: reativar conta só com passe curto do login (`TokenReativacao`), `.gitattributes` com LF no `index.html` (build no Windows passa a conferência do CSP) e caminhos `controle-financeiro.v2/` corrigidos, deploy já passa `TURNSTILE_SECRET`/`TURNSTILE_SITE_KEY` (vazias = desligado). Testes do login (back e front) verdes; `npm run build` verde; provado no navegador com as chaves de teste da Cloudflare no `.env` local.
+
+**Próximo:** Gustavo ver e pedir commit/PR. Pra ligar o Turnstile em produção: widget pelo chat do servidor + os 2 secrets no GitHub + deploy (ROADMAP).
+
 ### 📌 2026-10-27: site novo NO AR (site público + acesso + celular + rápido), CI consertado, 2 runners
 
 **No ar em app.pontesdev.com.br** (deploy 01:25 UTC, 22:25 em Brasília): site público e telas de acesso idênticos ao rascunho do hub Pontes Dev (#363), "Pedir acesso" leva pro cadastro + "Entrar" no topo apertado + ícone da aba (#373), revisão completa do celular e site rápido (#376: prints do app em tamanho de celular, tema no menu ☰, "Família", tabela/abas/rodapé/pares de botões, seletor preso some na chamada do fim, cartão do fim com texto em cima; app logado num pacote à parte `src/RotasApp.tsx`, imagens em WebP, preload do site no index, cache no Caddy, CSP liberando o script do tema por hash). Painel de dev único (#371), segurança do npm + Dependabot (#364, #372). **CI (#377):** caches no `/dados` do runner (o `actions/cache` do NuGet gastou 37 GB da internet de casa num dia), push novo cancela o anterior; **segundo runner** `pc-gustavo-app-2` (compose em `E:\VSCode\pontes\PontesDev\base\runner-github`): back e front rodam juntos, CI completo em ~1,5 min. Dependabot: 374/375/378 entraram.

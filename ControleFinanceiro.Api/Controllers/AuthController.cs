@@ -27,8 +27,10 @@ public class AuthController : ControllerBase
 
     public AuthController(AuthService authService, MfaService mfaService, JwtTokenProvider tokenProvider,
         CsrfTokenService csrfTokenService, RegistroAcessoService registroAcesso, MinhaContaService contaService,
-        RosterService rosterService, IHostEnvironment env, ILogger<AuthController> logger)
+        RosterService rosterService, IHostEnvironment env, ILogger<AuthController> logger,
+        IVerificadorHumano? verificadorHumano = null)
     {
+        _verificadorHumano = verificadorHumano ?? SemVerificacaoHumana.Instancia;
         _authService = authService;
         _mfaService = mfaService;
         _tokenProvider = tokenProvider;
@@ -39,6 +41,38 @@ public class AuthController : ControllerBase
         _env = env;
         _logger = logger;
     }
+
+    private readonly IVerificadorHumano _verificadorHumano;
+
+    /// <summary>
+    /// Chave pública do "não sou robô" (Cloudflare Turnstile) pro front montar a verificação. Null = desligado (dev,
+    /// testes, ou sem as chaves no deploy): o front não mostra nada.
+    /// </summary>
+    [HttpGet("verificacao")]
+    [AllowAnonymous]
+    public IActionResult Verificacao() => Ok(new { chaveDoSite = _verificadorHumano.ChaveDoSite });
+
+    /// <summary>Pedir acesso e "Esqueci a senha" mandam e-mail pro endereço digitado: sempre exigem o Turnstile.</summary>
+    private async Task ExigirVerificacaoHumanaAsync(string? token)
+    {
+        if (_verificadorHumano.Ligado
+            && !await _verificadorHumano.ConfereAsync(token, HttpContext.Connection.RemoteIpAddress?.ToString()))
+            throw new VerificacaoHumanaException();
+    }
+
+    // Aparelho conhecido (AparelhoConhecido): o navegador onde a conta entrou fica fora da espera que dobra do login.
+    private void LembrarAparelho(Guid usuarioId)
+    {
+        Request.Cookies.TryGetValue(AparelhoConhecido.Cookie, out var atual);
+        Response.Cookies.Append(AparelhoConhecido.Cookie, AparelhoConhecido.Lembrar(atual, usuarioId, DateTime.UtcNow), new CookieOptions
+        {
+            HttpOnly = true, Secure = Request.IsHttps, SameSite = SameSiteMode.Strict, Path = AuthPath,
+            Expires = DateTimeOffset.UtcNow.AddDays(AparelhoConhecido.Dias),
+        });
+    }
+
+    private string? CookieAparelho() =>
+        Request.Cookies.TryGetValue(AparelhoConhecido.Cookie, out var v) ? v : null;
 
     /// <summary>
     /// SÓ EM DEVELOPMENT: lista as contas do banco (e-mail + nome) pro painel de atalho do login.
@@ -284,6 +318,7 @@ public class AuthController : ControllerBase
     [EnableRateLimiting("auth-register")]
     public async Task<ActionResult<RegisterResponseDto>> Register([FromBody] RegisterDto dto)
     {
+        await ExigirVerificacaoHumanaAsync(dto.TurnstileToken);
         var result = await _authService.RegisterAsync(dto);
         return StatusCode(StatusCodes.Status201Created, result);
     }
@@ -331,14 +366,14 @@ public class AuthController : ControllerBase
         // Device confiável (opt-in): se o navegador tem o cookie `td` válido PRA ESTA conta, o
         // LoginAsync pula o 2º fator e já devolve sessão (anti-cross-account é checado no service).
         Request.Cookies.TryGetValue(TrustedDeviceCookie, out var trustedDeviceToken);
-        var result = await _authService.LoginAsync(dto, trustedDeviceToken, dto.ManterConectado);
+        var result = await _authService.LoginAsync(dto, trustedDeviceToken, dto.ManterConectado, CookieAparelho());
 
         if (result.MfaRequerido)
             return Ok(new { mfaRequerido = true, mfaChallengeToken = result.MfaChallengeToken });
 
         // Conta na carência de exclusão: senha certa, mas sem sessão — o front oferece reativar.
         if (result.ContaMarcadaExclusao)
-            return Ok(new { contaMarcadaExclusao = true, diasRestantes = result.DiasRestantesExclusao });
+            return Ok(new { contaMarcadaExclusao = true, diasRestantes = result.DiasRestantesExclusao, reativacaoToken = result.ReativacaoToken });
 
         var auth = result.Auth!;
         // Login pela tela de login SEMPRE começa do zero: revoga no banco + apaga os cookies de
@@ -347,6 +382,7 @@ public class AuthController : ControllerBase
         // acessível — o furo). "Adicionar conta" é OUTRO endpoint: POST /auth/add-account [Authorize].
         await RevogarSessoesAnterioresAsync();
         SetLoggedInCookies(auth);
+        LembrarAparelho(auth.UsuarioId);
 
         // Acesso concluído (sem MFA) → registro de acesso pra retenção Marco Civil.
         await RegistrarAcessoAsync(auth.UsuarioId, auth.Email);
@@ -374,6 +410,7 @@ public class AuthController : ControllerBase
         // Passo 2 do login pela tela = também começa limpo (mesma regra do /login).
         await RevogarSessoesAnterioresAsync();
         SetLoggedInCookies(result);
+        LembrarAparelho(result.UsuarioId);
 
         // 2º fator confirmado = acesso concluído → registro de acesso pra retenção Marco Civil.
         await RegistrarAcessoAsync(result.UsuarioId, result.Email);
@@ -409,7 +446,7 @@ public class AuthController : ControllerBase
     [EnableRateLimiting("auth-login")]
     public async Task<IActionResult> AddAccount([FromBody] LoginDto dto)
     {
-        var result = await _authService.LoginAsync(dto);
+        var result = await _authService.LoginAsync(dto, aparelhoConhecido: CookieAparelho());
 
         if (result.MfaRequerido)
             // Conta com MFA ainda não é suportada no "adicionar conta" (o fluxo de 2 passos precisa
@@ -423,6 +460,7 @@ public class AuthController : ControllerBase
         if (!PodeParquearConta(auth.UsuarioId))
             return LimiteContasResult();
         SetLoggedInCookies(auth); // parqueia a nova + torna ativa; NÃO limpa as outras
+        LembrarAparelho(auth.UsuarioId);
 
         await RegistrarAcessoAsync(auth.UsuarioId, auth.Email);
 
@@ -570,7 +608,7 @@ public class AuthController : ControllerBase
     [EnableRateLimiting("auth-login")]
     public async Task<IActionResult> ReativarConta([FromBody] ReativarContaRequest dto)
     {
-        await _contaService.ReativarPorCredenciaisAsync(dto.Email, dto.Senha);
+        await _contaService.ReativarPorTokenAsync(dto.Token);
         return Ok(new { mensagem = "Conta reativada. Faça login para continuar." });
     }
 
@@ -764,6 +802,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(typeof(ForgotPasswordResponseDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
     {
+        await ExigirVerificacaoHumanaAsync(dto.TurnstileToken);
         var result = await _authService.SolicitarResetSenhaAsync(dto.Email);
         return Ok(result);
     }

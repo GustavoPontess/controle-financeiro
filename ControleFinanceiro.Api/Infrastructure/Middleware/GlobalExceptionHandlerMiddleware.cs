@@ -80,6 +80,9 @@ public sealed class GlobalExceptionHandlerMiddleware
             // lança BadHttpRequestException com o StatusCode certo (413/400). Sem isto caía no default
             // e virava 500 — request JÁ é rejeitado (protege DoS), mas o status/log ficavam errados.
             Microsoft.AspNetCore.Http.BadHttpRequestException bad => (bad.StatusCode, "BAD_REQUEST"),
+            // Login: espera que dobra (429 + Retry-After, a tela conta) e "não sou robô" (Turnstile).
+            MuitasTentativasException   => (StatusCodes.Status429TooManyRequests,      "MUITAS_TENTATIVAS"),
+            VerificacaoHumanaException  => (StatusCodes.Status400BadRequest,          "VERIFICACAO_HUMANA"),
             ArgumentException          => (StatusCodes.Status400BadRequest,          "VALIDATION_ERROR"),
             KeyNotFoundException        => (StatusCodes.Status404NotFound,             "NOT_FOUND"),
             InvalidOperationException   => (StatusCodes.Status409Conflict,             "BUSINESS_RULE_VIOLATION"),
@@ -115,6 +118,9 @@ public sealed class GlobalExceptionHandlerMiddleware
             Message = message,
             Code    = code
         };
+
+        if (exception is MuitasTentativasException espera)
+            context.Response.Headers.RetryAfter = espera.SegundosParaTentar.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
         context.Response.StatusCode  = statusCode;
         context.Response.ContentType = "application/json";

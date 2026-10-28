@@ -23,6 +23,7 @@ public class MinhaContaServiceTests
         public int Canceladas;
         public Task EnviarExclusaoCanceladaAsync(string email, CancellationToken ct = default) { Canceladas++; return Task.CompletedTask; }
         public Task EnviarContaApagadaAsync(string email, CancellationToken ct = default) => Task.CompletedTask;
+        public Task EnviarTentativasLoginAsync(string email, int falhas, DateTime quandoUtc, CancellationToken ct = default) => Task.CompletedTask;
         public Task EnviarAcessoLiberadoAsync(string email, CancellationToken ct = default) => Task.CompletedTask;
         public string? UltimoCodigo;
         public int Avisos;
@@ -43,11 +44,11 @@ public class MinhaContaServiceTests
         new(ctx, new EmailOtpService(ctx, sender), new MfaService(ctx), new AdminAuditService(ctx), sender,
             new AdminLgpdService(ctx, new AdminAuditService(ctx), TestHelpers.NotifAdmin(ctx)));
 
-    private static Usuario Seed(AppDbContext ctx, bool mfa = false, StatusUsuario status = StatusUsuario.Ativo)
+    private static Usuario Seed(AppDbContext ctx, bool mfa = false, StatusUsuario status = StatusUsuario.Ativo, string email = "titular@test.com")
     {
         var u = new Usuario
         {
-            Id = Guid.NewGuid(), Email = "titular@test.com", Nome = "Titular",
+            Id = Guid.NewGuid(), Email = email, Nome = "Titular",
             PasswordHash = PasswordHasher.HashPassword(Senha), Status = status, MfaAtivo = mfa,
         };
         ctx.Usuarios.Add(u);
@@ -158,7 +159,7 @@ public class MinhaContaServiceTests
         u.MarcadoExclusaoEm = DateTime.UtcNow; await ctx.SaveChangesAsync();
 
         var spy = new SenderSpy();
-        await Create(ctx, spy).ReativarPorCredenciaisAsync(u.Email, Senha);
+        await Create(ctx, spy).ReativarPorTokenAsync(TokenReativacao.Gerar(u.Id, u.PasswordHash, DateTime.UtcNow));
         Assert.Equal(1, spy.Canceladas); // avisa por e-mail (alerta se não foi a pessoa)
 
         var db = await ctx.Usuarios.FindAsync(u.Id);
@@ -173,17 +174,29 @@ public class MinhaContaServiceTests
         using var ctx = CreateContext();
         var u = Seed(ctx); // Ativo
 
-        await Assert.ThrowsAsync<ArgumentException>(() => Create(ctx, new SenderSpy()).ReativarPorCredenciaisAsync(u.Email, Senha));
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            Create(ctx, new SenderSpy()).ReativarPorTokenAsync(TokenReativacao.Gerar(u.Id, u.PasswordHash, DateTime.UtcNow)));
         Assert.Equal(StatusUsuario.Ativo, (await ctx.Usuarios.FindAsync(u.Id))!.Status);
     }
 
     [Fact]
-    public async Task Reativar_senhaErrada_lanca()
+    public async Task Reativar_passeInvalido_vencido_deOutraConta_ouDepoisDeTrocarASenha_lanca()
     {
         using var ctx = CreateContext();
         var u = Seed(ctx, status: StatusUsuario.MarcadoParaExclusao);
+        var outra = Seed(ctx, status: StatusUsuario.MarcadoParaExclusao, email: "outra@test.com");
+        var svc = Create(ctx, new SenderSpy());
+        var agora = DateTime.UtcNow;
 
-        await Assert.ThrowsAsync<ArgumentException>(() => Create(ctx, new SenderSpy()).ReativarPorCredenciaisAsync(u.Email, "errada"));
+        foreach (var passe in new[]
+        {
+            "lixo",
+            TokenReativacao.Gerar(u.Id, u.PasswordHash, agora.AddMinutes(-11)),           // venceu
+            TokenReativacao.Gerar(outra.Id, outra.PasswordHash, agora).Replace(outra.Id.ToString("N"), u.Id.ToString("N")), // de outra conta
+            TokenReativacao.Gerar(u.Id, "hash-da-senha-antiga", agora),                   // a senha mudou
+        })
+            await Assert.ThrowsAsync<ArgumentException>(() => svc.ReativarPorTokenAsync(passe));
+
         Assert.Equal(StatusUsuario.MarcadoParaExclusao, (await ctx.Usuarios.FindAsync(u.Id))!.Status);
     }
 

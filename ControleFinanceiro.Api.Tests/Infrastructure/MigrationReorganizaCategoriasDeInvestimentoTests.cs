@@ -19,10 +19,10 @@ public class MigrationReorganizaCategoriasDeInvestimentoTests
     {
         using var ctx = ContextoNpgsqlSemBanco();
         var ids = ctx.Database.GetMigrations().ToList();
-        // Logo depois de AddCategoriaInvestimento (a mais recente agora é a ConfirmacaoEmailCadastro, 2026-10-27).
+        // Logo depois de AddCategoriaInvestimento (a mais recente agora é a TentativasLogin, 2026-10-28).
         var i = ids.FindIndex(id => id.EndsWith("_ReorganizaCategoriasDeInvestimento"));
         Assert.True(i > 0 && ids[i - 1].EndsWith("_AddCategoriaInvestimento"));
-        Assert.EndsWith("_ConfirmacaoEmailCadastro", ids[^1]); // nada gerado por cima sem querer
+        Assert.EndsWith("_TentativasLogin", ids[^1]); // nada gerado por cima sem querer
     }
 
     [Fact]

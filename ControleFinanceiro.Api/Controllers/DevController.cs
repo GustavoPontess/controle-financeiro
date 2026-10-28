@@ -36,6 +36,7 @@ public class DevController : ControllerBase
             ("Pedir acesso: logo depois do cadastro", ModelosEmail.PedidoRecebido(app, email, "exemplo", agora.AddDays(7))),
             ("Admin aprovou o pedido", ModelosEmail.AcessoLiberado(app, email)),
             ("Esqueci a senha, ou o Admin forçou a troca", ModelosEmail.ResetSenha(app, email, "exemplo", agora.AddHours(1))),
+            ("Senha errada 5 vezes em 24 h (1 aviso por dia)", ModelosEmail.TentativasLogin(app, email, 5, agora)),
             ("Código pra excluir a conta", ModelosEmail.CodigoOtp(email, "482913", TipoOtpEmail.ExcluirConta, agora.AddMinutes(10))),
             ("Conta marcada pra exclusão", ModelosEmail.AvisoExclusao(app, email, agora, 30)),
             ("Exclusão cancelada (entrou na carência, ou o Admin cancelou)", ModelosEmail.ExclusaoCancelada(app, email, agora)),

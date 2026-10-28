@@ -3,6 +3,8 @@ using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Infrastructure.Identity;
 using ControleFinanceiro.Api.Infrastructure.Jobs;
+using ControleFinanceiro.Api.Infrastructure.Security;
+using ControleFinanceiro.Api.DTOs.Auth;
 using ControleFinanceiro.Api.Services;
 using Microsoft.EntityFrameworkCore;
 using Moq;
@@ -99,7 +101,7 @@ public class AuthServiceTests
         var naoExisteErro = await Assert.ThrowsAsync<UnauthorizedAccessException>(
             () => auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "naoexiste@test.com", Password = "senha errada qualquer" }));
 
-        Assert.Equal("Email ou senha inválidos", existeErro.Message);
+        Assert.Equal(TentativasLogin.MensagemSenhaIncorreta, existeErro.Message);
         Assert.Equal(existeErro.Message, naoExisteErro.Message);
     }
 
@@ -742,6 +744,8 @@ public class AuthServiceTests
         Assert.False(r.MfaRequerido);
         Assert.Null(r.Auth);
         Assert.Empty(ctx.RefreshTokens); // nenhuma sessão emitida
+        // O passe pro "Reativar conta" (o reativar nunca recebe e-mail e senha).
+        Assert.True(TokenReativacao.Confere(r.ReativacaoToken, u.Id, u.PasswordHash, DateTime.UtcNow));
     }
 
     [Fact]
@@ -770,72 +774,229 @@ public class AuthServiceTests
         Assert.NotNull(atualizado!.UltimoAcessoEm);
     }
 
-    // ── Força bruta por conta (OWASP Authentication Cheat Sheet) ────────────────
+    // ── Senha errada no login (Services/TentativasLogin.cs: Turnstile, espera, aviso, senha nova) ──────
+
+    private static AuthService CreateServiceCom(AppDbContext ctx, IVerificadorHumano? verificador = null, IAvisoLoginDispatcher? aviso = null)
+    {
+        var jwt = new JwtTokenProvider("chave-de-teste-suficientemente-grande-0123456789", "test", "test");
+        return new AuthService(ctx, jwt, new Mock<IPasswordResetDispatcher>().Object, new MfaService(ctx), TestHelpers.NotifAdmin(ctx),
+            verificadorHumano: verificador, avisoLogin: aviso);
+    }
+
+    private static Task<LoginResultDto> Tentar(AuthService auth, string email, string senha, string? turnstile = null, string? aparelho = null) =>
+        auth.LoginAsync(new LoginDto { Email = email, Password = senha, TurnstileToken = turnstile }, aparelhoConhecido: aparelho);
+
+    /// <summary>Turnstile de mentira: ligado, só aceita o token "ok".</summary>
+    private sealed class TurnstileFalso : IVerificadorHumano
+    {
+        public bool Ligado => true;
+        public string? ChaveDoSite => "chave-do-site";
+        public Task<bool> ConfereAsync(string? token, string? ip, CancellationToken ct = default) => Task.FromResult(token == "ok");
+    }
+
+    private static TentativaLogin? TentativaDe(AppDbContext ctx, string email) =>
+        ctx.TentativasLogin.SingleOrDefault(t => t.ChaveEmail == TentativasLogin.ChaveDoEmail(email));
 
     [Fact]
-    public async Task Login_senhaErrada_incrementaContadorDeFalhas()
+    public async Task Login_senhaErrada_contaNaContaENoEmailDigitado_semGuardarOEmail()
     {
         using var ctx = CreateContext();
         var u = SeedUsuarioComSenha(ctx, "alvo@test.com", "SenhaForte!2026");
         var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "alvo@test.com", Password = "Errada!123456" }));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => Tentar(auth, "alvo@test.com", "Errada!123456"));
 
-        var atualizado = await ctx.Usuarios.FindAsync(u.Id);
-        Assert.Equal(1, atualizado!.FalhasLoginConsecutivas);
-        Assert.NotNull(atualizado.UltimaFalhaLoginEm);
+        Assert.Equal(1, (await ctx.Usuarios.FindAsync(u.Id))!.FalhasLoginConsecutivas);
+        var t = Assert.Single(ctx.TentativasLogin);
+        Assert.Equal(1, t.Falhas);
+        Assert.DoesNotContain("alvo", t.ChaveEmail); // só o resumo HMAC
+        Assert.Equal(64, t.ChaveEmail.Length);
     }
 
     [Fact]
-    public async Task Login_depoisDe3ErrosSeguidos_bloqueiaTentativaImediata_mesmoComSenhaCerta()
+    public async Task Login_emailSemConta_contaFalhaIgualAoQueTemConta()
+    {
+        using var ctx = CreateContext();
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+
+        var ex = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => Tentar(auth, "ninguem@test.com", "qualquer senha aqui"));
+
+        Assert.Equal(TentativasLogin.MensagemSenhaIncorreta, ex.Message);
+        Assert.Equal(1, TentativaDe(ctx, "ninguem@test.com")!.Falhas);
+    }
+
+    [Fact]
+    public async Task Login_doQuintoErroEmDiante_esperaQueDobra_comOuSemConta_mesmoComASenhaCerta()
     {
         using var ctx = CreateContext();
         SeedUsuarioComSenha(ctx, "alvo@test.com", "SenhaForte!2026");
         var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
 
-        for (var i = 0; i < 3; i++)
-            await Assert.ThrowsAsync<UnauthorizedAccessException>(
-                () => auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "alvo@test.com", Password = "Errada!123456" }));
+        for (var i = 0; i < TentativasLogin.FalhasParaEspera; i++)
+        {
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => Tentar(auth, "alvo@test.com", "Errada!123456"));
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => Tentar(auth, "ninguem@test.com", "Errada!123456"));
+        }
 
-        // 4ª tentativa, imediatamente depois — delay progressivo bloqueia mesmo com a senha certa.
-        var ex = await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "alvo@test.com", Password = "SenhaForte!2026" }));
-        Assert.Contains("Aguarde", ex.Message);
+        // 6ª tentativa logo em seguida: espera de 1 s, igual pros dois (nem a espera diz quem tem conta).
+        var comConta = await Assert.ThrowsAsync<MuitasTentativasException>(() => Tentar(auth, "alvo@test.com", "SenhaForte!2026"));
+        var semConta = await Assert.ThrowsAsync<MuitasTentativasException>(() => Tentar(auth, "ninguem@test.com", "SenhaForte!2026"));
+        Assert.Equal(1, comConta.SegundosParaTentar);
+        Assert.Equal(comConta.Message, semConta.Message);
+        Assert.Equal(comConta.SegundosParaTentar, semConta.SegundosParaTentar);
     }
 
     [Fact]
-    public async Task Login_depoisDoDelayExpirar_permiteLoginCerto_e_zeraContador()
+    public async Task Login_esperaDobraACadaErro_ateCincoMinutos()
+    {
+        var agora = DateTime.UtcNow;
+        TentativaLogin Com(int falhas) => new() { Falhas = falhas, UltimaFalhaEm = agora };
+
+        Assert.Equal(0, TentativasLogin.SegundosDeEspera(Com(4), agora));
+        Assert.Equal(1, TentativasLogin.SegundosDeEspera(Com(5), agora));
+        Assert.Equal(2, TentativasLogin.SegundosDeEspera(Com(6), agora));
+        Assert.Equal(4, TentativasLogin.SegundosDeEspera(Com(7), agora));
+        Assert.Equal(300, TentativasLogin.SegundosDeEspera(Com(30), agora));
+        // Falha de mais de 24 h atrás não vale mais.
+        Assert.Equal(0, TentativasLogin.SegundosDeEspera(new TentativaLogin { Falhas = 30, UltimaFalhaEm = agora.AddHours(-25) }, agora));
+    }
+
+    [Fact]
+    public async Task Login_depoisDaEspera_senhaCertaEntra_eApagaAsFalhasDoEmail()
     {
         using var ctx = CreateContext();
         var u = SeedUsuarioComSenha(ctx, "alvo@test.com", "SenhaForte!2026");
-        u.FalhasLoginConsecutivas = 3;
-        u.UltimaFalhaLoginEm = DateTime.UtcNow.AddSeconds(-2); // já passou do delay de 1s (3 falhas)
+        u.FalhasLoginConsecutivas = 5;
+        ctx.TentativasLogin.Add(new TentativaLogin
+        {
+            Id = Guid.NewGuid(), ChaveEmail = TentativasLogin.ChaveDoEmail("alvo@test.com"), Falhas = 5,
+            UltimaFalhaEm = DateTime.UtcNow.AddSeconds(-2), // já passou a espera de 1 s
+        });
         await ctx.SaveChangesAsync();
         var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
 
         var resp = await LoginSemMfaAsync(auth, "alvo@test.com", "SenhaForte!2026");
 
         Assert.False(string.IsNullOrEmpty(resp.Token));
-        var atualizado = await ctx.Usuarios.FindAsync(u.Id);
-        Assert.Equal(0, atualizado!.FalhasLoginConsecutivas);
-        Assert.Null(atualizado.UltimaFalhaLoginEm);
+        Assert.Equal(0, (await ctx.Usuarios.FindAsync(u.Id))!.FalhasLoginConsecutivas);
+        Assert.Empty(ctx.TentativasLogin);
     }
 
     [Fact]
-    public async Task Login_apos10FalhasSeguidas_bloqueiaPermanentemente_ateResetDeSenha()
+    public async Task Login_aparelhoOndeAContaJaEntrou_naoEspera_outroAparelhoEspera()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuarioComSenha(ctx, "alvo@test.com", "SenhaForte!2026");
+        var outra = SeedUsuarioComSenha(ctx, "outra@test.com", "SenhaForte!2026");
+        ctx.TentativasLogin.Add(new TentativaLogin
+        {
+            Id = Guid.NewGuid(), ChaveEmail = TentativasLogin.ChaveDoEmail("alvo@test.com"), Falhas = 12, UltimaFalhaEm = DateTime.UtcNow,
+        });
+        await ctx.SaveChangesAsync();
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+        var doDono = AparelhoConhecido.Lembrar(null, u.Id, DateTime.UtcNow);
+        var deOutraConta = AparelhoConhecido.Lembrar(null, outra.Id, DateTime.UtcNow);
+
+        // Quem ataca (sem o cookie, ou com o cookie de outra conta) espera.
+        await Assert.ThrowsAsync<MuitasTentativasException>(() => Tentar(auth, "alvo@test.com", "SenhaForte!2026"));
+        await Assert.ThrowsAsync<MuitasTentativasException>(() => Tentar(auth, "alvo@test.com", "SenhaForte!2026", aparelho: deOutraConta));
+        // O dono, no navegador dele, entra na hora.
+        var r = await Tentar(auth, "alvo@test.com", "SenhaForte!2026", aparelho: doDono);
+        Assert.NotNull(r.Auth);
+    }
+
+    [Fact]
+    public async Task Login_turnstile_soDepoisDoPrimeiroErro_eConferidoNoServidor()
+    {
+        using var ctx = CreateContext();
+        SeedUsuarioComSenha(ctx, "alvo@test.com", "SenhaForte!2026");
+        var auth = CreateServiceCom(ctx, new TurnstileFalso());
+
+        // 1ª tentativa: sem verificação.
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => Tentar(auth, "alvo@test.com", "Errada!123456"));
+        // Depois do 1º erro: sem token ou com token que a Cloudflare recusa, nem confere a senha.
+        await Assert.ThrowsAsync<VerificacaoHumanaException>(() => Tentar(auth, "alvo@test.com", "SenhaForte!2026"));
+        await Assert.ThrowsAsync<VerificacaoHumanaException>(() => Tentar(auth, "alvo@test.com", "SenhaForte!2026", turnstile: "forjado"));
+        Assert.Equal(1, TentativaDe(ctx, "alvo@test.com")!.Falhas); // recusa do Turnstile não conta como senha errada
+        // Com a verificação: entra.
+        var r = await Tentar(auth, "alvo@test.com", "SenhaForte!2026", turnstile: "ok");
+        Assert.NotNull(r.Auth);
+    }
+
+    [Fact]
+    public async Task Login_turnstile_valeTambemPraEmailSemConta()
+    {
+        using var ctx = CreateContext();
+        var auth = CreateServiceCom(ctx, new TurnstileFalso());
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => Tentar(auth, "ninguem@test.com", "Errada!123456"));
+        await Assert.ThrowsAsync<VerificacaoHumanaException>(() => Tentar(auth, "ninguem@test.com", "Errada!123456"));
+    }
+
+    [Fact]
+    public async Task Login_quintoErroEm24h_avisaODono_umaVezPorDia_eAlertaOAdmin()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuarioComSenha(ctx, "alvo@test.com", "SenhaForte!2026");
+        var aviso = new Mock<IAvisoLoginDispatcher>();
+        var auth = CreateServiceCom(ctx, aviso: aviso.Object);
+
+        for (var i = 0; i < TentativasLogin.FalhasParaAvisarDono; i++)
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => Tentar(auth, "alvo@test.com", "Errada!123456"));
+
+        aviso.Verify(a => a.TentativasDeLogin(u.Id, 5, It.IsAny<DateTime>()), Times.Once);
+        Assert.NotNull((await ctx.Usuarios.FindAsync(u.Id))!.AvisoTentativasEm);
+        Assert.Single(ctx.NotificacoesAdmin, n => n.Tipo == TipoNotificacaoAdmin.Seguranca);
+
+        // Mais um erro depois da espera: não manda outro aviso no mesmo dia.
+        TentativaDe(ctx, "alvo@test.com")!.UltimaFalhaEm = DateTime.UtcNow.AddSeconds(-5);
+        await ctx.SaveChangesAsync();
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => Tentar(auth, "alvo@test.com", "Errada!123456"));
+        aviso.Verify(a => a.TentativasDeLogin(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<DateTime>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Login_emailSemConta_nuncaAvisaNinguem()
+    {
+        using var ctx = CreateContext();
+        var aviso = new Mock<IAvisoLoginDispatcher>();
+        var auth = CreateServiceCom(ctx, aviso: aviso.Object);
+
+        for (var i = 0; i < TentativasLogin.FalhasParaAvisarDono; i++)
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => Tentar(auth, "ninguem@test.com", "Errada!123456"));
+
+        aviso.VerifyNoOtherCalls();
+        Assert.Empty(ctx.NotificacoesAdmin);
+    }
+
+    [Fact]
+    public async Task Login_naoTravaMaisNaDecimaFalha()
     {
         using var ctx = CreateContext();
         var u = SeedUsuarioComSenha(ctx, "alvo@test.com", "SenhaForte!2026");
         u.FalhasLoginConsecutivas = 10;
-        u.UltimaFalhaLoginEm = DateTime.UtcNow.AddMinutes(-10); // delay já expirou, mas o bloqueio permanente independe disso
         await ctx.SaveChangesAsync();
         var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
 
-        // Nem a senha certa passa — só reset de senha libera.
-        var ex = await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => auth.LoginAsync(new DTOs.Auth.LoginDto { Email = "alvo@test.com", Password = "SenhaForte!2026" }));
-        Assert.Contains("Redefina sua senha", ex.Message);
+        var resp = await LoginSemMfaAsync(auth, "alvo@test.com", "SenhaForte!2026");
+        Assert.False(string.IsNullOrEmpty(resp.Token));
+    }
+
+    [Fact]
+    public async Task Login_depoisDe100ErrosSeguidos_pedeSenhaNova_soPraQuemAcertaASenha()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuarioComSenha(ctx, "alvo@test.com", "SenhaForte!2026");
+        u.FalhasLoginConsecutivas = TentativasLogin.FalhasSeguidasParaSenhaNova;
+        await ctx.SaveChangesAsync();
+        var auth = CreateService(ctx, new Mock<IPasswordResetDispatcher>().Object);
+
+        // Senha errada: a mesma frase de sempre (não conta que a conta existe nem que pede senha nova).
+        var errada = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => Tentar(auth, "alvo@test.com", "Errada!123456"));
+        Assert.Equal(TentativasLogin.MensagemSenhaIncorreta, errada.Message);
+        // Senha certa: pede senha nova.
+        var certa = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => Tentar(auth, "alvo@test.com", "SenhaForte!2026"));
+        Assert.Equal(TentativasLogin.MensagemSenhaNova, certa.Message);
     }
 
     [Fact]
@@ -843,8 +1004,12 @@ public class AuthServiceTests
     {
         using var ctx = CreateContext();
         var u = SeedUsuarioComSenha(ctx, "alvo@test.com", "SenhaForte!2026");
-        u.FalhasLoginConsecutivas = 10; // bloqueado permanentemente
+        u.FalhasLoginConsecutivas = TentativasLogin.FalhasSeguidasParaSenhaNova; // pede senha nova
         u.UltimaFalhaLoginEm = DateTime.UtcNow;
+        ctx.TentativasLogin.Add(new TentativaLogin
+        {
+            Id = Guid.NewGuid(), ChaveEmail = TentativasLogin.ChaveDoEmail("alvo@test.com"), Falhas = 30, UltimaFalhaEm = DateTime.UtcNow,
+        });
         await ctx.SaveChangesAsync();
         var (sender, raw) = SenderCapturandoToken();
         await new PasswordResetEmailJob(ctx, sender.Object).ExecuteAsync("alvo@test.com");
@@ -858,6 +1023,7 @@ public class AuthServiceTests
         var atualizado = await ctx.Usuarios.FindAsync(u.Id);
         Assert.Equal(0, atualizado!.FalhasLoginConsecutivas);
         Assert.Null(atualizado.UltimaFalhaLoginEm);
+        Assert.Empty(ctx.TentativasLogin); // a espera do e-mail também some
 
         // Login com a senha nova funciona normalmente (bloqueio foi limpo).
         var resp = await LoginSemMfaAsync(auth, "alvo@test.com", "NovaSenhaForte!2026");

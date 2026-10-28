@@ -21,6 +21,7 @@ public class EmailOtpServiceTests
         public int Canceladas;
         public Task EnviarExclusaoCanceladaAsync(string email, CancellationToken ct = default) { Canceladas++; return Task.CompletedTask; }
         public Task EnviarContaApagadaAsync(string email, CancellationToken ct = default) => Task.CompletedTask;
+        public Task EnviarTentativasLoginAsync(string email, int falhas, DateTime quandoUtc, CancellationToken ct = default) => Task.CompletedTask;
         public Task EnviarAcessoLiberadoAsync(string email, CancellationToken ct = default) => Task.CompletedTask;
         public string? UltimoCodigo;
         public int Avisos;

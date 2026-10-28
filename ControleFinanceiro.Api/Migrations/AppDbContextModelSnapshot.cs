@@ -1875,6 +1875,31 @@ namespace ControleFinanceiro.Api.Migrations
                     b.ToTable("Subcategorias");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.TentativaLogin", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ChaveEmail")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("Falhas")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UltimaFalhaEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChaveEmail")
+                        .IsUnique();
+
+                    b.ToTable("TentativasLogin");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.TokenCadastro", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2171,6 +2196,9 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("AtualizadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("AvisoTentativasEm")
                         .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime>("CriadoEm")

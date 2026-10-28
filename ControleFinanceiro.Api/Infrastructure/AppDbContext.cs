@@ -154,6 +154,7 @@ public class AppDbContext : DbContext
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
     public DbSet<TokenCadastro> TokensCadastro => Set<TokenCadastro>();
+    public DbSet<TentativaLogin> TentativasLogin => Set<TentativaLogin>();
     public DbSet<MfaBackupCode> MfaBackupCodes => Set<MfaBackupCode>();
     public DbSet<MfaLoginChallenge> MfaLoginChallenges => Set<MfaLoginChallenge>();
     public DbSet<TrustedDevice> TrustedDevices => Set<TrustedDevice>();
@@ -503,6 +504,10 @@ public class AppDbContext : DbContext
             .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<TokenCadastro>().HasIndex(t => t.TokenHash).IsUnique();
         modelBuilder.Entity<TokenCadastro>().Property(t => t.TokenHash).HasMaxLength(128);
+
+        // Senhas erradas por e-mail digitado (sem FK: vale também pra e-mail que não tem conta)
+        modelBuilder.Entity<TentativaLogin>().HasIndex(t => t.ChaveEmail).IsUnique();
+        modelBuilder.Entity<TentativaLogin>().Property(t => t.ChaveEmail).HasMaxLength(64);
 
         // MfaBackupCode → Usuario (Cascade: códigos somem com o usuário)
         modelBuilder.Entity<MfaBackupCode>()
