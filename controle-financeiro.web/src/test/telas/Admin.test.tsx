@@ -165,7 +165,7 @@ describe("Admin", () => {
   it("erro do servidor aparece em vermelho e a lista continua", async () => {
     svc.aprovar.mockRejectedValue({ response: { status: 409, data: { message: "Este cadastro não está aguardando aprovação." } } })
     renderizar()
-    const cadastros = await screen.findByRole("list", { name: "Usuários" })
+    await screen.findByRole("list", { name: "Usuários" })
     await acao("Ana Pendente", "Aprovar")
     expect(await screen.findByRole("alert")).toHaveTextContent("Este cadastro não está aguardando aprovação.")
   })
