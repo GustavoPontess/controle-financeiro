@@ -18,6 +18,9 @@ public class EmailOtpServiceTests
     private sealed class SenderSpy : IContaEmailSender
     {
         public Task EnviarPedidoRecebidoAsync(string email, string token, DateTime expiraEm, CancellationToken ct = default) => Task.CompletedTask;
+        public int Canceladas;
+        public Task EnviarExclusaoCanceladaAsync(string email, CancellationToken ct = default) { Canceladas++; return Task.CompletedTask; }
+        public Task EnviarContaApagadaAsync(string email, CancellationToken ct = default) => Task.CompletedTask;
         public Task EnviarAcessoLiberadoAsync(string email, CancellationToken ct = default) => Task.CompletedTask;
         public string? UltimoCodigo;
         public int Avisos;

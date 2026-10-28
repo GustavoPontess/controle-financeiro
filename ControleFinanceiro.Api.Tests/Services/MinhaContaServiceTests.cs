@@ -20,6 +20,9 @@ public class MinhaContaServiceTests
     private sealed class SenderSpy : IContaEmailSender
     {
         public Task EnviarPedidoRecebidoAsync(string email, string token, DateTime expiraEm, CancellationToken ct = default) => Task.CompletedTask;
+        public int Canceladas;
+        public Task EnviarExclusaoCanceladaAsync(string email, CancellationToken ct = default) { Canceladas++; return Task.CompletedTask; }
+        public Task EnviarContaApagadaAsync(string email, CancellationToken ct = default) => Task.CompletedTask;
         public Task EnviarAcessoLiberadoAsync(string email, CancellationToken ct = default) => Task.CompletedTask;
         public string? UltimoCodigo;
         public int Avisos;
@@ -154,7 +157,9 @@ public class MinhaContaServiceTests
         var u = Seed(ctx, status: StatusUsuario.MarcadoParaExclusao);
         u.MarcadoExclusaoEm = DateTime.UtcNow; await ctx.SaveChangesAsync();
 
-        await Create(ctx, new SenderSpy()).ReativarPorCredenciaisAsync(u.Email, Senha);
+        var spy = new SenderSpy();
+        await Create(ctx, spy).ReativarPorCredenciaisAsync(u.Email, Senha);
+        Assert.Equal(1, spy.Canceladas); // avisa por e-mail (alerta se não foi a pessoa)
 
         var db = await ctx.Usuarios.FindAsync(u.Id);
         Assert.Equal(StatusUsuario.Ativo, db!.Status);

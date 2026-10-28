@@ -131,9 +131,9 @@ public class AdminUsuarioService
 
     /// <summary>Lista usuários (gestão) — paginado e com busca SERVER-SIDE por nome/e-mail (contém,
     /// case-insensitive). Filtro/contagem/paginação na query (nunca no cliente), pra `Total` refletir
-    /// o filtro e não trazer a tabela inteira pro browser. Mais recentes primeiro. Nunca expõe
+    /// o filtro e não trazer a tabela inteira pro browser. Quem espera aprovação primeiro, depois os mais recentes. Nunca expõe
     /// hash/segredo (usa o DTO enxuto). `pageSize` clampado em 1..100.</summary>
-    public async Task<PagedResult<UsuarioAdminDto>> ListarUsuariosAsync(string? busca = null, int page = 1, int pageSize = 25)
+    public async Task<PagedResult<UsuarioAdminDto>> ListarUsuariosAsync(string? busca = null, int page = 1, int pageSize = 25, StatusUsuario? status = null)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);
@@ -141,13 +141,21 @@ public class AdminUsuarioService
         // "Membro que saiu" (conta excluída que ficou só no histórico da família) não é usuário de verdade.
         var q = _context.Usuarios.Where(u => u.Status != StatusUsuario.Removido);
 
+        // Filtro por situação (a tela do admin: Esperando, Ativos, Bloqueados…), também no servidor.
+        if (status is { } s)
+        {
+            if (s == StatusUsuario.Removido) return new PagedResult<UsuarioAdminDto> { Items = [], Total = 0, Page = page, PageSize = pageSize };
+            q = q.Where(u => u.Status == s);
+        }
+
         if (!string.IsNullOrWhiteSpace(busca))
         {
             var termo = busca.Trim().ToLower();
             q = q.Where(u => u.Nome.ToLower().Contains(termo) || u.Email.ToLower().Contains(termo));
         }
 
-        q = q.OrderByDescending(u => u.CriadoEm);
+        // Quem espera aprovação vem primeiro (a tela do admin aprova e recusa na própria lista), depois os mais recentes.
+        q = q.OrderBy(u => u.Status == StatusUsuario.AguardandoAprovacao ? 0 : 1).ThenByDescending(u => u.CriadoEm);
 
         var total = await q.CountAsync();
         var items = await q

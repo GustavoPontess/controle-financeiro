@@ -4,6 +4,7 @@ using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Infrastructure.Identity;
 using ControleFinanceiro.Api.Services;
 using Microsoft.EntityFrameworkCore;
+using Moq;
 using Xunit;
 
 namespace ControleFinanceiro.Api.Tests.Services;
@@ -296,6 +297,36 @@ public class AdminLgpdServiceTests
     }
 
     // ── Purgar (feliz) ────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Purgar_avisaAPessoaQueOsDadosSairam_eCancelarAvisaTambem()
+    {
+        using var ctx = CreateContext();
+        var apagar = SeedUsuario(ctx, StatusUsuario.MarcadoParaExclusao, DateTime.UtcNow);
+        var voltar = SeedUsuario(ctx, StatusUsuario.MarcadoParaExclusao, DateTime.UtcNow);
+        var email = new Moq.Mock<IContaEmailSender>();
+        var svc = new AdminLgpdService(ctx, new AdminAuditService(ctx), TestHelpers.NotifAdmin(ctx), email.Object);
+
+        await svc.PurgarAsync(apagar.Id, Guid.NewGuid(), "admin@test.com", apagar.Email);
+        await svc.CancelarExclusaoAsync(voltar.Id, Guid.NewGuid(), "admin@test.com");
+
+        email.Verify(e => e.EnviarContaApagadaAsync(apagar.Email, It.IsAny<CancellationToken>()), Moq.Times.Once);
+        email.Verify(e => e.EnviarExclusaoCanceladaAsync(voltar.Email, It.IsAny<CancellationToken>()), Moq.Times.Once);
+    }
+
+    [Fact]
+    public async Task Purgar_emailFalha_aPurgaValeDoMesmoJeito()
+    {
+        using var ctx = CreateContext();
+        var u = SeedUsuario(ctx, StatusUsuario.MarcadoParaExclusao, DateTime.UtcNow);
+        var email = new Moq.Mock<IContaEmailSender>();
+        email.Setup(e => e.EnviarContaApagadaAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("SMTP fora"));
+        var svc = new AdminLgpdService(ctx, new AdminAuditService(ctx), TestHelpers.NotifAdmin(ctx), email.Object);
+
+        await svc.PurgarAsync(u.Id, Guid.NewGuid(), "admin@test.com", u.Email);
+
+        Assert.False(await ctx.Usuarios.AnyAsync(x => x.Id == u.Id));
+    }
 
     [Fact]
     public async Task Purgar_contaLimpa_apagaGrafo_anonimizaEventLog_preservaAuditoria()

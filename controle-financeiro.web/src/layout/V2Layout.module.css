@@ -76,7 +76,9 @@
 
 /* Topo + conteúdo */
 .corpo { display: flex; flex-direction: column; min-width: 0; }
-.topo { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 14px; height: 64px; padding: 0 32px; background: color-mix(in srgb, var(--v2-bg) 86%, transparent); backdrop-filter: blur(12px); }
+/* O topo vai até a borda (fundo), mas o que tem dentro termina onde o conteúdo termina (max-width 1600px do .conteudo):
+   sem isso, em tela larga, os botões do topo ficavam bem à direita da tabela (Gustavo, 2026-10-28). */
+.topo { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 14px; height: 64px; padding: 0 max(32px, calc(100% - 1600px + 32px)) 0 32px; background: color-mix(in srgb, var(--v2-bg) 86%, transparent); backdrop-filter: blur(12px); }
 /* Seta de voltar das telas internas: cola no título (o topo tem gap 14; aqui fica 8). */
 .voltar { margin: 0 -6px 0 -8px; color: var(--v2-texto-2); }
 .tituloPagina { margin: 0; font-size: var(--v2-fs-xl); font-weight: 600; letter-spacing: -0.015em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

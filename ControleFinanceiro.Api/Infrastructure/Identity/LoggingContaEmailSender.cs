@@ -36,6 +36,18 @@ public class LoggingContaEmailSender : IContaEmailSender
         return Task.CompletedTask;
     }
 
+    public Task EnviarExclusaoCanceladaAsync(string email, CancellationToken ct = default)
+    {
+        _logger.LogInformation("E-mail de exclusão cancelada disparado (sem SMTP configurado; destinatário omitido do log).");
+        return Task.CompletedTask;
+    }
+
+    public Task EnviarContaApagadaAsync(string email, CancellationToken ct = default)
+    {
+        _logger.LogInformation("E-mail de conta apagada disparado (sem SMTP configurado; destinatário omitido do log).");
+        return Task.CompletedTask;
+    }
+
     public Task EnviarPedidoRecebidoAsync(string email, string token, DateTime expiraEm, CancellationToken ct = default)
     {
         if (_env.IsDevelopment())

@@ -163,6 +163,37 @@ public class AdminUsuarioServiceTests
     }
 
     [Fact]
+    public async Task ListarUsuarios_filtraPorSituacao_noServidor()
+    {
+        using var ctx = CreateContext();
+        var pendente = Seed(ctx, StatusUsuario.AguardandoAprovacao);
+        Seed(ctx, StatusUsuario.Ativo);
+        var bloqueado = Seed(ctx, StatusUsuario.Bloqueado);
+        var svc = CreateService(ctx);
+
+        var esperando = await svc.ListarUsuariosAsync(status: StatusUsuario.AguardandoAprovacao);
+        var bloqueados = await svc.ListarUsuariosAsync(status: StatusUsuario.Bloqueado);
+
+        Assert.Equal(pendente.Id, Assert.Single(esperando.Items).Id);
+        Assert.Equal(1, esperando.Total);
+        Assert.Equal(bloqueado.Id, Assert.Single(bloqueados.Items).Id);
+        Assert.Empty((await svc.ListarUsuariosAsync(status: StatusUsuario.Removido)).Items);
+    }
+
+    [Fact]
+    public async Task ListarUsuarios_quemEsperaAprovacaoVemPrimeiro_depoisOsMaisRecentes()
+    {
+        using var ctx = CreateContext();
+        var pendenteAntigo = Seed(ctx, StatusUsuario.AguardandoAprovacao, criadoEm: DateTime.UtcNow.AddDays(-10));
+        var ativoNovo = Seed(ctx, StatusUsuario.Ativo, criadoEm: DateTime.UtcNow);
+        var ativoVelho = Seed(ctx, StatusUsuario.Ativo, criadoEm: DateTime.UtcNow.AddDays(-5));
+
+        var r = await CreateService(ctx).ListarUsuariosAsync();
+
+        Assert.Equal(new[] { pendenteAntigo.Id, ativoNovo.Id, ativoVelho.Id }, r.Items.Select(u => u.Id));
+    }
+
+    [Fact]
     public async Task Recusar_pendente_viraRecusado()
     {
         using var ctx = CreateContext();

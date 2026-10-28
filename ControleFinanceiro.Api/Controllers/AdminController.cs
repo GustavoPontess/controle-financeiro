@@ -1,3 +1,4 @@
+using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.Infrastructure.Security;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
@@ -89,8 +90,12 @@ public class AdminController : ControllerBase
     /// <summary>Lista usuários (gestão), paginada. `busca` opcional filtra por nome/e-mail (server-side).</summary>
     [HttpGet("usuarios")]
     public async Task<ActionResult<PagedResult<UsuarioAdminDto>>> Usuarios(
-        [FromQuery] string? busca, [FromQuery] int page = 1, [FromQuery] int pageSize = 25)
-        => Ok(await _adminUsuarios.ListarUsuariosAsync(busca, page, pageSize));
+        [FromQuery] string? busca, [FromQuery] int page = 1, [FromQuery] int pageSize = 25, [FromQuery] StatusUsuario? status = null)
+    {
+        // Número fora do enum (ex.: ?status=99) é recusado, não vira filtro que ninguém tem.
+        if (status is { } s && !Enum.IsDefined(s)) return BadRequest(new { message = "Situação inválida." });
+        return Ok(await _adminUsuarios.ListarUsuariosAsync(busca, page, pageSize, status));
+    }
 
     /// <summary>Bloqueia um usuário ativo (não loga mais; reversível). Não pode bloquear a si mesmo.</summary>
     [HttpPatch("usuarios/{id:guid}/bloquear")]
