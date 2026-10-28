@@ -53,14 +53,15 @@ public class MinhaContaService
     /// <summary>Reativa a própria conta dentro da carência (usuário não está logado — vem por
     /// credenciais). Só reativa se estiver <see cref="StatusUsuario.MarcadoParaExclusao"/> e a senha
     /// bater. Mensagem genérica (anti-enumeração). Depois o usuário loga normalmente (MFA se ativo).</summary>
-    public async Task ReativarPorCredenciaisAsync(string email, string senha)
+    public async Task ReativarPorTokenAsync(string token)
     {
-        var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == (email ?? string.Empty).ToLower());
+        // O passe vem do login (senha provada lá, com Turnstile e espera). Aqui não se confere senha nenhuma.
+        var id = TokenReativacao.Conta(token);
+        var usuario = id is null ? null : await _context.Usuarios.FirstOrDefaultAsync(u => u.Id == id);
         if (usuario is null
             || usuario.Status != StatusUsuario.MarcadoParaExclusao
-            || string.IsNullOrEmpty(senha)
-            || !PasswordHasher.VerifyPassword(senha, usuario.PasswordHash))
-            throw new ArgumentException("Não foi possível reativar a conta. Verifique os dados.");
+            || !TokenReativacao.Confere(token, usuario.Id, usuario.PasswordHash, DateTime.UtcNow))
+            throw new ArgumentException("Não foi possível reativar a conta. Entre de novo pra tentar.");
 
         usuario.Status = StatusUsuario.Ativo;
         usuario.MarcadoExclusaoEm = null;

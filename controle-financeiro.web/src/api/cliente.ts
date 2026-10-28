@@ -42,8 +42,19 @@ export function mensagemDeErro(erro: unknown): string {
   if (typeof data?.message === "string" && data.message) return data.message
   if (typeof data?.detail === "string" && data.detail) return data.detail
   if (typeof data?.title === "string" && data.title) return data.title
+  // 429 sem a nossa mensagem: veio da borda (Cloudflare devolve uma página HTML, não o JSON da API).
+  if (resp?.status === 429) return "Muitas tentativas. Espere um pouco e tente de novo."
   if (resp?.status && resp.status >= 500) return "Algo deu errado do nosso lado. Tente de novo em instantes."
   return "Não foi possível concluir a ação. Tente de novo."
+}
+
+/** Segundos até poder tentar de novo depois de um 429 (null se não for 429). Lê o Retry-After (a API manda
+ *  o tempo que falta da janela); sem ele, 10s, o bloqueio da regra da Cloudflare no login. */
+export function esperaDoLimite(erro: unknown): number | null {
+  const resp = (erro as { response?: { status?: number; headers?: Record<string, unknown> } })?.response
+  if (resp?.status !== 429) return null
+  const valor = Number(String(resp.headers?.["retry-after"] ?? ""))
+  return Number.isFinite(valor) && valor > 0 ? Math.min(Math.ceil(valor), 3600) : 10
 }
 
 // Refresh single-flight: o backend rotaciona o refresh a cada uso e trata reapresentação como roubo —
@@ -53,6 +64,8 @@ const renovarSessao = () => (refreshEmVoo ??= api.post("/auth/refresh").finally(
 const REFRESH_EM_CORRIDA = "REFRESH_EM_CORRIDA"
 const CONTA_DESATUALIZADA = "conta_desatualizada"
 const codigo = (e: unknown) => (e as { response?: { data?: { code?: unknown } } })?.response?.data?.code
+/** Code do erro da API (ex.: "VERIFICACAO_HUMANA"), ou null. */
+export const codigoDoErro = (e: unknown): string | null => { const c = codigo(e); return typeof c === "string" ? c : null }
 
 api.interceptors.response.use(
   (r) => r,

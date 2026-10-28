@@ -1,0 +1,6 @@
+/* A caixinha da Cloudflare tem 65px de altura fixos: reservar o espaço evita o formulário pular quando ela aparece. */
+.caixa {
+  min-height: 65px;
+  display: grid;
+  gap: 6px;
+}

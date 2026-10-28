@@ -5,6 +5,7 @@ using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.DTOs.Common;
 using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Infrastructure.Identity;
+using ControleFinanceiro.Api.Services;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -183,6 +184,42 @@ public class AuthHttpTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal("UNAUTHORIZED", erro!.Code);
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await RefreshCru(usuario.Id, rtNovo, "203.0.113.10")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Login_emEspera_responde429_comRetryAfter_igualComOuSemConta()
+    {
+        SeedUsuario("espera-http@test.com", "SenhaForte!2026");
+        using (var scope = _factory.CreateScopeComBanco())
+        {
+            var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            foreach (var email in new[] { "espera-http@test.com", "espera-ninguem@test.com" })
+                ctx.TentativasLogin.Add(new TentativaLogin
+                {
+                    Id = Guid.NewGuid(), ChaveEmail = TentativasLogin.ChaveDoEmail(email), Falhas = 7, UltimaFalhaEm = DateTime.UtcNow,
+                });
+            ctx.SaveChanges();
+        }
+        var client = _factory.CreateClient();
+
+        var comConta = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "espera-http@test.com", password = "SenhaForte!2026" });
+        var semConta = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "espera-ninguem@test.com", password = "SenhaForte!2026" });
+
+        foreach (var resp in new[] { comConta, semConta })
+        {
+            Assert.Equal(HttpStatusCode.TooManyRequests, resp.StatusCode);
+            Assert.True(resp.Headers.RetryAfter?.Delta?.TotalSeconds is > 0 and <= 4);
+            Assert.Contains("MUITAS_TENTATIVAS", await resp.Content.ReadAsStringAsync());
+        }
+    }
+
+    [Fact]
+    public async Task Verificacao_semAsChaves_ficaDesligada()
+    {
+        var resp = await _factory.CreateClient().GetAsync("/api/v1/auth/verificacao");
+
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.Contains("\"chaveDoSite\":null", await resp.Content.ReadAsStringAsync());
     }
 
     [Fact]

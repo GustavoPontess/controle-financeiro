@@ -58,13 +58,13 @@ public class NotificacaoAdminGeracaoTests
         using var ctx = CreateContext();
         var auth = CreateAuth(ctx);
 
-        // Conta a uma falha do teto (9), com a última falha no passado pra o delay já ter passado.
+        // Conta a uma falha de pedir senha nova (99).
         ctx.Usuarios.Add(new Usuario
         {
             Id = Guid.NewGuid(), Email = "alvo@test.com", Nome = "Alvo",
             PasswordHash = PasswordHasher.HashPassword("SenhaCorreta2026!"),
             Status = StatusUsuario.Ativo,
-            FalhasLoginConsecutivas = 9,
+            FalhasLoginConsecutivas = 99,
             UltimaFalhaLoginEm = DateTime.UtcNow.AddHours(-1),
         });
         await ctx.SaveChangesAsync();

@@ -21,6 +21,10 @@ public class LoginDto
     /// sobrevivem ao fechar o navegador, reabrir já entra logado). false = cookies de sessão (morrem
     /// ao fechar — OWASP default, seguro em PC compartilhado).</summary>
     public bool ManterConectado { get; set; }
+
+    /// <summary>Token do "não sou robô" (Cloudflare Turnstile), quando a tela mostrou a verificação.</summary>
+    [MaxLength(2048)]
+    public string? TurnstileToken { get; set; }
 }
 
 public class RegisterDto
@@ -45,6 +49,10 @@ public class RegisterDto
     [Required]
     [MaxLength(128)]
     public string ConfirmPassword { get; set; } = string.Empty;
+
+    /// <summary>Token do "não sou robô" (Cloudflare Turnstile), quando a tela mostrou a verificação.</summary>
+    [MaxLength(2048)]
+    public string? TurnstileToken { get; set; }
 }
 
 public class AuthResponseDto
@@ -79,19 +87,19 @@ public class LoginResultDto
     /// reativar. <see cref="DiasRestantesExclusao"/> = dias até a purga automática.</summary>
     public bool ContaMarcadaExclusao { get; set; }
     public int? DiasRestantesExclusao { get; set; }
+
+    /// <summary>Com <see cref="ContaMarcadaExclusao"/>: passe curto (10 min) pro "Reativar conta"
+    /// (<c>TokenReativacao</c>). O reativar nunca recebe e-mail e senha.</summary>
+    public string? ReativacaoToken { get; set; }
 }
 
-/// <summary>Reativação da própria conta na carência (usuário não está logado — vem por credenciais).</summary>
+/// <summary>Reativação da própria conta na carência (usuário não está logado): o passe que o login devolveu ao provar a
+/// senha (<c>TokenReativacao</c>), nunca e-mail e senha.</summary>
 public class ReativarContaRequest
 {
     [Required]
-    [EmailAddress]
-    [MaxLength(255)]
-    public string Email { get; set; } = string.Empty;
-
-    [Required]
-    [MaxLength(128)]
-    public string Senha { get; set; } = string.Empty;
+    [MaxLength(256)]
+    public string Token { get; set; } = string.Empty;
 }
 
 public class UsuarioDto
@@ -147,6 +155,10 @@ public class ForgotPasswordDto
     [EmailAddress]
     [MaxLength(255)]
     public string Email { get; set; } = string.Empty;
+
+    /// <summary>Token do "não sou robô" (Cloudflare Turnstile), quando a tela mostrou a verificação.</summary>
+    [MaxLength(2048)]
+    public string? TurnstileToken { get; set; }
 }
 
 public class ResetPasswordDto

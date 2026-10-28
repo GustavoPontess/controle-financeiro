@@ -18,6 +18,9 @@ public interface IContaEmailSender
     /// <summary>A exclusão foi cancelada na carência (alerta: se não foi a pessoa, alguém entrou com a senha dela).</summary>
     Task EnviarExclusaoCanceladaAsync(string email, CancellationToken ct = default);
 
+    /// <summary>Senha errada várias vezes seguidas: avisa o dono (no máximo 1 por dia).</summary>
+    Task EnviarTentativasLoginAsync(string email, int falhas, DateTime quandoUtc, CancellationToken ct = default);
+
     /// <summary>A conta foi apagada de vez (fim da carência ou pelo admin): confirma que os dados saíram.</summary>
     Task EnviarContaApagadaAsync(string email, CancellationToken ct = default);
 

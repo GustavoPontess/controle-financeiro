@@ -54,6 +54,9 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             var cad = services.SingleOrDefault(d => d.ServiceType == typeof(IEmailCadastroDispatcher));
             if (cad != null) services.Remove(cad);
             services.AddSingleton<IEmailCadastroDispatcher>(SemEmailCadastro.Instancia);
+            var aviso = services.SingleOrDefault(d => d.ServiceType == typeof(IAvisoLoginDispatcher));
+            if (aviso != null) services.Remove(aviso);
+            services.AddSingleton<IAvisoLoginDispatcher>(SemAvisoLogin.Instancia);
         });
     }
 

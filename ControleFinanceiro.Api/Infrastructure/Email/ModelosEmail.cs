@@ -189,6 +189,31 @@ public static class ModelosEmail
     }
 
     /// <summary>
+    /// Senha errada várias vezes seguidas (5 em 24 h, <c>TentativasLogin</c>): avisa o dono, no máximo 1 por dia. Quem
+    /// tentou não fica sabendo (a tela dele é igual). Não diz o IP nem o lugar: só o que a pessoa precisa pra agir.
+    /// </summary>
+    public static MensagemEmail TentativasLogin(string appUrl, string email, int falhas, DateTime quandoUtc)
+    {
+        email = Escondido(email);
+        var link = $"{appUrl.TrimEnd('/')}/entrar";
+        var texto = $"A senha da conta do Pontes de {email} foi digitada errado {falhas} vezes seguidas, a última em {Hora(quandoUtc)}. Ninguém entrou.";
+        const string validade = "Se foi você, pode ignorar este e-mail. Mandamos no máximo um aviso destes por dia.";
+        const string naoFoi = "Não foi você? A conta continua protegida. Pra ficar ainda mais segura, entre, troque a senha em Configurações e ligue a verificação em duas etapas.";
+        return new MensagemEmail(
+            "Alguém tentou entrar na sua conta do Pontes",
+            $"{texto}\n\n{validade}\n\n{naoFoi}\n\nEntrar: {link}{RodapeTexto(email)}",
+            Html(
+                previa: "A senha foi digitada errado várias vezes. Ninguém entrou.",
+                titulo: "Alguém tentou entrar na sua conta",
+                texto: texto,
+                miolo: Botao(link, "Entrar e trocar a senha"),
+                validade: validade,
+                naoFoi: naoFoi,
+                linkReserva: link,
+                email: email));
+    }
+
+    /// <summary>
     /// A conta foi apagada de vez (fim da carência ou pelo admin, LGPD): confirma que os dados saíram. Sem link: a conta
     /// já não existe.
     /// </summary>

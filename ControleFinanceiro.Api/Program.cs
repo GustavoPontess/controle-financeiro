@@ -129,6 +129,10 @@ builder.Services.AddScoped<IEmailCadastroDispatcher, HangfireEmailCadastroDispat
 builder.Services.AddScoped<EmailPedidoRecebidoJob>();
 builder.Services.AddScoped<ConfirmacaoCadastroService>();
 builder.Services.AddScoped<PurgaCadastroNaoConfirmadoJob>();
+// Senha errada no login (Services/TentativasLogin.cs): aviso ao dono pela fila e limpeza diária das falhas vencidas.
+builder.Services.AddScoped<IAvisoLoginDispatcher, HangfireAvisoLoginDispatcher>();
+builder.Services.AddScoped<EmailTentativasLoginJob>();
+builder.Services.AddScoped<PurgaTentativaLoginJob>();
 builder.Services.AddScoped<CsrfTokenService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<RelatorioService>();
@@ -229,11 +233,13 @@ builder.Services.AddRateLimiter(options =>
 
     // Em Development, limite alto para não bloquear testes E2E repetidos localmente
     var isDev = builder.Environment.IsDevelopment();
+    // 20 por IP a cada 5 min: operadora de celular põe muita gente atrás do mesmo IP. Quem segura robô é o Turnstile e
+    // a espera que dobra pelo e-mail (Services/TentativasLogin.cs); aqui é só o teto por origem.
     options.AddPolicy("auth-login", ctx =>
         RateLimitPartition.GetFixedWindowLimiter(PartitionByIp(ctx), _ =>
             new FixedWindowRateLimiterOptions
             {
-                PermitLimit = isDev ? 100 : 5,
+                PermitLimit = isDev ? 100 : 20,
                 Window = TimeSpan.FromMinutes(5),
                 QueueLimit = 0,
             }));
@@ -410,6 +416,24 @@ if (checarSenhaVazada)
 else
 {
     builder.Services.AddSingleton<IVerificadorSenhaVazada>(SemVerificacaoDeVazamento.Instancia);
+}
+// "Não sou robô" (Cloudflare Turnstile): ligado com TURNSTILE_SECRET + TURNSTILE_SITE_KEY (secrets do deploy). Sem eles
+// (dev, testes) fica desligado e o front não mostra a verificação. Confere no siteverify com timeout curto e fail-closed.
+var turnstileSegredo = Environment.GetEnvironmentVariable("TURNSTILE_SECRET");
+var turnstileChaveSite = Environment.GetEnvironmentVariable("TURNSTILE_SITE_KEY");
+if (!builder.Environment.IsEnvironment("Testing")
+    && !string.IsNullOrWhiteSpace(turnstileSegredo) && !string.IsNullOrWhiteSpace(turnstileChaveSite))
+{
+    builder.Services.AddSingleton(new TurnstileOpcoes(turnstileSegredo, turnstileChaveSite));
+    builder.Services.AddHttpClient<IVerificadorHumano, TurnstileVerificador>(c =>
+    {
+        c.BaseAddress = new Uri("https://challenges.cloudflare.com/");
+        c.Timeout = TimeSpan.FromSeconds(5);
+    });
+}
+else
+{
+    builder.Services.AddSingleton<IVerificadorHumano>(SemVerificacaoHumana.Instancia);
 }
 builder.Services.AddEndpointsApiExplorer();
 
@@ -634,6 +658,8 @@ if (!isTesting)
         recManager.AddOrUpdate<PurgaRegistroAcessoExpiradoJob>("purga-registro-acesso-marco-civil", job => job.ExecuteAsync(), "30 4 * * *", utc);
         // Pedido de acesso que ninguém confirmou no prazo (o e-mail pode ser de quem nunca pediu nada).
         recManager.AddOrUpdate<PurgaCadastroNaoConfirmadoJob>("purga-cadastro-nao-confirmado", job => job.ExecuteAsync(), "45 4 * * *", utc);
+        // Senhas erradas do login que já venceram (24 h): o resumo do e-mail não fica guardado à toa.
+        recManager.AddOrUpdate<PurgaTentativaLoginJob>("purga-tentativa-login", job => job.ExecuteAsync(), "50 4 * * *", utc);
     });
 }
 

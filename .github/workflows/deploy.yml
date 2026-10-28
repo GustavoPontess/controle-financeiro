@@ -122,6 +122,9 @@ jobs:
           HANGFIRE_ADMIN_EMAILS: ${{ secrets.HANGFIRE_ADMIN_EMAILS }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           SMTP_REPLY_TO_PRODUTO: ${{ secrets.SMTP_REPLY_TO_PRODUTO }}
+          # Sem os dois secrets, chegam vazios e o Turnstile fica desligado.
+          TURNSTILE_SECRET: ${{ secrets.TURNSTILE_SECRET }}
+          TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
         run: |
           case "$ACAO" in
             deploy)   kamal deploy -c config/deploy.api.yml ;;

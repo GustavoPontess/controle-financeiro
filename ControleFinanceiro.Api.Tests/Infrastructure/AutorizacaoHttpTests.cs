@@ -172,6 +172,6 @@ public class AutorizacaoHttpTests : IClassFixture<CustomWebApplicationFactory>
         // corpo vazio de challenge de autorização.
         var body = await resp.Content.ReadAsStringAsync();
         Assert.Contains("\"code\":\"UNAUTHORIZED\"", body);
-        Assert.Contains("Email ou senha", body);
+        Assert.Contains("E-mail ou senha incorretos", body);
     }
 }

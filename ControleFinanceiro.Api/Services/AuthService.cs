@@ -4,6 +4,7 @@ using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.DTOs.Auth;
 using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Infrastructure.Identity;
+using ControleFinanceiro.Api.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -23,12 +24,8 @@ public class AuthService
     private const int MfaChallengeMinutos = 5; // TTL do desafio entre senha certa e código MFA
     private const int TrustedDeviceDias = 30;  // "lembrar este dispositivo" — janela do skip do 2º fator (OWASP: curto)
 
-    // Proteção contra força bruta por CONTA (OWASP Authentication Cheat Sheet) —
-    // complementa o rate-limit por IP (Program.cs), que sozinho é contornável trocando de IP.
-    private const int FalhasAntesDoDelay = 3;         // primeiras tentativas erradas não atrasam
-    private const int SegundosDelayBase = 1;           // "starts as a very short period (e.g., one second)"
-    private const int SegundosDelayMaximo = 300;        // teto de 5min — depois disso só o bloqueio permanente conta
-    private const int FalhasParaBloqueioPermanente = 10; // "after that permanent account lockout" — exige reset de senha
+    // Senha errada no login (Turnstile, espera que dobra, aviso ao dono, senha nova na 100ª): regras em
+    // Services/TentativasLogin.cs, contadas pelo e-mail digitado (igual com ou sem conta).
 
     // Tolerância da reuse-detection pra CORRIDA do próprio cliente (ver AvaliarReapresentacaoAsync).
     // Cenário real: o jwt de 15min expira e mais de um refresh sai com o MESMO token — hoje, com o
@@ -55,7 +52,9 @@ public class AuthService
         IHttpContextAccessor? httpContextAccessor = null,
         ILogger<AuthService>? logger = null,
         IVerificadorSenhaVazada? verificadorSenha = null,
-        IEmailCadastroDispatcher? emailCadastro = null)
+        IEmailCadastroDispatcher? emailCadastro = null,
+        IVerificadorHumano? verificadorHumano = null,
+        IAvisoLoginDispatcher? avisoLogin = null)
     {
         _context = context;
         _tokenProvider = tokenProvider;
@@ -69,7 +68,13 @@ public class AuthService
         _verificadorSenha = verificadorSenha ?? SemVerificacaoDeVazamento.Instancia;
         // Opcional pelo mesmo motivo; sem ele, o cadastro não manda o e-mail de pedido recebido.
         _emailCadastro = emailCadastro ?? SemEmailCadastro.Instancia;
+        // Opcionais pelo mesmo motivo: sem eles, o Turnstile fica desligado e o aviso ao dono não sai.
+        _verificadorHumano = verificadorHumano ?? SemVerificacaoHumana.Instancia;
+        _avisoLogin = avisoLogin ?? SemAvisoLogin.Instancia;
     }
+
+    private readonly IVerificadorHumano _verificadorHumano;
+    private readonly IAvisoLoginDispatcher _avisoLogin;
 
     private readonly IEmailCadastroDispatcher _emailCadastro;
 
@@ -379,55 +384,79 @@ public class AuthService
             .ToList();
     }
 
-    public async Task<LoginResultDto> LoginAsync(LoginDto dto, string? trustedDeviceToken = null, bool manterConectado = false)
+    public async Task<LoginResultDto> LoginAsync(LoginDto dto, string? trustedDeviceToken = null, bool manterConectado = false,
+        string? aparelhoConhecido = null)
     {
         // Validate input
         if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
             throw new ArgumentException("Email e senha são obrigatórios");
 
-        // Find user
+        var agora = DateTime.UtcNow;
+        var chaveEmail = TentativasLogin.ChaveDoEmail(dto.Email);
+        var tentativa = await _context.TentativasLogin.FirstOrDefaultAsync(t => t.ChaveEmail == chaveEmail);
         var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == dto.Email.ToLower());
+
+        // Espera que dobra (5º erro em diante), pelo e-mail digitado: igual com ou sem conta. O navegador onde esta conta
+        // já entrou fica de fora, então quem erra de propósito em outro lugar não atrasa o dono. Vem antes do Turnstile
+        // pra não gastar o token (uso único) numa tentativa que nem vai ser conferida.
+        var conhecido = usuario is not null && AparelhoConhecido.Reconhece(aparelhoConhecido, usuario.Id, agora);
+        var espera = conhecido ? 0 : TentativasLogin.SegundosDeEspera(tentativa, agora);
+        if (espera > 0)
+            throw new MuitasTentativasException(espera);
+
+        // Turnstile a partir do 1º erro deste e-mail (desligado sem as chaves: dev e testes).
+        if (TentativasLogin.PrecisaVerificacao(tentativa, agora) && _verificadorHumano.Ligado
+            && !await _verificadorHumano.ConfereAsync(dto.TurnstileToken, IpDoCliente()))
+            throw new VerificacaoHumanaException();
+
         if (usuario == null)
         {
-            // Gasta o mesmo tempo de verificar uma senha de verdade, pra o tempo de resposta não revelar se o
-            // e-mail tem conta (enumeração de usuário por timing — a mensagem já é genérica, o tempo não era).
+            // Gasta o mesmo tempo de verificar uma senha de verdade e conta a falha do mesmo jeito, pra nem o tempo nem a
+            // espera dizerem se o e-mail tem conta.
             PasswordHasher.FakeVerify(dto.Password);
-            throw new UnauthorizedAccessException("Email ou senha inválidos");
+            await RegistrarFalhaAsync(tentativa, chaveEmail, agora);
+            throw new UnauthorizedAccessException(TentativasLogin.MensagemSenhaIncorreta);
         }
 
-        // Bloqueio permanente (excedeu o teto de tentativas erradas) — só reset de senha libera.
-        if (usuario.FalhasLoginConsecutivas >= FalhasParaBloqueioPermanente)
-            throw new UnauthorizedAccessException("Muitas tentativas de login. Redefina sua senha pra continuar.");
-
-        // Delay progressivo por conta — dobra a cada erro a partir da 3ª tentativa (OWASP:
-        // "starts as a very short period... but doubles after each failed login attempt").
-        if (usuario.FalhasLoginConsecutivas >= FalhasAntesDoDelay && usuario.UltimaFalhaLoginEm.HasValue)
-        {
-            var expoente = usuario.FalhasLoginConsecutivas - FalhasAntesDoDelay;
-            var delaySegundos = Math.Min(SegundosDelayBase * Math.Pow(2, expoente), SegundosDelayMaximo);
-            var liberaEm = usuario.UltimaFalhaLoginEm.Value.AddSeconds(delaySegundos);
-            if (DateTime.UtcNow < liberaEm)
-                throw new UnauthorizedAccessException("Muitas tentativas. Aguarde alguns instantes e tente novamente.");
-        }
-
-        // Verify password
         if (!PasswordHasher.VerifyPassword(dto.Password, usuario.PasswordHash))
         {
             usuario.FalhasLoginConsecutivas++;
-            usuario.UltimaFalhaLoginEm = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            usuario.UltimaFalhaLoginEm = agora;
+            var falhas = await RegistrarFalhaAsync(tentativa, chaveEmail, agora);
 
-            // Alerta de segurança no painel admin quando a conta ACABOU de bater o teto e virou
-            // bloqueio permanente (== pra disparar só na transição, não a cada falha depois).
-            if (usuario.FalhasLoginConsecutivas == FalhasParaBloqueioPermanente)
+            // 5 erros em 24 h: e-mail pro dono (pela fila, fora do tempo da resposta) e alerta no Admin, no máximo 1 por dia.
+            if (falhas >= TentativasLogin.FalhasParaAvisarDono
+                && (usuario.AvisoTentativasEm is null || agora - usuario.AvisoTentativasEm.Value >= TentativasLogin.Janela))
+            {
+                usuario.AvisoTentativasEm = agora;
+                await _context.SaveChangesAsync();
+                _avisoLogin.TentativasDeLogin(usuario.Id, falhas, agora);
                 await _notificacaoAdmin.CriarAsync(
                     TipoNotificacaoAdmin.Seguranca,
-                    "Conta bloqueada por força bruta",
-                    $"A conta de {usuario.Nome} atingiu {FalhasParaBloqueioPermanente} tentativas de login e foi bloqueada. Só reset de senha libera.",
+                    "Senha errada várias vezes",
+                    $"A conta de {usuario.Nome} teve {falhas} senhas erradas seguidas. A pessoa recebeu um e-mail de aviso.",
+                    "/admin/usuarios");
+            }
+
+            // 100ª senha errada seguida (NIST: no máximo 100): daqui pra frente a conta pede senha nova.
+            if (usuario.FalhasLoginConsecutivas == TentativasLogin.FalhasSeguidasParaSenhaNova)
+                await _notificacaoAdmin.CriarAsync(
+                    TipoNotificacaoAdmin.Seguranca,
+                    "Conta pede senha nova",
+                    $"A conta de {usuario.Nome} teve {TentativasLogin.FalhasSeguidasParaSenhaNova} senhas erradas seguidas e só entra de novo com senha nova.",
                     "/admin/usuarios");
 
-            throw new UnauthorizedAccessException("Email ou senha inválidos");
+            throw new UnauthorizedAccessException(TentativasLogin.MensagemSenhaIncorreta);
         }
+
+        // Senha certa, mas a conta passou de 100 erros seguidos: pede senha nova. Só quem acertou a senha vê isso, então
+        // não conta pra mais ninguém que a conta existe.
+        if (usuario.FalhasLoginConsecutivas >= TentativasLogin.FalhasSeguidasParaSenhaNova)
+            throw new UnauthorizedAccessException(TentativasLogin.MensagemSenhaNova);
+
+        // Acertou: as falhas deste e-mail somem (gravado no SaveChanges de cada saída abaixo).
+        if (tentativa is not null)
+            _context.TentativasLogin.Remove(tentativa);
 
         // Conta na CARÊNCIA de exclusão: senha provada → NÃO barra e NÃO emite sessão; sinaliza pro
         // front oferecer a reativação (autoatendimento). Zera o contador de força bruta antes.
@@ -440,7 +469,12 @@ public class AuthService
             int? dias = usuario.MarcadoExclusaoEm.HasValue
                 ? Math.Max(0, AdminLgpdService.JanelaCarenciaDias - (int)(DateTime.UtcNow - usuario.MarcadoExclusaoEm.Value).TotalDays)
                 : null;
-            return new LoginResultDto { ContaMarcadaExclusao = true, DiasRestantesExclusao = dias };
+            return new LoginResultDto
+            {
+                ContaMarcadaExclusao = true,
+                DiasRestantesExclusao = dias,
+                ReativacaoToken = TokenReativacao.Gerar(usuario.Id, usuario.PasswordHash, agora),
+            };
         }
 
         // GATE DE STATUS — só conta Ativa loga. Checado DEPOIS da senha (não vaza a situação da
@@ -511,6 +545,35 @@ public class AuthService
             },
         };
     }
+
+    /// <summary>Conta uma senha errada do e-mail digitado (recomeça do 1 se a última já venceu). Devolve quantas valem.</summary>
+    private async Task<int> RegistrarFalhaAsync(TentativaLogin? tentativa, string chaveEmail, DateTime agora)
+    {
+        if (tentativa is null)
+        {
+            tentativa = new TentativaLogin { Id = Guid.NewGuid(), ChaveEmail = chaveEmail, Falhas = 1, UltimaFalhaEm = agora };
+            _context.TentativasLogin.Add(tentativa);
+            try
+            {
+                await _context.SaveChangesAsync();
+                return 1;
+            }
+            catch (DbUpdateException)
+            {
+                // Duas tentativas do mesmo e-mail ao mesmo tempo: a outra criou a linha primeiro. Soma nela.
+                _context.Entry(tentativa).State = EntityState.Detached;
+                var existente = await _context.TentativasLogin.FirstAsync(t => t.ChaveEmail == chaveEmail);
+                return await RegistrarFalhaAsync(existente, chaveEmail, agora);
+            }
+        }
+
+        tentativa.Falhas = TentativasLogin.FalhasValendo(tentativa, agora) + 1;
+        tentativa.UltimaFalhaEm = agora;
+        await _context.SaveChangesAsync();
+        return tentativa.Falhas;
+    }
+
+    private string? IpDoCliente() => _httpContextAccessor?.HttpContext?.Connection.RemoteIpAddress?.ToString();
 
     /// <summary>
     /// Passo 2 do login com MFA — recebe o challenge do passo 1 (senha certa) + o código
@@ -857,9 +920,13 @@ public class AuthService
         prt.Usuario.PasswordHash = PasswordHasher.HashPassword(dto.NovaSenha);
         prt.Usuario.AtualizadoEm = DateTime.UtcNow;
 
-        // Reset de senha também libera o bloqueio por força bruta (outra via de recuperação).
+        // Senha nova zera as senhas erradas da conta e do e-mail (a pessoa provou que é dona do e-mail).
         prt.Usuario.FalhasLoginConsecutivas = 0;
         prt.Usuario.UltimaFalhaLoginEm = null;
+        var chaveEmail = TentativasLogin.ChaveDoEmail(prt.Usuario.Email);
+        var tentativa = await _context.TentativasLogin.FirstOrDefaultAsync(t => t.ChaveEmail == chaveEmail);
+        if (tentativa is not null)
+            _context.TentativasLogin.Remove(tentativa);
 
         // Invalidar token
         prt.Usado = true;

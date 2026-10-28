@@ -105,30 +105,35 @@ reconhecimento para o atacante. "Não dá pra ele acessar" **NÃO** basta.
 - **CORS restritivo:** `WithOrigins(...)` por ambiente, **nunca `AllowAnyOrigin`** (e nunca AllowAnyOrigin+AllowCredentials). _Fonte: MS Learn ASP.NET Core CORS._
 - **Security headers** (HSTS, CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy) — recomendado, detalhe de implementação 🔶.
 
-## 7. Proteção contra força bruta no login ✅ (2026-08-19)
+## 7. Senha errada no login ✅ (refeito em 2026-10-28; antes 2026-08-19)
 
-- **Contador de falha por CONTA, não só por IP.** O rate-limit por IP (`Program.cs`, 5
-  tentativas/5min em prod) sozinho é contornável trocando de IP — OWASP: *"O contador de logins
-  falhos deve ser associado à própria conta, pra evitar que o atacante contorne trocando de IP."*
-- **Delay progressivo:** a partir da 3ª tentativa errada, cada nova tentativa exige esperar um
-  delay que **dobra** a cada erro (1s, 2s, 4s... teto de 5min) — OWASP: *"lockout exponencial...
-  começa curto (ex. 1s), mas dobra a cada tentativa falha."* Aplicado mesmo se a próxima tentativa
-  usar a senha certa (é delay, não é "só bloqueia erro").
-- **Bloqueio permanente após 10 falhas seguidas** — só reset de senha libera (zera o contador).
-  OWASP: *"amount of time to delay after each account lockout (max 2-3, after that permanent
-  account lockout)"*.
-- **Reset de senha também zera o contador** — outra via de recuperação legítima.
-- **CAPTCHA — decisão consciente de NÃO implementar no beta.** OWASP recomenda CAPTCHA só depois
-  de N tentativas suspeitas (não na 1ª tentativa), mas exige serviço externo (ex. Cloudflare
-  Turnstile) e conta própria do Gustavo — adiado pro lançamento público ou se aparecer bot de
-  verdade (`ROADMAP.md` → "Catalogado pro lançamento público"). A defesa mais forte segundo a
-  própria OWASP é **MFA** ("preveniria 99,9% dos comprometimentos"), não CAPTCHA — MFA já está no
-  domínio 🔶 aberto abaixo.
-- `AuthService.LoginAsync`/`ResetSenhaAsync`, migration `AddLoginBruteForceProtection`
-  (`Usuario.FalhasLoginConsecutivas`/`UltimaFalhaLoginEm`). 5 testes novos
-  (`AuthServiceTests.cs`).
-- _Fonte: OWASP Authentication Cheat Sheet ("Account Lockout"/"Automated Threats") + OWASP
-  Credential Stuffing Prevention Cheat Sheet._
+Desenho aprovado pelo Gustavo (página "Login do Pontes"). Regras num lugar só: `Services/TentativasLogin.cs`. Ideia
+central: **gente sempre consegue entrar, robô não, e ninguém tranca a conta dos outros**. A trava permanente na 10ª
+falha saiu (OWASP avisa que trava vira ataque contra o dono).
+
+- **Tudo conta pelo E-MAIL DIGITADO, exista ou não a conta** (`TentativaLogin`, só o HMAC do e-mail com chave do
+  servidor, vale 24 h depois da última falha, `PurgaTentativaLoginJob` apaga as vencidas). Assim espera, verificação e
+  mensagem são iguais com ou sem conta (sem enumeração). Senha errada é sempre **"E-mail ou senha incorretos."**, no
+  mesmo tempo (`FakeVerify` quando não há conta).
+- **Turnstile (Cloudflare) a partir do 1º erro** daquele e-mail. O servidor sempre confere o token no siteverify
+  (uso único, 5 min; fail-closed). Ligado por `TURNSTILE_SECRET` + `TURNSTILE_SITE_KEY`; sem eles (dev, testes) fica
+  desligado e o front não mostra nada (`GET /auth/verificacao` devolve a chave pública). **Pedir acesso e Esqueci a
+  senha exigem sempre** (mandam e-mail pro endereço digitado). CSP do Caddy libera `challenges.cloudflare.com`.
+- **Espera que dobra a partir do 5º erro** do e-mail: 1 s, 2 s, 4 s... até 5 min, como 429 + `Retry-After` (a tela
+  mostra o contador). **Aparelho conhecido não espera** (`AparelhoConhecido`, cookie `ac` httpOnly assinado com HMAC,
+  180 dias, até 5 contas): o navegador onde a conta já entrou fica fora, como o Smart Lockout da Microsoft separa lugar
+  conhecido de desconhecido. A espera vem antes do Turnstile (não gasta o token).
+- **Aviso ao dono:** no 5º erro em 24 h de uma conta que existe, e-mail "Alguém tentou entrar na sua conta" (remetente
+  de segurança, pela fila do Hangfire pra não mexer no tempo da resposta, 1 por dia, `Usuario.AvisoTentativasEm`) e
+  alerta no Admin. Quem tenta não fica sabendo.
+- **100ª senha errada SEGUIDA da conta** (`Usuario.FalhasLoginConsecutivas`, NIST: no máximo 100): pede senha nova. Só
+  diz isso pra quem acertou a senha; senha errada continua com a frase de sempre. Senha nova zera tudo.
+- **Limite por IP: 20 em 5 min** (era 5; operadora de celular põe muita gente no mesmo IP). Na borda, a Cloudflare corta
+  rajada (mais de 10 em 10 s por IP no `/auth/login`).
+- _Fontes: NIST SP 800-63B rev4 "Rate Limiting (Throttling)" (máximo 100 falhas; desafio anti-robô e espera crescente
+  como alternativas à trava), OWASP Authentication Cheat Sheet ("Account Lockout": trava pode virar negação de serviço
+  contra outros usuários; captcha depois de poucos erros; mensagem genérica), Microsoft Entra Smart Lockout (contadores
+  separados pra lugar conhecido e desconhecido), Cloudflare Turnstile server-side validation._
 
 ## 8. MFA (TOTP, opt-in) ✅ (2026-08-23)
 

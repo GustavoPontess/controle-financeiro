@@ -78,6 +78,9 @@ env:
     # pessoal (dado pessoal): fica fora do repo, vem do secret.
     - SMTP_PASS:RESEND_API_KEY
     - SMTP_REPLY_TO_PRODUTO
+    # "Não sou robô" (Cloudflare Turnstile) do login, Pedir acesso e Esqueci a senha. Vazias = desligado.
+    - TURNSTILE_SECRET
+    - TURNSTILE_SITE_KEY
 
 # Os volumes que já existem na VPS: logs e as chaves do Data Protection continuam.
 volumes:

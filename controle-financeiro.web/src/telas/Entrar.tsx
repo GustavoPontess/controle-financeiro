@@ -10,14 +10,16 @@ import { BarraDev, useEstadoDev } from "../dev/BarraDev"
 import { CONTAS_EXEMPLO, ESTADOS_ACESSO } from "../dev/estadosAcesso"
 import rosterService, { type ContaLembrada } from "../services/rosterService"
 import mfaService from "../services/mfaService"
-import { api } from "../api/cliente"
+import { api, codigoDoErro, mensagemDeErro } from "../api/cliente"
 import { useAuth } from "../auth/useAuth"
+import VerificacaoHumana, { useVerificacaoHumana } from "../componentes/VerificacaoHumana"
 
 // Senha padrão das contas de TESTE do seeder de dev (nunca uma senha real; não existe em produção).
 const DEV_SENHA = "Dev@123456"
 type DevConta = { email: string; nome: string; senhaPadrao: boolean }
 type Passo = "escolher" | "form" | "mfa" | "exclusao" | "esqueci"
 
+const AVISO_ESPERA = "Muitas tentativas. Espere o contador pra tentar de novo."
 const iniciais = (nome: string) => nome.trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase()
 const emailValido = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
 
@@ -33,6 +35,16 @@ export default function Entrar() {
   const [erros, setErros] = useState<{ email?: string; senha?: string }>({})
   const [erro, setErro] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
+  // "Não sou robô" (Turnstile): no login só depois de uma senha errada; no "Esqueci a senha", sempre (manda e-mail).
+  const verif = useVerificacaoHumana()
+  const [pedirVerificacao, setPedirVerificacao] = useState(false)
+  // Bloqueio por excesso de tentativas (429): segundos que faltam; o botão fica travado com o contador.
+  const [espera, setEspera] = useState(0)
+  useEffect(() => {
+    if (espera <= 0) { setErro((e) => (e === AVISO_ESPERA ? null : e)); return } // acabou: some o aviso
+    const t = setTimeout(() => setEspera((s) => s - 1), 1000)
+    return () => clearTimeout(t)
+  }, [espera])
 
   // Contas lembradas neste navegador (roster do servidor, por dispositivo; só nome + e-mail mascarado).
   const [roster, setRoster] = useState<ContaLembrada[]>([])
@@ -44,7 +56,7 @@ export default function Entrar() {
   const [mfaCodigo, setMfaCodigo] = useState("")
   const [mfaErro, setMfaErro] = useState<string | null>(null)
   const [confiar, setConfiar] = useState(false)
-  const [marcada, setMarcada] = useState<{ dias: number | null } | null>(null)
+  const [marcada, setMarcada] = useState<{ dias: number | null; token: string | null } | null>(null)
   const [reativarErro, setReativarErro] = useState<string | null>(null)
   // "Esqueci a senha": pede o e-mail e a API manda o link (resposta igual pra qualquer e-mail).
   // Chegar com `state.esqueci` (da tela de redefinir senha, link vencido) abre direto no pedido do link.
@@ -85,7 +97,7 @@ export default function Entrar() {
     else if (e === "duas-etapas") setMfaChallenge("dev")
     else if (e === "esqueci") setEsqueci(true)
     else if (e === "link-enviado") { setEsqueci(true); setEsqueciEnviado(true) }
-    else if (e === "reativar") setMarcada({ dias: 23 })
+    else if (e === "reativar") setMarcada({ dias: 23, token: null })
   } : undefined)
 
   const passo: Passo = marcada ? "exclusao" : mfaChallenge ? "mfa" : esqueci ? "esqueci" : roster.length > 0 && !usarOutra ? "escolher" : "form"
@@ -113,7 +125,7 @@ export default function Entrar() {
 
   const tratarResultado = async (r: Awaited<ReturnType<typeof entrar>>) => {
     if (r.tipo === "mfa") { entrando.current = false; setMfaChallenge(r.challengeToken) }
-    else if (r.tipo === "exclusao") { entrando.current = false; setMarcada({ dias: r.diasRestantes }) }
+    else if (r.tipo === "exclusao") { entrando.current = false; setMarcada({ dias: r.diasRestantes, token: r.reativacaoToken }) }
     else await depoisDeEntrar()
   }
 
@@ -126,17 +138,23 @@ export default function Entrar() {
     if (!senha) novos.senha = "Informe a senha"
     setErros(novos)
     if (Object.keys(novos).length) return
+    const comVerificacao = pedirVerificacao && !!verif.chave
+    if (comVerificacao && !verif.token) { setErro("Confirme que você não é um robô."); return }
+    const token = comVerificacao ? verif.token : null
     setEnviando(true)
-    if (adicionar) {
-      try { await adicionarConta(email.trim(), senha); navigate("/dashboard", { replace: true }) }
-      catch (err) { setErro(err instanceof Error ? err.message : "Não foi possível conectar a conta.") }
-      finally { setEnviando(false) }
-      return
-    }
-    entrando.current = true
-    try { await tratarResultado(await entrar(email.trim(), senha, manter)) }
-    catch (err) { entrando.current = false; setErro(err instanceof Error ? err.message : "Não foi possível entrar.") }
-    finally { setEnviando(false) }
+    try {
+      if (adicionar) { await adicionarConta(email.trim(), senha, token); navigate("/dashboard", { replace: true }); return }
+      entrando.current = true
+      await tratarResultado(await entrar(email.trim(), senha, manter, token))
+    } catch (err) {
+      entrando.current = false
+      const segundos = (err as { esperarSegundos?: number | null }).esperarSegundos
+      if (segundos) { setEspera(segundos); setErro(AVISO_ESPERA) }
+      else setErro(err instanceof Error ? err.message : "Não foi possível entrar.")
+      // Errou (ou faltou a verificação): a próxima tentativa deste e-mail pede o "não sou robô".
+      setPedirVerificacao(true)
+      if (comVerificacao) verif.novaRodada() // o token já foi gasto
+    } finally { setEnviando(false) }
   }
 
   const enviarMfa = async (e: FormEvent) => {
@@ -153,17 +171,23 @@ export default function Entrar() {
     e.preventDefault()
     setErro(null)
     if (!email.trim() || !emailValido(email)) { setErros({ email: !email.trim() ? "Informe o e-mail" : "E-mail inválido" }); return }
+    if (verif.chave && !verif.token) { setErro("Confirme que você não é um robô."); return }
     setEnviando(true)
-    try { await api.post("/auth/forgot-password", { email: email.trim() }, { skipErrorToast: true }); setEsqueciEnviado(true) }
-    catch { setErro("Não foi possível enviar agora. Tente de novo em instantes.") }
-    finally { setEnviando(false) }
+    try {
+      await api.post("/auth/forgot-password", { email: email.trim(), turnstileToken: verif.token ?? undefined }, { skipErrorToast: true })
+      setEsqueciEnviado(true)
+    } catch (err) {
+      setErro(codigoDoErro(err) === "VERIFICACAO_HUMANA" ? mensagemDeErro(err) : "Não foi possível enviar agora. Tente de novo em instantes.")
+      verif.novaRodada()
+    } finally { setEnviando(false) }
   }
 
   const reativarConta = async () => {
     setReativarErro(null)
     setEnviando(true)
     try {
-      await reativar(email.trim(), senha)
+      if (!marcada?.token) throw new Error("Entre de novo pra reativar a conta.")
+      await reativar(marcada.token)
       setMarcada(null)
       entrando.current = true
       await tratarResultado(await entrar(email.trim(), senha, manter))
@@ -236,7 +260,10 @@ export default function Entrar() {
               <label className="marcar"><input type="checkbox" checked={manter} onChange={(e) => setManter(e.target.checked)} /> Manter-me conectado</label>
               <button type="button" className="link-a" onClick={() => { setEsqueci(true); limparErros() }}>Esqueci a senha</button>
             </div>
-            <button className="btn btn--acc btn-cheio" type="submit" disabled={enviando}>{enviando ? "Entrando…" : <>Entrar <Seta /></>}</button>
+            {pedirVerificacao && verif.chave && <VerificacaoHumana chave={verif.chave} rodada={verif.rodada} aoMudar={verif.setToken} />}
+            <button className="btn btn--acc btn-cheio" type="submit" disabled={enviando || espera > 0}>
+              {espera > 0 ? `Tente de novo em ${Math.floor(espera / 60)}:${String(espera % 60).padStart(2, "0")}` : enviando ? "Entrando…" : <>Entrar <Seta /></>}
+            </button>
           </form>
         </section>
       )}
@@ -266,6 +293,7 @@ export default function Entrar() {
             {erro && <p className="erro" role="alert">{erro}</p>}
             <CampoAcesso rotulo="E-mail" erro={erros.email} type="email" name="email" autoComplete="email" autoFocus value={email}
               onChange={(e) => { setEmail(e.target.value); setErros((p) => ({ ...p, email: undefined })) }} />
+            {verif.chave && <VerificacaoHumana chave={verif.chave} rodada={verif.rodada} aoMudar={verif.setToken} />}
             <button className="btn btn--acc btn-cheio" type="submit" disabled={enviando}>{enviando ? "Enviando…" : "Enviar link"}</button>
           </form>
         </section>

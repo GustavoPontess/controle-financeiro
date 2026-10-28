@@ -9,6 +9,8 @@ export type CadastroPayload = {
   dataNascimento: string | null
   password: string
   confirmPassword: string
+  /** Token do "não sou robô" (Turnstile), quando a verificação está ligada. */
+  turnstileToken?: string
 }
 
 export type CadastroResposta = { status: number; mensagem: string }
