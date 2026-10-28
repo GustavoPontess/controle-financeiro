@@ -4,7 +4,7 @@
 // como o cookie é httpOnly, a LISTA (nome, e-mail) mora no navegador. Login frio começa a lista do zero
 // (o servidor já revogou as contas de quem usou o navegador antes); "Sair" sai de todas.
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
-import { api, mensagemDeErro } from "../api/cliente"
+import { api, definirContaDaAba, mensagemDeErro } from "../api/cliente"
 import { AuthContext, type ContaConectada, type ResultadoEntrar, type Usuario } from "./contexto"
 
 const SEM_TOAST = { skipErrorToast: true } as const
@@ -24,9 +24,11 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const recarregar = useCallback(async () => {
     try {
       const r = await api.get<Usuario>("/auth/me", SEM_TOAST)
+      definirContaDaAba(r.data.id)
       setUsuario(r.data)
       setContas((prev) => { const lista = comConta(prev, r.data); gravarContas(lista); return lista })
     } catch {
+      definirContaDaAba(null)
       setUsuario(null)
     } finally {
       setCarregando(false)
@@ -70,6 +72,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const sair = useCallback(async () => {
     try { await api.post("/auth/logout-all", undefined, SEM_TOAST) } catch { /* sessão já morta */ }
     guardar([])
+    definirContaDaAba(null)
     setUsuario(null)
   }, [guardar])
 
