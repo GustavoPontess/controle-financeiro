@@ -68,6 +68,10 @@ public class MinhaContaService
         _audit.Registrar(usuario.Id, usuario.Email, AcaoAdmin.AutoReativacaoConta, "Usuario", usuario.Id, usuario.Email,
             "Reativação solicitada pelo próprio titular na carência.");
         await _context.SaveChangesAsync();
+
+        // Alerta: se não foi a pessoa, alguém entrou com a senha dela. Best-effort, não desfaz a reativação.
+        try { await _contaEmail.EnviarExclusaoCanceladaAsync(usuario.Email); }
+        catch (Exception) { /* o e-mail cair não desfaz a reativação */ }
     }
 
     /// <summary>Passo 1: confirma a senha atual e decide o 2º fator. Sem MFA → dispara o PIN por

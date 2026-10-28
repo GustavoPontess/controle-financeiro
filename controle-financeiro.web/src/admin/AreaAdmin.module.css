@@ -2,6 +2,38 @@
 .aviso { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-positivo-suave); color: var(--v2-positivo); font-size: var(--v2-fs-sm); font-weight: 500; }
 .aviso[data-erro="true"] { background: var(--v2-negativo-suave); color: var(--v2-negativo); }
 .busca { width: 280px; max-width: 100%; }
+
+/* Faixa de números e lista: mesma anatomia de Contas fixas, Transações e Cartões. */
+.resumo { padding: 20px 24px; }
+.numeros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.numero { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.rotulo { font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-texto-2); }
+.numeroValor { font-size: var(--v2-fs-2xl); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.numeroValor[data-alerta="true"] { color: var(--v2-negativo); }
+.numeroEsqueleto { display: block; width: 80px; height: 28px; border-radius: 8px; background: var(--v2-superficie-2); }
+
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 24px 4px; flex-wrap: wrap; }
+.respiro { padding: 8px 24px 20px; }
+.vazio { margin: 0; padding: 20px 24px 28px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
+
+/* Tabela: no computador, colunas com cabeçalho (Pessoa · Situação · Cadastro · Último acesso · Ações). */
+.tabela { padding: 4px 8px 8px; }
+.cabecalho, .linha { display: grid; grid-template-columns: minmax(0, 1fr) 190px 110px 120px 56px; align-items: center; gap: 16px; padding: 0 16px; }
+.cabecalho { padding-top: 10px; padding-bottom: 10px; font-size: var(--v2-fs-xs); font-weight: 600; color: var(--v2-texto-3); }
+.colAcoes { text-align: right; }
+.lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.linha { min-height: 60px; padding-top: 10px; padding-bottom: 10px; border-top: 1px solid var(--v2-linha); }
+.linha:hover { background: var(--v2-hover-linha); }
+.pessoa { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.icone { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; background: var(--v2-superficie-2); color: var(--v2-texto-2); font-size: var(--v2-fs-sm); font-weight: 700; }
+.texto { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.nomeLinha { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; min-width: 0; }
+.nome { flex: 0 1 auto; min-width: 0; font-size: var(--v2-fs-md); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sub { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.celula { font-size: var(--v2-fs-sm); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.celula[data-mudo="true"] { color: var(--v2-texto-3); }
+.soCelular { display: none; }
+.acoes { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
 .porta { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; background: var(--v2-bg); }
 .porta > * { width: min(440px, 100%); }
 .portaCorpo { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; }
@@ -9,4 +41,21 @@
 
 @media (max-width: 900px) {
   .busca { width: 100%; }
+  .resumo { padding: 14px 20px; }
+  .numeros { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .numero { flex-direction: row; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .numeroValor { font-size: var(--v2-fs-lg); }
+  .toolbar { padding: 14px 16px 4px; }
+  /* Celular: a linha empilha. E-mail embaixo do nome, etiqueta do lado do nome, datas numa linha, ações no fim. */
+  .tabela { padding: 4px 4px 8px; }
+  .cabecalho { display: none; }
+  .linha { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; padding: 12px; }
+  .soCelular { display: inline-flex; }
+  .celula[data-rotulo="Situação"] { display: none; }
+  .celula[data-rotulo="Cadastro"], .celula[data-rotulo="Último acesso"] { grid-column: 1; font-size: var(--v2-fs-xs); color: var(--v2-texto-3); padding-left: 48px; }
+  .celula[data-rotulo]::before { content: attr(data-rotulo) " "; }
+  .pessoa { grid-column: 1; grid-row: 1; }
+  /* O "⋯" no canto de cima. */
+  .acoes { grid-column: 2; grid-row: 1; align-self: start; }
+  .acoes:empty { display: none; }
 }

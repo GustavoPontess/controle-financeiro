@@ -1,5 +1,5 @@
 import { api } from "../api/cliente"
-import type { AdminAuditLog, ExportacaoUsuario, MetricasAdmin, UsuarioAdmin } from "@/types/Admin"
+import type { AdminAuditLog, ExportacaoUsuario, MetricasAdmin, StatusUsuario, UsuarioAdmin } from "@/types/Admin"
 import type { ContagemNotificacaoAdmin, NotificacaoAdmin } from "@/types/NotificacaoAdmin"
 import type { PagedResult } from "@/types/Paged"
 
@@ -25,9 +25,9 @@ const adminService = {
   // ── Módulo B — gestão de usuários ──
   // Busca/paginação SERVER-SIDE: manda busca+page+pageSize e devolve PagedResult (Total reflete o
   // filtro no servidor, nunca a página carregada).
-  usuarios: (busca?: string, page = 1, pageSize = 25) =>
+  usuarios: (busca?: string, page = 1, pageSize = 25, status?: StatusUsuario) =>
     api.get<PagedResult<UsuarioAdmin>>("/admin/usuarios", {
-      params: { ...(busca ? { busca } : {}), page, pageSize },
+      params: { ...(busca ? { busca } : {}), page, pageSize, ...(status !== undefined ? { status } : {}) },
     }).then((r) => r.data),
 
   bloquear: (id: string) =>

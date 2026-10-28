@@ -130,6 +130,28 @@ public class ModelosEmailTests
     }
 
     [Fact]
+    public void ExclusaoCancelada_AvisaEDizOQueFazerSeNaoFoiVoce()
+    {
+        var m = ModelosEmail.ExclusaoCancelada("https://app.pontes.test", "ana@teste.com", Expira);
+
+        Assert.Contains("an•••@teste.com", m.Texto);
+        Assert.Contains("Troque a senha", m.Texto);
+        Assert.Contains("https://app.pontes.test/entrar", m.Html);
+    }
+
+    [Fact]
+    public void ContaApagada_SemLink_ERodapeNaoDizQueAContaExiste()
+    {
+        var m = ModelosEmail.ContaApagada("ana@teste.com", Expira);
+
+        Assert.Contains("foi apagada", m.Assunto);
+        Assert.DoesNotContain("<a href", m.Html);
+        Assert.Contains("foi apagada", m.Html);
+        Assert.DoesNotContain("porque existe uma conta", m.Html);
+        Assert.DoesNotContain("porque existe uma conta", m.Texto);
+    }
+
+    [Fact]
     public void Html_EscapaOQueVemDeFora()
     {
         var m = ModelosEmail.CodigoOtp("x@<i>y</i>.com", "<b>x</b>", TipoOtpEmail.ExcluirConta, Expira);

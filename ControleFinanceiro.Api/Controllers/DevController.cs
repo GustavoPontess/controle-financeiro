@@ -38,6 +38,8 @@ public class DevController : ControllerBase
             ("Esqueci a senha, ou o Admin forçou a troca", ModelosEmail.ResetSenha(app, email, "exemplo", agora.AddHours(1))),
             ("Código pra excluir a conta", ModelosEmail.CodigoOtp(email, "482913", TipoOtpEmail.ExcluirConta, agora.AddMinutes(10))),
             ("Conta marcada pra exclusão", ModelosEmail.AvisoExclusao(app, email, agora, 30)),
+            ("Exclusão cancelada (entrou na carência, ou o Admin cancelou)", ModelosEmail.ExclusaoCancelada(app, email, agora)),
+            ("Conta apagada de vez (fim dos 30 dias, ou pelo Admin)", ModelosEmail.ContaApagada(email, agora)),
         };
 
         var logo = "data:image/png;base64," + Convert.ToBase64String(Logo());

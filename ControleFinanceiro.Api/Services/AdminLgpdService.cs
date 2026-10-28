@@ -32,11 +32,26 @@ public class AdminLgpdService
     private readonly AdminAuditService _audit;
     private readonly NotificacaoAdminService _notificacaoAdmin;
 
-    public AdminLgpdService(AppDbContext context, AdminAuditService audit, NotificacaoAdminService notificacaoAdmin)
+    // Opcionais pra quem monta o serviço na mão (testes); o DI injeta os de verdade.
+    private readonly IContaEmailSender? _contaEmail;
+    private readonly ILogger<AdminLgpdService> _logger;
+
+    public AdminLgpdService(AppDbContext context, AdminAuditService audit, NotificacaoAdminService notificacaoAdmin,
+        IContaEmailSender? contaEmail = null, ILogger<AdminLgpdService>? logger = null)
     {
         _context = context;
         _audit = audit;
         _notificacaoAdmin = notificacaoAdmin;
+        _contaEmail = contaEmail;
+        _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<AdminLgpdService>.Instance;
+    }
+
+    /// <summary>E-mail de aviso sem travar a operação: se o SMTP cair, a ação já está feita.</summary>
+    private async Task AvisarAsync(Func<IContaEmailSender, Task> enviar, string qual)
+    {
+        if (_contaEmail is null) return;
+        try { await enviar(_contaEmail); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Falha ao enviar o e-mail de {Qual} (a operação já foi feita).", qual); }
     }
 
     // ── Exportar (direito de acesso/portabilidade) ────────────────────────────────────────
@@ -330,6 +345,7 @@ public class AdminLgpdService
 
         _audit.Registrar(adminId, adminEmail, AcaoAdmin.CancelarExclusao, "Usuario", u.Id, u.Email);
         await _context.SaveChangesAsync();
+        await AvisarAsync(e => e.EnviarExclusaoCanceladaAsync(u.Email), "exclusão cancelada");
         return UsuarioAdminDto.De(u);
     }
 
@@ -506,6 +522,9 @@ public class AdminLgpdService
         await _context.SaveChangesAsync();
 
         await tx.CommitAsync();
+
+        // Depois de gravado: confirma pra pessoa que os dados saíram (o e-mail fica só na memória até aqui).
+        await AvisarAsync(e => e.EnviarContaApagadaAsync(email), "conta apagada");
     }
 
     private async Task<Usuario> BuscarOuFalharAsync(Guid usuarioId)

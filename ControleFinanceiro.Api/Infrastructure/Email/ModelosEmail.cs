@@ -163,13 +163,63 @@ public static class ModelosEmail
     /// </summary>
     private static string Escondido(string email) => ControleFinanceiro.Api.Services.RosterService.MascararEmail(email);
 
+    /// <summary>
+    /// A exclusão da conta foi cancelada (a pessoa entrou de novo na carência, ou o admin cancelou). Serve de alerta: se
+    /// não foi ela, alguém entrou com a senha dela.
+    /// </summary>
+    public static MensagemEmail ExclusaoCancelada(string appUrl, string email, DateTime quandoUtc)
+    {
+        email = Escondido(email);
+        var link = $"{appUrl.TrimEnd('/')}/entrar";
+        var texto = $"A exclusão da conta do Pontes de {email} foi cancelada em {Hora(quandoUtc)}. A conta e os dados continuam como estavam.";
+        const string validade = "Se ainda quiser sair do Pontes, é só pedir a exclusão de novo em Configurações.";
+        const string naoFoi = "Não foi você? Alguém entrou na sua conta com a sua senha. Troque a senha agora e ligue a verificação em duas etapas.";
+        return new MensagemEmail(
+            "Sua conta do Pontes continua ativa",
+            $"{texto}\n\n{validade}\n\n{naoFoi}\n\nEntrar: {link}{RodapeTexto(email)}",
+            Html(
+                previa: "A exclusão foi cancelada. Se não foi você, troque a senha.",
+                titulo: "Sua conta continua no Pontes",
+                texto: texto,
+                miolo: Botao(link, "Entrar no Pontes"),
+                validade: validade,
+                naoFoi: naoFoi,
+                linkReserva: link,
+                email: email));
+    }
+
+    /// <summary>
+    /// A conta foi apagada de vez (fim da carência ou pelo admin, LGPD): confirma que os dados saíram. Sem link: a conta
+    /// já não existe.
+    /// </summary>
+    public static MensagemEmail ContaApagada(string email, DateTime quandoUtc)
+    {
+        email = Escondido(email);
+        var texto = $"A conta do Pontes de {email} foi apagada em {Hora(quandoUtc)}, com os seus dados, como foi pedido.";
+        const string validade = "Se um dia quiser voltar, é só pedir acesso de novo com este e-mail.";
+        const string naoFoi = "Não pediu isso? A exclusão foi pedida de dentro da sua conta e avisada por e-mail 30 dias atrás. Se não foi você, alguém tinha a sua senha: troque ela nos outros serviços onde usa a mesma.";
+        return new MensagemEmail(
+            "Sua conta do Pontes foi apagada",
+            $"{texto}\n\n{validade}\n\n{naoFoi}{RodapeTexto(email, apagada: true)}",
+            Html(
+                previa: "Os seus dados foram apagados.",
+                titulo: "Sua conta foi apagada",
+                texto: texto,
+                miolo: "",
+                validade: validade,
+                naoFoi: naoFoi,
+                linkReserva: null,
+                email: email,
+                apagada: true));
+    }
+
     /// <summary>Escapa só o que quebra HTML (texto e atributo entre aspas). Acento fica como está — o
     /// WebUtility.HtmlEncode viraria "até" em "at&amp;#233;" e incharia o e-mail sem ganho nenhum.</summary>
     private static string Esc(string s) => s
         .Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;").Replace("'", "&#39;");
 
-    private static string RodapeTexto(string email) =>
-        $"\n\nO Pontes nunca pede sua senha por e-mail, mensagem ou telefone.\nVocê recebeu este e-mail porque existe uma conta do Pontes com o endereço {email}." +
+    private static string RodapeTexto(string email, bool apagada = false) =>
+        $"\n\nO Pontes nunca pede sua senha por e-mail, mensagem ou telefone.\n{Porque(email, apagada)}." +
         "\n\n" + string.Join("\n", Empresa());
 
     /// <summary>Linhas da empresa no rodapé (dados em <see cref="DadosEmpresa"/>).</summary>
@@ -204,7 +254,12 @@ public static class ModelosEmail
     /// Layout único. <paramref name="previa"/> é o texto que aparece ao lado do assunto na caixa de entrada
     /// (escondido no corpo); <paramref name="miolo"/> já vem como linha de tabela (botão ou código).
     /// </summary>
-    private static string Html(string previa, string titulo, string texto, string miolo, string validade, string naoFoi, string? linkReserva, string email, string acaoNaoFoi = "")
+    /// <summary>Por que a pessoa recebeu o e-mail. Depois de apagada, a conta já não existe.</summary>
+    private static string Porque(string email, bool apagada) => apagada
+        ? $"Você recebeu este e-mail porque a conta do Pontes com o endereço {email} foi apagada"
+        : $"Você recebeu este e-mail porque existe uma conta do Pontes com o endereço {email}";
+
+    private static string Html(string previa, string titulo, string texto, string miolo, string validade, string naoFoi, string? linkReserva, string email, string acaoNaoFoi = "", bool apagada = false)
     {
         string E(string t) => Esc(t);
         const string fonte = "'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
@@ -234,7 +289,7 @@ public static class ModelosEmail
             // Rodapé
             "<tr><td style=\"padding:20px 8px 0;font-size:12px;line-height:1.6;color:#a8958a\">" +
             "<strong style=\"color:#7a6557\">O Pontes nunca pede sua senha</strong> por e-mail, mensagem ou telefone.<br>" +
-            $"Você recebeu este e-mail porque existe uma conta do Pontes com o endereço {E(email)}.<br>" +
+            $"{E(Porque(email, apagada))}.<br>" +
             "Pontes · o dinheiro da casa</td></tr>" +
             // Dados da empresa (DadosEmpresa), separados por uma linha fina, como o rodapé do site.
             "<tr><td style=\"padding:14px 8px 0\"><div style=\"height:1px;background:#f1e3d8;line-height:1px;font-size:1px\">&nbsp;</div></td></tr>" +
