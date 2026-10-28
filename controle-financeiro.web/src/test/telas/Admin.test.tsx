@@ -25,7 +25,7 @@ const svc = vi.mocked(adminService)
 const pessoa = (id: string, nome: string, status: number, extra: Partial<UsuarioAdmin> = {}): UsuarioAdmin => ({
   id, nome, email: `${id}@teste.com`, status: status as UsuarioAdmin["status"], criadoEm: "2026-10-20T12:00:00", ...extra,
 })
-const ana = pessoa("ana", "Ana Pendente", 0)
+const ana = pessoa("ana", "Ana Pendente", 0, { emailConfirmado: true })
 const bia = pessoa("bia", "Bia Ativa", 1, { ultimoAcessoEm: "2026-10-23T10:00:00" })
 const caio = pessoa("caio", "Caio Bloqueado", 3)
 const eu = pessoa("eu", "Gustavo", 1)
@@ -87,6 +87,15 @@ describe("Admin", () => {
     expect(svc.aprovar).toHaveBeenCalledWith("ana")
     expect(await screen.findByRole("status")).toHaveTextContent("Ana Pendente pode entrar.")
     expect(svc.pendentes).toHaveBeenCalledTimes(2) // recarregou a fila
+  })
+
+  it("e-mail não confirmado: Aprovar fica desligado e a linha avisa", async () => {
+    svc.pendentes.mockResolvedValue([{ ...ana, emailConfirmado: false }])
+    renderizar()
+    const cadastros = await screen.findByRole("list", { name: "Cadastros" })
+    expect(within(cadastros).getByText("Não confirmado")).toBeInTheDocument()
+    expect(within(cadastros).getByRole("button", { name: "Aprovar Ana Pendente" })).toBeDisabled()
+    expect(within(cadastros).getByRole("button", { name: "Recusar Ana Pendente" })).toBeEnabled()
   })
 
   it("recusar pede confirmação; cancelar não chama a API", async () => {

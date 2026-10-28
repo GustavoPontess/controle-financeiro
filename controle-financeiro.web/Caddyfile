@@ -20,7 +20,7 @@
 		Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
 		# CSP: só o próprio domínio + a fonte do Google (index.html). O hash libera o script inline do tema do index.html
 		# (scripts/conferirCspInline.mjs confere no build; mudou o script, ele diz o hash novo).
-		Content-Security-Policy "default-src 'self'; script-src 'self' 'sha256-2+U+NxE+vaQWdFte7/+4+2fTRvFyopc0CVOi5gkCNAo='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'sha256-HyuzsVspqQHR1cxYF8onSlzm9bqUEzmuMX6JeONl53g='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 		-Server
 	}
 

@@ -38,6 +38,8 @@ export interface UsuarioAdmin {
   aprovadoEm?: string | null
   ultimoAcessoEm?: string | null
   marcadoExclusaoEm?: string | null
+  /** Confirmou o e-mail pelo link do "pedido recebido". Sem isso o Admin não aprova. */
+  emailConfirmado?: boolean
 }
 
 // Espelha Domain/Enums/AcaoAdmin.cs (número no JSON). NÃO reordenar.

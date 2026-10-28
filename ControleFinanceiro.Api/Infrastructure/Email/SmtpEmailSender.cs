@@ -37,6 +37,9 @@ public sealed class SmtpEmailSender : IPasswordResetEmailSender, IContaEmailSend
     public Task EnviarAcessoLiberadoAsync(string email, CancellationToken ct = default) =>
         EnviarAsync(email, ModelosEmail.AcessoLiberado(_opcoes.AppUrl, email), TipoRemetente.Automatico, ct);
 
+    public Task EnviarPedidoRecebidoAsync(string email, string token, DateTime expiraEm, CancellationToken ct = default) =>
+        EnviarAsync(email, ModelosEmail.PedidoRecebido(_opcoes.AppUrl, email, token, expiraEm), TipoRemetente.Automatico, ct);
+
     /// <summary>O logo dos e-mails (PNG embutido no assembly), anexado inline com o Content-ID do layout.</summary>
     private static readonly Lazy<byte[]> Logo = new(() =>
     {

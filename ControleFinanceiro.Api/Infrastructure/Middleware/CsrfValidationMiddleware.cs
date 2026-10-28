@@ -49,6 +49,10 @@ public class CsrfValidationMiddleware
                pathValue.Contains("/auth/register", StringComparison.OrdinalIgnoreCase) ||
                pathValue.Contains("/auth/forgot-password", StringComparison.OrdinalIgnoreCase) ||
                pathValue.Contains("/auth/reset-password", StringComparison.OrdinalIgnoreCase) ||
+               // Links do e-mail de "pedido recebido" (confirmar e-mail / não fui eu): quem abre não tem sessão nem
+               // cookie CSRF. Como o reset de senha: o segredo é o token de uso único do e-mail (forjar exige ter ele).
+               pathValue.Contains("/auth/cadastro/confirmar-email", StringComparison.OrdinalIgnoreCase) ||
+               pathValue.Contains("/auth/cadastro/nao-fui-eu", StringComparison.OrdinalIgnoreCase) ||
                // Passo 2 do login com MFA — ainda não há sessão nem cookie CSRF (o passo 1 não
                // emite sessão pra quem tem MFA), então é público igual ao /auth/login. Protegido
                // pelo challenge de uso único + TTL curto + rate-limit por IP (auth-mfa).

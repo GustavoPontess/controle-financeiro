@@ -153,6 +153,7 @@ public class AppDbContext : DbContext
     // ── Issue #5 Autenticação Robusta ──
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+    public DbSet<TokenCadastro> TokensCadastro => Set<TokenCadastro>();
     public DbSet<MfaBackupCode> MfaBackupCodes => Set<MfaBackupCode>();
     public DbSet<MfaLoginChallenge> MfaLoginChallenges => Set<MfaLoginChallenge>();
     public DbSet<TrustedDevice> TrustedDevices => Set<TrustedDevice>();
@@ -493,6 +494,15 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<PasswordResetToken>()
             .HasIndex(prt => prt.Token)
             .IsUnique();
+
+        // TokenCadastro → Usuario (Cascade: o link do "pedido recebido" some com o pedido)
+        modelBuilder.Entity<TokenCadastro>()
+            .HasOne(t => t.Usuario)
+            .WithMany()
+            .HasForeignKey(t => t.UsuarioId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<TokenCadastro>().HasIndex(t => t.TokenHash).IsUnique();
+        modelBuilder.Entity<TokenCadastro>().Property(t => t.TokenHash).HasMaxLength(128);
 
         // MfaBackupCode → Usuario (Cascade: códigos somem com o usuário)
         modelBuilder.Entity<MfaBackupCode>()

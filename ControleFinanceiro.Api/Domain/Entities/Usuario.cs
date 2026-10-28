@@ -35,6 +35,10 @@ public class Usuario
     /// <summary>Quando o cadastro foi aprovado/recusado. Null enquanto pendente.</summary>
     public DateTime? AprovadoEm { get; set; }
 
+    /// <summary>Quando a pessoa confirmou o e-mail pelo link do "pedido recebido". Null = ninguém provou que o e-mail
+    /// é de quem pediu acesso: o Admin não aprova. Contas anteriores a 2026-10-27 vieram marcadas pela migration.</summary>
+    public DateTime? EmailConfirmadoEm { get; set; }
+
     /// <summary>Último login bem-sucedido — base das métricas do admin (usuários ativos/inativos).</summary>
     public DateTime? UltimoAcessoEm { get; set; }
 

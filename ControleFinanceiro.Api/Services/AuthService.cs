@@ -54,7 +54,8 @@ public class AuthService
         NotificacaoAdminService notificacaoAdmin,
         IHttpContextAccessor? httpContextAccessor = null,
         ILogger<AuthService>? logger = null,
-        IVerificadorSenhaVazada? verificadorSenha = null)
+        IVerificadorSenhaVazada? verificadorSenha = null,
+        IEmailCadastroDispatcher? emailCadastro = null)
     {
         _context = context;
         _tokenProvider = tokenProvider;
@@ -66,7 +67,11 @@ public class AuthService
         _logger = logger ?? NullLogger<AuthService>.Instance;
         // Opcional pelo mesmo motivo; sem ele (testes que constroem na mão) só a lista local vale.
         _verificadorSenha = verificadorSenha ?? SemVerificacaoDeVazamento.Instancia;
+        // Opcional pelo mesmo motivo; sem ele, o cadastro não manda o e-mail de pedido recebido.
+        _emailCadastro = emailCadastro ?? SemEmailCadastro.Instancia;
     }
+
+    private readonly IEmailCadastroDispatcher _emailCadastro;
 
     private readonly IVerificadorSenhaVazada _verificadorSenha;
 
@@ -343,6 +348,11 @@ public class AuthService
             $"{usuario.Nome} está aguardando aprovação.",
             "/admin/pendentes",
             alvoId: usuario.Id); // acionável: some do sino quando o cadastro for aprovado/recusado
+
+        // E-mail "pedido recebido" pra pessoa, pela fila (o SMTP na requisição vazaria pelo tempo quem já tem conta).
+        // E-mail que já tinha conta não recebe nada: a resposta da tela é a mesma e a caixa de quem já é cliente
+        // não ganha e-mail que outra pessoa disparou.
+        _emailCadastro.PedidoRecebido(usuario.Id);
 
         return RespostaCadastroRecebido();
     }
@@ -799,6 +809,23 @@ public class AuthService
     /// <summary>
     /// Valida o token de reset e altera a senha do usuário.
     /// </summary>
+    /// <summary>
+    /// "Não fui eu" do e-mail de senha nova: o dono da caixa cancela o link (ele para de valer). Não bloqueia a conta
+    /// (senão qualquer um travaria a conta alheia só digitando o e-mail no "Esqueci a senha"). Resposta sempre igual,
+    /// exista o link ou não.
+    /// </summary>
+    public async Task CancelarResetSenhaAsync(string? token)
+    {
+        if (string.IsNullOrWhiteSpace(token) || token.Length > 256) return;
+        var hash = OpaqueTokenHasher.Hash(token.Trim());
+        var prt = await _context.PasswordResetTokens.FirstOrDefaultAsync(t => t.Token == hash);
+        if (prt is null || prt.Usado || prt.ExpiresAt <= DateTime.UtcNow) return;
+        prt.Usado = true;
+        await _context.SaveChangesAsync();
+        // Sinal de segurança (alguém pediu senha nova pra uma conta e o dono negou), sem e-mail nem token no log.
+        _logger.LogWarning("Link de senha nova cancelado pelo dono do e-mail (Não fui eu). Usuario {UsuarioId}.", prt.UsuarioId);
+    }
+
     public async Task ResetSenhaAsync(ResetPasswordDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Token))

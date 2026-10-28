@@ -9,3 +9,8 @@ export const pedirLinkDeSenha = async (email: string): Promise<void> => {
 export const redefinirSenha = async (token: string, novaSenha: string, confirmarNovaSenha: string): Promise<void> => {
   await api.post("/auth/reset-password", { token, novaSenha, confirmarNovaSenha }, { skipErrorToast: true })
 }
+
+// "Não fui eu" do e-mail de senha nova: cancela o link (POST /auth/reset-password/cancelar, sempre 204).
+export const cancelarLinkDeSenha = async (token: string): Promise<void> => {
+  await api.post("/auth/reset-password/cancelar", { token }, { skipErrorToast: true })
+}

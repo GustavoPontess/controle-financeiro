@@ -20,6 +20,9 @@ public class UsuarioAdminDto
     /// mostrar a carência restante e o botão de cancelar/purgar.</summary>
     public DateTime? MarcadoExclusaoEm { get; set; }
 
+    /// <summary>A pessoa confirmou o e-mail pelo link do "pedido recebido". Sem isso o Admin não aprova.</summary>
+    public bool EmailConfirmado { get; set; }
+
     /// <summary>Mapeamento em memória (fonte única, reusado pelos serviços de admin). As listagens
     /// que projetam direto no banco (EF <c>Select</c>) repetem os campos inline por causa da tradução
     /// da query — este factory é pra quando já se tem a entidade carregada.</summary>
@@ -33,6 +36,7 @@ public class UsuarioAdminDto
         AprovadoEm = u.AprovadoEm,
         UltimoAcessoEm = u.UltimoAcessoEm,
         MarcadoExclusaoEm = u.MarcadoExclusaoEm,
+        EmailConfirmado = u.EmailConfirmadoEm != null,
     };
 }
 

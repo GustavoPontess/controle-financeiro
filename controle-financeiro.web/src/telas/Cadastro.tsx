@@ -85,8 +85,8 @@ export default function Cadastro() {
       {enviado ? (
         <section data-passo="enviado" className="ativo" role="status">
           <h1>Pedido enviado!</h1>
-          <p className="alerta-ok">Recebemos o seu pedido. Você recebe um e-mail quando o acesso for liberado.</p>
-          <p className={`sub ${css.depois}`}>Assim que o pedido for aprovado, você já pode entrar normalmente.</p>
+          <p className="alerta-ok">Recebemos o seu pedido. Abra o e-mail que mandamos e confirme que o endereço é seu.</p>
+          <p className={`sub ${css.depois}`}>Com o e-mail confirmado, o pedido segue pra aprovação. Quando o acesso for liberado, chega outro e-mail.</p>
           <Link className="btn btn--acc btn-cheio" to="/entrar">Ir para o login <Seta /></Link>
         </section>
       ) : (

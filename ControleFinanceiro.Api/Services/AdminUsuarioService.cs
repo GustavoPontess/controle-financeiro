@@ -50,6 +50,7 @@ public class AdminUsuarioService
                 AprovadoEm = u.AprovadoEm,
                 UltimoAcessoEm = u.UltimoAcessoEm,
                 MarcadoExclusaoEm = u.MarcadoExclusaoEm,
+                EmailConfirmado = u.EmailConfirmadoEm != null,
             })
             .ToListAsync();
     }
@@ -72,6 +73,10 @@ public class AdminUsuarioService
 
         if (usuario.Status != StatusUsuario.AguardandoAprovacao)
             throw new InvalidOperationException("Este cadastro não está aguardando aprovação.");
+
+        // Aprovar exige o e-mail confirmado: senão quem usou o e-mail de outra pessoa entraria com ele. Recusar pode sempre.
+        if (novoStatus == StatusUsuario.Ativo && usuario.EmailConfirmadoEm is null)
+            throw new InvalidOperationException("A pessoa ainda não confirmou o e-mail. Só dá pra aprovar depois da confirmação.");
 
         usuario.Status = novoStatus;
         usuario.AprovadoPor = adminId;
@@ -158,6 +163,7 @@ public class AdminUsuarioService
                 AprovadoEm = u.AprovadoEm,
                 UltimoAcessoEm = u.UltimoAcessoEm,
                 MarcadoExclusaoEm = u.MarcadoExclusaoEm,
+                EmailConfirmado = u.EmailConfirmadoEm != null,
             })
             .ToListAsync();
 

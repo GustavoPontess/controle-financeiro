@@ -51,6 +51,9 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             var disp = services.SingleOrDefault(d => d.ServiceType == typeof(IPasswordResetDispatcher));
             if (disp != null) services.Remove(disp);
             services.AddScoped<IPasswordResetDispatcher, NoOpPasswordResetDispatcher>();
+            var cad = services.SingleOrDefault(d => d.ServiceType == typeof(IEmailCadastroDispatcher));
+            if (cad != null) services.Remove(cad);
+            services.AddSingleton<IEmailCadastroDispatcher>(SemEmailCadastro.Instancia);
         });
     }
 

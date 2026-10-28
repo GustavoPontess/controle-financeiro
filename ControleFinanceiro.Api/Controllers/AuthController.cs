@@ -293,6 +293,36 @@ public class AuthController : ControllerBase
     /// <c>{ mfaRequerido: true, mfaChallengeToken }</c> e o cliente precisa chamar
     /// <c>POST /mfa/verificar-login</c> com o código do 2º fator pra completar.
     /// </summary>
+    /// <summary>
+    /// "Confirmar meu e-mail" do e-mail de pedido recebido: prova que quem pediu acesso tem a caixa. Só pedido
+    /// confirmado pode ser aprovado. Link vencido, usado ou de pedido já decidido: 400 com a mesma frase.
+    /// </summary>
+    [HttpPost("cadastro/confirmar-email")]
+    [AllowAnonymous]
+    [EnableRateLimiting("auth-link-cadastro")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ConfirmarEmailDoCadastro([FromBody] LinkCadastroDto dto, [FromServices] ConfirmacaoCadastroService confirmacao)
+    {
+        await confirmacao.ConfirmarAsync(dto.Token);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// "Não fui eu" do e-mail de pedido recebido: apaga o pedido e os dados dele (LGPD art. 18). Só pedido que
+    /// ainda espera aprovação; conta aprovada nunca é apagada por aqui.
+    /// </summary>
+    [HttpPost("cadastro/nao-fui-eu")]
+    [AllowAnonymous]
+    [EnableRateLimiting("auth-link-cadastro")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> NaoFuiEuNoCadastro([FromBody] LinkCadastroDto dto, [FromServices] ConfirmacaoCadastroService confirmacao)
+    {
+        await confirmacao.NaoFuiEuAsync(dto.Token);
+        return NoContent();
+    }
+
     [HttpPost("login")]
     [AllowAnonymous]
     [EnableRateLimiting("auth-login")]
@@ -740,6 +770,20 @@ public class AuthController : ControllerBase
     /// <summary>
     /// Redefine a senha usando o token de reset. Revoga todos os refresh tokens do usuário.
     /// </summary>
+    /// <summary>
+    /// "Não fui eu" do e-mail de senha nova: cancela o link. Sempre 204 (não diz se o link existia). O CSRF já libera
+    /// /auth/reset-password*: quem abre não tem sessão; o segredo é o token do e-mail.
+    /// </summary>
+    [HttpPost("reset-password/cancelar")]
+    [AllowAnonymous]
+    [EnableRateLimiting("auth-link-cadastro")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> CancelarResetPassword([FromBody] LinkCadastroDto dto)
+    {
+        await _authService.CancelarResetSenhaAsync(dto.Token);
+        return NoContent();
+    }
+
     [HttpPost("reset-password")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -749,6 +793,14 @@ public class AuthController : ControllerBase
         await _authService.ResetSenhaAsync(dto);
         return NoContent();
     }
+}
+
+/// <summary>Token do link do e-mail de pedido recebido.</summary>
+public class LinkCadastroDto
+{
+    [Required]
+    [MaxLength(256)]
+    public string Token { get; set; } = string.Empty;
 }
 
 public class UpdateProfileDto
