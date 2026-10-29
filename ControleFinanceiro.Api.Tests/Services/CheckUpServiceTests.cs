@@ -93,6 +93,28 @@ public class CheckUpServiceTests
     }
 
     [Fact]
+    public async Task EscolherMesAnterior_OMesAMesSegueTerminandoNoMesAtual()
+    {
+        // Tocar num mês do gráfico não pode sumir com os meses depois dele (bug visto pelo Gustavo em 2026-10-29).
+        var c = Seed();
+        var hoje = HorarioBrasil.HojeData();
+        var escolhido = new DateTime(hoje.Year, hoje.Month, 1).AddMonths(-2);
+        c.Ctx.Transacoes.Add(new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "x", Valor = 300m, Tipo = TipoTransacao.Despesa, CategoriaId = c.Mercado, ContaId = c.Conta,
+            CriadoPor = c.U, Data = new DateOnly(escolhido.Year, escolhido.Month, 10), StatusTransacao = StatusTransacao.Executado, Ativo = true,
+        });
+        c.Ctx.SaveChanges();
+
+        var r = await Servico(c.Ctx).CalcularAsync(c.U, escolhido.Year, escolhido.Month);
+
+        Assert.Equal(300m, r.Saiu);
+        Assert.Equal(12, r.MesAMes.Count);
+        Assert.Equal((hoje.Year, hoje.Month), (r.MesAMes[^1].Ano, r.MesAMes[^1].Mes));
+        Assert.Equal(300m, r.MesAMes[^3].Saiu);
+    }
+
+    [Fact]
     public async Task SaiuMaisDoQueEntrou_FaladoComoFato_EComprometidoComAsContasFixas()
     {
         var c = Seed();
@@ -118,9 +140,119 @@ public class CheckUpServiceTests
     }
 
     [Fact]
-    public async Task MesInvalido_Recusa()
+    public async Task MesInvalido_Recusa_EMesQueAindaNaoChegouTambem()
     {
         var c = Seed();
         await Assert.ThrowsAsync<ArgumentException>(() => Servico(c.Ctx).CalcularAsync(c.U, 2026, 13));
+        var e = await Assert.ThrowsAsync<ArgumentException>(() => Servico(c.Ctx).CalcularAsync(c.U, 2100, 12));
+        Assert.Equal("Esse mês ainda não chegou.", e.Message);
+    }
+
+    private static void LancarSemCategoria(Cenario c, decimal valor, int mes)
+    {
+        c.Ctx.Transacoes.Add(new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "importado", Valor = valor, Tipo = TipoTransacao.Despesa, ContaId = c.Conta, CriadoPor = c.U,
+            Data = new DateOnly(2026, mes, 12), StatusTransacao = StatusTransacao.Executado, Ativo = true,
+        });
+        c.Ctx.SaveChanges();
+    }
+
+    [Fact]
+    public async Task SemCategoria_ForaDoRanking_AvisoEmSeusDados_EFraseComClassificar()
+    {
+        var c = Seed();
+        Lancar(c, c.Salario, 3000m, 9, TipoTransacao.Receita);
+        Lancar(c, c.Mercado, 400m, 9);
+        LancarSemCategoria(c, 700m, 9);
+        LancarSemCategoria(c, 300m, 9);
+
+        var r = await Servico(c.Ctx).CalcularAsync(c.U, 2026, 9);
+
+        Assert.All(r.PraOndeFoi, x => Assert.NotEqual("Sem categoria", x.Nome)); // fora do ranking
+        Assert.Equal((1000m, 2), (r.SemCategoria!.Valor, r.SemCategoria.Quantidade));
+        // Mais de 30% do que saiu sem categoria: a frase avisa e a primeira ação é classificar (e o aviso não repete).
+        Assert.Contains("R$ 1.000,00 do mês ainda sem categoria.", r.Resposta.Texto);
+        Assert.Equal("Classificar", r.Resposta.Acoes[0].Rotulo);
+        Assert.Equal($"/transacoes?categoriaId={Guid.Empty}&mes=2026-09", r.Resposta.Acoes[0].Para);
+        Assert.DoesNotContain(r.Sinais, s => s.Chave.StartsWith("sem-categoria"));
+
+        // Pouco sem categoria: a frase não fala, o aviso em "Seus dados" fala.
+        Lancar(c, c.Mercado, 9000m, 9);
+        var pouco = await Servico(c.Ctx).CalcularAsync(c.U, 2026, 9);
+        var sinal = Assert.Single(pouco.Sinais, s => s.Origem == "dados" && s.Chave.StartsWith("sem-categoria"));
+        Assert.Equal("2 lançamentos de setembro ainda sem categoria (R$ 1.000,00).", sinal.Resposta.Texto);
+        Assert.DoesNotContain("ainda sem categoria", pouco.Resposta.Texto);
+    }
+
+    [Fact]
+    public async Task Reserva_SemACaixinhaDasMetas_QueApareceAParte()
+    {
+        var c = Seed();
+        var caixinha = new Conta { Id = Guid.NewGuid(), Nome = "Viagem", Tipo = TipoConta.Caixinha, UsuarioIdProprietario = c.U };
+        c.Ctx.Contas.Add(caixinha);
+        c.Ctx.SaveChanges();
+        foreach (var mes in new[] { 7, 8, 9 })
+        {
+            Lancar(c, c.Salario, 2000m, mes, TipoTransacao.Receita);
+            Lancar(c, c.Mercado, 1000m, mes);
+        }
+        c.Ctx.Transacoes.Add(new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "Guardar", Valor = 5000m, Tipo = TipoTransacao.Receita, ContaId = caixinha.Id, CriadoPor = c.U,
+            Data = new DateOnly(2026, 9, 20), StatusTransacao = StatusTransacao.Executado, Ativo = true, EhTransferencia = true,
+        });
+        using (c.Ctx.LiberarCaixinha()) c.Ctx.SaveChanges(); // só Metas mexe na caixinha
+
+        var r = await Servico(c.Ctx).CalcularAsync(c.U, 2026, 9);
+
+        Assert.Equal(3000m, r.DinheiroGuardado); // 3 × (2.000 − 1.000); a caixinha não entra
+        Assert.Equal(5000m, r.GuardadoNasMetas);
+        Assert.Equal(3m, r.MesesDeReserva);       // 3.000 ÷ 1.000 de gasto normal
+        Assert.Equal("neutro", r.RespostaReserva!.Tom);
+    }
+
+    [Fact]
+    public async Task TotalAcimaDoNormal_NaFrase_ECortarOndeComAsCategoriasQuePassaram()
+    {
+        var c = Seed();
+        foreach (var mes in new[] { 6, 7, 8 })
+        {
+            Lancar(c, c.Salario, 3000m, mes, TipoTransacao.Receita);
+            Lancar(c, c.Mercado, 800m, mes);
+            Lancar(c, c.Lazer, 200m, mes);
+        }
+        Lancar(c, c.Salario, 3000m, 9, TipoTransacao.Receita);
+        Lancar(c, c.Mercado, 1100m, 9); // +300 (37%)
+        Lancar(c, c.Lazer, 500m, 9);    // +300 (150%)
+
+        var r = await Servico(c.Ctx).CalcularAsync(c.U, 2026, 9);
+
+        Assert.Contains("Saiu 60% a mais que o normal dos últimos meses.", r.Resposta.Texto); // 1.600 contra 1.000
+        Assert.Equal(new[] { "Mercado", "Lazer" }.OrderBy(x => x), r.Corte!.Itens.Select(i => i.Nome).OrderBy(x => x));
+        Assert.Equal("Duas categorias passaram do normal em setembro: R$ 600,00 a mais, no total.", r.Corte.Resposta.Texto);
+    }
+
+    [Theory]
+    [InlineData(0.4, "12 dias")]
+    [InlineData(0.01, "1 dia")]
+    [InlineData(1, "1 mês")]
+    [InlineData(4.6, "4,6 meses")]
+    public void Duracao_SemNumeroVago_DiasAbaixoDeUmMes(decimal meses, string esperado) =>
+        Assert.Equal(esperado, CheckUpService.Duracao(meses));
+
+    [Fact]
+    public async Task Comprometido_SemContaFixa_DizOQueFazer_ENuncaSome()
+    {
+        var c = Seed();
+        Lancar(c, c.Salario, 3000m, 9, TipoTransacao.Receita);
+        Lancar(c, c.Mercado, 400m, 9);
+
+        var r = await Servico(c.Ctx).CalcularAsync(c.U, 2026, 9);
+
+        Assert.Equal(0m, r.PercentualComprometido);
+        Assert.Equal("Nenhuma conta fixa cadastrada.", r.Comprometido.Resposta!.Texto);
+        Assert.Equal("/contas-fixas/nova", Assert.Single(r.Comprometido.Resposta.Acoes).Para);
+        Assert.Equal((40m, 60m), (r.Comprometido.FaixaAtencao, r.Comprometido.FaixaAlerta));
     }
 }

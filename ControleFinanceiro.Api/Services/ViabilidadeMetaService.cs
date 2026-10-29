@@ -138,8 +138,11 @@ public class ViabilidadeMetaService
     public const int MaxMesesPraChegar = 600;
 
     private static string MesAno(DateTime d) => $"{MesesPt.Nome(d.Month)} de {d.Year}";
-    /// <summary>A folga é estimativa: arredonda pra dezena ("uns R$ 1.230,00").</summary>
-    private static string Uns(decimal v) => $"uns {Reais.Formatar(Math.Floor(v / 10m) * 10m)}";
+    /// <summary>
+    /// A folga escrita com o valor exato. Antes arredondava pra dezena com "uns R$ 1.230,00"; texto de dinheiro vago não
+    /// passa confiança (Gustavo, 2026-10-29). O nome ficou pra não mexer em todas as frases.
+    /// </summary>
+    private static string Uns(decimal v) => Reais.Formatar(v);
 
     public static RespostaDto Responder(decimal? porMes, int? meses, decimal? folga, decimal? renda, decimal? gastoTipico, decimal outras,
         DateTime? prazoQueCabe, bool longeDemais, DateTime? prazo, decimal parcelas = 0m)

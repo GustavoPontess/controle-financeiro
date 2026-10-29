@@ -47,6 +47,10 @@
   --v2-serie-5: #BA7517;
   --v2-serie-cinza: #8C8B85;
   --v2-serie-cinza-2: #B9B8B1;
+  /* Faixas de um bullet (uma medida contra limites: Comprometido de Relatórios): um matiz só, do claro ao forte. */
+  --v2-faixa-1: #F4E7DB;
+  --v2-faixa-2: #E8D2BD;
+  --v2-faixa-3: #D9B694;
   color-scheme: light;
 }
 
@@ -86,6 +90,9 @@
   --v2-serie-5: #EFB054;
   --v2-serie-cinza: #8E8D87;
   --v2-serie-cinza-2: #5E5D59;
+  --v2-faixa-1: #2A201A;
+  --v2-faixa-2: #3B2D23;
+  --v2-faixa-3: #57412F;
   color-scheme: dark;
 }
 

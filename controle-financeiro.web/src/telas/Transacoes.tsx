@@ -8,7 +8,7 @@
 // (geradas meses pra frente) empurravam o dia de hoje pro fim. Os previstos aparecem pelo filtro de status
 // (do mais perto pro mais longe) ou escolhendo as datas.
 import { useEffect, useMemo, useState } from "react"
-import { useLocation } from "react-router-dom"
+import { useLocation, useSearchParams } from "react-router-dom"
 import { listTransactionsPage, getResumoGastos, getTransactionStats, type ListTransactionsFilter, type ResumoGastos } from "../services/transactionService"
 import { getContas } from "../services/contaService"
 import { getCategories } from "../services/categoryService"
@@ -54,10 +54,26 @@ const NATUREZAS: { valor: Natureza; rotulo: string }[] = [
   { valor: "fatura", rotulo: "Pagamento de fatura" },
 ]
 
-/** Filtros avançados — vivem num rascunho enquanto o painel está aberto e só valem no "Aplicar". */
-type Filtros = { natureza: Natureza; contaId: string; status: string; valorMin: string; valorMax: string; de: string; ate: string }
-const SEM_FILTRO: Filtros = { natureza: "", contaId: "", status: "", valorMin: "", valorMax: "", de: "", ate: "" }
-const ativosEm = (f: Filtros) => [f.natureza, f.contaId, f.status, f.valorMin || f.valorMax, f.de || f.ate].filter(Boolean).length
+/** Filtros avançados — vivem num rascunho enquanto o painel está aberto e só valem no "Aplicar". `categoriaId` também
+ *  chega pela URL (Relatórios › tocar numa categoria ou "Classificar"; o id vazio é "sem categoria") e aparece no painel. */
+type Filtros = { natureza: Natureza; contaId: string; status: string; valorMin: string; valorMax: string; de: string; ate: string; categoriaId: string }
+const SEM_FILTRO: Filtros = { natureza: "", contaId: "", status: "", valorMin: "", valorMax: "", de: "", ate: "", categoriaId: "" }
+const SEM_CATEGORIA = "00000000-0000-0000-0000-000000000000"
+
+/** `?categoriaId=…&mes=2026-10` (vindo de Relatórios) vira filtro: a categoria e o mês inteiro. */
+function filtrosDaUrl(p: URLSearchParams): Partial<Filtros> {
+  const f: Partial<Filtros> = {}
+  const cat = p.get("categoriaId")
+  if (cat && /^[0-9a-f-]{36}$/i.test(cat)) f.categoriaId = cat
+  const mes = p.get("mes")
+  if (mes && /^\d{4}-\d{2}$/.test(mes)) {
+    const [a, m] = mes.split("-").map(Number)
+    f.de = `${mes}-01`
+    f.ate = `${mes}-${String(new Date(a, m, 0).getDate()).padStart(2, "0")}`
+  }
+  return f
+}
+const ativosEm = (f: Filtros) => [f.natureza, f.contaId, f.categoriaId, f.status, f.valorMin || f.valorMax, f.de || f.ate].filter(Boolean).length
 
 
 export default function Transacoes() {
@@ -70,7 +86,9 @@ export default function Transacoes() {
     try { localStorage.setItem(CHAVE_POR_PAGINA, String(n)) } catch { /* sem armazenamento: só não lembra */ }
   }
   const [erro, setErro] = useState(false)
-  const [visao, setVisao] = useState<Visao>(visaoSalva)
+  const [url, setUrl] = useSearchParams()
+  // Chegou filtrado por categoria (Relatórios): a visão é Gastos, a mesma base do "Pra onde foi".
+  const [visao, setVisao] = useState<Visao>(() => (url.get("categoriaId") ? "gastos" : visaoSalva()))
   const gastos = visao === "gastos"
   const [stats, setStats] = useState<{ entradas: number; saidas: number } | null>(null)
   const [contas, setContas] = useState<Conta[]>([])
@@ -80,7 +98,7 @@ export default function Transacoes() {
   const buscaAplicada = useAtrasado(busca.trim())
   // Outra tela pode chegar com filtro (ex.: Importar extrato → "Ver em Transações" da conta): state.filtros.
   const { state } = useLocation()
-  const [filtros, setFiltros] = useState<Filtros>(() => ({ ...SEM_FILTRO, ...((state as { filtros?: Partial<Filtros> } | null)?.filtros ?? {}) }))
+  const [filtros, setFiltros] = useState<Filtros>(() => ({ ...SEM_FILTRO, ...((state as { filtros?: Partial<Filtros> } | null)?.filtros ?? {}), ...filtrosDaUrl(url) }))
   const [rascunho, setRascunho] = useState<Filtros>(filtros)      // o que está no painel
   const [painel, setPainel] = useState(false)
 
@@ -94,8 +112,8 @@ export default function Transacoes() {
 
   // Painel: abre com o rascunho = o que está valendo; fecha com Esc ou clique fora (sem aplicar).
   const abrirPainel = () => { setRascunho(filtros); setPainel(true) }
-  const aplicar = () => { setFiltros(rascunho); setPainel(false) }
-  const limparTudo = () => { setRascunho(SEM_FILTRO); setFiltros(SEM_FILTRO); setPainel(false) }
+  const aplicar = () => { setFiltros(rascunho); setPainel(false); if (url.size) setUrl({}, { replace: true }) }
+  const limparTudo = () => { setRascunho(SEM_FILTRO); setFiltros(SEM_FILTRO); setPainel(false); if (url.size) setUrl({}, { replace: true }) }
   const edita = <K extends keyof Filtros>(k: K) => (valor: string) => setRascunho((r) => ({ ...r, [k]: valor }))
   // Valor do filtro com a mesma máscara de dinheiro dos formulários: só dígitos, nunca negativo.
   const editaValor = (k: "valorMin" | "valorMax") => (e: { target: { value: string } }) =>
@@ -115,6 +133,7 @@ export default function Transacoes() {
     q: buscaAplicada || undefined,
     natureza: gastos ? undefined : filtros.natureza || undefined,
     contaId: filtros.contaId || undefined,
+    categoriaId: filtros.categoriaId || undefined,
     status: filtros.status !== "" ? Number(filtros.status) : undefined,
     valorMin: filtros.valorMin !== "" ? parseMoney(filtros.valorMin) : undefined,
     valorMax: filtros.valorMax !== "" ? parseMoney(filtros.valorMax) : undefined,
@@ -217,6 +236,12 @@ export default function Transacoes() {
                   <Selecao tamanho="sm" valor={rascunho.contaId}
                     onChange={(v) => setRascunho((r) => ({ ...r, contaId: v }))}
                     opcoes={[{ valor: "", rotulo: "Todas as contas" }, ...contas.map((c) => ({ valor: c.id, rotulo: c.nome }))]} />
+                </Campo>
+                <Campo rotulo="Categoria">
+                  <Selecao tamanho="sm" valor={rascunho.categoriaId}
+                    onChange={(v) => setRascunho((r) => ({ ...r, categoriaId: v }))}
+                    opcoes={[{ valor: "", rotulo: "Todas as categorias" }, { valor: SEM_CATEGORIA, rotulo: "Sem categoria" },
+                      ...Object.entries(categorias).sort((a, b) => a[1].localeCompare(b[1], "pt-BR")).map(([valor, rotulo]) => ({ valor, rotulo }))]} />
                 </Campo>
                 <Campo rotulo="Status">
                   <Selecao tamanho="sm" valor={rascunho.status}

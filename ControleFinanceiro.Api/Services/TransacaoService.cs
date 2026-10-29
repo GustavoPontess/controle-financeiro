@@ -356,7 +356,9 @@ namespace ControleFinanceiro.Api.Services
                             && p.Tipo != TipoParcelamento.Recorrente && !semParcelamento);
             if (from.HasValue) { var de = from.Value.ToDateTime(TimeOnly.MinValue); parcelamentos = parcelamentos.Where(p => p.DataCompra >= de); }
             if (to.HasValue) { var ate = to.Value.ToDateTime(TimeOnly.MinValue); parcelamentos = parcelamentos.Where(p => p.DataCompra < ate); }
-            if (categoriaId.HasValue) parcelamentos = parcelamentos.Where(p => p.CategoriaId == categoriaId.Value);
+            // Guid.Empty = "sem categoria" (Relatórios › Classificar leva pra cá filtrado).
+            if (categoriaId == Guid.Empty) parcelamentos = parcelamentos.Where(p => p.CategoriaId == null);
+            else if (categoriaId.HasValue) parcelamentos = parcelamentos.Where(p => p.CategoriaId == categoriaId.Value);
             if (cartaoId.HasValue) parcelamentos = parcelamentos.Where(p => p.CartaoCreditoId == cartaoId.Value);
             if (valorMin.HasValue) parcelamentos = parcelamentos.Where(p => (p.ValorComJuros ?? p.ValorTotal) >= valorMin.Value);
             if (valorMax.HasValue) parcelamentos = parcelamentos.Where(p => (p.ValorComJuros ?? p.ValorTotal) <= valorMax.Value);
@@ -414,7 +416,8 @@ namespace ControleFinanceiro.Api.Services
             // etc), em vez de pedir tudo e filtrar no cliente.
             if (from.HasValue) query = query.Where(t => t.Data >= from.Value);
             if (to.HasValue) query = query.Where(t => t.Data < to.Value);
-            if (categoriaId.HasValue) query = query.Where(t => t.CategoriaId == categoriaId.Value);
+            if (categoriaId == Guid.Empty) query = query.Where(t => t.CategoriaId == null); // "sem categoria"
+            else if (categoriaId.HasValue) query = query.Where(t => t.CategoriaId == categoriaId.Value);
             if (tipo.HasValue) query = query.Where(t => (int)t.Tipo == tipo.Value);
             if (contaId.HasValue) query = query.Where(t => t.ContaId == contaId.Value);
             if (cartaoId.HasValue) query = query.Where(t => t.CartaoCreditoId == cartaoId.Value);
@@ -468,7 +471,8 @@ namespace ControleFinanceiro.Api.Services
 
             if (from.HasValue) query = query.Where(t => t.Data >= from.Value);
             if (to.HasValue) query = query.Where(t => t.Data < to.Value);
-            if (categoriaId.HasValue) query = query.Where(t => t.CategoriaId == categoriaId.Value);
+            if (categoriaId == Guid.Empty) query = query.Where(t => t.CategoriaId == null); // "sem categoria"
+            else if (categoriaId.HasValue) query = query.Where(t => t.CategoriaId == categoriaId.Value);
 
             var entradas = await query
                 .Where(t => t.Tipo == Domain.Enums.TipoTransacao.Receita)
