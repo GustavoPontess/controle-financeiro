@@ -68,11 +68,12 @@ export default function Cadastro() {
     const e = validar()
     setErros(e)
     if (Object.keys(e).length > 0) return
-    if (verif.chave && !verif.token) { setErro("Confirme que você não é um robô."); return }
     setEnviando(true)
+    const token = verif.chave ? await verif.aguardarToken() : null
+    if (verif.chave && !token) { setEnviando(false); setErro("Confirme que você não é um robô."); return }
     try {
       await cadastrar({ nome: nome.trim(), email: email.trim(), dataNascimento: nascimento || null, password: senha, confirmPassword: confirmar,
-        turnstileToken: verif.token ?? undefined })
+        turnstileToken: token ?? undefined })
       setEnviado(true)
     } catch (err) {
       const msg = mensagemDeErro(err)

@@ -139,9 +139,10 @@ export default function Entrar() {
     setErros(novos)
     if (Object.keys(novos).length) return
     const comVerificacao = pedirVerificacao && !!verif.chave
-    if (comVerificacao && !verif.token) { setErro("Confirme que você não é um robô."); return }
-    const token = comVerificacao ? verif.token : null
     setEnviando(true)
+    // A caixinha pode ainda estar gerando o token (depois de um erro ela renova): espera em vez de travar.
+    const token = comVerificacao ? await verif.aguardarToken() : null
+    if (comVerificacao && !token) { setEnviando(false); setErro("Confirme que você não é um robô."); return }
     try {
       if (adicionar) { await adicionarConta(email.trim(), senha, token); navigate("/dashboard", { replace: true }); return }
       entrando.current = true
@@ -171,10 +172,11 @@ export default function Entrar() {
     e.preventDefault()
     setErro(null)
     if (!email.trim() || !emailValido(email)) { setErros({ email: !email.trim() ? "Informe o e-mail" : "E-mail inválido" }); return }
-    if (verif.chave && !verif.token) { setErro("Confirme que você não é um robô."); return }
     setEnviando(true)
+    const token = verif.chave ? await verif.aguardarToken() : null
+    if (verif.chave && !token) { setEnviando(false); setErro("Confirme que você não é um robô."); return }
     try {
-      await api.post("/auth/forgot-password", { email: email.trim(), turnstileToken: verif.token ?? undefined }, { skipErrorToast: true })
+      await api.post("/auth/forgot-password", { email: email.trim(), turnstileToken: token ?? undefined }, { skipErrorToast: true })
       setEsqueciEnviado(true)
     } catch (err) {
       setErro(codigoDoErro(err) === "VERIFICACAO_HUMANA" ? mensagemDeErro(err) : "Não foi possível enviar agora. Tente de novo em instantes.")
