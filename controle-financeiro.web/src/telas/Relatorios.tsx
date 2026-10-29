@@ -1,7 +1,8 @@
 // Relatórios do v2 = o check-up do mês (plano: docs/features/relatorios/plano.md). Cada seção responde uma pergunta, na
 // ordem em que a pessoa pergunta: como foi o mês · o que vale olhar (os avisos das outras telas, juntos) · vai dar? (só
 // no mês atual) · pra onde foi (cada categoria contra o normal) · dá pra cortar onde · quanto da renda já tem dono ·
-// mês a mês · quanto tempo o que eu tenho dura. A conta e as frases vêm prontas do servidor (GET /relatorios/check-up,
+// mês a mês · quanto tempo o que eu tenho dura. Os títulos das seções dizem o que é (pedido do Gustavo, 2026-10-29);
+// a pergunta fica na frase de cada uma. A conta e as frases vêm prontas do servidor (GET /relatorios/check-up,
 // /relatorios/sinais e /dinheiro-do-mes); aqui só a vitrine e os gráficos. Tocar numa categoria abre Transações
 // filtrada (pela URL). Exporta os lançamentos do mês em CSV.
 import { useEffect, useState } from "react"
@@ -86,7 +87,7 @@ export default function Relatorios() {
 
           {/* O que vale olhar */}
           {lista.length > 0 && (
-            <Bloco titulo="O que vale olhar">
+            <Bloco titulo="Avisos do mês">
               <div className={styles.avisos}>
                 {lista.map((s) => <Resposta key={s.chave} compacta tom={s.resposta.tom} texto={s.resposta.texto} acoes={s.resposta.acoes} />)}
               </div>
@@ -95,14 +96,14 @@ export default function Relatorios() {
 
           {/* Vai dar? (só no mês atual) */}
           {ehHoje && doMes && (
-            <Bloco titulo="Vai dar?">
+            <Bloco titulo="Renda do mês">
               <UsoDaRenda dados={doMes} compacta />
             </Bloco>
           )}
 
           <div className={styles.grade}>
             {/* Pra onde foi */}
-            <Bloco titulo={`Pra onde foi em ${mesNome}`}>
+            <Bloco titulo="Gastos por categoria">
               {!dados ? <Esqueleto linhas={4} altura={18} />
                 : dados.praOndeFoi.length === 0 && !dados.semCategoria ? <p className={styles.vazioSemRespiro}>Nenhum gasto em {mesNome}.</p>
                 : <PraOndeFoi dados={dados} aoEscolher={verCategoria} />}
@@ -110,7 +111,7 @@ export default function Relatorios() {
 
             {/* Dá pra cortar onde? */}
             {dados?.corte && (
-              <Bloco titulo="Dá pra cortar onde?">
+              <Bloco titulo="Onde dá pra economizar">
                 <div className={styles.cartao}>
                   <Resposta tom={dados.corte.resposta.tom} texto={dados.corte.resposta.texto} />
                   {dados.corte.itens.length > 0 && (
@@ -142,17 +143,17 @@ export default function Relatorios() {
           </div>
 
           {/* Comprometido pro futuro */}
-          <Bloco titulo="Comprometido pro futuro">
+          <Bloco titulo="Contas fixas e parcelas">
             {!dados ? <Esqueleto linhas={3} altura={18} /> : <Comprometido dados={dados} mesNome={mesNome} />}
           </Bloco>
 
           {/* Mês a mês */}
-          <Bloco titulo="Mês a mês">
+          <Bloco titulo="Entradas e saídas por mês">
             {!dados ? <Esqueleto linhas={3} altura={18} /> : <MesAMes dados={dados} aoEscolher={(m) => setPeriodo(m)} />}
           </Bloco>
 
           {/* Reserva */}
-          <Bloco titulo="Reserva">
+          <Bloco titulo="Reserva de emergência">
             {!dados ? <Esqueleto linhas={2} altura={18} /> : (
               <div className={styles.reserva}>
                 <div className={styles.reservaNumero}>
@@ -229,7 +230,7 @@ function Comprometido({ dados, mesNome }: { dados: CheckUp; mesNome: string }) {
       <div className={styles.cartao}>
         {dados.percentualComprometido != null && (
           <>
-            <span className={styles.grande}>{dados.percentualComprometido}%<span className={styles.grandeRotulo}> da renda já tem dono</span></span>
+            <span className={styles.grande}>{dados.percentualComprometido}%<span className={styles.grandeRotulo}> da renda vai pra contas fixas e parcelas</span></span>
             <Bullet valor={dados.percentualComprometido} faixas={[c.faixaAtencao, c.faixaAlerta]}
               rotulo={`${dados.percentualComprometido}% da renda comprometida`} />
           </>
