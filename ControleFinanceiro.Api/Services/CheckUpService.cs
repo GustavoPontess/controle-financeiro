@@ -216,10 +216,10 @@ public class CheckUpService
     public static RespostaDto? ResponderReserva(decimal? meses, decimal dinheiro, decimal? gastoNormal)
     {
         if (meses is not { } m || gastoNormal is not { } g) return null;
-        var cobre = $"O que está nas contas cobre uns {Numero(m)} {(m == 1m ? "mês" : "meses")} do seu gasto normal.";
+        var cobre = $"O que está nas contas cobre {Duracao(m)} do seu gasto normal.";
         if (m >= 6) return new RespostaDto("positivo", cobre, []);
         if (m >= 3) return new RespostaDto("neutro", cobre, []);
-        return new RespostaDto("alerta", $"{cobre} Pra chegar em 3, faltam {Reais.Formatar(Math.Max(0m, g * 3m - dinheiro))}.",
+        return new RespostaDto("alerta", $"{cobre} Pra cobrir 3 meses, faltam {Reais.Formatar(Math.Max(0m, g * 3m - dinheiro))}.",
             [new AcaoDto("Ver metas", "/metas")]);
     }
 
@@ -308,7 +308,7 @@ public class CheckUpService
         if (comprometido is { } c && c > 0)
             frases.Add($"As contas fixas e as parcelas levam {c}% da renda.");
         if (mesesDeReserva is { } r)
-            frases.Add($"O dinheiro de hoje cobre {Numero(r)} {(r == 1m ? "mês" : "meses")} do seu gasto normal.");
+            frases.Add($"O dinheiro de hoje cobre {Duracao(r)} do seu gasto normal.");
 
         // A categoria que mais passou do normal (pelo menos 30% e R$ 50 a mais): o que a pessoa mais quer saber.
         var acima = praOndeFoi
@@ -332,6 +332,20 @@ public class CheckUpService
     }
 
     private static string Extenso(int n) => n switch { 2 => "Duas", 3 => "Três", _ => n.ToString(CultureInfo.InvariantCulture) };
+
+    /// <summary>
+    /// Quanto tempo o dinheiro dura, sem número vago: menos de um mês em dias ("12 dias"), depois em meses com uma casa
+    /// ("4,6 meses"). Texto de dinheiro passa confiança sendo exato (pedido do Gustavo, 2026-10-29: nada de "uns").
+    /// </summary>
+    public static string Duracao(decimal meses)
+    {
+        if (meses < 1m)
+        {
+            var dias = Math.Max(1, (int)Math.Round(meses * 30m, MidpointRounding.AwayFromZero));
+            return dias == 1 ? "1 dia" : $"{dias} dias";
+        }
+        return meses == 1m ? "1 mês" : $"{Numero(meses)} meses";
+    }
 
     /// <summary>"2,5" / "3" (vírgula, sem depender da cultura da máquina).</summary>
     private static string Numero(decimal v) => v.ToString("0.#", CultureInfo.InvariantCulture).Replace('.', ',');

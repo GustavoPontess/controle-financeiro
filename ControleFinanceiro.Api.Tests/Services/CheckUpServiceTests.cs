@@ -211,6 +211,14 @@ public class CheckUpServiceTests
         Assert.Equal("Duas categorias passaram do normal em setembro: R$ 600,00 a mais, no total.", r.Corte.Resposta.Texto);
     }
 
+    [Theory]
+    [InlineData(0.4, "12 dias")]
+    [InlineData(0.01, "1 dia")]
+    [InlineData(1, "1 mês")]
+    [InlineData(4.6, "4,6 meses")]
+    public void Duracao_SemNumeroVago_DiasAbaixoDeUmMes(decimal meses, string esperado) =>
+        Assert.Equal(esperado, CheckUpService.Duracao(meses));
+
     [Fact]
     public async Task Comprometido_SemContaFixa_DizOQueFazer_ENuncaSome()
     {

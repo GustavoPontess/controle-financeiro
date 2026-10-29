@@ -4,8 +4,6 @@
 .legenda i { width: 10px; height: 10px; border-radius: 3px; }
 .legenda i[data-tipo="entrou"] { background: var(--v2-positivo); }
 .legenda i[data-tipo="saiu"] { background: var(--v2-texto-3); }
-.dica { margin-left: auto; color: var(--v2-texto); font-variant-numeric: tabular-nums; }
-.dica b { font-weight: 600; margin-right: 4px; }
 .svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: pan-y; }
 .grade line { stroke: var(--v2-linha); stroke-width: 1; }
 .grade text { fill: var(--v2-texto-3); font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; }
@@ -21,6 +19,14 @@
 .sobrou[data-tom="negativo"] { fill: var(--v2-negativo); }
 .leitor { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: 0; padding: 0; }
 
+/* Os números do mês sob o mouse/toque: mês + entrou, saiu, sobrou com o valor exato */
+.resumo { display: grid; grid-template-columns: auto repeat(3, minmax(0, 1fr)); align-items: baseline; gap: 6px 20px; padding: 10px 14px; border-radius: var(--v2-r-md); background: var(--v2-superficie-2); }
+.resumoMes { font-size: var(--v2-fs-sm); font-weight: 700; white-space: nowrap; }
+.resumoNumero { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: var(--v2-fs-md); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.resumoNumero > span:first-child { font-size: var(--v2-fs-xs); font-weight: 500; color: var(--v2-texto-2); }
+
 @media (max-width: 900px) {
-  .dica { flex-basis: 100%; margin-left: 0; }
+  .resumo { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 12px; }
+  .resumoMes { grid-column: 1 / -1; }
+  .resumoNumero { font-size: var(--v2-fs-sm); }
 }

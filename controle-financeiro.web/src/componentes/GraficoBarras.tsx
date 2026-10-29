@@ -1,18 +1,20 @@
-// Mês a mês do v2 (sem lib, no molde do GraficoLinha): duas colunas por mês (entrou × saiu), 3 linhas de grade com
-// valor curto, o que sobrou embaixo de cada mês (cor pela direção), o mês escolhido em destaque e a dica com os três
-// valores ao passar o mouse ou tocar. Tocar num mês leva pra ele. No celular mostra os últimos 6 (com "ver 12"). Mede a
-// largura real do bloco pra não esticar o desenho. Lista equivalente pra leitor de tela.
+// Mês a mês do v2 (sem lib, no molde do GraficoLinha): duas colunas por mês (entrou × saiu), linhas de grade com valor
+// curto, o mês escolhido em destaque e, embaixo, os três números do mês sob o mouse ou o toque (entrou, saiu, sobrou,
+// com o valor exato). Tocar num mês leva pra ele. No computador o que sobrou aparece também embaixo de cada mês; no
+// celular não (não cabe legível), e mostra os últimos 6 meses com "Ver os N meses". Lista equivalente pra leitor de tela.
 import { useLayoutEffect, useRef, useState } from "react"
 import { useHideBalance } from "../estado/ocultar"
 import { MONEY_MASK, formatMoney } from "../utils/money"
 import Botao from "./Botao"
+import { Dinheiro } from "./Dinheiro"
+import { nomeDoPeriodo } from "./NavegadorMes"
 import { curto } from "./GraficoLinha"
 import styles from "./GraficoBarras.module.css"
 
 export type MesDoGrafico = { ano: number; mes: number; entrou: number; saiu: number; sobrou: number }
 
 const CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
-const ALTURA = 210, TOPO = 10, BASE = 46, ESQ = 4, DIR = 40
+const TOPO = 10, ESQ = 4
 /** Abaixo desta largura (celular), só os últimos 6 meses até a pessoa pedir os 12. */
 const ESTREITO = 520
 
@@ -44,6 +46,8 @@ export default function GraficoBarras({ meses, escolhido, aoEscolher }: {
   const estreito = largura > 0 && largura < ESTREITO
   const visiveis = estreito && !todos ? meses.slice(-6) : meses
   const W = Math.max(largura, 10)
+  // Celular: sem a linha do "sobrou" embaixo de cada mês (fica nos números do mês) e eixo mais estreito.
+  const ALTURA = estreito ? 180 : 210, BASE = estreito ? 26 : 46, DIR = estreito ? 34 : 40
   const max = Math.max(1, ...visiveis.map((m) => Math.max(m.entrou, m.saiu)))
   // Com poucos meses a coluna não estica a tela toda (as barras ficariam longe umas das outras).
   const coluna = Math.min(110, (W - ESQ - DIR) / Math.max(visiveis.length, 1))
@@ -60,11 +64,6 @@ export default function GraficoBarras({ meses, escolhido, aoEscolher }: {
       <div className={styles.legenda}>
         <span><i data-tipo="entrou" aria-hidden="true" />Entrou</span>
         <span><i data-tipo="saiu" aria-hidden="true" />Saiu</span>
-        {sel >= 0 && visiveis[sel] && (
-          <span className={styles.dica} aria-hidden="true">
-            <b>{rotuloDoMes(visiveis[sel])}</b> entrou {dinheiro(visiveis[sel].entrou)} · saiu {dinheiro(visiveis[sel].saiu)} · sobrou {dinheiro(visiveis[sel].sobrou)}
-          </span>
-        )}
       </div>
       {largura > 0 && (
         <svg className={styles.svg} width={W} height={ALTURA} viewBox={`0 0 ${W} ${ALTURA}`} role="img" aria-label="Entrou e saiu por mês"
@@ -86,17 +85,27 @@ export default function GraficoBarras({ meses, escolhido, aoEscolher }: {
                 <rect className={styles.alvo} x={cx - coluna / 2} y={TOPO} width={coluna} height={ALTURA - TOPO} rx={10} />
                 <rect className={styles.barra} data-tipo="entrou" x={cx - barra - 1} y={y(m.entrou)} width={barra} height={Math.max(0, chao - y(m.entrou))} rx={4} />
                 <rect className={styles.barra} data-tipo="saiu" x={cx + 1} y={y(m.saiu)} width={barra} height={Math.max(0, chao - y(m.saiu))} rx={4} />
-                <text className={styles.rotulo} x={cx} y={ALTURA - 26} textAnchor="middle">{rotuloDoMes(m)}</text>
-                <text className={styles.sobrou} x={cx} y={ALTURA - 8} textAnchor="middle" data-tom={m.sobrou < 0 ? "negativo" : "positivo"}>
-                  {m.sobrou < 0 && !oculto ? "−" : ""}{curto(Math.abs(m.sobrou), oculto)}
-                </text>
+                <text className={styles.rotulo} x={cx} y={estreito ? ALTURA - 6 : ALTURA - 26} textAnchor="middle">{estreito ? CURTOS[m.mes - 1] : rotuloDoMes(m)}</text>
+                {!estreito && (
+                  <text className={styles.sobrou} x={cx} y={ALTURA - 8} textAnchor="middle" data-tom={m.sobrou < 0 ? "negativo" : "positivo"}>
+                    {m.sobrou < 0 && !oculto ? "−" : ""}{curto(Math.abs(m.sobrou), oculto)}
+                  </text>
+                )}
               </g>
             )
           })}
         </svg>
       )}
+      {sel >= 0 && visiveis[sel] && (
+        <div className={styles.resumo} aria-hidden="true">
+          <span className={styles.resumoMes}>{nomeDoPeriodo(visiveis[sel])}</span>
+          <span className={styles.resumoNumero}><span>Entrou</span><Dinheiro valor={visiveis[sel].entrou} /></span>
+          <span className={styles.resumoNumero}><span>Saiu</span><Dinheiro valor={visiveis[sel].saiu} /></span>
+          <span className={styles.resumoNumero}><span>Sobrou</span><Dinheiro valor={visiveis[sel].sobrou} tom={visiveis[sel].sobrou < 0 ? "negativo" : "positivo"} /></span>
+        </div>
+      )}
       {estreito && meses.length > 6 && (
-        <Botao variante="texto" onClick={() => setTodos((t) => !t)}>{todos ? "Ver os últimos 6" : `Ver ${meses.length}`}</Botao>
+        <Botao variante="texto" onClick={() => setTodos((t) => !t)}>{todos ? "Ver só os últimos 6 meses" : `Ver os ${meses.length} meses`}</Botao>
       )}
       <ul className={styles.leitor}>
         {meses.map((m) => <li key={`${m.ano}-${m.mes}`}>{rotuloDoMes(m)}: entrou {dinheiro(m.entrou)}, saiu {dinheiro(m.saiu)}, sobrou {dinheiro(m.sobrou)}</li>)}
