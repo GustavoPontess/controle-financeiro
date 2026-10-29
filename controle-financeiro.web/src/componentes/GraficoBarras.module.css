@@ -25,6 +25,20 @@
 .resumoNumero { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: var(--v2-fs-md); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .resumoNumero > span:first-child { font-size: var(--v2-fs-xs); font-weight: 500; color: var(--v2-texto-2); }
 
+/* Celular: um mês por linha, as duas barras deitadas e o que sobrou à direita */
+.legendaSobrou { margin-left: auto; }
+.lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.linhaMes { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 6px 8px; border: 0; border-radius: var(--v2-r-sm); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.linhaMes[data-sel] { background: var(--v2-superficie-2); }
+.linhaMes:focus-visible { outline: 2px solid var(--v2-acento); outline-offset: 1px; }
+.linhaNome { font-size: var(--v2-fs-xs); font-weight: 500; color: var(--v2-texto-2); }
+.linhaMes[data-sel] .linhaNome { color: var(--v2-texto); font-weight: 700; }
+.linhaBarras { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.linhaBarras span { display: block; height: 7px; border-radius: 4px; }
+.linhaBarras span[data-tipo="entrou"] { background: var(--v2-positivo); }
+.linhaBarras span[data-tipo="saiu"] { background: var(--v2-texto-3); }
+.linhaSobrou { font-size: var(--v2-fs-sm); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+
 @media (max-width: 900px) {
   .resumo { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 12px; }
   .resumoMes { grid-column: 1 / -1; }
