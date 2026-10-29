@@ -15,6 +15,14 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+### 📌 2026-10-28 (noite): Turnstile NO AR + plano da tela de Relatórios + ajustes de celular (sem commit)
+
+**No ar:** #389 (login sem trava, Turnstile ligado com as chaves de produção; conferido ao vivo: 1 senha errada → "E-mail ou senha incorretos." + "Confirme que é humano") e #388.
+
+**Plano de Relatórios (pedido do Gustavo: "bons gráficos" + centralizar os insights espalhados):** pesquisa feita (código, docs, concorrentes, dataviz; 9 agentes) e escrita em **`docs/features/relatorios/plano.md`**; desenho da tela final na página **"Relatórios do Pontes"** (https://claude.ai/artifact/Mu915Ft9QcHf59ZfcfzVYz). Resumo: 9 perguntas em ordem; "O que vale olhar" agrega os insights (`GET /relatorios/sinais`, só agregação); `GraficoBarrasComparacao` (barra + traço do normal) no Pra onde foi; `GraficoBarras` no Mês a mês; `Bullet` + "Folga por mês" no Comprometido; "Dá pra cortar onde?"; Reserva sem caixinha; tudo SVG próprio, sem pacote; 14 PRs pequenos. **Decisões (§8 do plano), todas tomadas em 2026-10-28:** ✅ caixinha FORA da reserva · ✅ gasto normal INCLUI parcelas (conta única devolve dia a dia + parcelas; Metas segue com parcelas futuras) · ✅ Sankey depois do básico (visões: categoria, categoria›subcategoria, por pessoa) · ✅ essencial depois do básico. Achado P2: folga da meta em degraus quando parcela acaba no prazo. Pronto pro PR 1; nada construído ainda.
+
+**Celular, no working tree (sem commit):** botão de abrir o menu com área de toque de 44px (sem mudar o visual); Configurações no celular = lista das seções (estilo Instagram, mesma letra do menu) e, tocando, só a seção com a seta de voltar pra lista; menu da conta fecha ao trocar de seção e "Configurações" guarda de onde veio; Perfil empilhado (foto, nome, e-mail, botão largo); linha nova do "Planejar categoria" com categoria e valor um embaixo do outro. Testes e build verdes. Fica pendente: seta "‹" no lugar do ícone do menu nas telas de dentro (proposta, sem resposta).
+
 ### 📌 2026-10-28: Cloudflare na frente + login sem trava (branch `feat/login-sem-trava`, sem commit)
 
 **No ar hoje:** #383-#388 (e-mails do pedido/exclusão, limite geral, IP real da Cloudflare, Admin em tabela, conta da aba no `X-Active-Account`). Chat do servidor: Cloudflare com proxy, origem só aceitando a Cloudflare, limite de rajada no `/auth/login` (10 em 10 s), TLS 1.2+.

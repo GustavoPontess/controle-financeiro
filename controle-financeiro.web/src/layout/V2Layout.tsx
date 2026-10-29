@@ -67,7 +67,7 @@ function secaoDaRota(pathname: string): Secao | undefined {
     : [
       ...PRINCIPAL, ...GERENCIAR,
       { para: "/familias", rotulo: "Famílias", semMenu: true },
-      { para: "/configuracoes", rotulo: "Configurações" },
+      { para: "/configuracoes", rotulo: "Configurações", semMenu: true },
       { para: "/notificacoes", rotulo: "Notificações", semMenu: true },
     ]
   return todos.filter((i) => pathname === i.para || pathname.startsWith(i.para + "/")).sort((a, b) => b.para.length - a.para.length)[0]
@@ -76,7 +76,7 @@ function secaoDaRota(pathname: string): Secao | undefined {
 export default function V2Layout() {
   const { usuario, sair, contas, trocarConta } = useAuth()
   const navigate = useNavigate()
-  const { pathname, state } = useLocation()
+  const { pathname, search, state } = useLocation()
   const familiaId = familiaDaRota(pathname)
   const { familias, convites, carregado } = useEspacos(pathname, usuario?.id)
   const familiaAtual = familiaId ? familias.find((f) => f.id === familiaId) : undefined
@@ -87,6 +87,9 @@ export default function V2Layout() {
   const raiz = secao?.raiz ?? secao?.para
   const emTelaInterna = !!secao && (pathname !== raiz || !!secao.semMenu)
   const voltarPara = (state as { voltarPara?: string } | null)?.voltarPara ?? (secao && !secao.semMenu && raiz ? raiz : "/dashboard")
+  // Página com menu de seções (NavSecoes, `?s=`): no celular a seção escolhida abre sozinha, e a seta volta pra lista.
+  const naSecaoDaPagina = new URLSearchParams(search).has("s")
+  const voltar = () => navigate(naSecaoDaPagina && window.matchMedia("(max-width: 900px)").matches ? pathname : voltarPara)
   const naoLidas = useNaoLidas(`${usuario?.id ?? ""}:${pathname}`)
   const [oculto, alternarOculto] = useHideBalance()
   const [menuAberto, setMenuAberto] = useState(false)
@@ -101,7 +104,8 @@ export default function V2Layout() {
   // Sino: painel com as últimas notificações embaixo do botão; fecha ao clicar fora, no Esc e ao trocar de tela.
   const [painelNotif, setPainelNotif] = useState(false)
   const sinoRef = useRef<HTMLSpanElement>(null)
-  useEffect(() => { setMenuAberto(false); setMenuUsuario(false); setPainelNotif(false); setErroConta(null) }, [pathname])
+  // Fecha menus ao mudar de página ou de seção da página (`?s=`: Configurações → Perfil e de volta).
+  useEffect(() => { setMenuAberto(false); setMenuUsuario(false); setPainelNotif(false); setErroConta(null) }, [pathname, search])
   useEffect(() => {
     if (!painelNotif) return
     const fora = (e: MouseEvent) => { if (!sinoRef.current?.contains(e.target as Node)) setPainelNotif(false) }
@@ -213,9 +217,12 @@ export default function V2Layout() {
                 </button>
                 {erroConta && <span className={styles.menuErro} role="alert">{erroConta}</span>}
                 <span className={styles.menuSeparador} aria-hidden="true" />
-                <NavLink to="/configuracoes" role="menuitem" className={styles.menuItem}>
+                {/* Botão (não link): fecha o menu mesmo já estando nas Configurações (o menu só fechava ao mudar de página) e
+                    guarda de onde a pessoa veio pro "Voltar" (Configurações não está no menu lateral). */}
+                <button type="button" role="menuitem" className={styles.menuItem}
+                  onClick={() => { setMenuUsuario(false); navigate("/configuracoes", { state: { voltarPara: pathname === "/configuracoes" ? voltarPara : pathname } }) }}>
                   <Settings size={16} strokeWidth={2} aria-hidden="true" /> Configurações
-                </NavLink>
+                </button>
                 {convites > 0 && (
                   <button type="button" role="menuitem" className={styles.menuItem} onClick={() => irPara("/familias")}>
                     <Mail size={16} strokeWidth={2} aria-hidden="true" /><span className={styles.menuItemNome}>Convites pra você</span>
@@ -237,7 +244,7 @@ export default function V2Layout() {
           {/* Mesmo ícone do recolher/expandir do computador — no celular abre/fecha a gaveta. */}
           <button type="button" className={styles.abrirMenu} aria-label="Abrir menu" onClick={() => setMenuAberto(true)}><PanelLeftOpen size={18} strokeWidth={2} /></button>
           {emTelaInterna && (
-            <Botao variante="texto" soIcone aria-label="Voltar" className={styles.voltar} onClick={() => navigate(voltarPara)}
+            <Botao variante="texto" soIcone aria-label="Voltar" className={styles.voltar} onClick={voltar}
               icone={<ArrowLeft size={18} strokeWidth={2.25} />} />
           )}
           <h1 className={styles.tituloPagina}>{secao?.rotulo ?? "Pontes"}</h1>

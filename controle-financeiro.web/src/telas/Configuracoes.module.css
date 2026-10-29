@@ -19,5 +19,8 @@
 @media (max-width: 900px) {
   .pagina { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .menu { position: static; }
+  /* Celular: sem seção escolhida mostra só o menu; com seção, só o conteúdo dela. */
+  .pagina:not([data-escolhida]) .conteudo { display: none; }
+  .pagina[data-escolhida] .menu { display: none; }
   .opcao { flex-direction: column; align-items: stretch; gap: 10px; }
 }

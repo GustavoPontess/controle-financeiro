@@ -5,9 +5,11 @@
 .item[aria-current="page"], .item[aria-current="page"]:hover { color: var(--v2-texto); background: var(--v2-superficie); box-shadow: var(--v2-sombra); font-weight: 600; }
 .item svg { flex-shrink: 0; }
 
+.seta { display: none; }
+
+/* Celular: a mesma letra, ícone e cor do menu principal, com seta › no fim e altura de toque de 44px. Aqui a lista é
+   o caminho pra seção, então nenhuma fica destacada. */
 @media (max-width: 900px) {
-  .nav { flex-direction: row; gap: 6px; overflow-x: auto; margin: 0 -16px; padding: 2px 16px 6px; scrollbar-width: none; }
-  .nav::-webkit-scrollbar { display: none; }
-  .item { height: 36px; flex-shrink: 0; border: 1px solid var(--v2-linha); }
-  .item[aria-current="page"] { border-color: transparent; }
+  .item, .item[aria-current="page"], .item[aria-current="page"]:hover { height: 44px; background: transparent; box-shadow: none; font-weight: 500; color: var(--v2-texto-2); }
+  .seta { display: block; margin-left: auto; color: var(--v2-texto-3); }
 }
