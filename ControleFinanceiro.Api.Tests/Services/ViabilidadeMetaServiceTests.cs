@@ -179,6 +179,44 @@ public class ViabilidadeMetaServiceTests
     }
 
     [Fact]
+    public async Task ParcelaQueAcabaNoMeioDoPrazo_FalaAFolgaEmDegraus()
+    {
+        // Geladeira de R$ 300 só em outubro, novembro e dezembro; meta até junho (9 meses). A média dá R$ 900 por mês,
+        // mas até dezembro só sobram R$ 700 (achado do Gustavo, 2026-10-28): a frase fala dos dois degraus.
+        var ctx = CreateContext();
+        var u = Pessoa(ctx);
+        Parcelado(ctx, u, null, 300m, (10, StatusParcela.Pendente), (11, StatusParcela.Pendente), (12, StatusParcela.Pendente));
+
+        var justo = await Servico(ctx).CalcularAsync(u, 8100m, new DateTime(2027, 6, 1), null, Hoje); // pede R$ 900
+        Assert.Equal((900m, 900m), (justo.PorMes!.Value, justo.Folga!.Value));
+        Assert.Equal("neutro", justo.Resposta.Tom);
+        Assert.Equal("Precisa guardar R$ 900,00 por mês. Não cabe todo mês, mas no total dá: sobram uns R$ 700,00 por mês até dezembro de 2026 " +
+                     "e uns R$ 1.000,00 de janeiro de 2027 em diante. Guardando o que sobra em cada mês, chega lá até junho de 2027.", justo.Resposta.Texto);
+
+        var folgado = await Servico(ctx).CalcularAsync(u, 5400m, new DateTime(2027, 6, 1), null, Hoje); // pede R$ 600
+        Assert.Equal("positivo", folgado.Resposta.Tom);
+        Assert.Equal("Precisa guardar R$ 600,00 por mês. Cabe: sobram uns R$ 700,00 por mês até dezembro de 2026 e uns R$ 1.000,00 " +
+                     "de janeiro de 2027 em diante, depois dos gastos, das parcelas e das outras metas.", folgado.Resposta.Texto);
+
+        var demais = await Servico(ctx).CalcularAsync(u, 10800m, new DateTime(2027, 6, 1), null, Hoje); // pede R$ 1.200
+        Assert.Equal("alerta", demais.Resposta.Tom);
+        Assert.StartsWith("Precisa guardar R$ 1.200,00 por mês, mas sobram uns R$ 700,00 por mês até dezembro de 2026 e uns R$ 1.000,00 " +
+                          "de janeiro de 2027 em diante.", demais.Resposta.Texto);
+    }
+
+    [Fact]
+    public void DegrausTexto_UmDegrauNaoMuda_TresDegrausEMesSemSobra()
+    {
+        var out26 = new DateTime(2026, 10, 1);
+        Assert.Null(ViabilidadeMetaService.DegrausTexto(ViabilidadeMetaService.Degraus(
+            Enumerable.Range(0, 6).Select(i => (out26.AddMonths(i), 500m)))));
+
+        var folgas = new[] { -100m, -100m, 400m, 400m, 900m };
+        Assert.Equal("sobram R$ 0,00 por mês até novembro de 2026, uns R$ 400,00 de dezembro de 2026 a janeiro de 2027 e uns R$ 900,00 de fevereiro de 2027 em diante",
+            ViabilidadeMetaService.DegrausTexto(ViabilidadeMetaService.Degraus(folgas.Select((f, i) => (out26.AddMonths(i), f)))));
+    }
+
+    [Fact]
     public async Task Editando_AMetaNaoContaNasOutras()
     {
         var ctx = CreateContext();

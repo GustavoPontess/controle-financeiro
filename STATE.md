@@ -15,6 +15,12 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+### 📌 2026-10-29: Turnstile não trava mais na 2ª tentativa (#391, NO AR)
+
+Gustavo pegou em produção: errava a senha, tentava de novo e ficava preso em "Confirme que você não é um robô." sem a caixinha pedir nada (token de uso único gasto; a tela apagava e redesenhava a caixinha e com a chave de produção o token novo não chegava a tempo). Fix: caixinha renovada (`turnstile.reset`) + `aguardarToken` (envio espera até 10 s). Conferido em produção no Chrome do Gustavo com e-mail de teste: 4 tentativas seguidas, todas ao servidor. Obs.: Chrome automatizado (puppeteer) não passa no modo Gerenciado sem clique, então não serve pra testar isso em produção. **Cuidado anotado:** no Chrome do Gustavo o gerenciador de senhas preenche a senha real do `pontes@` sozinho; nunca testar login de produção com o e-mail dele.
+
+#390 (celular) e #389/#388 também no ar. Main = produção.
+
 ### 📌 2026-10-28 (noite): Turnstile NO AR + plano da tela de Relatórios + ajustes de celular (sem commit)
 
 **No ar:** #389 (login sem trava, Turnstile ligado com as chaves de produção; conferido ao vivo: 1 senha errada → "E-mail ou senha incorretos." + "Confirme que é humano") e #388.
