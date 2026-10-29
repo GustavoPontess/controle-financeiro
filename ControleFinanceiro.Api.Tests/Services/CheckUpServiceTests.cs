@@ -93,6 +93,28 @@ public class CheckUpServiceTests
     }
 
     [Fact]
+    public async Task EscolherMesAnterior_OMesAMesSegueTerminandoNoMesAtual()
+    {
+        // Tocar num mês do gráfico não pode sumir com os meses depois dele (bug visto pelo Gustavo em 2026-10-29).
+        var c = Seed();
+        var hoje = HorarioBrasil.HojeData();
+        var escolhido = new DateTime(hoje.Year, hoje.Month, 1).AddMonths(-2);
+        c.Ctx.Transacoes.Add(new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "x", Valor = 300m, Tipo = TipoTransacao.Despesa, CategoriaId = c.Mercado, ContaId = c.Conta,
+            CriadoPor = c.U, Data = new DateOnly(escolhido.Year, escolhido.Month, 10), StatusTransacao = StatusTransacao.Executado, Ativo = true,
+        });
+        c.Ctx.SaveChanges();
+
+        var r = await Servico(c.Ctx).CalcularAsync(c.U, escolhido.Year, escolhido.Month);
+
+        Assert.Equal(300m, r.Saiu);
+        Assert.Equal(12, r.MesAMes.Count);
+        Assert.Equal((hoje.Year, hoje.Month), (r.MesAMes[^1].Ano, r.MesAMes[^1].Mes));
+        Assert.Equal(300m, r.MesAMes[^3].Saiu);
+    }
+
+    [Fact]
     public async Task SaiuMaisDoQueEntrou_FaladoComoFato_EComprometidoComAsContasFixas()
     {
         var c = Seed();

@@ -40,9 +40,10 @@ export default function Relatorios() {
 
   useEffect(() => {
     let vivo = true
-    setDados(null); setAvisos([]); setDoMes(null); setErro(false)
+    // Trocar de mês mantém o mês anterior na tela até o novo chegar (sem esqueleto: a tela piscava inteira).
+    setErro(false); if (!ehHoje) setDoMes(null)
     getCheckUp(periodo.ano, periodo.mes).then((d) => { if (vivo) setDados(d) }).catch(() => { if (vivo) setErro(true) })
-    getSinais(periodo.ano, periodo.mes).then((s) => { if (vivo) setAvisos(s) }).catch(() => { /* a seção fica só com Seus dados */ })
+    getSinais(periodo.ano, periodo.mes).then((s) => { if (vivo) setAvisos(s) }).catch(() => { if (vivo) setAvisos([]) /* a seção fica só com Seus dados */ })
     if (ehHoje) getDinheiroDoMes(periodo.ano, periodo.mes).then((d) => { if (vivo) setDoMes(d) }).catch(() => { /* "Vai dar?" some */ })
     return () => { vivo = false }
   }, [periodo, ehHoje])
@@ -96,7 +97,7 @@ export default function Relatorios() {
 
           {/* Vai dar? (só no mês atual) */}
           {ehHoje && doMes && (
-            <Bloco titulo="Renda do mês">
+            <Bloco titulo="Distribuição da renda">
               <UsoDaRenda dados={doMes} compacta />
             </Bloco>
           )}

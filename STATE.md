@@ -15,6 +15,14 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+### 📌 2026-10-29: tela de Relatórios nova (branch `feat/relatorios-v2`, PR aberto)
+
+**Feito (todo o básico do `docs/features/relatorios/plano.md`):** check-up com Sem categoria à parte, reserva sem caixinha, comprometido (bullet + maiores contas fixas + parcelas dos próximos meses), "Onde dá pra economizar", "Avisos do mês" (`GET /relatorios/sinais`, `SinaisDoMesService`), gráficos SVG próprios (`GraficoBarras`, `GraficoBarrasComparacao`, `Bullet`), mês a mês em lista no celular, frases com valor exato (sem "uns"), tocar numa categoria abre Transações filtrada (filtro Categoria dentro do painel, com "Sem categoria"). Ajustes do teste com os extratos reais: o mês a mês fica sempre nos 12 meses até o mês atual (tocar num mês não some com os depois), trocar de mês não pisca a tela (Relatórios e Visão geral), "Distribuição da renda" no lugar de "Renda do mês"/"Renda de outubro".
+
+**Banco local:** a conta gut.n.pontes foi refeita só com os 10 extratos Nubank (seeder local, gitignored); pagamento de fatura virou gasto na categoria "Fatura do cartão" (sem a fatura detalhada), Pix no Crédito fora do resultado, Pix do Inter como transferência (perna solta).
+
+**Pendências que saíram daqui:** 🟡 **P2 transferência não tem Editar** (back e front; só excluir e lançar de novo) · ⚪ importar extratos do Inter pra os meses que vieram do Inter fecharem · ⚪ carregar `financeiro.xlsx` (salário, aluguel, contas fixas) no Orçamento local · ⚪ DemoSeeder do Relatórios · ⚪ PR #392 (folga em degraus) vai conflitar no `ViabilidadeMetaService` depois deste entrar.
+
 ### 📌 2026-10-28 (noite): Turnstile NO AR + plano da tela de Relatórios + ajustes de celular (sem commit)
 
 **No ar:** #389 (login sem trava, Turnstile ligado com as chaves de produção; conferido ao vivo: 1 senha errada → "E-mail ou senha incorretos." + "Confirme que é humano") e #388.

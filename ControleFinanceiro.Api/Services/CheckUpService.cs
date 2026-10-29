@@ -52,22 +52,29 @@ public class CheckUpService
         var mesAtual = ano == hoje.Year && mes == hoje.Month;
         var nomeMes = MesesPt.Nome(mes);
 
-        // A série: os 12 meses que terminam neste, com a renda que entrou e o gasto de cada um (gasto numa consulta só).
-        var primeiro = inicio.AddMonths(-(MesesNaSerie - 1));
-        var gastosPorMes = await RegrasFinanceiras.GastosPorCategoriaPorMesAsync(_context, usuarioId, primeiro, MesesNaSerie);
+        // A série: a renda que entrou e o gasto de cada mês (gasto numa consulta só). O gráfico mês a mês mostra uma
+        // janela FIXA de 12 meses que termina no mês atual (escolher um mês dentro dela não some com os depois dele);
+        // só um mês mais antigo que a janela leva ela junto. A série começa cedo o bastante pro mês anterior e o normal.
+        var esteMes = new DateTime(hoje.Year, hoje.Month, 1);
+        var fim = inicio.AddMonths(MesesNaSerie - 1) < esteMes ? inicio.AddMonths(MesesNaSerie - 1) : esteMes;
+        var primeiro = fim.AddMonths(-(MesesNaSerie - 1));
+        if (inicio.AddMonths(-MesesDoNormal) < primeiro) primeiro = inicio.AddMonths(-MesesDoNormal);
+        var meses = (fim.Year - primeiro.Year) * 12 + fim.Month - primeiro.Month + 1;
+        var gastosPorMes = await RegrasFinanceiras.GastosPorCategoriaPorMesAsync(_context, usuarioId, primeiro, meses);
         var serie = new List<(int Ano, int Mes, decimal Entrou, Dictionary<Guid, RegrasFinanceiras.GastoCategoria> Gastos)>();
+        var idx = (inicio.Year - primeiro.Year) * 12 + inicio.Month - primeiro.Month;
         decimal rendaEsperadaDoMes = 0m;
-        for (var i = 0; i < MesesNaSerie; i++)
+        for (var i = 0; i < meses; i++)
         {
             var m = primeiro.AddMonths(i);
             var renda = await _renda.ObterMesAsync(usuarioId, m.Year, m.Month);
-            if (i == MesesNaSerie - 1) rendaEsperadaDoMes = renda.Previsto;
+            if (i == idx) rendaEsperadaDoMes = renda.Previsto;
             serie.Add((m.Year, m.Month, renda.Recebido, gastosPorMes.GetValueOrDefault((m.Year, m.Month)) ?? new()));
         }
         static decimal Gasto(Dictionary<Guid, RegrasFinanceiras.GastoCategoria> g) => g.Values.Sum(x => x.Gasto);
 
-        var doMes = serie[^1];
-        var anterior = serie[^2];
+        var doMes = serie[idx];
+        var anterior = serie[idx - 1];
         var entrou = doMes.Entrou;
         var saiu = Gasto(doMes.Gastos);
         var sobrou = entrou - saiu;
@@ -76,7 +83,7 @@ public class CheckUpService
         // O normal: a média dos meses anteriores (até 3) em que a pessoa teve algum gasto. Mês sem nada lançado não
         // puxa a média pra baixo (quem começou a usar o app agora não tem "normal" zerado). Com as parcelas (decisão do
         // Gustavo, 2026-10-28: enquanto paga, a parcela faz parte do mês normal).
-        var mesesDoNormal = serie.Take(serie.Count - 1).Reverse().Take(MesesDoNormal).Where(m => Gasto(m.Gastos) > 0).ToList();
+        var mesesDoNormal = serie.Take(idx).Reverse().Take(MesesDoNormal).Where(m => Gasto(m.Gastos) > 0).ToList();
         decimal? gastoNormal = mesesDoNormal.Count > 0 ? Math.Round(mesesDoNormal.Average(m => Gasto(m.Gastos)), 2) : null;
         decimal? NormalDa(Guid categoria) => mesesDoNormal.Count > 0
             ? Math.Round(mesesDoNormal.Sum(m => m.Gastos.GetValueOrDefault(categoria).Gasto) / mesesDoNormal.Count, 2)
@@ -127,7 +134,7 @@ public class CheckUpService
         var nasMetas = await RegrasFinanceiras.GuardadoNasCaixinhasAsync(_context, usuarioId);
         decimal? mesesDeReserva = gastoNormal is > 0 && dinheiro > 0 ? Math.Round(dinheiro / gastoNormal.Value, 1) : null;
 
-        var mesAMes = serie.Select(m => new MesDoCheckUpDto(m.Ano, m.Mes, m.Entrou, Gasto(m.Gastos), m.Entrou - Gasto(m.Gastos))).ToList();
+        var mesAMes = serie.TakeLast(MesesNaSerie).Select(m => new MesDoCheckUpDto(m.Ano, m.Mes, m.Entrou, Gasto(m.Gastos), m.Entrou - Gasto(m.Gastos))).ToList();
         decimal? pctQueSobrou = entrou > 0 ? Math.Round(sobrou * 100m / entrou, 0) : null;
 
         var corte = gastoNormal is null ? null : await CorteAsync(usuarioId, ano, mes, nomeMes, sobrou, praOndeFoi);

@@ -9,7 +9,6 @@
 // (do mais perto pro mais longe) ou escolhendo as datas.
 import { useEffect, useMemo, useState } from "react"
 import { useLocation, useSearchParams } from "react-router-dom"
-import { X } from "lucide-react"
 import { listTransactionsPage, getResumoGastos, getTransactionStats, type ListTransactionsFilter, type ResumoGastos } from "../services/transactionService"
 import { getContas } from "../services/contaService"
 import { getCategories } from "../services/categoryService"
@@ -55,8 +54,8 @@ const NATUREZAS: { valor: Natureza; rotulo: string }[] = [
   { valor: "fatura", rotulo: "Pagamento de fatura" },
 ]
 
-/** Filtros avançados — vivem num rascunho enquanto o painel está aberto e só valem no "Aplicar". `categoriaId` só chega
- *  pela URL (Relatórios › tocar numa categoria ou "Classificar"; o id vazio é "sem categoria") e aparece como etiqueta. */
+/** Filtros avançados — vivem num rascunho enquanto o painel está aberto e só valem no "Aplicar". `categoriaId` também
+ *  chega pela URL (Relatórios › tocar numa categoria ou "Classificar"; o id vazio é "sem categoria") e aparece no painel. */
 type Filtros = { natureza: Natureza; contaId: string; status: string; valorMin: string; valorMax: string; de: string; ate: string; categoriaId: string }
 const SEM_FILTRO: Filtros = { natureza: "", contaId: "", status: "", valorMin: "", valorMax: "", de: "", ate: "", categoriaId: "" }
 const SEM_CATEGORIA = "00000000-0000-0000-0000-000000000000"
@@ -74,7 +73,7 @@ function filtrosDaUrl(p: URLSearchParams): Partial<Filtros> {
   }
   return f
 }
-const ativosEm = (f: Filtros) => [f.natureza, f.contaId, f.status, f.valorMin || f.valorMax, f.de || f.ate].filter(Boolean).length
+const ativosEm = (f: Filtros) => [f.natureza, f.contaId, f.categoriaId, f.status, f.valorMin || f.valorMax, f.de || f.ate].filter(Boolean).length
 
 
 export default function Transacoes() {
@@ -113,12 +112,8 @@ export default function Transacoes() {
 
   // Painel: abre com o rascunho = o que está valendo; fecha com Esc ou clique fora (sem aplicar).
   const abrirPainel = () => { setRascunho(filtros); setPainel(true) }
-  const aplicar = () => { setFiltros(rascunho); setPainel(false) }
+  const aplicar = () => { setFiltros(rascunho); setPainel(false); if (url.size) setUrl({}, { replace: true }) }
   const limparTudo = () => { setRascunho(SEM_FILTRO); setFiltros(SEM_FILTRO); setPainel(false); if (url.size) setUrl({}, { replace: true }) }
-  const tirarCategoria = () => {
-    setFiltros((f) => ({ ...f, categoriaId: "" })); setRascunho((r) => ({ ...r, categoriaId: "" }))
-    setUrl((u) => { u.delete("categoriaId"); return u }, { replace: true })
-  }
   const edita = <K extends keyof Filtros>(k: K) => (valor: string) => setRascunho((r) => ({ ...r, [k]: valor }))
   // Valor do filtro com a mesma máscara de dinheiro dos formulários: só dígitos, nunca negativo.
   const editaValor = (k: "valorMin" | "valorMax") => (e: { target: { value: string } }) =>
@@ -242,6 +237,12 @@ export default function Transacoes() {
                     onChange={(v) => setRascunho((r) => ({ ...r, contaId: v }))}
                     opcoes={[{ valor: "", rotulo: "Todas as contas" }, ...contas.map((c) => ({ valor: c.id, rotulo: c.nome }))]} />
                 </Campo>
+                <Campo rotulo="Categoria">
+                  <Selecao tamanho="sm" valor={rascunho.categoriaId}
+                    onChange={(v) => setRascunho((r) => ({ ...r, categoriaId: v }))}
+                    opcoes={[{ valor: "", rotulo: "Todas as categorias" }, { valor: SEM_CATEGORIA, rotulo: "Sem categoria" },
+                      ...Object.entries(categorias).sort((a, b) => a[1].localeCompare(b[1], "pt-BR")).map(([valor, rotulo]) => ({ valor, rotulo }))]} />
+                </Campo>
                 <Campo rotulo="Status">
                   <Selecao tamanho="sm" valor={rascunho.status}
                     onChange={(v) => setRascunho((r) => ({ ...r, status: v }))}
@@ -264,15 +265,6 @@ export default function Transacoes() {
               </PainelFiltros>
             </div>
           </div>
-          {filtros.categoriaId && (
-            <div className={styles.filtroAtivo}>
-              <button type="button" className={styles.etiquetaFiltro} onClick={tirarCategoria}
-                aria-label={`Tirar o filtro ${filtros.categoriaId === SEM_CATEGORIA ? "Sem categoria" : categorias[filtros.categoriaId] ?? "Categoria"}`}>
-                {filtros.categoriaId === SEM_CATEGORIA ? "Sem categoria" : categorias[filtros.categoriaId] ?? "Categoria"}
-                <X size={14} strokeWidth={2.25} aria-hidden="true" />
-              </button>
-            </div>
-          )}
         </div>
 
         {itens === null ? (

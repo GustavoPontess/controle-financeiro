@@ -30,7 +30,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     let vivo = true
-    setDados(null); setErro(false); setMesDinheiro(null); setErroMes(false)
+    // Trocar de mês mantém o anterior na tela até o novo chegar (sem esqueleto: a tela piscava inteira).
+    setErro(false); setErroMes(false)
     getDashboard(ref.ano, ref.mes).then((d) => { if (vivo) setDados(d) }).catch(() => { if (vivo) setErro(true) })
     getDinheiroDoMes(ref.ano, ref.mes).then((m) => { if (vivo) setMesDinheiro(m) }).catch(() => { if (vivo) setErroMes(true) })
     return () => { vivo = false }
@@ -73,7 +74,7 @@ export default function Dashboard() {
 
       {/* Mosaico (estilo Pinterest): cada caixa cai na coluna mais curta, sem buraco entre elas. No celular, uma embaixo da outra. */}
       <Mosaico>
-        <Bloco titulo={`Renda de ${MESES[ref.mes - 1].toLowerCase()}`} acao="Ver renda" para="/orcamento">
+        <Bloco titulo={`Distribuição da renda de ${MESES[ref.mes - 1].toLowerCase()}`} acao="Ver orçamento" para="/orcamento">
         {erroMes ? <p className={styles.erroMes} role="alert">Não deu pra carregar a renda do mês.</p>
           : !mesDinheiro ? <Esqueleto linhas={4} altura={18} /> : <UsoDaRenda dados={mesDinheiro} />}
         </Bloco>
