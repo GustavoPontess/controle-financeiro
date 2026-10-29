@@ -1,0 +1,26 @@
+.caixa { display: flex; flex-direction: column; gap: 8px; width: 100%; min-width: 0; }
+.legenda { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; font-size: var(--v2-fs-xs); color: var(--v2-texto-2); min-height: 18px; }
+.legenda span { display: inline-flex; align-items: center; gap: 6px; }
+.legenda i { width: 10px; height: 10px; border-radius: 3px; }
+.legenda i[data-tipo="entrou"] { background: var(--v2-positivo); }
+.legenda i[data-tipo="saiu"] { background: var(--v2-texto-3); }
+.dica { margin-left: auto; color: var(--v2-texto); font-variant-numeric: tabular-nums; }
+.dica b { font-weight: 600; margin-right: 4px; }
+.svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: pan-y; }
+.grade line { stroke: var(--v2-linha); stroke-width: 1; }
+.grade text { fill: var(--v2-texto-3); font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.chao { stroke: var(--v2-linha-forte); stroke-width: 1; }
+.alvo { fill: transparent; }
+.mes[data-sel] .alvo { fill: var(--v2-superficie-2); }
+.barra[data-tipo="entrou"] { fill: var(--v2-positivo); }
+.barra[data-tipo="saiu"] { fill: var(--v2-texto-3); }
+.rotulo { fill: var(--v2-texto-3); font-size: 11px; font-weight: 500; }
+.mes[data-sel] .rotulo { fill: var(--v2-texto); font-weight: 700; }
+.sobrou { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.sobrou[data-tom="positivo"] { fill: var(--v2-positivo); }
+.sobrou[data-tom="negativo"] { fill: var(--v2-negativo); }
+.leitor { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: 0; padding: 0; }
+
+@media (max-width: 900px) {
+  .dica { flex-basis: 100%; margin-left: 0; }
+}

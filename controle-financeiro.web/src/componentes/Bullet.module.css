@@ -1,0 +1,11 @@
+.bullet { display: flex; flex-direction: column; gap: 6px; }
+.trilha { position: relative; display: flex; height: 18px; border-radius: 6px; overflow: hidden; }
+.faixa { height: 100%; }
+.faixa[data-faixa="1"] { background: var(--v2-faixa-1); }
+.faixa[data-faixa="2"] { background: var(--v2-faixa-2); }
+.faixa[data-faixa="3"] { background: var(--v2-faixa-3); }
+.medida { position: absolute; left: 0; top: 6px; height: 6px; border-radius: 3px; background: var(--v2-texto); }
+.escala { position: relative; height: 14px; font-size: 11px; color: var(--v2-texto-3); font-variant-numeric: tabular-nums; }
+.escala span { position: absolute; transform: translateX(-50%); }
+.escala span:first-child { transform: none; }
+.escala span:last-child { transform: translateX(-100%); }

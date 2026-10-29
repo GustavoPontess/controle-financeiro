@@ -149,12 +149,18 @@ public class CheckUpServiceTests
 
         Assert.All(r.PraOndeFoi, x => Assert.NotEqual("Sem categoria", x.Nome)); // fora do ranking
         Assert.Equal((1000m, 2), (r.SemCategoria!.Valor, r.SemCategoria.Quantidade));
-        var sinal = Assert.Single(r.Sinais, s => s.Origem == "dados" && s.Chave.StartsWith("sem-categoria"));
-        Assert.Equal("2 lançamentos de setembro ainda sem categoria (R$ 1.000,00).", sinal.Resposta.Texto);
-        Assert.Equal($"/transacoes?categoriaId={Guid.Empty}&mes=2026-09", Assert.Single(sinal.Resposta.Acoes).Para);
-        // Mais de 30% do que saiu sem categoria: a frase avisa e a primeira ação é classificar.
+        // Mais de 30% do que saiu sem categoria: a frase avisa e a primeira ação é classificar (e o aviso não repete).
         Assert.Contains("R$ 1.000,00 do mês ainda sem categoria.", r.Resposta.Texto);
         Assert.Equal("Classificar", r.Resposta.Acoes[0].Rotulo);
+        Assert.Equal($"/transacoes?categoriaId={Guid.Empty}&mes=2026-09", r.Resposta.Acoes[0].Para);
+        Assert.DoesNotContain(r.Sinais, s => s.Chave.StartsWith("sem-categoria"));
+
+        // Pouco sem categoria: a frase não fala, o aviso em "Seus dados" fala.
+        Lancar(c, c.Mercado, 9000m, 9);
+        var pouco = await Servico(c.Ctx).CalcularAsync(c.U, 2026, 9);
+        var sinal = Assert.Single(pouco.Sinais, s => s.Origem == "dados" && s.Chave.StartsWith("sem-categoria"));
+        Assert.Equal("2 lançamentos de setembro ainda sem categoria (R$ 1.000,00).", sinal.Resposta.Texto);
+        Assert.DoesNotContain("ainda sem categoria", pouco.Resposta.Texto);
     }
 
     [Fact]

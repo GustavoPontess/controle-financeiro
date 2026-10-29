@@ -23,7 +23,8 @@ function series(partes: ParteDoMes[]): string[] {
   return partes.map((p) => p.categoriaId !== null ? String((i++ % 5) + 1) : p.nome === "Outras" ? "cinza-2" : "cinza")
 }
 
-export default function UsoDaRenda({ dados }: { dados: DinheiroDoMes }) {
+/** `compacta` (Relatórios): só a barra, o que já saiu e o livre; faturas, parcelas e a frase moram em outras seções lá. */
+export default function UsoDaRenda({ dados, compacta }: { dados: DinheiroDoMes; compacta?: boolean }) {
   const usado = dados.jaSaiu + dados.aindaVemTotal
   const temRenda = dados.rendaBase > 0
   const escala = Math.max(dados.rendaBase, usado) || 1
@@ -72,7 +73,7 @@ export default function UsoDaRenda({ dados }: { dados: DinheiroDoMes }) {
         </>
       )}
 
-      {dados.aindaVem.length > 0 && (
+      {!compacta && dados.aindaVem.length > 0 && (
         <>
           <span className={styles.grupo}>Ainda vem este mês</span>
           <ListaAindaVem itens={dados.aindaVem} base={temRenda ? dados.rendaBase : undefined} />
@@ -87,7 +88,7 @@ export default function UsoDaRenda({ dados }: { dados: DinheiroDoMes }) {
         </div>
       )}
 
-      {dados.faturas.length > 0 && (
+      {!compacta && dados.faturas.length > 0 && (
         <>
           <span className={styles.grupo}>
             Faturas a pagar este mês <Dinheiro valor={dados.faturasAPagar} className={styles.grupoTotal} />
@@ -98,7 +99,7 @@ export default function UsoDaRenda({ dados }: { dados: DinheiroDoMes }) {
         </>
       )}
 
-      {dados.parcelasFuturas.total > 0 && (
+      {!compacta && dados.parcelasFuturas.total > 0 && (
         <>
           <span className={styles.grupo}>
             Parcelas já compradas pros próximos meses <Dinheiro valor={dados.parcelasFuturas.total} className={styles.grupoTotal} />
@@ -120,9 +121,11 @@ export default function UsoDaRenda({ dados }: { dados: DinheiroDoMes }) {
         </>
       )}
 
-      <div className={styles.respostaLugar}>
-        <Resposta tom={dados.resposta.tom} texto={dados.resposta.texto} acoes={dados.resposta.acoes} />
-      </div>
+      {!compacta && (
+        <div className={styles.respostaLugar}>
+          <Resposta tom={dados.resposta.tom} texto={dados.resposta.texto} acoes={dados.resposta.acoes} />
+        </div>
+      )}
     </div>
   )
 }

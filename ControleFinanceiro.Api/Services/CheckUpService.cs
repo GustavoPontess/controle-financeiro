@@ -131,15 +131,18 @@ public class CheckUpService
         decimal? pctQueSobrou = entrou > 0 ? Math.Round(sobrou * 100m / entrou, 0) : null;
 
         var corte = gastoNormal is null ? null : await CorteAsync(usuarioId, ano, mes, nomeMes, sobrou, praOndeFoi);
-        var sinais = SeusDados(ano, mes, nomeMes, mesAtual, saiu, semCategoria, rendaEsperadaDoMes, stats.QtdTotal);
+        var resposta = Responder(mes, mesAtual, entrou, saiu, sobrou, pctQueSobrou, comprometido, mesesDeReserva, rendaEsperadaDoMes, praOndeFoi,
+            gastoNormal, semCategoria, LinkSemCategoria(ano, mes));
+        // O que a manchete já pede (Classificar, Dizer a renda) não repete na lista de avisos.
+        var jaPedido = resposta.Acoes.Select(a => a.Rotulo).ToHashSet();
+        var sinais = SeusDados(ano, mes, nomeMes, mesAtual, saiu, semCategoria, rendaEsperadaDoMes, stats.QtdTotal)
+            .Where(si => !si.Resposta.Acoes.Any(a => jaPedido.Contains(a.Rotulo))).ToList();
 
         return new CheckUpDto(ano, mes, mesAtual, entrou, saiu, sobrou, pctQueSobrou,
             Contra(entrou, anterior.Entrou), Contra(saiu, Gasto(anterior.Gastos)), anterior.Entrou - Gasto(anterior.Gastos),
             contasFixas, parcelas, comprometido, praOndeFoi, semCategoria, mesAMes,
             dinheiro, nasMetas, gastoNormal, mesesDeReserva, ResponderReserva(mesesDeReserva, dinheiro, gastoNormal),
-            detalhe, corte, sinais,
-            Responder(mes, mesAtual, entrou, saiu, sobrou, pctQueSobrou, comprometido, mesesDeReserva, rendaEsperadaDoMes, praOndeFoi,
-                gastoNormal, semCategoria, LinkSemCategoria(ano, mes)));
+            detalhe, corte, sinais, resposta);
     }
 
     /// <summary>Transações filtrada pela URL: o que ficou sem categoria no mês (a tela lê os parâmetros e mostra o filtro).</summary>
@@ -252,7 +255,7 @@ public class CheckUpService
         return new CorteDto(new RespostaDto(sobrou < 0 ? "alerta" : "neutro", texto, []), itens);
     }
 
-    /// <summary>"Seus dados": o que falta pro app responder melhor, sempre com a ação que arruma.</summary>
+    /// <summary>"Seus dados": o que falta pro app responder melhor (sem categoria, renda não dita), sempre com a ação que arruma.</summary>
     public static List<SinalDto> SeusDados(int ano, int mes, string nomeMes, bool mesAtual, decimal saiu, SemCategoriaDto? semCategoria,
         decimal rendaEsperada, int qtdContasFixas)
     {
@@ -264,9 +267,7 @@ public class CheckUpService
         if (mesAtual && rendaEsperada <= 0)
             sinais.Add(new SinalDto("renda-nao-dita", "dados", 0m, true, new RespostaDto("neutro",
                 "Você ainda não disse quanto espera receber.", [new AcaoDto("Dizer a renda", "/orcamento")])));
-        if (mesAtual && qtdContasFixas == 0 && saiu > 0)
-            sinais.Add(new SinalDto("sem-conta-fixa", "dados", 0m, true, new RespostaDto("neutro",
-                "Nenhuma conta fixa cadastrada.", [new AcaoDto("Cadastrar conta fixa", "/contas-fixas/nova")])));
+        // "Nenhuma conta fixa cadastrada" não entra aqui: o Comprometido já diz, com a ação, logo abaixo.
         return sinais;
     }
 

@@ -35,3 +35,8 @@
   .controles > :first-child { flex: 1 1 100%; }
   .direita { flex: 1 1 100%; justify-content: space-between; }
 }
+
+/* Filtro que chegou pela URL (Relatórios › categoria): etiqueta que tira o filtro ao tocar */
+.filtroAtivo { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 10px; }
+.etiquetaFiltro { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px 0 12px; border: 1px solid var(--v2-linha-forte); border-radius: 999px; background: var(--v2-superficie-2); color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-sm); font-weight: 600; cursor: pointer; }
+.etiquetaFiltro:hover { background: var(--v2-hover-linha); }
