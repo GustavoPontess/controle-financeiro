@@ -422,6 +422,31 @@ public class RecorrenteService
         };
     }
 
+    /// <summary>
+    /// As contas fixas a pagar que mais pesam por mês (Relatórios › Comprometido), com o custo por mês de cada uma pela
+    /// MESMA conta do <see cref="ObterStatsAsync"/> (semanal × 52, mensal × 12, anual × 1, ÷ 12) e o mesmo filtro (em
+    /// vigor, ativa, despesa). <c>Total</c> = quantas existem, pra tela dizer "e mais N".
+    /// </summary>
+    public async Task<(List<(Guid Id, string Descricao, decimal PorMes)> Maiores, int Total)> MaioresContasFixasAsync(Guid usuarioId, int quantas)
+    {
+        var hoje = HorarioBrasil.HojeData();
+        var linhas = await _context.Recorrentes.AsNoTracking()
+            .Where(r => r.CriadoPor == usuarioId && r.ExcluidoEm == null && r.Ativo && r.Tipo == TipoTransacao.Despesa)
+            .Where(EmVigor(hoje))
+            .Select(r => new { r.Id, r.Descricao, r.Valor, r.Frequencia })
+            .ToListAsync();
+        static decimal PorAno(FrequenciaRecorrencia f) => f switch
+        {
+            FrequenciaRecorrencia.Semanal => 52m,
+            FrequenciaRecorrencia.Mensal => 12m,
+            _ => 1m,
+        };
+        var maiores = linhas
+            .Select(l => (l.Id, l.Descricao, PorMes: Math.Round(l.Valor * PorAno(l.Frequencia) / 12m, 2, MidpointRounding.AwayFromZero)))
+            .OrderByDescending(l => l.PorMes).Take(quantas).ToList();
+        return (maiores, linhas.Count);
+    }
+
     // Regra ÚNICA de "em vigor" (não cancelada e a DataFim não passou): filtro ?status= do
     // ListarAsync, rótulo Situacao do DTO e KPIs do hero saem TODOS daqui — eram cópias e divergiram
     // (o hero contava como ativa a que a lista já mostrava "Encerrada"). Expression pra o EF
