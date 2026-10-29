@@ -11,7 +11,7 @@ export type PontoLinha = { rotulo: string; valor: number }
 const ALTURA = 190, TOPO = 14, BASE = 30, ESQ = 8, DIR = 8
 
 /** Dinheiro curto pra grade: 1.200 → "1,2 mil", 350 → "350". */
-function curto(v: number, oculto: boolean) {
+export function curto(v: number, oculto: boolean) {
   if (oculto) return "••"
   const a = Math.abs(v)
   const s = a >= 1_000_000 ? `${(a / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mi`

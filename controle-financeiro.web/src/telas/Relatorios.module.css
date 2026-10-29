@@ -1,65 +1,71 @@
 .pagina { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 .pagina > * { min-width: 0; }
 .topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.csv { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: var(--v2-r-sm); border: 1px solid var(--v2-linha-forte); color: var(--v2-texto); font-size: var(--v2-fs-sm); font-weight: 600; text-decoration: none; }
+.csv { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: var(--v2-r-sm); border: 1px solid var(--v2-linha-forte); color: var(--v2-texto); font-size: var(--v2-fs-sm); font-weight: 600; text-decoration: none; }
 .csv:hover { background: var(--v2-hover-linha); }
 
-/* Resumo: a resposta e os quatro números (mesma anatomia da faixa de Limites e Bancos) */
+/* Como foi o mês: a resposta e os três números */
 .resumo { display: flex; flex-direction: column; gap: 18px; padding: 20px 24px; }
-.numeros { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.numeros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .numero { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .rotulo { font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-texto-2); }
 .numeroValor { font-size: var(--v2-fs-2xl); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .numeroEsqueleto { display: block; width: 140px; height: 28px; border-radius: 8px; background: var(--v2-superficie-2); }
-.extra { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); }
+.extra { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); font-variant-numeric: tabular-nums; }
+.variacao { font-weight: 600; color: var(--v2-negativo); }
+.variacao[data-bom] { color: var(--v2-positivo); }
+
+/* O que vale olhar: as respostas empilhadas */
+.avisos { display: flex; flex-direction: column; gap: 8px; }
 
 .grade { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 20px; align-items: start; }
-.lado { display: flex; flex-direction: column; gap: 20px; }
-.respiro { padding: 8px 24px 20px; }
+.grade > :only-child { grid-column: 1 / -1; }
+.cartao { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .vazio { margin: 0; padding: 20px 24px 28px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
 .vazioSemRespiro { margin: 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
+.legendaNormal { display: inline-flex; align-items: center; gap: 6px; font-size: var(--v2-fs-xs); color: var(--v2-texto-3); padding: 0 10px; }
+.legendaNormal i { width: 2px; height: 12px; border-radius: 1px; background: var(--v2-texto); }
 
-/* Pra onde foi: nome e valor, a barra (parte do gasto) e a comparação com o normal */
-.categorias { list-style: none; margin: 0; padding: 4px 24px 20px; display: flex; flex-direction: column; gap: 16px; }
-.categorias li { display: flex; flex-direction: column; gap: 6px; }
-.catTopo { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.catNome { font-size: var(--v2-fs-md); font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.catValor { font-size: var(--v2-fs-md); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.comparacao { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); }
-.comparacao[data-tom="alerta"] { color: var(--v2-alerta); font-weight: 600; }
-.comparacao[data-tom="positivo"] { color: var(--v2-positivo); }
+/* Dá pra cortar onde */
+.cortes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.cortes li { display: flex; flex-direction: column; gap: 4px; padding: 10px 0; border-top: 1px solid var(--v2-linha); }
+.cortes li:first-child { border-top: 0; padding-top: 0; }
+.corteTopo { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.corteNome { font-size: var(--v2-fs-md); font-weight: 500; min-width: 0; }
+.corteAMais { font-size: var(--v2-fs-md); font-weight: 700; color: var(--v2-alerta); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.corteDetalhe { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); font-variant-numeric: tabular-nums; }
+.corteAcoes { display: flex; flex-wrap: wrap; gap: 14px; }
+.corteAcoes button { padding: 0; border: 0; background: none; color: var(--v2-acento); font: inherit; font-size: var(--v2-fs-sm); font-weight: 600; cursor: pointer; min-height: 32px; }
+.corteAcoes button:hover { text-decoration: underline; }
 
-/* Reserva e comprometido: o número grande e os dados embaixo */
-.cartao { display: flex; flex-direction: column; gap: 12px; }
-.grande { font-size: var(--v2-fs-2xl); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.dados { margin: 0; display: flex; flex-direction: column; }
-.dados > div { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 8px 0; border-top: 1px solid var(--v2-linha); }
-.dados dt { font-size: var(--v2-fs-sm); color: var(--v2-texto-2); }
+/* Comprometido: número + bullet + frase + folga à esquerda; as linhas à direita */
+.comprometido { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px 32px; align-items: start; }
+.grande { font-size: var(--v2-fs-3xl); font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.grandeRotulo { font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-texto-2); letter-spacing: 0; }
+.folga { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: var(--v2-r-md); background: var(--v2-superficie-2); font-size: var(--v2-fs-sm); font-weight: 500; }
+.folgaValor { font-size: var(--v2-fs-lg); font-weight: 700; font-variant-numeric: tabular-nums; }
+.dados { margin: 0; display: flex; flex-direction: column; min-width: 0; }
+.dados > div { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 10px 0; border-top: 1px solid var(--v2-linha); }
+.dados > div:first-child { border-top: 0; padding-top: 0; }
+.dados dt { display: flex; flex-direction: column; gap: 3px; min-width: 0; font-size: var(--v2-fs-sm); color: var(--v2-texto); font-weight: 500; }
 .dados dd { margin: 0; font-size: var(--v2-fs-sm); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sub { font-size: var(--v2-fs-xs); font-weight: 400; color: var(--v2-texto-3); font-variant-numeric: tabular-nums; }
+.subBom { font-size: var(--v2-fs-xs); font-weight: 500; color: var(--v2-positivo); }
+.fatura + .fatura::before { content: " · "; }
+.fatura[data-atrasada] { color: var(--v2-negativo); font-weight: 600; }
 
-/* Mês a mês: duas barras por mês (entrou, saiu), o mês e o que sobrou */
-.legendaEBarras { display: flex; flex-direction: column; gap: 14px; min-width: 0; max-width: 100%; }
-.legenda { display: inline-flex; gap: 16px; font-size: var(--v2-fs-xs); color: var(--v2-texto-2); }
-.legendaItem { display: inline-flex; align-items: center; gap: 6px; }
-.marca { width: 10px; height: 10px; border-radius: 3px; }
-.marca[data-tipo="entrou"], .barra[data-tipo="entrou"] { background: var(--v2-positivo); }
-.marca[data-tipo="saiu"], .barra[data-tipo="saiu"] { background: var(--v2-texto-3); }
-.meses { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(64px, 1fr); gap: 8px; overflow-x: auto; max-width: 100%; }
-.mes { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
-.barras { display: flex; align-items: flex-end; justify-content: center; gap: 4px; height: 140px; width: 100%; }
-.barra { width: 16px; min-height: 2px; border-radius: 4px 4px 0 0; }
-.mesNome { font-size: var(--v2-fs-xs); color: var(--v2-texto-2); }
-.mesSobrou { font-size: var(--v2-fs-xs); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.leitor { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* Reserva */
+.reserva { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px 32px; align-items: center; }
+.reservaNumero { display: flex; flex-direction: column; gap: 6px; }
 
 @media (max-width: 900px) {
   .resumo { padding: 16px; }
-  .numeros { grid-template-columns: minmax(0, 1fr); gap: 10px; }
-  .numero { flex-direction: row; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
+  .numeros { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .numero[data-largo] { grid-column: 1 / -1; }
   .numeroValor { font-size: var(--v2-fs-lg); }
-  .extra { flex-basis: 100%; text-align: right; }
-  .grade { grid-template-columns: minmax(0, 1fr); }
-  .categorias { padding: 4px 16px 16px; }
-  .respiro { padding: 8px 16px 16px; }
+  .grade, .comprometido, .reserva { grid-template-columns: minmax(0, 1fr); }
+  .csvTexto { display: none; }
+  .csv { width: 36px; padding: 0; }
   .vazio { padding: 16px 16px 24px; }
+  .grande { font-size: var(--v2-fs-2xl); }
 }

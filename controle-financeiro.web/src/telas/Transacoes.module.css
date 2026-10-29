@@ -35,3 +35,5 @@
   .controles > :first-child { flex: 1 1 100%; }
   .direita { flex: 1 1 100%; justify-content: space-between; }
 }
+
+/* Filtro que chegou pela URL (Relatórios › categoria): etiqueta que tira o filtro ao tocar */

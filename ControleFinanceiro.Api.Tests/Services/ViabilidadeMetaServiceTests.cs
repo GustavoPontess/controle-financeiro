@@ -57,7 +57,7 @@ public class ViabilidadeMetaServiceTests
         Assert.Equal((1666.67m, 3, 200m, 2000m, 800m), (v.PorMes!.Value, v.Meses!.Value, v.Folga!.Value, v.GastoTipico!.Value, v.OutrasMetasPorMes));
         Assert.Equal(new DateTime(2028, 10, 1), v.PrazoQueCabe); // 25 meses guardando R$ 200
         Assert.Equal("alerta", v.Resposta.Tom);
-        Assert.Equal("Precisa guardar R$ 1.666,67 por mês, mas sobram uns R$ 200,00. Até dezembro de 2026 você junta uns R$ 600,00. " +
+        Assert.Equal("Precisa guardar R$ 1.666,67 por mês, mas sobram R$ 200,00. Até dezembro de 2026 você junta R$ 600,00. " +
                      "Nesse ritmo chega lá em outubro de 2028.", v.Resposta.Texto);
     }
 
@@ -70,7 +70,7 @@ public class ViabilidadeMetaServiceTests
         var v = await Servico(ctx).CalcularAsync(u, 300m, new DateTime(2026, 12, 1), null, Hoje);
 
         Assert.Equal("positivo", v.Resposta.Tom);
-        Assert.Equal("Precisa guardar R$ 100,00 por mês. Cabe: sobram uns R$ 1.000,00 por mês depois dos gastos e das outras metas.", v.Resposta.Texto);
+        Assert.Equal("Precisa guardar R$ 100,00 por mês. Cabe: sobram R$ 1.000,00 por mês depois dos gastos e das outras metas.", v.Resposta.Texto);
         Assert.Null(v.PrazoQueCabe);
     }
 
@@ -90,7 +90,7 @@ public class ViabilidadeMetaServiceTests
 
         Assert.Equal("negativo", v.Resposta.Tom);
         Assert.Equal("Precisa guardar R$ 83.333,34 por mês, mais do que você recebe (R$ 1.000,00). " +
-                     "Guardando o que sobra (uns R$ 200,00 por mês), levaria mais de 50 anos.", v.Resposta.Texto);
+                     "Guardando o que sobra (R$ 200,00 por mês), levaria mais de 50 anos.", v.Resposta.Texto);
         Assert.Null(v.PrazoQueCabe);
     }
 
@@ -103,7 +103,7 @@ public class ViabilidadeMetaServiceTests
         var v = await Servico(ctx).CalcularAsync(u, 5000m, null, null, Hoje);
 
         Assert.Null(v.PorMes);
-        Assert.Equal("Guardando o que sobra (uns R$ 1.000,00 por mês), chega lá em fevereiro de 2027.", v.Resposta.Texto);
+        Assert.Equal("Guardando o que sobra (R$ 1.000,00 por mês), chega lá em fevereiro de 2027.", v.Resposta.Texto);
     }
 
     [Fact]
@@ -123,7 +123,7 @@ public class ViabilidadeMetaServiceTests
         var comMetas = Pessoa(ctx, renda: 2500m);
         await OutraMeta(ctx, comMetas);
         var d = await svc.CalcularAsync(comMetas, 600m, new DateTime(2026, 12, 1), null, Hoje);
-        Assert.Equal("Precisa guardar R$ 200,00 por mês, e hoje não sobra nada: depois do gasto normal sobram uns R$ 500,00, e as outras metas já pedem R$ 800,00 por mês.",
+        Assert.Equal("Precisa guardar R$ 200,00 por mês, e hoje não sobra nada: depois do gasto normal sobram R$ 500,00, e as outras metas já pedem R$ 800,00 por mês.",
             d.Resposta.Texto);
         Assert.Equal("/metas", Assert.Single(d.Resposta.Acoes).Para);
 
@@ -167,13 +167,13 @@ public class ViabilidadeMetaServiceTests
         var v = await Servico(ctx).CalcularAsync(u, 300m, new DateTime(2026, 12, 1), null, Hoje);
 
         Assert.Equal((2000m, 600m, 400m), (v.GastoTipico!.Value, v.ParcelasPorMes, v.Folga!.Value)); // 3.000 − 2.000 − 600
-        Assert.Equal("Precisa guardar R$ 100,00 por mês. Cabe: sobram uns R$ 400,00 por mês depois dos gastos, das parcelas e das outras metas.",
+        Assert.Equal("Precisa guardar R$ 100,00 por mês. Cabe: sobram R$ 400,00 por mês depois dos gastos, das parcelas e das outras metas.",
             v.Resposta.Texto);
 
         var apertado = Pessoa(ctx, renda: 2500m);
         Parcelado(ctx, apertado, null, 600m, (10, StatusParcela.Pendente), (11, StatusParcela.Pendente), (12, StatusParcela.Pendente));
         var a = await Servico(ctx).CalcularAsync(apertado, 300m, new DateTime(2026, 12, 1), null, Hoje);
-        Assert.Equal("Precisa guardar R$ 100,00 por mês, e hoje não sobra nada: depois do gasto normal sobram uns R$ 500,00, " +
+        Assert.Equal("Precisa guardar R$ 100,00 por mês, e hoje não sobra nada: depois do gasto normal sobram R$ 500,00, " +
                      "e as parcelas já compradas levam R$ 600,00 por mês.", a.Resposta.Texto);
         Assert.Equal("/cartoes", Assert.Single(a.Resposta.Acoes).Para);
     }
@@ -190,17 +190,17 @@ public class ViabilidadeMetaServiceTests
         var justo = await Servico(ctx).CalcularAsync(u, 8100m, new DateTime(2027, 6, 1), null, Hoje); // pede R$ 900
         Assert.Equal((900m, 900m), (justo.PorMes!.Value, justo.Folga!.Value));
         Assert.Equal("neutro", justo.Resposta.Tom);
-        Assert.Equal("Precisa guardar R$ 900,00 por mês. Não cabe todo mês, mas no total dá: sobram uns R$ 700,00 por mês até dezembro de 2026 " +
-                     "e uns R$ 1.000,00 de janeiro de 2027 em diante. Guardando o que sobra em cada mês, chega lá até junho de 2027.", justo.Resposta.Texto);
+        Assert.Equal("Precisa guardar R$ 900,00 por mês. Não cabe todo mês, mas no total dá: sobram R$ 700,00 por mês até dezembro de 2026 " +
+                     "e R$ 1.000,00 de janeiro de 2027 em diante. Guardando o que sobra em cada mês, chega lá até junho de 2027.", justo.Resposta.Texto);
 
         var folgado = await Servico(ctx).CalcularAsync(u, 5400m, new DateTime(2027, 6, 1), null, Hoje); // pede R$ 600
         Assert.Equal("positivo", folgado.Resposta.Tom);
-        Assert.Equal("Precisa guardar R$ 600,00 por mês. Cabe: sobram uns R$ 700,00 por mês até dezembro de 2026 e uns R$ 1.000,00 " +
+        Assert.Equal("Precisa guardar R$ 600,00 por mês. Cabe: sobram R$ 700,00 por mês até dezembro de 2026 e R$ 1.000,00 " +
                      "de janeiro de 2027 em diante, depois dos gastos, das parcelas e das outras metas.", folgado.Resposta.Texto);
 
         var demais = await Servico(ctx).CalcularAsync(u, 10800m, new DateTime(2027, 6, 1), null, Hoje); // pede R$ 1.200
         Assert.Equal("alerta", demais.Resposta.Tom);
-        Assert.StartsWith("Precisa guardar R$ 1.200,00 por mês, mas sobram uns R$ 700,00 por mês até dezembro de 2026 e uns R$ 1.000,00 " +
+        Assert.StartsWith("Precisa guardar R$ 1.200,00 por mês, mas sobram R$ 700,00 por mês até dezembro de 2026 e R$ 1.000,00 " +
                           "de janeiro de 2027 em diante.", demais.Resposta.Texto);
     }
 
@@ -212,7 +212,7 @@ public class ViabilidadeMetaServiceTests
             Enumerable.Range(0, 6).Select(i => (out26.AddMonths(i), 500m)))));
 
         var folgas = new[] { -100m, -100m, 400m, 400m, 900m };
-        Assert.Equal("sobram R$ 0,00 por mês até novembro de 2026, uns R$ 400,00 de dezembro de 2026 a janeiro de 2027 e uns R$ 900,00 de fevereiro de 2027 em diante",
+        Assert.Equal("sobram R$ 0,00 por mês até novembro de 2026, R$ 400,00 de dezembro de 2026 a janeiro de 2027 e R$ 900,00 de fevereiro de 2027 em diante",
             ViabilidadeMetaService.DegrausTexto(ViabilidadeMetaService.Degraus(folgas.Select((f, i) => (out26.AddMonths(i), f)))));
     }
 
@@ -243,7 +243,7 @@ public class ViabilidadeMetaServiceTests
 
         Assert.Equal((800m, 1000m), (v.PedemPorMes, v.Folga!.Value));
         Assert.Equal("positivo", v.Resposta!.Tom);
-        Assert.Equal("As metas pedem R$ 800,00 por mês e cabem: depois dos gastos sobram uns R$ 1.000,00, e ainda ficam uns R$ 200,00 livres.",
+        Assert.Equal("As metas pedem R$ 800,00 por mês e cabem: depois dos gastos sobram R$ 1.000,00, e ainda ficam R$ 200,00 livres.",
             v.Resposta.Texto);
     }
 
@@ -259,7 +259,7 @@ public class ViabilidadeMetaServiceTests
 
         // Sobra R$ 1.000; a Reserva leva 800, pro Carro ficam 200: R$ 6.000 em 30 meses, de outubro/2026 a março/2029.
         Assert.Equal("alerta", v.Resposta!.Tom);
-        Assert.Equal("As metas pedem R$ 2.800,00 por mês, mas sobram uns R$ 1.000,00. Pra caber, estique o prazo de Carro pra março de 2029.",
+        Assert.Equal("As metas pedem R$ 2.800,00 por mês, mas sobram R$ 1.000,00. Pra caber, estique o prazo de Carro pra março de 2029.",
             v.Resposta.Texto);
         var acao = Assert.Single(v.Resposta.Acoes);
         Assert.Equal(("Ajustar Carro", $"/metas/{carro.Id}/editar"), (acao.Rotulo, acao.Para));

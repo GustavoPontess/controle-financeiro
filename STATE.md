@@ -15,6 +15,14 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+### 📌 2026-10-29: tela de Relatórios nova (#393, NO AR)
+
+**Feito (todo o básico do `docs/features/relatorios/plano.md`):** check-up com Sem categoria à parte, reserva sem caixinha, comprometido (bullet + maiores contas fixas + parcelas dos próximos meses), "Onde dá pra economizar", "Avisos do mês" (`GET /relatorios/sinais`, `SinaisDoMesService`), gráficos SVG próprios (`GraficoBarras`, `GraficoBarrasComparacao`, `Bullet`), mês a mês em lista no celular, frases com valor exato (sem "uns"), tocar numa categoria abre Transações filtrada (filtro Categoria dentro do painel, com "Sem categoria"). Ajustes do teste com os extratos reais: o mês a mês fica sempre nos 12 meses até o mês atual (tocar num mês não some com os depois), trocar de mês não pisca a tela (Relatórios e Visão geral), "Distribuição da renda" no lugar de "Renda do mês"/"Renda de outubro".
+
+**Banco local:** a conta gut.n.pontes foi refeita só com os 10 extratos Nubank (seeder local, gitignored); pagamento de fatura virou gasto na categoria "Fatura do cartão" (sem a fatura detalhada), Pix no Crédito fora do resultado, Pix do Inter como transferência (perna solta).
+
+**Pendências que saíram daqui:** 🟡 **P2 transferência não tem Editar** (back e front; só excluir e lançar de novo) · ⚪ importar extratos do Inter pra os meses que vieram do Inter fecharem · ⚪ carregar `financeiro.xlsx` (salário, aluguel, contas fixas) no Orçamento local · ⚪ DemoSeeder do Relatórios · ⚪ PR #392 (folga em degraus) vai conflitar no `ViabilidadeMetaService` depois deste entrar.
+
 ### 📌 2026-10-29: Turnstile não trava mais na 2ª tentativa (#391, NO AR)
 
 Gustavo pegou em produção: errava a senha, tentava de novo e ficava preso em "Confirme que você não é um robô." sem a caixinha pedir nada (token de uso único gasto; a tela apagava e redesenhava a caixinha e com a chave de produção o token novo não chegava a tempo). Fix: caixinha renovada (`turnstile.reset`) + `aguardarToken` (envio espera até 10 s). Conferido em produção no Chrome do Gustavo com e-mail de teste: 4 tentativas seguidas, todas ao servidor. Obs.: Chrome automatizado (puppeteer) não passa no modo Gerenciado sem clique, então não serve pra testar isso em produção. **Cuidado anotado:** no Chrome do Gustavo o gerenciador de senhas preenche a senha real do `pontes@` sozinho; nunca testar login de produção com o e-mail dele.

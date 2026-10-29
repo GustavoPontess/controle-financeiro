@@ -30,6 +30,16 @@ public class RelatoriosController : ControllerBase
     public async Task<IActionResult> CheckUp([FromQuery] int ano, [FromQuery] int mes)
         => Ok(await _checkUp.CalcularAsync(GetUserId(), ano, mes));
 
+    /// <summary>
+    /// "O que vale olhar" (Relatórios do v2): os avisos que as outras telas já dão (limite passando, metas que não cabem,
+    /// empréstimo que o saldo não cobre, fatura atrasada, conta fixa sem limite, orçamento sem destino), juntos e na
+    /// ordem do que precisa de ação primeiro. Só agrega: cada frase vem da tela de onde nasce.
+    /// </summary>
+    [HttpGet("sinais")]
+    [ProducesResponseType(typeof(List<SinalDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Sinais([FromQuery] int ano, [FromQuery] int mes, [FromServices] SinaisDoMesService sinais)
+        => Ok(await sinais.CalcularAsync(GetUserId(), ano, mes));
+
     private Guid GetUserId()
     {
         var claim = User.FindFirst(ClaimTypes.NameIdentifier);
