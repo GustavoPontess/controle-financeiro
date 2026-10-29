@@ -37,7 +37,10 @@
 .opcao[data-tom="perigo"] { color: var(--v2-negativo); font-weight: 600; }
 
 @media (max-width: 900px) {
-  .cabecalho { flex-wrap: wrap; gap: 14px; }
-  .fotoGrande { width: 72px; height: 72px; font-size: var(--v2-fs-xl); }
+  /* Celular: foto no meio, nome e e-mail embaixo dela e "Editar perfil" na largura toda (lado a lado, o nome
+     quebrava letra por letra). */
+  .cabecalho { flex-direction: column; text-align: center; gap: 12px; }
+  .identidade { align-items: center; width: 100%; }
+  .cabecalho > button:last-child { width: 100%; }
   .fotoEnorme { width: 180px; height: 180px; font-size: 52px; }
 }

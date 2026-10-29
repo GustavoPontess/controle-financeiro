@@ -15,6 +15,10 @@
 .recolher { margin-left: auto; }
 .recolher:hover, .fecharMenu:hover, .abrirMenu:hover { color: var(--v2-texto); background: var(--v2-superficie-2); }
 .fecharMenu, .abrirMenu { display: none; }
+/* Abrir menu no celular: igual ao recolher do computador (sem borda nem fundo), com área de toque de 44px (mínimo da
+   Apple) invisível em volta dos 32px. */
+.abrirMenu { position: relative; }
+.abrirMenu::after { content: ""; position: absolute; inset: -6px; }
 .nav { display: flex; flex-direction: column; gap: 2px; }
 .grupo { display: block; margin: 16px 12px 6px; font-size: var(--v2-fs-xs); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--v2-texto-3); }
 /* Altura fixa: sem o rótulo (trilho) o item não pode encurtar, senão a lista sobe uns 2px por item. */

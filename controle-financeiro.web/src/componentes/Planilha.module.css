@@ -52,4 +52,9 @@
   .rodape { padding: 12px 12px 4px; }
   /* Ação com botões de texto (Admin): não cabe ao lado do nome, vai pra última linha do cartão */
   .planilha[data-acao-larga="true"] .acao { grid-column: 1 / -1; grid-row: auto; justify-content: flex-start; }
+  /* Linha de planejar: a categoria na largura toda e o valor embaixo, também na largura toda (lado a lado, a
+     categoria ficava espremida em "E…"). */
+  .linha[data-nova="true"] .nomeCelula { grid-column: 1 / -1; }
+  .linha[data-nova="true"] .campoNome { max-width: none; }
+  .linha[data-nova="true"] .valor { grid-column: 1 / -1; grid-row: 2; display: block; justify-self: stretch; }
 }

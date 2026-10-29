@@ -1,5 +1,5 @@
 // Configurações do v2 — separadas por assunto, como a Conta do Google: menu de seções à esquerda (`?s=`), o
-// conteúdo da seção à direita. Segurança e login (senha, verificação em duas etapas, sessões, dispositivos
+// conteúdo da seção à direita. No celular, primeiro só o menu; tocou numa seção, só ela (a seta do topo volta). Segurança e login (senha, verificação em duas etapas, sessões, dispositivos
 // confiáveis) · Perfil (nome e nascimento) · Aparência · Dados e privacidade (baixar os dados, excluir a conta).
 import { useState } from "react"
 import { useSearchParams } from "react-router-dom"
@@ -30,7 +30,7 @@ export default function Configuracoes() {
   const ativa = SECOES.find((s) => s.id === pedida) ?? SECOES[0]
 
   return (
-    <div className={styles.pagina}>
+    <div className={styles.pagina} data-escolhida={pedida ? "sim" : undefined}>
       <aside className={styles.menu}>
         <NavSecoes secoes={SECOES} ativa={ativa.id} ariaLabel="Seções das configurações" />
       </aside>
