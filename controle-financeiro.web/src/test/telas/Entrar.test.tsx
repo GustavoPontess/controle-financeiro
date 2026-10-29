@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import { act, render, screen } from "@testing-library/react"
+import { act, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
 
@@ -18,11 +18,14 @@ vi.mock("../../api/cliente", async (orig) => ({
 import Entrar from "../../telas/Entrar"
 import { api } from "../../api/cliente"
 
-// Turnstile de mentira: desenha a caixinha e já entrega um token (como a Cloudflare faz quase sempre).
+// Turnstile de mentira: desenha a caixinha e já entrega um token (como a Cloudflare faz quase sempre); o reset (token
+// gasto) entrega o próximo um pouco depois, como a chave de produção.
 const turnstileFalso = () => {
   let n = 0
+  let cb: ((t: string) => void) | null = null
   window.turnstile = {
-    render: (el: HTMLElement, op: Record<string, unknown>) => { n++; el.textContent = "verificado"; (op.callback as (t: string) => void)(`tk-${n}`); return `w${n}` },
+    render: (el: HTMLElement, op: Record<string, unknown>) => { n++; el.textContent = "verificado"; cb = op.callback as (t: string) => void; cb(`tk-${n}`); return `w${n}` },
+    reset: vi.fn(() => { setTimeout(() => { n++; cb?.(`tk-${n}`) }, 80) }),
     remove: vi.fn(),
   }
 }
@@ -98,6 +101,32 @@ describe("Entrar (beta fechado)", () => {
 
       await userEvent.click(screen.getByRole("button", { name: /Entrar/ }))
       expect(entrar).toHaveBeenLastCalledWith("ana@teste.com", "uma senha errada", false, "tk-1")
+    } finally { chave.valor = null; delete window.turnstile }
+  })
+
+  it("errou de novo: a caixinha renova e o envio espera o token novo (não trava em 'Confirme que você não é um robô')", async () => {
+    chave.valor = "chave-do-site"
+    turnstileFalso()
+    try {
+      entrar.mockReset()
+      entrar.mockRejectedValueOnce(new Error("E-mail ou senha incorretos."))
+        .mockRejectedValueOnce(new Error("E-mail ou senha incorretos."))
+        .mockResolvedValueOnce({ tipo: "mfa", challengeToken: "c" })
+      render(<MemoryRouter initialEntries={["/entrar"]}><Routes><Route path="/entrar" element={<Entrar />} /></Routes></MemoryRouter>)
+      await userEvent.type(await screen.findByLabelText("E-mail"), "ana@teste.com")
+      await userEvent.type(screen.getByLabelText("Senha"), "uma senha errada")
+      await userEvent.click(screen.getByRole("button", { name: /Entrar/ }))
+      await screen.findByTestId("verificacao-humana")
+      await userEvent.click(screen.getByRole("button", { name: /Entrar/ }))
+      await waitFor(() => expect(entrar).toHaveBeenCalledTimes(2))
+      expect(entrar).toHaveBeenLastCalledWith("ana@teste.com", "uma senha errada", false, "tk-1")
+      expect(window.turnstile!.reset).toHaveBeenCalledWith("w1") // renova a mesma caixinha, não desenha outra
+
+      // Tenta logo de novo, antes do token novo chegar: espera ele e manda (nada de "Confirme que você não é um robô").
+      await userEvent.click(screen.getByRole("button", { name: /Entrar/ }))
+      await waitFor(() => expect(entrar).toHaveBeenCalledTimes(3))
+      expect(entrar).toHaveBeenLastCalledWith("ana@teste.com", "uma senha errada", false, "tk-2")
+      expect(screen.queryByText("Confirme que você não é um robô.")).not.toBeInTheDocument()
     } finally { chave.valor = null; delete window.turnstile }
   })
 
