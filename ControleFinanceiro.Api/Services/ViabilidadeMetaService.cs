@@ -5,6 +5,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ControleFinanceiro.Api.Services;
 
+/// <summary>Um trecho seguido de meses com a mesma folga (o que sobra por mês pra guardar).</summary>
+public sealed record Degrau(DateTime De, DateTime Ate, decimal Folga);
+
 /// <summary>
 /// "Essa meta cabe?" (docs/features/respostas/visao.md), na hora de criar ou editar: compara quanto a meta pede por
 /// mês com o que de fato sobra no mês da pessoa, a renda esperada (Renda; sem ela, a média do que caiu) menos o gasto
@@ -51,8 +54,10 @@ public class ViabilidadeMetaService
             ? new DateTime(hoje.Year, hoje.Month, 1).AddMonths(mp - 1)
             : null;
 
+        var degraus = rendaEsperada is { } rd && gastoTipico is { } gt
+            ? await DegrausAsync(usuarioId, inicioMes, meses ?? 12, rd - gt - outras) : [];
         return new ViabilidadeMetaDto(porMes, meses, folga, rendaEsperada, gastoTipico, outras, parcelasPorMes, prazoQueCabe,
-            Responder(porMes, meses, folga, rendaEsperada, gastoTipico, outras, prazoQueCabe, longeDemais, dataLimite, parcelasPorMes));
+            Responder(porMes, meses, folga, rendaEsperada, gastoTipico, outras, prazoQueCabe, longeDemais, dataLimite, parcelasPorMes, degraus));
     }
 
     /// <summary>
@@ -75,6 +80,46 @@ public class ViabilidadeMetaService
             if (gasto > 0) meses3.Add(gasto - parcelas);
         }
         return (rendaEsperada, meses3.Count > 0 ? Math.Round(meses3.Average(), 2) : null);
+    }
+
+    /// <summary>
+    /// A folga MÊS A MÊS no horizonte (antes de tirar as parcelas: <paramref name="semParcelas"/>), juntando os meses
+    /// seguidos que sobram o mesmo. A folga da resposta é a média do prazo, que acerta o total mas promete demais
+    /// quando uma parcela acaba no meio (geladeira até dezembro, meta até junho: a média diz R$ 900 e até dezembro só
+    /// cabem R$ 700; achado do Gustavo, 2026-10-28). Com dois degraus ou mais, a frase fala de cada um.
+    /// </summary>
+    private async Task<List<Degrau>> DegrausAsync(Guid usuarioId, DateTime inicioMes, int horizonte, decimal semParcelas)
+    {
+        var parcelas = (await RegrasFinanceiras.ParcelasPorMesAsync(_context, usuarioId, inicioMes, horizonte, soPendentes: false))
+            .GroupBy(p => new DateTime(p.Ano, p.Mes, 1)).ToDictionary(g => g.Key, g => g.Sum(p => p.Valor));
+        return Degraus(Enumerable.Range(0, horizonte).Select(i => inicioMes.AddMonths(i))
+            .Select(m => (m, semParcelas - parcelas.GetValueOrDefault(m))));
+    }
+
+    /// <summary>Junta os meses seguidos com a mesma folga em degraus (de, até, folga).</summary>
+    public static List<Degrau> Degraus(IEnumerable<(DateTime Mes, decimal Folga)> meses)
+    {
+        var degraus = new List<Degrau>();
+        foreach (var (mes, folga) in meses)
+            if (degraus.Count > 0 && degraus[^1].Folga == folga) degraus[^1] = degraus[^1] with { Ate = mes };
+            else degraus.Add(new Degrau(mes, mes, folga));
+        return degraus;
+    }
+
+    /// <summary>
+    /// "sobram R$ 700,00 por mês até dezembro de 2026 e R$ 1.000,00 de janeiro de 2027 em diante" (null com um
+    /// degrau só: a folga é a mesma todo mês e a frase de sempre já diz).
+    /// </summary>
+    public static string? DegrausTexto(List<Degrau>? degraus)
+    {
+        if (degraus is not { Count: > 1 }) return null;
+        static string Quanto(decimal f) => f > 0 ? Uns(f) : Reais.Formatar(0m);
+        var partes = degraus.Select((d, i) =>
+            i == 0 ? $"{Quanto(d.Folga)} por mês até {MesAno(d.Ate)}"
+            : i == degraus.Count - 1 ? $"{Quanto(d.Folga)} de {MesAno(d.De)} em diante"
+            : $"{Quanto(d.Folga)} de {MesAno(d.De)} a {MesAno(d.Ate)}").ToList();
+        var lista = partes.Count == 2 ? $"{partes[0]} e {partes[1]}" : string.Join(", ", partes[..^1]) + " e " + partes[^1];
+        return "sobram " + lista;
     }
 
     /// <summary>Parcelas já compradas: a média por mês nos próximos <paramref name="horizonte"/> meses (contando este).</summary>
@@ -100,13 +145,15 @@ public class ViabilidadeMetaService
         var (renda, gasto) = await RendaEGastoNormalAsync(usuarioId, hoje);
         var parcelas = await ParcelasPorMesAsync(usuarioId, inicioMes, 12);
         decimal? folga = renda is { } r && gasto is { } g ? r - g - parcelas : null;
-        return new ViabilidadeDasMetasDto(pedem, folga, ResponderDasMetas(metas, pedem, folga, renda, gasto, parcelas, inicioMes));
+        var degraus = renda is { } rd && gasto is { } gd ? await DegrausAsync(usuarioId, inicioMes, 12, rd - gd) : [];
+        return new ViabilidadeDasMetasDto(pedem, folga, ResponderDasMetas(metas, pedem, folga, renda, gasto, parcelas, inicioMes, degraus));
     }
 
     public static RespostaDto ResponderDasMetas(List<MetaDto> metas, decimal pedem, decimal? folga, decimal? renda,
-        decimal? gastoTipico, decimal parcelas, DateTime inicioMes)
+        decimal? gastoTipico, decimal parcelas, DateTime inicioMes, List<Degrau>? degraus = null)
     {
         var pedemTxt = $"As metas pedem {Reais.Formatar(pedem)} por mês";
+        var emDegraus = DegrausTexto(degraus);
         if (renda is null)
             return new RespostaDto("neutro", $"{pedemTxt}. Diga quanto você espera receber pra saber se cabem.",
                 [new AcaoDto("Dizer a renda", "/orcamento")]);
@@ -118,6 +165,10 @@ public class ViabilidadeMetaService
                     $"{(g > renda ? "passa da" : "leva toda a")} renda ({Reais.Formatar(renda.Value)}).", [new AcaoDto("Ver o orçamento", "/orcamento")])
                 : new RespostaDto("negativo", $"{pedemTxt}, e hoje não sobra nada: depois do gasto normal sobram {Uns(renda.Value - g)}, " +
                     $"e as parcelas já compradas levam {Reais.Formatar(parcelas)} por mês.", [new AcaoDto("Ver os cartões", "/cartoes")]);
+        if (pedem <= folga && emDegraus is not null)
+            return pedem <= degraus!.Min(d => d.Folga)
+                ? new RespostaDto("positivo", $"{pedemTxt} e cabem: depois dos gastos e das parcelas {emDegraus}.", [])
+                : new RespostaDto("neutro", $"{pedemTxt}: não cabem todo mês, mas no ano dá: {emDegraus}. Guarde o que sobrar em cada mês.", []);
         if (pedem <= folga)
             return new RespostaDto("positivo",
                 $"{pedemTxt} e cabem: depois dos gastos{(parcelas > 0 ? " e das parcelas" : "")} sobram {Uns(folga.Value)}, " +
@@ -131,7 +182,7 @@ public class ViabilidadeMetaService
             ? ($" Pra caber, estique o prazo de {maior.Nome} pra {MesAno(inicioMes.AddMonths((int)meses - 1))}.",
                new List<AcaoDto> { new($"Ajustar {maior.Nome}", $"/metas/{maior.Id}/editar") })
             : (" Pra caber, estique os prazos ou guarde menos em alguma delas.", new List<AcaoDto>());
-        return new RespostaDto("alerta", $"{pedemTxt}, mas sobram {Uns(folga.Value)}." + sugestao.Item1, sugestao.Item2);
+        return new RespostaDto("alerta", $"{pedemTxt}, mas {emDegraus ?? $"sobram {Uns(folga.Value)}"}." + sugestao.Item1, sugestao.Item2);
     }
 
     /// <summary>50 anos: daí pra frente a resposta não vira data.</summary>
@@ -145,8 +196,9 @@ public class ViabilidadeMetaService
     private static string Uns(decimal v) => Reais.Formatar(v);
 
     public static RespostaDto Responder(decimal? porMes, int? meses, decimal? folga, decimal? renda, decimal? gastoTipico, decimal outras,
-        DateTime? prazoQueCabe, bool longeDemais, DateTime? prazo, decimal parcelas = 0m)
+        DateTime? prazoQueCabe, bool longeDemais, DateTime? prazo, decimal parcelas = 0m, List<Degrau>? degraus = null)
     {
+        var emDegraus = DegrausTexto(degraus);
         var temGasto = gastoTipico is not null;
         var pede = porMes is { } p ? $"Precisa guardar {Reais.Formatar(p)} por mês" : null;
         var chega = folga is not { } f0 || f0 <= 0 ? null
@@ -178,11 +230,17 @@ public class ViabilidadeMetaService
         }
         if (porMes is null)
             return new RespostaDto("positivo", chega ?? "Guardando o que sobra, chega lá logo.", []);
+        if (porMes <= folga && emDegraus is not null)
+            // Cabe no total, mas o que sobra muda no caminho: se não cabe em algum mês, guardar o que sobra em cada um.
+            return porMes <= degraus!.Min(d => d.Folga)
+                ? new RespostaDto("positivo", $"{pede}. Cabe: {emDegraus}, depois dos gastos, das parcelas e das outras metas.", [])
+                : new RespostaDto("neutro", $"{pede}. Não cabe todo mês, mas no total dá: {emDegraus}. Guardando o que sobra em cada mês, " +
+                    $"chega lá até {MesAno(prazo!.Value)}.", []);
         if (porMes <= folga)
             return new RespostaDto("positivo",
                 $"{pede}. Cabe: sobram {Uns(folga.Value)} por mês depois dos gastos{(parcelas > 0 ? ", das parcelas" : "")} e das outras metas.", []);
         return new RespostaDto("alerta",
-            $"{pede}, mas sobram {Uns(folga.Value)}. Até {MesAno(prazo!.Value)} você junta {Uns(folga.Value * meses!.Value)}." +
+            $"{pede}, mas {emDegraus ?? $"sobram {Uns(folga.Value)}"}. Até {MesAno(prazo!.Value)} você junta {Uns(folga.Value * meses!.Value)}." +
             (longeDemais ? " Nesse ritmo levaria mais de 50 anos." : prazoQueCabe is { } q ? $" Nesse ritmo chega lá em {MesAno(q)}." : ""), []);
     }
 }
