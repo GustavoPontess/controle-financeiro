@@ -181,6 +181,7 @@ builder.Services.AddScoped<OnboardingService>();
 
 // Issue #30 — Notificações
 builder.Services.AddScoped<NotificacaoService>();
+builder.Services.AddScoped<SolicitacaoService>();
 
 // Issue #1 — Parcelamento Flexível
 builder.Services.AddScoped<FinancialEventLogService>();
@@ -197,6 +198,7 @@ builder.Services.AddScoped<RecalcularLimitesJob>();
 builder.Services.AddScoped<AlertaLimitesJob>();
 builder.Services.AddScoped<PurgaExclusaoExpiradaJob>();
 builder.Services.AddScoped<PurgaRegistroAcessoExpiradoJob>();
+builder.Services.AddScoped<PurgaPrintSolicitacaoJob>();
 
 // Hangfire exige Postgres real (storage + server) — pulado em teste (a factory usa InMemory e não
 // exercita jobs). O IPasswordResetDispatcher é sobrescrito por um no-op na factory.
@@ -292,6 +294,17 @@ builder.Services.AddRateLimiter(options =>
             new FixedWindowRateLimiterOptions
             {
                 PermitLimit = isDev ? 100 : 10,
+                Window = TimeSpan.FromMinutes(10),
+                QueueLimit = 0,
+            }));
+
+    // Solicitações do beta: 5 a cada 10 min por pessoa (o teto de 20/dia mora no SolicitacaoService).
+    options.AddPolicy("solicitacoes", ctx =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? PartitionByIp(ctx), _ =>
+            new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = isDev ? 100 : 5,
                 Window = TimeSpan.FromMinutes(10),
                 QueueLimit = 0,
             }));
@@ -657,6 +670,7 @@ if (!isTesting)
         recManager.AddOrUpdate<PurgaExclusaoExpiradaJob>("purga-exclusao-lgpd", job => job.ExecuteAsync(), "0 4 * * *", utc);
         // Retenção Marco Civil (Art. 15): 4h30 UTC, purga registros de acesso com guarda de 6 meses vencida.
         recManager.AddOrUpdate<PurgaRegistroAcessoExpiradoJob>("purga-registro-acesso-marco-civil", job => job.ExecuteAsync(), "30 4 * * *", utc);
+        recManager.AddOrUpdate<PurgaPrintSolicitacaoJob>("purga-print-solicitacao", job => job.ExecuteAsync(), "45 4 * * *", utc);
         // Pedido de acesso que ninguém confirmou no prazo (o e-mail pode ser de quem nunca pediu nada).
         recManager.AddOrUpdate<PurgaCadastroNaoConfirmadoJob>("purga-cadastro-nao-confirmado", job => job.ExecuteAsync(), "45 4 * * *", utc);
         // Senhas erradas do login que já venceram (24 h): o resumo do e-mail não fica guardado à toa.

@@ -9,7 +9,7 @@
 // A própria conta não tem ação (o servidor também recusa bloquear a si mesmo). Exclusão LGPD e auditoria: depois.
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom"
-import { ArrowLeft, Ban, Check, ChevronsUpDown, Eye, EyeOff, KeyRound, LogOut, PanelLeftClose, PanelLeftOpen, RotateCcw, Settings, ShieldCheck, Users, X } from "lucide-react"
+import { ArrowLeft, Ban, Check, ChevronsUpDown, Eye, EyeOff, KeyRound, LogOut, MessageCircleMore, PanelLeftClose, PanelLeftOpen, RotateCcw, Settings, ShieldCheck, Users, X } from "lucide-react"
 import adminService from "../services/adminService"
 import mfaService from "../services/mfaService"
 import { mensagemDeErro } from "../api/cliente"
@@ -30,6 +30,7 @@ import { useHideBalance } from "../estado/ocultar"
 import casca from "../layout/V2Layout.module.css"
 import { irPara } from "./irPara"
 import styles from "./AreaAdmin.module.css"
+import SolicitacoesAdmin from "./SolicitacoesAdmin"
 
 const TOM: Partial<Record<StatusUsuario, "positivo" | "negativo" | "alerta">> = {
   [StatusUsuario.Ativo]: "positivo",
@@ -60,6 +61,7 @@ type Pedido =
 
 const PAGINAS: { secao: string; rotulo: string; icone: typeof Users }[] = [
   { secao: "usuarios", rotulo: "Usuários", icone: Users },
+  { secao: "solicitacoes", rotulo: "Solicitações", icone: MessageCircleMore },
 ]
 
 /** O porteiro: sem login vai pro login do app; quem não é admin vai pra Visão geral, sem mensagem (não confirma que
@@ -200,6 +202,7 @@ function Casca({ meuId }: { meuId: string }) {
         <main className={casca.conteudo} key={pathname}>
           <Routes>
             <Route path="usuarios" element={<PainelAdmin meuId={meuId} />} />
+            <Route path="solicitacoes" element={<SolicitacoesAdmin />} />
             {/* /cadastros virou parte de Usuários; o endereço antigo e qualquer outro caem lá. */}
             <Route path="*" element={<Navigate to="/usuarios" replace />} />
           </Routes>

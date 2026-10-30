@@ -70,11 +70,13 @@ export function Privacidade() {
       beta="Você foi convidado pessoalmente pra testar o produto. Dados podem ser resetados ou perdidos durante essa fase. Por enquanto, evite depender do app como único registro do seu histórico financeiro.">
       <Secao titulo="O que coletamos">
         <p className={styles.p}>Pra funcionar, o Pontes guarda os dados que você mesmo digita: nome, e-mail, foto de perfil (se você puser uma; só quem está nas suas famílias vê), transações (valor, data, descrição, categoria), contas e cartões que você cadastra (só um nome e uma cor; não conectamos a nenhum banco de verdade) e, na função de empréstimos, o nome e valor de pessoas com quem você tem uma dívida ou crédito, mesmo que essa pessoa não tenha conta no Pontes.</p>
+        <p className={styles.p}>Se você mandar algo pelo selo <strong>Beta</strong> (um problema ou uma melhoria), guardamos o que você escreveu, a tela de onde mandou e, se você anexar, imagens da tela. Nas imagens e no texto dos blocos apontados, os seus valores vão escondidos, a não ser que você escolha mostrar. Só a equipe do Pontes vê, e as imagens são apagadas 30 dias depois que a solicitação é encerrada.</p>
         <p className={styles.p}>O Pontes <strong>não</strong> se conecta à sua conta bancária real, não movimenta dinheiro, não processa pagamento e não tem custódia de nenhum valor seu. É um registro manual, mais parecido com uma planilha do que com um banco digital.</p>
       </Secao>
       <Secao titulo="Por que coletamos (base legal)">
         <ul className={styles.lista}>
           <li><strong>Seus próprios dados</strong> (conta, transações, cartões): tratados pra executar o contrato de uso do app, ou seja, o que você espera que o Pontes faça por você (Art. 7º, V da LGPD).</li>
+          <li><strong>O que você manda pelo selo Beta</strong>: tratado porque você pediu pra nos contar (Art. 7º, V). Quando você escolhe mostrar os seus valores nos anexos, a base é o seu consentimento (Art. 7º, I), dado a cada envio; sem essa escolha, os valores vão escondidos.</li>
           <li><strong>Dados de terceiros em empréstimos</strong> (nome/valor de alguém que te deve ou você deve): tratados com base em legítimo interesse: seu interesse legítimo em manter um registro pessoal de dívida (Art. 7º, IX). Coletamos só o mínimo (nome e valor), nunca dado extra dessa pessoa.</li>
         </ul>
       </Secao>

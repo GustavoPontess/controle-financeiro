@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from "react"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import {
-  ArrowLeft, ArrowLeftRight, BarChart3, Bell, Check, ChevronsUpDown, CreditCard, Handshake, Landmark, LayoutDashboard, LogOut, Mail,
+  ArrowLeft, ArrowLeftRight, BarChart3, Bell, Check, ChevronsUpDown, CreditCard, Handshake, Landmark, LayoutDashboard, LogOut, Mail, MessageCircleMore,
   PanelLeftClose, PanelLeftOpen, Plus, Receipt, Repeat, Scale, Settings, SlidersHorizontal, Tags, Target, Upload, Users, Eye, EyeOff, Wallet,
 } from "lucide-react"
 import Avatar, { urlFoto } from "../componentes/Avatar"
@@ -19,6 +19,8 @@ import { familiaDaRota, useEspacos } from "../estado/espaco"
 import { useHideBalance } from "../estado/ocultar"
 import { useNaoLidas } from "../estado/notificacoes"
 import PainelNotificacoes from "./PainelNotificacoes"
+import Apontar from "../componentes/Apontar"
+import { abrirSolicitacao } from "../estado/apontar"
 import styles from "./V2Layout.module.css"
 
 type ItemMenu = { para: string; rotulo: string; icone: typeof LayoutDashboard; exato?: boolean }
@@ -71,6 +73,12 @@ function secaoDaRota(pathname: string): Secao | undefined {
       { para: "/notificacoes", rotulo: "Notificações", semMenu: true },
     ]
   return todos.filter((i) => pathname === i.para || pathname.startsWith(i.para + "/")).sort((a, b) => b.para.length - a.para.length)[0]
+}
+
+/** No pé do menu, ao lado do selo Beta, cabe pouco: "Gustavo Nunes Pontes" vira "Gustavo Pontes" (o completo fica no menu da conta). */
+const primeiroEUltimo = (nome?: string) => {
+  const partes = (nome ?? "").trim().split(/\s+/).filter(Boolean)
+  return partes.length > 2 ? `${partes[0]} ${partes[partes.length - 1]}` : partes.join(" ")
 }
 
 export default function V2Layout() {
@@ -169,15 +177,22 @@ export default function V2Layout() {
         <div className={styles.rodape}>
           <div className={styles.usuario} ref={usuarioRef}>
             {/* O bloco da pessoa diz em que espaço ela está (Pessoal ou a família); o menu troca de espaço. */}
+            <div className={styles.usuarioLinha}>
             <button type="button" className={styles.usuarioBotao} aria-label={usuario?.nome ?? "Conta"} title={recolhido ? `${usuario?.nome} · ${nomeDoEspaco}` : undefined}
               aria-haspopup="menu" aria-expanded={menuUsuario} onClick={() => setMenuUsuario((v) => !v)}>
               <Avatar className={styles.avatar} foto={minhaFoto} texto={iniciais} />
               <span className={`${styles.usuarioTexto} ${styles.itemRotulo}`}>
-                <span className={styles.usuarioNome}>{usuario?.nome ?? ""}</span>
+                <span className={styles.usuarioNome} title={usuario?.nome}>{primeiroEUltimo(usuario?.nome)}</span>
                 <span className={styles.usuarioPlano}>{nomeDoEspaco}</span>
               </span>
               <ChevronsUpDown size={15} strokeWidth={2} className={`${styles.usuarioSeta} ${styles.itemRotulo}`} aria-hidden="true" />
             </button>
+            {/* Beta (2026-10-29): abre o formulário de algo errado / melhoria (apontar na tela é opcional lá dentro). Some quando o beta acabar. */}
+            <button type="button" className={styles.selo} title="Algo errado ou uma melhoria"
+              aria-label="Beta: contar algo errado ou uma melhoria" onClick={() => { setMenuAberto(false); setMenuUsuario(false); abrirSolicitacao() }}>
+              <MessageCircleMore size={15} strokeWidth={2} aria-hidden="true" /><span className={styles.itemRotulo}>Beta</span>
+            </button>
+            </div>
             {menuUsuario && (
               <div className={styles.menuUsuario} role="menu" aria-label="Conta e espaços">
                 {/* A própria conta é o espaço pessoal: clicar nela sai da família. */}
@@ -265,6 +280,7 @@ export default function V2Layout() {
         <main className={styles.conteudo} key={`${usuario?.id ?? ""}:${pathname}`}>
           <Outlet />
         </main>
+        <Apontar />
       </div>
     </div>
   )

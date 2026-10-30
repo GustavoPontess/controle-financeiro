@@ -171,6 +171,10 @@ public class AppDbContext : DbContext
     public DbSet<AcertoContas> AcertosContas => Set<AcertoContas>();
     public DbSet<Notificacao> Notificacoes => Set<Notificacao>();
 
+    // ── Solicitações do beta (algo errado / melhoria, apontando na tela) ──
+    public DbSet<Solicitacao> Solicitacoes => Set<Solicitacao>();
+    public DbSet<SolicitacaoAnexo> SolicitacoesAnexo => Set<SolicitacaoAnexo>();
+
     // ── Issue #24 Dependentes ──
     public DbSet<Dependente> Dependentes => Set<Dependente>();
 
@@ -935,6 +939,21 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Notificacao>()
             .HasIndex(n => new { n.UsuarioId, n.Lida });
+
+        // Solicitação é da pessoa: sai junto na purga (cascade). Admin lista por status e data.
+        modelBuilder.Entity<Solicitacao>()
+            .HasOne(x => x.Usuario)
+            .WithMany()
+            .HasForeignKey(x => x.UsuarioId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Solicitacao>().HasIndex(x => new { x.UsuarioId, x.CriadoEm });
+        modelBuilder.Entity<Solicitacao>().HasIndex(x => new { x.Status, x.CriadoEm });
+        modelBuilder.Entity<SolicitacaoAnexo>()
+            .HasOne(x => x.Solicitacao)
+            .WithMany(s => s.Anexos)
+            .HasForeignKey(x => x.SolicitacaoId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<SolicitacaoAnexo>().HasIndex(x => new { x.SolicitacaoId, x.Ordem });
 
         // Aviso de uma vez só (alerta de limite): a segunda tentativa estoura o índice e é ignorada.
         modelBuilder.Entity<Notificacao>()
