@@ -151,6 +151,33 @@ public class AdminController : ControllerBase
         [FromQuery] string? busca, [FromQuery] int page = 1, [FromQuery] int pageSize = 25)
         => Ok(await _auditoria.ListarAsync(busca, page, pageSize));
 
+    // ── Solicitações do beta (algo errado / melhoria) ─────────────────────────────────────────
+
+    /// <summary>Solicitações mandadas pelo app, mais recentes primeiro, com filtro por status (página no banco).</summary>
+    [HttpGet("solicitacoes")]
+    public async Task<ActionResult<PagedResult<DTOs.Solicitacao.SolicitacaoAdminDto>>> Solicitacoes(
+        [FromServices] SolicitacaoService solicitacoes, [FromQuery] StatusSolicitacao? status, [FromQuery] int page = 1, [FromQuery] int pageSize = 25)
+    {
+        if (status is { } s && !Enum.IsDefined(s)) return BadRequest(new { message = "Status inválido." });
+        return Ok(await solicitacoes.ListarAsync(status, page, pageSize));
+    }
+
+    /// <summary>Triagem: muda status, prioridade (P0 a P3) e nota da solicitação (fica na auditoria).</summary>
+    [HttpPatch("solicitacoes/{id:guid}")]
+    public async Task<ActionResult<DTOs.Solicitacao.SolicitacaoAdminDto>> AtualizarSolicitacao(
+        Guid id, [FromBody] DTOs.Solicitacao.AtualizarSolicitacaoDto dto, [FromServices] SolicitacaoService solicitacoes)
+        => Ok(await solicitacoes.AtualizarAsync(id, dto, AdminId(), AdminEmail()));
+
+    /// <summary>A imagem de um anexo da solicitação (WebP redesenhado). Sem cache: pode ter valores da pessoa.</summary>
+    [HttpGet("solicitacoes/{id:guid}/anexos/{anexoId:guid}")]
+    public async Task<IActionResult> AnexoSolicitacao(Guid id, Guid anexoId, [FromServices] SolicitacaoService solicitacoes)
+    {
+        var anexo = await solicitacoes.ObterAnexoAsync(id, anexoId);
+        if (anexo is null) return NotFound();
+        Response.Headers.CacheControl = "no-store";
+        return File(anexo.Dados, "image/webp");
+    }
+
     // ── Notificações do admin (stream separado do financeiro) ─────────────────────────────
 
     /// <summary>Notificações do painel admin (mais recentes primeiro).</summary>

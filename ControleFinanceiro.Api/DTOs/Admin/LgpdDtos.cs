@@ -25,6 +25,7 @@ public class ExportacaoUsuarioDto
     public List<CategoriaExportadaDto> CategoriasProprias { get; set; } = new();
     public List<ConferenciaExportadaDto> ConferenciasDeSaldo { get; set; } = new();
     public List<NotificacaoExportadaDto> Notificacoes { get; set; } = new();
+    public List<SolicitacaoExportadaDto> Solicitacoes { get; set; } = new();
     /// <summary>As famílias de que a pessoa faz ou fez parte, com o papel dela. Nada dos outros membros.</summary>
     public List<FamiliaExportadaDto> Familias { get; set; } = new();
 }
@@ -200,6 +201,18 @@ public class NotificacaoExportadaDto
     public string Titulo { get; set; } = string.Empty;
     public string Mensagem { get; set; } = string.Empty;
     public bool Lida { get; set; }
+    public DateTime CriadoEm { get; set; }
+}
+
+public class SolicitacaoExportadaDto
+{
+    public string Tipo { get; set; } = string.Empty;
+    public string Titulo { get; set; } = string.Empty;
+    public string? Descricao { get; set; }
+    public string Tela { get; set; } = string.Empty;
+    public bool MostrarValores { get; set; }
+    public int Anexos { get; set; }
+    public string Status { get; set; } = string.Empty;
     public DateTime CriadoEm { get; set; }
 }
 

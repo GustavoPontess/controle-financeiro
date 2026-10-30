@@ -1841,6 +1841,115 @@ namespace ControleFinanceiro.Api.Migrations
                     b.ToTable("RendasPrevistas");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Solicitacao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Descricao")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Janela")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<bool>("MostrarValores")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("NotaAdmin")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int?>("Prioridade")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Tela")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Titulo")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status", "CriadoEm");
+
+                    b.HasIndex("UsuarioId", "CriadoEm");
+
+                    b.ToTable("Solicitacoes");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.SolicitacaoAnexo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Altura")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Bloco")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<byte[]>("Dados")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<int>("Largura")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("MostrarValores")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Ordem")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("SolicitacaoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Tela")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("TextoDoBloco")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SolicitacaoId", "Ordem");
+
+                    b.ToTable("SolicitacoesAnexo");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Subcategoria", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2887,6 +2996,28 @@ namespace ControleFinanceiro.Api.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Solicitacao", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.SolicitacaoAnexo", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Solicitacao", "Solicitacao")
+                        .WithMany("Anexos")
+                        .HasForeignKey("SolicitacaoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Solicitacao");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Subcategoria", b =>
                 {
                     b.HasOne("ControleFinanceiro.Api.Domain.Entities.Categoria", "Categoria")
@@ -3073,6 +3204,11 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Navigation("CompartilhamentosContas");
 
                     b.Navigation("Usuario2");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Solicitacao", b =>
+                {
+                    b.Navigation("Anexos");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.Transacao", b =>

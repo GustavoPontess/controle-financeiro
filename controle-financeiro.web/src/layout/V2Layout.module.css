@@ -28,6 +28,17 @@
 .item svg { flex-shrink: 0; }
 .rodape { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
 .usuario { position: relative; padding-top: 8px; border-top: 1px solid var(--v2-linha); }
+/* Pessoa + selo Beta na mesma linha (no trilho, o selo vai pra baixo do avatar, só o ícone). */
+.usuarioLinha { display: flex; align-items: center; gap: 6px; }
+.usuarioLinha .usuarioBotao { flex: 1; min-width: 0; gap: 8px; padding-right: 2px; }
+/* Com o selo Beta do lado, o nome ganha espaço: letra um degrau menor (o nome inteiro cabe mais). */
+.usuarioLinha .usuarioNome { font-size: var(--v2-fs-xs); }
+.usuarioLinha .usuarioSeta { display: none; } /* o nome inteiro já é o botão do menu da conta; a seta tomava o lugar dele */
+.selo { display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0; height: 26px; padding: 0 8px; border: 0; border-radius: 999px; background: var(--v2-acento-suave); color: var(--v2-acento); font: inherit; font-size: var(--v2-fs-xs); font-weight: 700; cursor: pointer; }
+.selo:hover { filter: brightness(0.97); }
+.selo:focus-visible { outline: none; box-shadow: var(--v2-anel-foco); }
+.raiz[data-menu="trilho"] .usuarioLinha { flex-direction: column; align-items: flex-start; }
+.raiz[data-menu="trilho"] .selo { width: 32px; height: 32px; padding: 0; justify-content: center; margin-left: 5px; }
 /* O bloco inteiro (avatar + nome) é o botão do menu da conta. */
 .usuarioBotao { display: flex; align-items: center; gap: 10px; width: 100%; height: 44px; padding: 0 8px 0 5px; border: 0; border-radius: 10px; background: transparent; color: var(--v2-texto); font: inherit; text-align: left; cursor: pointer; }
 .usuarioBotao:hover, .usuarioBotao[aria-expanded="true"] { background: var(--v2-superficie-2); }

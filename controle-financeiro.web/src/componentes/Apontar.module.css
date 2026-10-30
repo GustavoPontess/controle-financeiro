@@ -1,0 +1,56 @@
+/* Faixa do modo apontar: presa no topo, por cima de tudo (abaixo só da janela do formulário). */
+.faixa { position: fixed; top: 0; left: 0; right: 0; z-index: 45; display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 6px 16px; padding-top: max(6px, env(safe-area-inset-top, 0px)); background: var(--v2-acento-suave); color: var(--v2-texto); font-size: var(--v2-fs-sm); font-weight: 600; box-shadow: var(--v2-sombra); }
+.faixaTexto { flex: 1; min-width: 0; }
+
+/* O bloco sob o mouse (ou marcado no toque): contorno na cor de destaque com o nome em cima. */
+.realce { position: fixed; z-index: 44; pointer-events: none; border: 2px solid var(--v2-acento); border-radius: var(--v2-r-md); background: color-mix(in srgb, var(--v2-acento) 6%, transparent); transition: top 80ms, left 80ms, width 80ms, height 80ms; }
+.realceNome { position: absolute; left: -2px; bottom: 100%; margin-bottom: 4px; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 2px 8px; border-radius: 6px; background: var(--v2-acento); color: var(--v2-sobre-tinta); font-size: var(--v2-fs-xs); font-weight: 600; }
+
+/* Celular: "Outro" / "É este" embaixo, ao alcance do polegar. */
+.confirmar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 45; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 16px; padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)); background: var(--v2-superficie); border-top: 1px solid var(--v2-linha); }
+
+/* Navegando com o rascunho: barra escura flutuando no pé, no meio. */
+.barra { position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 40; display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 32px); padding: 8px 8px 8px 16px; border-radius: 999px; background: var(--v2-tinta); color: var(--v2-sobre-tinta); box-shadow: var(--v2-sombra-palco); font-size: var(--v2-fs-sm); font-weight: 600; }
+.barraTexto { min-width: 0; margin-right: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.barraBotao, .barraVoltar { flex-shrink: 0; height: 32px; padding: 0 12px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--v2-sobre-tinta) 16%, transparent); color: inherit; font: inherit; cursor: pointer; }
+.barraBotao:disabled { opacity: 0.5; cursor: default; }
+.barraVoltar { background: var(--v2-superficie); color: var(--v2-texto); }
+.barraDescartar { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 999px; background: transparent; color: inherit; cursor: pointer; opacity: 0.8; }
+.barraDescartar:hover { opacity: 1; background: color-mix(in srgb, var(--v2-sobre-tinta) 16%, transparent); }
+.barraBotao:focus-visible, .barraVoltar:focus-visible, .barraDescartar:focus-visible { outline: none; box-shadow: var(--v2-anel-foco); }
+
+.corpo { display: flex; flex-direction: column; gap: 14px; padding: 16px 24px 20px; }
+.botoes { display: flex; justify-content: flex-end; gap: 8px; }
+.pronto { margin: 0; color: var(--v2-texto-2); font-size: var(--v2-fs-base); line-height: 1.5; text-align: center; }
+.erro { margin: 0; padding: 10px 12px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); }
+
+/* Descrição como campo de chat: "+" à esquerda e ↵ (enviar) à direita, no pé da caixa (o textarea guarda espaço dos dois, `comAcoes`). */
+.caixaTexto { position: relative; }
+.mais { position: absolute; left: 6px; bottom: 6px; display: flex; align-items: center; }
+.enviarBotao { position: absolute; right: 6px; bottom: 6px; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 999px; background: var(--v2-acento); color: var(--v2-sobre-tinta); cursor: pointer; }
+.enviarBotao:hover:not(:disabled) { filter: brightness(0.95); }
+.enviarBotao:disabled { opacity: 0.5; cursor: default; }
+.enviarBotao:focus-visible { outline: none; box-shadow: var(--v2-anel-foco); }
+.escolhas { display: flex; flex-direction: column; gap: 8px; }
+.enviando { margin: 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); text-align: right; }
+.maisBotao { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 999px; background: transparent; color: var(--v2-texto-2); cursor: pointer; }
+.maisBotao:hover, .maisBotao[aria-expanded="true"] { background: var(--v2-superficie-2); color: var(--v2-texto); }
+.maisBotao:focus-visible { outline: none; box-shadow: var(--v2-anel-foco); }
+.tirando { padding: 0 4px; font-size: var(--v2-fs-xs); color: var(--v2-texto-3); }
+/* Miniaturas dos anexos (64px, × pra tirar, tocar abre grande). */
+.anexos { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.miniatura { position: relative; width: 64px; height: 64px; overflow: hidden; border: 1px solid var(--v2-linha-forte); border-radius: var(--v2-r-sm); background: var(--v2-superficie); }
+.ver { display: block; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
+.ver:focus-visible { outline: none; box-shadow: inset var(--v2-anel-foco); }
+.miniatura img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top left; }
+.miniaturaRotulo { pointer-events: none; position: absolute; left: 0; right: 0; bottom: 0; padding: 1px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: color-mix(in srgb, var(--v2-tinta) 72%, transparent); color: var(--v2-sobre-tinta); font-size: var(--v2-fs-xs); }
+.remover { position: absolute; top: 3px; right: 3px; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 999px; background: var(--v2-tinta); color: var(--v2-sobre-tinta); cursor: pointer; }
+.remover:focus-visible { outline: none; box-shadow: var(--v2-anel-foco); }
+.aviso { margin: -4px 0 0; font-size: var(--v2-fs-xs); color: var(--v2-alerta); }
+
+/* Enquanto aponta, o cursor vira mira em tudo (menos na faixa). */
+:global(body[data-apontando]) :global(*) { cursor: crosshair !important; }
+:global(body[data-apontando]) [data-apontar-ui] :global(*) { cursor: pointer !important; }
+
+/* Placeholder um degrau menor que o texto digitado (o exemplo não pode parecer maior que o que a pessoa escreve). */
+.corpo input::placeholder, .corpo textarea::placeholder { font-size: var(--v2-fs-sm); }

@@ -12,9 +12,10 @@ public static class BancoSeeder
 
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
-    // Domínio por código COMPE — pra montar a URL do logo (favicon de alta
-    // resolução, fonte estável e sem chave). Só os principais; o resto fica
-    // sem logo e o frontend cai no ícone por tipo.
+    // Logo dos principais bancos, servido pelo PRÓPRIO app (`controle-financeiro.web/public/bancos/{código}.png`).
+    // Antes vinha do favicon do Google na hora: a CSP de produção (img-src 'self') bloqueava e o print da tela
+    // (selo Beta) falhava, porque imagem de outro site não pode ser copiada. O domínio fica anotado de onde o
+    // arquivo foi baixado (2026-10-30). O resto fica sem logo e o frontend cai nas iniciais.
     private static readonly Dictionary<string, string> LogoDomains = new()
     {
         ["001"] = "bb.com.br",
@@ -41,9 +42,7 @@ public static class BancoSeeder
 
     /// <summary>URL de logo para um código COMPE, ou null se não mapeado.</summary>
     public static string? LogoForCodigo(string? codigo) =>
-        codigo != null && LogoDomains.TryGetValue(codigo, out var dom)
-            ? $"https://www.google.com/s2/favicons?domain={dom}&sz=128"
-            : null;
+        codigo != null && LogoDomains.ContainsKey(codigo) ? $"/bancos/{codigo}.png" : null;
 
     // Cor principal da marca por código COMPE — usada como fundo do pill do logo.
     private static readonly Dictionary<string, string> CorMarca = new()

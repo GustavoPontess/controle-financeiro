@@ -230,6 +230,17 @@ public class AdminLgpdService
                 .OrderByDescending(n => n.CriadoEm)
                 .Select(n => new NotificacaoExportadaDto { Titulo = n.Titulo, Mensagem = n.Mensagem, Lida = n.Lida, CriadoEm = n.CriadoEm })
                 .ToListAsync(),
+            Solicitacoes = (await _context.Solicitacoes
+                .Where(s => s.UsuarioId == usuarioId)
+                .OrderByDescending(s => s.CriadoEm)
+                .Select(s => new { s.Tipo, s.Titulo, s.Descricao, s.Tela, s.MostrarValores, Anexos = s.Anexos.Count, s.Status, s.CriadoEm })
+                .ToListAsync())
+                .Select(s => new SolicitacaoExportadaDto
+                {
+                    Tipo = s.Tipo.ToString(), Titulo = s.Titulo, Descricao = s.Descricao, Tela = s.Tela,
+                    MostrarValores = s.MostrarValores, Anexos = s.Anexos, Status = s.Status.ToString(), CriadoEm = s.CriadoEm,
+                })
+                .ToList(),
             // Só o vínculo da própria pessoa (nome da família, a relação que ela declarou, o papel, quando entrou e saiu).
             Familias = (await _context.MembrosFamilia
                 .IgnoreQueryFilters()

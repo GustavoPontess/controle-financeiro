@@ -53,6 +53,7 @@ public static class DemoSeeder
         await LimitesAsync(sp, context, dev.Id, hoje);
         await EmprestimosAsync(sp, context, dev.Id, corrente.Id, Cat, hoje);
         await AdminAsync(context, dev.Id);
+        await SolicitacoesAsync(sp, context, dev.Id);
     }
 
     // ── Admin (/admin do v2): o Gabriel vira admin (SÓ aqui: Development + SEED_DEMO; em produção é ADMIN_EMAILS +
@@ -538,5 +539,30 @@ public static class DemoSeeder
         var antiga = await context.Notificacoes.Where(n => n.UsuarioId == dev).OrderBy(n => n.CriadoEm).FirstAsync();
         antiga.Lida = true;
         await context.SaveChangesAsync();
+    }
+
+    // ── Solicitações do beta (selo Beta): uma em cada status, algo errado e melhoria, com e sem bloco apontado.
+    //    Entram pelo service (mesma validação e máscara da tela); o status/prioridade é a triagem do admin.
+    private static async Task SolicitacoesAsync(IServiceProvider sp, AppDbContext context, Guid dev)
+    {
+        if (await context.Solicitacoes.AnyAsync(s => s.UsuarioId == dev))
+            return;
+        var svc = sp.GetRequiredService<SolicitacaoService>();
+        async Task Uma(int tipo, string titulo, string? descricao, string tela, string? bloco, string? textoDoBloco, StatusSolicitacao status, int? prioridade, string? nota)
+        {
+            // Sem imagem de verdade no seed: o bloco apontado entra como o texto da descrição.
+            var detalhe = bloco is null ? descricao : $"{descricao}{(descricao is null ? "" : " ")}(bloco: {bloco})".Trim();
+            var criada = await svc.CriarAsync(dev, new DTOs.Solicitacao.CriarSolicitacaoDto(tipo, titulo, detalhe, tela, "1440x900"));
+            if (status != StatusSolicitacao.Recebida || prioridade is not null)
+                await svc.AtualizarAsync(criada.Id, new DTOs.Solicitacao.AtualizarSolicitacaoDto((int)status, prioridade, nota), dev, "dev@controle.test");
+        }
+        await Uma(1, "Os outros meses somem no gráfico",
+            "Abri Relatórios, toquei em agosto no gráfico de entradas e saídas e os meses de setembro e outubro sumiram. Pra voltar tive que sair da tela.",
+            "/relatorios", "Entradas e saídas por mês",
+            "Entradas e saídas por mês Entrou Saiu out/26 R$ 1.144,00", StatusSolicitacao.Feita, 1, "Corrigido no #393");
+        await Uma(2, "Fatura do cartão no topo da Visão geral", "Queria ver quanto está a fatura do mês sem ter que abrir Cartões.", "/dashboard", "Distribuição da renda de outubro",
+            null, StatusSolicitacao.NoBacklog, 2, "Ver junto com o cartão compartilhado");
+        await Uma(1, "Filtro de categoria fora dos Filtros", null, "/transacoes", null, null, StatusSolicitacao.NaoVamosFazer, 3, "Já mudou de lugar");
+        await Uma(2, "Quanto falta pra meta no card", null, "/metas", "Entrada do apê", null, StatusSolicitacao.Recebida, null, null);
     }
 }

@@ -22,4 +22,7 @@ public enum AcaoAdmin
     AutoExclusaoConta = 9,   // usuário marcou a própria conta pra exclusão
     AutoReativacaoConta = 10, // usuário reativou a própria conta na carência
     AutoExportacaoDados = 11, // usuário baixou os próprios dados
+
+    // ── Solicitações do beta ──
+    AtualizarSolicitacao = 12, // admin mudou status/prioridade/nota de uma solicitação
 }

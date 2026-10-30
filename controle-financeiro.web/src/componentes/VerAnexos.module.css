@@ -1,0 +1,19 @@
+.veu { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(0, 0, 0, 0.7); }
+.caixa { position: relative; display: flex; flex-direction: column; gap: 12px; width: min(1200px, 100%); max-height: 100%; padding: 16px; border-radius: var(--v2-r-lg); background: var(--v2-superficie); color: var(--v2-texto); box-shadow: var(--v2-sombra-palco); outline: none; }
+.fechar { position: absolute; top: 10px; right: 10px; z-index: 1; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 0; border-radius: 999px; background: var(--v2-superficie-2); color: var(--v2-texto); cursor: pointer; }
+.palco { position: relative; display: flex; align-items: center; justify-content: center; min-height: 0; overflow: auto; border-radius: var(--v2-r-sm); background: var(--v2-superficie-2); }
+.imagem { display: block; max-width: 100%; max-height: calc(100vh - 220px); object-fit: contain; }
+.seta { position: absolute; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; border-radius: 999px; background: var(--v2-tinta); color: var(--v2-sobre-tinta); box-shadow: var(--v2-sombra); cursor: pointer; opacity: 0.9; }
+.seta:hover { opacity: 1; }
+.seta[data-lado="esq"] { left: 12px; }
+.seta[data-lado="dir"] { right: 12px; }
+.fechar:focus-visible, .seta:focus-visible { outline: none; box-shadow: var(--v2-anel-foco); }
+.legenda { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.contador { font-size: var(--v2-fs-sm); font-weight: 700; }
+.nome { min-width: 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-2); overflow-wrap: anywhere; }
+.texto { margin: 0; max-height: 72px; overflow: auto; font-size: var(--v2-fs-xs); color: var(--v2-texto-3); overflow-wrap: anywhere; }
+@media (max-width: 720px) {
+  .veu { padding: 0; }
+  .caixa { height: 100%; border-radius: 0; }
+  .imagem { max-height: calc(100vh - 200px); }
+}

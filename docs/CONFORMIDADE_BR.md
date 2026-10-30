@@ -82,6 +82,14 @@ reabrir essa pesquisa só se o item de roadmap "Conexão com Open Finance" sair 
   registro de operações simplificados (Art. 9º/13º).
 - **Direitos do titular:** cumprimento manual (e-mail) é suficiente nesta fase — endpoint de
   autoatendimento (exportar/apagar) fica pro lançamento público.
+- **Solicitações do beta (selo Beta, 2026-10-30):** texto, tela e até 5 anexos (print ou bloco apontado).
+  Base: execução do pedido do titular (Art. 7º, V); valores à mostra só com **consentimento por envio**
+  (Art. 7º, I; escolha "Mostrar meus valores nos anexos", desligada por padrão, gravada em
+  `SolicitacaoAnexo.MostrarValores`). Minimização (Art. 6º III): valores mascarados por padrão (front +
+  `SolicitacaoService.Mascarar`), imagem redesenhada em WebP (nada do arquivo enviado), só o admin vê
+  (policy `IsAdmin`), **retenção: anexos apagados 30 dias após a solicitação fechar**
+  (`PurgaPrintSolicitacaoJob`); entra na exportação e sai na purga da conta (cascade). Texto na
+  `/privacidade` ("O que coletamos" e "Por que coletamos").
 - **Exibição de PII (e-mail) no painel admin — analisado 2026-09-12 (fonte primária):** exibir o
   e-mail do usuário pro **admin autenticado** (fila de aprovação, gestão de usuários, LGPD, auditoria)
   **é permitido**. Base: Art. 6º III (necessidade) — o e-mail é dado *pertinente e proporcional* à

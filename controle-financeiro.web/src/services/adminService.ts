@@ -2,6 +2,7 @@ import { api } from "../api/cliente"
 import type { AdminAuditLog, ExportacaoUsuario, MetricasAdmin, StatusUsuario, UsuarioAdmin } from "@/types/Admin"
 import type { ContagemNotificacaoAdmin, NotificacaoAdmin } from "@/types/NotificacaoAdmin"
 import type { PagedResult } from "@/types/Paged"
+import type { SolicitacaoAdmin, StatusSolicitacao } from "@/types/Solicitacao"
 
 /**
  * Área administrativa (Módulo A — fila de aprovação + métricas do beta).
@@ -70,6 +71,15 @@ const adminService = {
 
   marcarTodasNotificacoesLidas: () =>
     api.put("/admin/notificacoes/lidas").then((r) => r.data),
+
+  // ── Solicitações do beta (algo errado / melhoria) ──
+  solicitacoes: (page = 1, pageSize = 25, status?: StatusSolicitacao) =>
+    api.get<PagedResult<SolicitacaoAdmin>>("/admin/solicitacoes", {
+      params: { page, pageSize, ...(status !== undefined ? { status } : {}) },
+    }).then((r) => r.data),
+
+  atualizarSolicitacao: (id: string, dados: { status: StatusSolicitacao; prioridade: number | null; notaAdmin: string | null }) =>
+    api.patch<SolicitacaoAdmin>(`/admin/solicitacoes/${id}`, dados).then((r) => r.data),
 }
 
 export default adminService

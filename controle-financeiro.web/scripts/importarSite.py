@@ -84,6 +84,8 @@ AJUSTES = """
   /* Par de botões (topo, plano, chamada do fim) lado a lado, metade pra cada um; texto longo quebra dentro do botão. */
   .btns, .topo .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .btns .btn { height: auto; min-height: 48px; padding: 10px 12px; justify-content: center; text-align: center; font-size: 14px; line-height: 1.2; }
+  /* 2026-10-29: "Pedir acesso ao beta" não cabe em meia linha: ele ocupa a linha toda e o outro botão vem embaixo. */
+  .btns .btn--acc { grid-column: 1 / -1; white-space: nowrap; }
   /* Painel do contador: número cabe no cartão. */
   .painel .kpis { grid-template-columns: 1fr 1fr; gap: 8px; } .painel .kpi:last-child { grid-column: 1 / -1; } .painel .kpi b { white-space: nowrap; }
 }
@@ -112,6 +114,8 @@ def converte(html):
     corpo = corpo.replace('<a href="#">Privacidade</a>', '<a href="/privacidade">Privacidade</a>')
     # "Pedir acesso" (topo e chamada do fim) leva pro cadastro do app (decisão do Gustavo, 2026-10-26; antes ficava sem ação).
     corpo = re.sub(r'href="#(?:acesso)?">Pedir acesso', 'href="/cadastro">Pedir acesso', corpo)
+    # 2026-10-29, Gustavo: o botão diz que é o BETA ("Pedir acesso ao beta"), não um cadastro aberto.
+    corpo = corpo.replace('href="/cadastro">Pedir acesso', 'href="/cadastro">Pedir acesso ao beta')
     # Celular (revisão do Gustavo, 2026-10-26): "Família com filhos" vira "Família" (quebrava em duas linhas no seletor e no menu);
     # o botão de tema sai do topo apertado e entra no menu ☰ (no lugar do "Entrar" do menu, que agora fica no topo).
     corpo = corpo.replace('Família com filhos', 'Família').replace('FAMÍLIA COM FILHOS', 'FAMÍLIA')

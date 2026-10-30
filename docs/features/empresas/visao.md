@@ -5,6 +5,23 @@
 
 ---
 
+## 0. Decisão: plataforma e serviço, um em cima do outro (Gustavo, 2026-10-29)
+
+Pergunta do Gustavo: "estamos criando uma plataforma de contabilidade ou vendendo o serviço de contabilidade pronta com IA?". Resposta: **os dois, nessa ordem.**
+
+| | Plano "Você faz" (plataforma) | Plano "A gente faz" (serviço) |
+|---|---|---|
+| O que é | Software com o Pilar; o contador da empresa confere | A mesma plataforma + **escritório parceiro** registrado no CRC fechando o mês e assinando |
+| Quem responde pelo fiscal | O contador do cliente | O escritório parceiro (o Pontes não assina nada) |
+| Preço | R$ 99 a 199/mês | Mais caro (tem gente e responsabilidade; referência de mercado R$ 150 a 400) |
+| Modelo de receita | Assinatura + taxa por cobrança | Divisão de receita com o parceiro |
+
+**Por que nessa ordem:** o serviço só fica barato e escala porque a plataforma faz o trabalho pesado (concilia, confere documento, cobra pendência); o contador só revisa e assina. Sem plataforma pronta, o serviço vira escritório comum com trabalho manual.
+
+**Ordem:** (1) plataforma: pessoal e família agora, depois Espaço Empresa (§6); (2) Pilar + esteira de documentos (§7); (3) serviço com escritório parceiro; (4) escritório próprio só se valer a pena. **Cuidado:** o Gustavo é solo; serviço tem prazo do Fisco, atendimento e multa se errar, por isso parceria antes de escritório próprio. Comparativo de mercado: plataforma = Conta Azul, Nibo, Omie; serviço = Contabilizei, Agilize.
+
+**Antes de codar empresa:** conversar com 5 donos de empresa pequena e 3 contadores (§6) também decide o peso de cada plano.
+
 ## 1. Que empresa
 
 "Empresa" não é uma coisa só. Cada tamanho é um produto:
