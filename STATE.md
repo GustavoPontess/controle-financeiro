@@ -15,7 +15,13 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
-### 📌 2026-10-31: cookies `__Host-` (branch `fix/cookies-host-prefix`, sem commit) + PC novo com runners
+### 📌 2026-10-31 (noite): transferência internacional na política (branch `fix/lgpd-transferencia-internacional`, sobre a dos cookies, sem commit)
+
+P1 do gate: servidor nos EUA. Base decidida pelo Gustavo: **art. 33, IX** (execução do contrato), porque nem a Hostinger nem a Cloudflare oferecem as cláusulas-padrão da ANPD (conferido nos DPAs). `/privacidade` ganhou aviso no topo + seção em destaque `#onde-ficam` (finalidade, destino, duração, base, operadores, segurança, direitos, controlador) e "reclamar à ANPD"; as duas páginas legais trocaram "quem te convidou" por controlador (Gustavo Pontes, pessoa física) + e-mail (`CONTATO` em `Legal.tsx`). Registro em `docs/CONFORMIDADE_BR.md`. Teste novo `Legal.test.tsx`. **E-mail:** o Gustavo mandou seguir com `pontes@pontesdev.com.br`; a confirmação da caixa que recebe (anotada no outro PC) e a correção dos docs que dizem que o domínio não recebe viraram P2 no ROADMAP. Próximo (P2): servidor pra São Paulo antes do lançamento público.
+
+**Deploy de teste pelo PC novo:** sucesso (1h25, quase tudo upload do primeiro build); produção seguiu em `3ffec21`.
+
+### 📌 2026-10-31: cookies `__Host-` (PR #395, aberto) + PC novo com runners
 
 **Feito na branch (P1 do gate, pedido do Gustavo):** todo cookie do app com `__Host-` em HTTPS, via `CookiesDoApp` (detalhe em `docs/history/ROADMAP_CONCLUIDO.md`). O ponto aberto do item ("cookies do Path do auth plantados atrapalham?") atrapalhava: `active_acct` + `rt_` plantados faziam o `/refresh` logar na conta do atacante; por isso foram todos, com `Path=/`. Dev (HTTP) sem mudança. Testes: back 1879 verdes (9 novos em `CookiesHostPrefixHttpTests`, com travas que leem o código), front `cliente.test.ts`; testado no Edge local (login, refresh, sair). **Junto:** Gustavo perguntou se precisa de aviso de cookies: não (só cookies necessários, guia da ANPD), mas a `/privacidade` ganhou a seção "Cookies e o que fica no seu navegador" com cada cookie, duração, localStorage, Cloudflare e Google Fonts (trava: cookie novo sem entrar na página falha). **Ao subir:** quem estiver logado em produção sai uma vez (cookies novos) e entra de novo; conferir no navegador de produção que os cookies saem `__Host-` e que login/refresh/escrita funcionam.
 

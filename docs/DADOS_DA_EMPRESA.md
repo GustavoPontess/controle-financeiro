@@ -30,12 +30,12 @@ Hoje (2026-10-27) todos mostram os **mesmos dados de exemplo** (decisão do Gust
   Privacidade, `src/site/paginas/_rodape.html`).
 
 ### 3. Contato nos Termos de Uso e na Privacidade
-- Arquivo: `controle-financeiro.web/src/telas/Legal.tsx`.
-- **Linha 61** (Termos) e **linha 91** (Privacidade): trocar "fale com quem te convidou pro beta" pelo e-mail de contato.
-- Na Privacidade, dizer quem é o controlador (razão social e CNPJ) e quem é o encarregado de dados, com contato (LGPD
-  art. 41). Hoje não tem.
-- Mudou o texto: atualizar a data, **linha 32** (Termos) e **linha 69** (Privacidade).
-- Apagar o comentário TODO das linhas 4 e 5.
+- Arquivo: `controle-financeiro.web/src/telas/Legal.tsx`, constantes `CONTROLADOR` e `CONTATO` no topo (um lugar só;
+  as duas páginas e a seção da transferência internacional leem dali).
+- **Feito 2026-10-31:** o contato virou o e-mail (`CONTATO`) e o controlador é Gustavo Pontes, pessoa física; sem
+  encarregado (agente de pequeno porte, Resolução CD/ANPD nº 2/2022), o e-mail é o canal.
+- **Quando sair o CNPJ:** trocar `CONTROLADOR` pela razão social e CNPJ, tirar o "pessoa física, enquanto o Pontes não
+  tem empresa aberta" e atualizar as datas das duas páginas (`atualizado=`).
 
 ### 4. Remetentes dos e-mails
 - Arquivo: `config/deploy.api.yml`, **linhas 65 a 67** (`SMTP_FROM`, `SMTP_FROM_SEGURANCA`, `SMTP_FROM_PRODUTO`) e o
