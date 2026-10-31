@@ -93,6 +93,7 @@ reconhecimento para o atacante. "Não dá pra ele acessar" **NÃO** basta.
 
 - Cookie de sessão com **`SameSite=Strict`** (ou Lax); nunca `None` sem `Secure`. SameSite é **defense-in-depth, NÃO substitui token CSRF**.
 - Pra app stateless/JWT: **Signed Double-Submit Cookie** (token HMAC ligado à sessão + secret server-side), **não** o double-submit ingênuo (bypassável via subdomínio/DNS takeover). Usar cookie prefixado **`__Host-`**.
+- ✅ **`__Host-` em todo cookie do app (2026-10-31):** em HTTPS `jwt`, `X-CSRF-Token`, `active_acct`, `rt_*`, `td`, `rd` e `ac` saem como `__Host-…` (Secure, `Path=/`, sem Domain) e o nome sem prefixo nunca é lido; nome e opções só por `Infrastructure/Security/CookiesDoApp.cs` (trava em `CookiesHostPrefixHttpTests`). Fecha o cookie tossing a partir de `pontesdev.com.br` (site irmão): sem isso, um `active_acct` + `rt_<slot>` plantados faziam o `/refresh` logar a vítima na conta do atacante. Em HTTP (dev) fica o nome puro. Falta só o CSRF assinado/amarrado ao `sid` (P3 no ROADMAP). _Fonte: MDN Set-Cookie (cookie prefixes)._
 - Token CSRF via **header customizado setado por JS** (cookie-to-header) — só JS same-origin lê o cookie e seta o header.
 - **XSS derrota TODA mitigação de CSRF** → **CSP estrita** + auditar sinks de XSS é pré-condição.
 - _Fonte: OWASP CSRF Prevention + HTML5 Security Cheat Sheets._
@@ -175,7 +176,7 @@ Pesquisados, **não confirmados** por fonte primária nesta rodada. Defaults aba
 | C1 | Reset token não pode vir na resposta + e-mail fire-and-forget | **Vaza na resposta** (account takeover) | 🔴 |
 | — | JWT validation (assinatura/exp/iss/aud) | ✅ já fazemos (ClockSkew=0) | ok |
 | — | CORS `WithOrigins` | ✅ restrito ao front de dev (o vite faz proxy da API, mesma origem); produção via `CORS_ALLOWED_ORIGINS` | 🟡 |
-| — | Token em cookie HttpOnly+SameSite=Strict | ✅ jwt **e** refresh em cookie HttpOnly+Secure(HTTPS)+SameSite=Strict | ✔ |
+| — | Token em cookie HttpOnly+SameSite=Strict | ✅ jwt **e** refresh em cookie HttpOnly+Secure(HTTPS)+SameSite=Strict, com prefixo `__Host-` em HTTPS (2026-10-31) | ✔ |
 | A1/A2 | PBKDF2 ≥600k OU Argon2id | ✅ **Argon2id m=19456/t=2/p=1, salt 16B, saída 32B, rehash no login** | ✔ |
 | — | Reset token hasheado no banco | ✅ **SHA-256 (OpaqueTokenHasher); bruto só no e-mail** | ✔ |
 | — | Anti-enumeração (timing) | ✅ resolvido no C1 (fire-and-forget) | ✔ |

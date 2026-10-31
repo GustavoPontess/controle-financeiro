@@ -61,18 +61,11 @@ public class AuthController : ControllerBase
     }
 
     // Aparelho conhecido (AparelhoConhecido): o navegador onde a conta entrou fica fora da espera que dobra do login.
-    private void LembrarAparelho(Guid usuarioId)
-    {
-        Request.Cookies.TryGetValue(AparelhoConhecido.Cookie, out var atual);
-        Response.Cookies.Append(AparelhoConhecido.Cookie, AparelhoConhecido.Lembrar(atual, usuarioId, DateTime.UtcNow), new CookieOptions
-        {
-            HttpOnly = true, Secure = Request.IsHttps, SameSite = SameSiteMode.Strict, Path = AuthPath,
-            Expires = DateTimeOffset.UtcNow.AddDays(AparelhoConhecido.Dias),
-        });
-    }
+    private void LembrarAparelho(Guid usuarioId) =>
+        GravarCookie(AparelhoConhecido.Cookie, AparelhoConhecido.Lembrar(LerCookie(AparelhoConhecido.Cookie), usuarioId, DateTime.UtcNow),
+            DateTimeOffset.UtcNow.AddDays(AparelhoConhecido.Dias));
 
-    private string? CookieAparelho() =>
-        Request.Cookies.TryGetValue(AparelhoConhecido.Cookie, out var v) ? v : null;
+    private string? CookieAparelho() => LerCookie(AparelhoConhecido.Cookie);
 
     /// <summary>
     /// SÓ EM DEVELOPMENT: lista as contas do banco (e-mail + nome) pro painel de atalho do login.
@@ -114,25 +107,50 @@ public class AuthController : ControllerBase
     }
 
     // ── Cookies de sessão (multi-conta, Opção A) ─────────────────────────────────
-    // Modelo: 1 conta ATIVA (cookie `jwt`, Path=/, identifica toda request) + N contas PARQUEADAS,
-    // cada uma com seu refresh no cookie httpOnly `rt_<slot>` (Path do auth — NÃO vai em toda
-    // request, só nos endpoints de auth: menor exposição). `active_acct` (httpOnly, path do auth)
-    // diz qual conta está ativa pro /refresh achar o slot. O X-CSRF-Token (legível por JS, Path=/)
-    // vive tanto quanto o refresh (7d) e é reemitido em TODO evento de auth (login/mfa/switch/
-    // refresh) — anti session-fixation e fecha a janela CSRF (antes expirava em 1h e derrubava
-    // /refresh e /switch). TODO o token (jwt/refresh) segue httpOnly — nunca legível por JS.
-    private const string AuthPath = "/api/v1/auth";
+    // Modelo: 1 conta ATIVA (cookie `jwt`, identifica toda request) + N contas PARQUEADAS, cada uma
+    // com seu refresh no cookie httpOnly `rt_<slot>`. `active_acct` (httpOnly) diz qual conta está
+    // ativa pro /refresh achar o slot. O X-CSRF-Token (legível por JS) vive tanto quanto o refresh
+    // (7d) e é reemitido em TODO evento de auth (login/mfa/switch/refresh) — anti session-fixation e
+    // fecha a janela CSRF (antes expirava em 1h e derrubava /refresh e /switch). TODO o token
+    // (jwt/refresh) segue httpOnly — nunca legível por JS.
+    // Nome, Path e o prefixo __Host- em HTTPS vêm de CookiesDoApp (um lugar só pra todo cookie do app).
     private const int SessionDays = 7;
 
-    // Trusted-device (MFA "lembrar este dispositivo"): cookie opaco httpOnly, escopo do auth.
-    private const string TrustedDeviceCookie = "td";
+    // Path dos cookies de auth (todos menos jwt e CSRF) em HTTP, no dev: só vão nos endpoints de auth, como
+    // sempre. Em HTTPS o __Host- exige Path=/; lá este Path só serve pra apagar os de antes (ApagarCookiesSemPrefixo).
+    private const string AuthPath = "/api/v1/auth";
+    private bool _semPrefixoApagados;
+
+    // Trusted-device (MFA "lembrar este dispositivo"): cookie opaco httpOnly.
     private const int TrustedDeviceDias = 30; // alinhado a AuthService.TrustedDeviceDias
 
-    // Roster / chooser pré-login: id opaco do NAVEGADOR. httpOnly + SameSite=Strict (imune a CSRF) +
-    // escopo do auth. Só é setado quando o usuário opta por "manter conectado" — PC emprestado nunca
-    // ganha o cookie nem entra na lista.
-    private const string DeviceIdCookie = "rd";
+    // Roster / chooser pré-login: id opaco do NAVEGADOR. httpOnly + SameSite=Strict (imune a CSRF).
+    // Só é setado quando o usuário opta por "manter conectado" — PC emprestado nunca ganha o cookie
+    // nem entra na lista.
     private const int DeviceIdDias = 180;
+
+    private string NomeCookie(string nome) => CookiesDoApp.Nome(Request, nome);
+
+    private string? LerCookie(string nome) =>
+        Request.Cookies.TryGetValue(NomeCookie(nome), out var v) && !string.IsNullOrEmpty(v) ? v : null;
+
+    private CookieOptions OpcoesCookie(string nome, bool httpOnly = true, DateTimeOffset? expira = null) =>
+        CookiesDoApp.Opcoes(Request, httpOnly, expira, pathEmHttp: nome is CookiesDoApp.Jwt or CookiesDoApp.Csrf ? "/" : AuthPath);
+
+    private void GravarCookie(string nome, string valor, DateTimeOffset? expira, bool httpOnly = true) =>
+        Response.Cookies.Append(NomeCookie(nome), valor, OpcoesCookie(nome, httpOnly, expira));
+
+    private void DeleteCookie(string nome) => Response.Cookies.Delete(NomeCookie(nome), OpcoesCookie(nome));
+
+    // Refresh de cada conta conectada: (nome sem o __Host-, valor).
+    private List<(string Nome, string Valor)> CookiesDeRefresh()
+    {
+        var prefixoHost = NomeCookie(string.Empty);
+        return Request.Cookies
+            .Where(c => c.Key.StartsWith(prefixoHost + CookiesDoApp.PrefixoRefresh, StringComparison.Ordinal))
+            .Select(c => (c.Key[prefixoHost.Length..], c.Value))
+            .ToList();
+    }
 
     // Teto de contas conectadas simultaneamente no mesmo navegador (blast-radius: cada conta
     // parqueada é mais um refresh de 7d exposto se o device for comprometido). Re-login da MESMA
@@ -143,9 +161,8 @@ public class AuthController : ControllerBase
     /// só se ainda não bateu o teto de <see cref="MaxContasConectadas"/> cookies rt_*.</summary>
     private bool PodeParquearConta(Guid accountId)
     {
-        if (Request.Cookies.ContainsKey(SlotCookieName(accountId))) return true;
-        var conectadas = Request.Cookies.Keys.Count(k => k.StartsWith("rt_", StringComparison.Ordinal));
-        return conectadas < MaxContasConectadas;
+        if (LerCookie(SlotCookieName(accountId)) != null) return true;
+        return CookiesDeRefresh().Count < MaxContasConectadas;
     }
 
     private ObjectResult LimiteContasResult() => Conflict(new
@@ -160,7 +177,7 @@ public class AuthController : ControllerBase
     private static string SlotCookieName(Guid accountId)
     {
         var hash = System.Security.Cryptography.SHA256.HashData(accountId.ToByteArray());
-        return "rt_" + Convert.ToHexString(hash)[..16].ToLowerInvariant();
+        return CookiesDoApp.PrefixoRefresh + Convert.ToHexString(hash)[..16].ToLowerInvariant();
     }
 
     // "Manter-me conectado": persistente=true → cookies com Expires (sobrevivem a fechar o navegador,
@@ -169,58 +186,31 @@ public class AuthController : ControllerBase
     // curto (15min) de qualquer jeito.
     private void SetActiveSessionCookies(string jwtToken, Guid accountId, bool persistente)
     {
-        var isSecure = Request.IsHttps;
-
         // Vida do cookie alinhada ao TTL do access token (15min, JWT_EXPIRATION_MINUTES). Quando
         // vence, o silent refresh renova pelo refresh (7d). Curto encurta a janela; a revogação
         // instantânea vem do OnTokenValidated (checagem de sessão viva por request).
-        Response.Cookies.Append("jwt", jwtToken, new CookieOptions
-        {
-            HttpOnly = true, Secure = isSecure, SameSite = SameSiteMode.Strict, Path = "/",
-            Expires = persistente ? DateTimeOffset.UtcNow.AddMinutes(15) : null,
-        });
+        GravarCookie(CookiesDoApp.Jwt, jwtToken, persistente ? DateTimeOffset.UtcNow.AddMinutes(15) : null);
 
-        var csrfToken = _csrfTokenService.GenerateToken();
-        Response.Cookies.Append("X-CSRF-Token", csrfToken, new CookieOptions
-        {
-            HttpOnly = false, Secure = isSecure, SameSite = SameSiteMode.Strict, Path = "/",
-            Expires = persistente ? DateTimeOffset.UtcNow.AddDays(SessionDays) : null,
-        });
+        GravarCookie(CookiesDoApp.Csrf, _csrfTokenService.GenerateToken(),
+            persistente ? DateTimeOffset.UtcNow.AddDays(SessionDays) : null, httpOnly: false);
 
-        Response.Cookies.Append("active_acct", accountId.ToString(), new CookieOptions
-        {
-            HttpOnly = true, Secure = isSecure, SameSite = SameSiteMode.Strict, Path = AuthPath,
-            Expires = persistente ? DateTimeOffset.UtcNow.AddDays(SessionDays) : null,
-        });
+        GravarCookie(CookiesDoApp.ContaAtiva, accountId.ToString(),
+            persistente ? DateTimeOffset.UtcNow.AddDays(SessionDays) : null);
     }
 
-    // Cookie do device confiável (MFA): opaco, httpOnly, escopo do auth (só vai nos endpoints de
-    // auth = menor exposição). Vive ALÉM do logout de propósito — o device segue confiável pro
-    // próximo login (modelo Google/Microsoft); só some ao expirar ou ser revogado no servidor.
+    // Cookie do device confiável (MFA): opaco, httpOnly. Vive ALÉM do logout de propósito — o device
+    // segue confiável pro próximo login (modelo Google/Microsoft); só some ao expirar ou ser revogado
+    // no servidor.
     private void SetTrustedDeviceCookie(string token) =>
-        Response.Cookies.Append(TrustedDeviceCookie, token, new CookieOptions
-        {
-            HttpOnly = true, Secure = Request.IsHttps, SameSite = SameSiteMode.Strict, Path = AuthPath,
-            Expires = DateTimeOffset.UtcNow.AddDays(TrustedDeviceDias),
-        });
-
-    private CookieOptions DeviceIdCookieOptions() => new()
-    {
-        HttpOnly = true, Secure = Request.IsHttps, SameSite = SameSiteMode.Strict, Path = AuthPath,
-        Expires = DateTimeOffset.UtcNow.AddDays(DeviceIdDias),
-    };
+        GravarCookie(CookiesDoApp.DispositivoConfiavel, token, DateTimeOffset.UtcNow.AddDays(TrustedDeviceDias));
 
     // Lê o id do navegador do cookie `rd`, ou cria um novo. Renova a validade (rolling) mantendo o id.
     private string EnsureDeviceIdCookie()
     {
-        if (Request.Cookies.TryGetValue(DeviceIdCookie, out var existente) && !string.IsNullOrEmpty(existente))
-        {
-            Response.Cookies.Append(DeviceIdCookie, existente, DeviceIdCookieOptions());
-            return existente;
-        }
-        var novo = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
-        Response.Cookies.Append(DeviceIdCookie, novo, DeviceIdCookieOptions());
-        return novo;
+        var id = LerCookie(CookiesDoApp.Navegador)
+            ?? Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
+        GravarCookie(CookiesDoApp.Navegador, id, DateTimeOffset.UtcNow.AddDays(DeviceIdDias));
+        return id;
     }
 
     // "Manter conectado" marcado → a conta entra no chooser pré-login deste navegador (opt-in).
@@ -231,50 +221,58 @@ public class AuthController : ControllerBase
         await _rosterService.LembrarAsync(deviceId, usuarioId);
     }
 
-    private void ParkRefreshCookie(Guid accountId, string refreshToken, bool persistente)
-    {
-        Response.Cookies.Append(SlotCookieName(accountId), refreshToken, new CookieOptions
-        {
-            HttpOnly = true, Secure = Request.IsHttps, SameSite = SameSiteMode.Strict, Path = AuthPath,
-            Expires = persistente ? DateTimeOffset.UtcNow.AddDays(SessionDays) : null,
-        });
-    }
+    private void ParkRefreshCookie(Guid accountId, string refreshToken, bool persistente) =>
+        GravarCookie(SlotCookieName(accountId), refreshToken, persistente ? DateTimeOffset.UtcNow.AddDays(SessionDays) : null);
 
     // Parqueia o refresh da conta e a torna ativa (jwt+csrf+active_acct). Usado em login/mfa/
     // switch/refresh — NÃO mexe nos slots das outras contas. A persistência (manter-conectado) vem
     // do refresh: no login/verify é o checkbox; no refresh/switch é herdada do token rotacionado.
     private void SetLoggedInCookies(AuthResponseDto auth)
     {
+        ApagarCookiesSemPrefixo();
         ParkRefreshCookie(auth.UsuarioId, auth.RefreshToken, auth.LembrarSessao);
         SetActiveSessionCookies(auth.Token, auth.UsuarioId, auth.LembrarSessao);
     }
 
-    private void DeleteCookie(string name, string path) =>
-        Response.Cookies.Delete(name, new CookieOptions
+    // Transição pro __Host- (2026-10-31): em HTTPS os cookies sem prefixo de antes (jwt e CSRF em "/", os outros
+    // no Path do auth, e o "refreshToken" de antes do multi-conta) nunca são lidos. Os que o navegador ainda manda
+    // são apagados aqui (uma vez por request, antes de gravar os novos), pra não ficarem pendurados até vencer.
+    // Só os que este host gravou: um plantado com Domain= não sai sem o Domain, mas também nunca é lido.
+    private void ApagarCookiesSemPrefixo()
+    {
+        if (!Request.IsHttps || _semPrefixoApagados) return;
+        _semPrefixoApagados = true;
+        foreach (var nome in Request.Cookies.Keys)
         {
-            Path = path, Secure = Request.IsHttps, SameSite = SameSiteMode.Strict,
-        });
+            string? path = nome is CookiesDoApp.Jwt or CookiesDoApp.Csrf or "refreshToken" ? "/"
+                : nome is CookiesDoApp.ContaAtiva or CookiesDoApp.DispositivoConfiavel or CookiesDoApp.Navegador or AparelhoConhecido.Cookie
+                  || nome.StartsWith(CookiesDoApp.PrefixoRefresh, StringComparison.Ordinal) ? AuthPath
+                : null;
+            if (path != null)
+                Response.Cookies.Delete(nome, new CookieOptions { Path = path, Secure = true, SameSite = SameSiteMode.Strict });
+        }
+    }
 
     // Encerra SÓ a conta ativa; mantém as outras parqueadas (o front escolhe a próxima).
     private void ClearActiveSession(Guid? accountId)
     {
-        DeleteCookie("jwt", "/");
-        DeleteCookie("X-CSRF-Token", "/");
-        DeleteCookie("active_acct", AuthPath);
+        ApagarCookiesSemPrefixo();
+        DeleteCookie(CookiesDoApp.Jwt);
+        DeleteCookie(CookiesDoApp.Csrf);
+        DeleteCookie(CookiesDoApp.ContaAtiva);
         if (accountId.HasValue)
-            DeleteCookie(SlotCookieName(accountId.Value), AuthPath);
-        DeleteCookie("refreshToken", "/"); // compat: sessão legada (pré multi-conta)
+            DeleteCookie(SlotCookieName(accountId.Value));
     }
 
     // Encerra TODAS: jwt/csrf/active_acct + todos os rt_* presentes.
     private void ClearAllSessions()
     {
-        DeleteCookie("jwt", "/");
-        DeleteCookie("X-CSRF-Token", "/");
-        DeleteCookie("active_acct", AuthPath);
-        DeleteCookie("refreshToken", "/"); // compat legado
-        foreach (var name in Request.Cookies.Keys.Where(k => k.StartsWith("rt_", StringComparison.Ordinal)))
-            DeleteCookie(name, AuthPath);
+        ApagarCookiesSemPrefixo();
+        DeleteCookie(CookiesDoApp.Jwt);
+        DeleteCookie(CookiesDoApp.Csrf);
+        DeleteCookie(CookiesDoApp.ContaAtiva);
+        foreach (var rt in CookiesDeRefresh())
+            DeleteCookie(rt.Nome);
     }
 
     // Login "frio" (feito pela tela de login, SEM sessão ativa) começa do ZERO: revoga no banco e
@@ -284,26 +282,18 @@ public class AuthController : ControllerBase
     // limpa (é o mesmo dono anexando outra conta).
     private async Task RevogarSessoesAnterioresAsync()
     {
-        var tokens = Request.Cookies
-            .Where(c => c.Key.StartsWith("rt_", StringComparison.Ordinal))
-            .Select(c => c.Value)
-            .ToList();
-        if (Request.Cookies.TryGetValue("refreshToken", out var legacy) && !string.IsNullOrEmpty(legacy))
-            tokens.Add(legacy);
+        var tokens = CookiesDeRefresh().Select(c => c.Valor).ToList();
         if (tokens.Count > 0)
             await _authService.LogoutAllAsync(tokens);
         ClearAllSessions();
     }
 
-    // Refresh da conta ativa (slot novo) com fallback pro cookie legado "refreshToken".
+    // Refresh da conta ativa. O cookie "refreshToken" de antes do multi-conta não é mais lido (vencia em
+    // 7 dias; sem prefixo, era plantável por outro site do domínio).
     private (string? Refresh, Guid? AccountId) ReadActiveRefresh()
     {
-        if (Request.Cookies.TryGetValue("active_acct", out var acctStr) && Guid.TryParse(acctStr, out var acct)
-            && Request.Cookies.TryGetValue(SlotCookieName(acct), out var rt) && !string.IsNullOrEmpty(rt))
+        if (Guid.TryParse(LerCookie(CookiesDoApp.ContaAtiva), out var acct) && LerCookie(SlotCookieName(acct)) is { } rt)
             return (rt, acct);
-
-        if (Request.Cookies.TryGetValue("refreshToken", out var legacy) && !string.IsNullOrEmpty(legacy))
-            return (legacy, null); // sessão criada antes do multi-conta
 
         return (null, null);
     }
@@ -365,8 +355,7 @@ public class AuthController : ControllerBase
     {
         // Device confiável (opt-in): se o navegador tem o cookie `td` válido PRA ESTA conta, o
         // LoginAsync pula o 2º fator e já devolve sessão (anti-cross-account é checado no service).
-        Request.Cookies.TryGetValue(TrustedDeviceCookie, out var trustedDeviceToken);
-        var result = await _authService.LoginAsync(dto, trustedDeviceToken, dto.ManterConectado, CookieAparelho());
+        var result = await _authService.LoginAsync(dto, LerCookie(CookiesDoApp.DispositivoConfiavel), dto.ManterConectado, CookieAparelho());
 
         if (result.MfaRequerido)
             return Ok(new { mfaRequerido = true, mfaChallengeToken = result.MfaChallengeToken });
@@ -502,11 +491,8 @@ public class AuthController : ControllerBase
     /// `rd` → lista vazia.</summary>
     [HttpGet("roster")]
     [AllowAnonymous]
-    public async Task<ActionResult<List<ContaLembradaDto>>> Roster()
-    {
-        Request.Cookies.TryGetValue(DeviceIdCookie, out var deviceId);
-        return Ok(await _rosterService.ListarAsync(deviceId));
-    }
+    public async Task<ActionResult<List<ContaLembradaDto>>> Roster() =>
+        Ok(await _rosterService.ListarAsync(LerCookie(CookiesDoApp.Navegador)));
 
     /// <summary>E-mail real de uma conta do roster (pra pré-preencher ao selecionar). 404 se a conta
     /// não estiver no roster deste navegador.</summary>
@@ -514,8 +500,7 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> RosterEmail(Guid usuarioId)
     {
-        Request.Cookies.TryGetValue(DeviceIdCookie, out var deviceId);
-        var email = await _rosterService.ObterEmailAsync(deviceId, usuarioId);
+        var email = await _rosterService.ObterEmailAsync(LerCookie(CookiesDoApp.Navegador), usuarioId);
         return email is null ? NotFound() : Ok(new { email });
     }
 
@@ -524,8 +509,7 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> RemoverDoRoster(Guid usuarioId)
     {
-        Request.Cookies.TryGetValue(DeviceIdCookie, out var deviceId);
-        await _rosterService.RemoverAsync(deviceId, usuarioId);
+        await _rosterService.RemoverAsync(LerCookie(CookiesDoApp.Navegador), usuarioId);
         return NoContent();
     }
 
@@ -534,8 +518,7 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> EsquecerRoster()
     {
-        Request.Cookies.TryGetValue(DeviceIdCookie, out var deviceId);
-        await _rosterService.RemoverTodasAsync(deviceId);
+        await _rosterService.RemoverTodasAsync(LerCookie(CookiesDoApp.Navegador));
         return NoContent();
     }
 
@@ -674,8 +657,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Switch([FromBody] SwitchAccountDto dto)
     {
-        Request.Cookies.TryGetValue(SlotCookieName(dto.AccountId), out var refreshToken);
-        var result = await _authService.SwitchAsync(refreshToken, dto.AccountId);
+        var result = await _authService.SwitchAsync(LerCookie(SlotCookieName(dto.AccountId)), dto.AccountId);
         SetLoggedInCookies(result);
 
         return Ok(new AuthResponseDto
@@ -715,14 +697,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> LogoutAll()
     {
-        var refreshTokens = Request.Cookies
-            .Where(c => c.Key.StartsWith("rt_", StringComparison.Ordinal))
-            .Select(c => c.Value)
-            .ToList();
-        if (Request.Cookies.TryGetValue("refreshToken", out var legacy) && !string.IsNullOrEmpty(legacy))
-            refreshTokens.Add(legacy); // compat: sessão legada
-
-        await _authService.LogoutAllAsync(refreshTokens);
+        await _authService.LogoutAllAsync(CookiesDeRefresh().Select(c => c.Valor).ToList());
         ClearAllSessions();
         return NoContent();
     }
@@ -760,25 +735,21 @@ public class AuthController : ControllerBase
     }
 
     // ── Dispositivos confiáveis (MFA "confiar neste dispositivo") ─────────────────
-    // O cookie `td` tem Path do auth, então chega aqui: marca/limpa o deste navegador.
+    // O cookie `td` chega aqui: marca/limpa o deste navegador.
 
     /// <summary>Lista os dispositivos confiáveis vivos do usuário, marcando o deste navegador.</summary>
     [Authorize]
     [HttpGet("trusted-devices")]
-    public async Task<ActionResult<List<DTOs.Auth.DispositivoConfiavelDto>>> TrustedDevices()
-    {
-        Request.Cookies.TryGetValue(TrustedDeviceCookie, out var td);
-        return Ok(await _authService.ListarDispositivosConfiaveisAsync(ExigirUsuarioId(), td));
-    }
+    public async Task<ActionResult<List<DTOs.Auth.DispositivoConfiavelDto>>> TrustedDevices() =>
+        Ok(await _authService.ListarDispositivosConfiaveisAsync(ExigirUsuarioId(), LerCookie(CookiesDoApp.DispositivoConfiavel)));
 
     /// <summary>Esquece UM dispositivo confiável (o próximo login nele pede o código). Anti-IDOR no service.</summary>
     [Authorize]
     [HttpPost("trusted-devices/{id:guid}/revogar")]
     public async Task<IActionResult> RevogarTrustedDevice(Guid id)
     {
-        Request.Cookies.TryGetValue(TrustedDeviceCookie, out var td);
-        if (await _authService.RevogarDispositivoConfiavelAsync(ExigirUsuarioId(), id, td))
-            Response.Cookies.Delete(TrustedDeviceCookie, new CookieOptions { Path = AuthPath });
+        if (await _authService.RevogarDispositivoConfiavelAsync(ExigirUsuarioId(), id, LerCookie(CookiesDoApp.DispositivoConfiavel)))
+            DeleteCookie(CookiesDoApp.DispositivoConfiavel);
         return NoContent();
     }
 
@@ -788,7 +759,7 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> RevogarTodosTrustedDevices()
     {
         var qtd = await _authService.RevogarTodosDispositivosConfiaveisAsync(ExigirUsuarioId());
-        Response.Cookies.Delete(TrustedDeviceCookie, new CookieOptions { Path = AuthPath });
+        DeleteCookie(CookiesDoApp.DispositivoConfiavel);
         return Ok(new { esquecidos = qtd });
     }
 

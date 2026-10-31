@@ -18,6 +18,13 @@ function cookie(nome: string): string | null {
   return null
 }
 
+// Em HTTPS (produção) os cookies do app têm o prefixo __Host- (o navegador só aceita vindo deste host, sem
+// Domain: outro site do mesmo domínio não planta um CSRF falso). Em HTTP (dev no localhost) o nome é o puro.
+// Mesma regra do servidor (CookiesDoApp).
+export function nomeCookieCsrf(protocolo: string = location.protocol): string {
+  return (protocolo === "https:" ? "__Host-" : "") + "X-CSRF-Token"
+}
+
 // Conta que ESTA aba acha ativa. O cookie da sessão é um só pra todas as abas: depois de trocar de conta
 // numa aba, outra aba aberta antes gravaria na conta nova achando que é a antiga. Com o header, a API
 // recusa a escrita (409 conta_desatualizada) quando a conta da aba não bate com a da sessão.
@@ -27,7 +34,7 @@ export function definirContaDaAba(id: string | null) { contaDaAba = id }
 
 api.interceptors.request.use((config) => {
   if (["post", "put", "delete", "patch"].includes(config.method?.toLowerCase() ?? "")) {
-    const csrf = cookie("X-CSRF-Token")
+    const csrf = cookie(nomeCookieCsrf())
     if (csrf) config.headers["X-CSRF-Token"] = csrf
     if (contaDaAba) config.headers["X-Active-Account"] = contaDaAba
   }

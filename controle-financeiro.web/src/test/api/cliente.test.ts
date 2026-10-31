@@ -2,7 +2,7 @@
 // conta_desatualizada sempre avisa, mesmo em tela que mostra o erro no campo.
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { AxiosAdapter, InternalAxiosRequestConfig } from "axios"
-import { api, definirContaDaAba, esperaDoLimite, mensagemDeErro } from "../../api/cliente"
+import { api, definirContaDaAba, esperaDoLimite, mensagemDeErro, nomeCookieCsrf } from "../../api/cliente"
 
 const original = api.defaults.adapter
 let enviados: InternalAxiosRequestConfig[] = []
@@ -50,6 +50,25 @@ describe("cliente: conta da aba", () => {
     window.removeEventListener("apiError", aviso)
     expect(aviso).toHaveBeenCalledTimes(1)
     expect((aviso.mock.calls[0][0] as CustomEvent).detail.message).toContain("outra aba")
+  })
+})
+
+describe("cliente: cookie do CSRF", () => {
+  // Cookie tossing: em HTTPS só vale o __Host- (outro site do domínio não consegue plantar); no dev, o nome puro.
+  it("em HTTPS lê o __Host-X-CSRF-Token; em HTTP, o X-CSRF-Token", () => {
+    expect(nomeCookieCsrf("https:")).toBe("__Host-X-CSRF-Token")
+    expect(nomeCookieCsrf("http:")).toBe("X-CSRF-Token")
+  })
+
+  it("no dev (http://localhost) a escrita leva o CSRF do cookie sem prefixo", async () => {
+    responder()
+    document.cookie = "X-CSRF-Token=abc%3D%3D"
+    try {
+      await api.post("/transacoes", {})
+      expect(enviados[0].headers["X-CSRF-Token"]).toBe("abc==")
+    } finally {
+      document.cookie = "X-CSRF-Token=; expires=Thu, 01 Jan 1970 00:00:00 GMT"
+    }
   })
 })
 

@@ -23,8 +23,10 @@ public class CsrfValidationMiddleware
         // Validar CSRF apenas para métodos que modificam dados
         if (IsUnsafeMethod(context.Request.Method))
         {
+            // Cookie __Host-X-CSRF-Token em HTTPS (CookiesDoApp): um par plantado por outro site do domínio não conta.
             var headerToken = context.Request.Headers["X-CSRF-Token"].FirstOrDefault();
-            if (string.IsNullOrEmpty(headerToken) || !context.Request.Cookies.TryGetValue("X-CSRF-Token", out var cookieToken))
+            if (string.IsNullOrEmpty(headerToken)
+                || !context.Request.Cookies.TryGetValue(CookiesDoApp.Nome(context.Request, CookiesDoApp.Csrf), out var cookieToken))
             {
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
                 await context.Response.WriteAsJsonAsync(new { message = "CSRF token missing" });
