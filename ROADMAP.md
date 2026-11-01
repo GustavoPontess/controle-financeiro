@@ -206,6 +206,7 @@ Perguntar **uma de cada vez**, quando o item da fila chegar nela.
 - **Cartão com dia 29/30/31:** (a) aceitar e cair no último dia do mês curto, ou (b) travar em 28 com mensagem? (item P2 na Auditoria de forms)
 - **Roster em navegador compartilhado:** senha antes de revelar / não revelar / mascarar nome / aceitar com aviso? (item P2 em "Backend / débito técnico")
 - ✅ **Parcelamentos dentro de Cartões** — decidido e feito (#273). Pesquisa em `docs/features/parcelamento/pix-no-credito.md`: Pix no crédito fora do cartão (Mercado Pago etc.) entra como **empréstimo bancário** quando for modelado. Pendente só: trocar o rótulo "PIX Crédito" por "Pix no crédito" na UI.
+- **Educação financeira dos filhos:** começar pela Fase 1 simulada (recomendado)? As outras 5 (kit em PDF antes do físico, filho só pelo QR, idade do MVP, parceria com o Profe Serge, grátis ou pago) estão no §7 de `docs/features/familia/educacao-financeira-filhos.md`.
 - **Empréstimos: "Arquivados" vira o filtro "Ativos | Encerrados"** do padrão de telas? (proposto em 2026-09-28, sem resposta)
 - **Dois jeitos de parcelar:** "Nova transação" parcelada (uma transação por parcela, aparece nos gastos) × tela de Parcelamentos (parcela separada, fica fora dos gastos). Unificar num só — junto com a decisão "parcelamento no dashboard/relatórios" acima.
 
@@ -239,6 +240,7 @@ Perguntar **uma de cada vez**, quando o item da fila chegar nela.
 
 ### Lote 2 — família (parcial)
 - [~] **2.3 Papéis/permissões + dependentes** → **BACKEND ✅ / FRONT pendente** — spec em `docs/features/familia/papeis-permissoes.md`. Backend inteiro pronto (enum `PapelFamilia`, `FamiliaPermissoes.ExigirPapelAsync` nos 6 services, endpoint `PUT .../membros/{id}/permissao`). **Falta front:** badge de papel, convite com papel, promover/rebaixar, gates de UI por papel.
+- [ ] 🟡 **P2 — Educação financeira dos filhos ("Banco da Família")** (mapeado 2026-11-01, pedido do Gustavo; inspiração: Banco Escolar do Profe Serge) — mapa em `docs/features/familia/educacao-financeira-filhos.md`. **Fase 1, simulada, sem dinheiro real:** seção "Educação financeira em casa" pros pais (trilhas por idade, uma atividade por semana); conta do filho evoluindo o Dependente (mesada, gasto, poupança com juros, combinado em parcelas, incentivo por tarefa), separada do dinheiro dos pais; pais operam, filho só consulta pelo QR do cartão (sem login no começo); "como meu filho gastou" + extrato do mês em PDF; kit de abertura de conta (carta + "contrato" da casa + cartão com QR, sem cara de cartão de pagamento), primeiro em PDF e depois pelos Correios. **Fase 2:** gastos da conta real do filho (Nubank/PicPay etc.) pelo importador ou Open Finance. **Fase 3:** cartão próprio só com tração (BaaS + BACEN via parceiro). Antes de produção: LGPD art. 14 e ECA Digital (Lei 15.211/2025, em vigor desde 17/03/2026), advogado antes do login júnior. Depois do beta e do front de papéis (2.3). 6 decisões pendentes no §7 do mapa.
 
 ### Lote 3 — aquisição / SEO (site público)
 - [ ] **3.1 Tela de Assinaturas** — derivar de `Recorrente`: agrupar, total/mês, projeção anual. _Pierre, Despezzas, Monarch._

@@ -426,9 +426,12 @@ Decisão pendente. Afeta entidades, cálculo de saldo e o fluxo de acerto.
 
 ### 16.6 Educação financeira dos filhos — autonomia controlada
 
-> **Status:** ideia em mapeamento. Implementar **depois** do refator completo de
-> Família (a infra de membros/papéis/permissões/dependentes precisa estar
-> consolidada antes). Registrado aqui pra não perder.
+> **Status:** mapeado em 2026-11-01 em
+> [`educacao-financeira-filhos.md`](educacao-financeira-filhos.md) ("Banco da
+> Família": seção pros pais, conta simulada do filho, kit com carta e cartão com
+> QR; dinheiro real e cartão próprio só em fases seguintes). Implementar
+> **depois** do refator completo de Família (a infra de
+> membros/papéis/permissões/dependentes precisa estar consolidada antes).
 
 **A ideia.** Usar a estrutura de Família como ferramenta para os pais
 **introduzirem os filhos na vida financeira** — dar autonomia controlada para a
