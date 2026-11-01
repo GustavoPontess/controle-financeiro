@@ -62,7 +62,11 @@ export default function Dashboard() {
         {d ? <Dinheiro valor={d.saldoTotal} className={styles.hero} /> : <span className={styles.heroEsqueleto} aria-hidden="true" />}
         <span className={styles.palcoSub}>
           {erro ? "Não deu pra carregar." : d ? (
-            <><Dinheiro valor={Math.abs(diferenca)} /> {diferenca >= 0 ? "a mais" : "a menos"} que no fim de {mesAnterior.toLowerCase()}</>
+            <>
+              <Dinheiro valor={Math.abs(diferenca)} /> {diferenca >= 0 ? "a mais" : "a menos"} que no fim de {mesAnterior.toLowerCase()}
+              {/* O saldo total é sem as caixinhas das metas (Gustavo, 2026-11-01): o guardado nelas aparece aqui, à parte. */}
+              {caixinhas > 0 && <> · mais <Dinheiro valor={caixinhas} /> guardados nas metas</>}
+            </>
           ) : " "}
         </span>
         <div className={styles.palcoNumeros}>
@@ -94,7 +98,7 @@ export default function Dashboard() {
                     <Dinheiro valor={c.saldo} className={styles.valor} tom={c.saldo < 0 ? "negativo" : undefined} />
                   </li>
                 ))}
-                {/* As caixinhas das metas numa linha só (o dinheiro guardado nelas continua no saldo total). */}
+                {/* As caixinhas das metas numa linha só (o dinheiro guardado nelas fica fora do saldo total: já tem destino). */}
                 {caixinhas > 0 && (
                   <li>
                     <Link to="/metas" className={styles.linha}>
