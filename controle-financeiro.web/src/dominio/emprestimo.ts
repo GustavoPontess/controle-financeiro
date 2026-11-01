@@ -34,6 +34,23 @@ export function quandoCurto(iso: string, hoje = agora()): string {
 }
 
 /** "2,5" → 2.5; vazio → 0; texto que não é número → null (o formulário mostra o erro em vez de salvar sem juros). */
+/** Taxa efetiva ao mês (a TIR do empréstimo): a que iguala o recebido às parcelas, recebido = parcela × (1 − (1+i)^−n) / i.
+ *  A mesma conta do servidor (EmprestimoService.TaxaEfetivaMensal), só pra mostrar no formulário. */
+export function taxaEfetivaMensal(recebido: number, parcela: number, n: number): number {
+  if (!(recebido > 0) || !(parcela > 0) || parcela * n <= recebido) return 0
+  let i = 0.01
+  for (let passo = 0; passo < 200; passo++) {
+    const desconto = Math.pow(1 + i, -n)
+    const f = (parcela * (1 - desconto)) / i - recebido
+    const df = (parcela * ((n * desconto) / (1 + i) * i - (1 - desconto))) / (i * i)
+    let proximo = i - f / df
+    if (proximo <= 0) proximo = i / 2
+    if (Math.abs(proximo - i) < 1e-12) return proximo
+    i = proximo
+  }
+  return i
+}
+
 export function parsePercentual(texto: string): number | null {
   const t = texto.trim().replace(",", ".")
   if (!t) return 0

@@ -128,6 +128,14 @@ function Ver({ t, categorias, subcategorias, editavel, aoEditar, aoSair, aoMudar
     ["Meio de pagamento", t.meioPagamentoDescricao ?? "Não informado"],
     ["Categoria", cat ? (sub ? `${cat.descricao} › ${sub.nome}` : cat.descricao) : "Sem categoria"],
   ]
+  // Pagamento de empréstimo com juros: um lançamento só, e aqui a separação (o que é do empréstimo não conta; os juros sim).
+  if (t.ehEmprestimo && t.valorJuros) {
+    const recebeu = t.tipo === 2
+    dados.push(
+      [recebeu ? "Seu dinheiro voltando" : "Devolvendo o que pegou", `${formatMoney(t.valor - t.valorJuros)}, não conta como ${recebeu ? "receita" : "gasto"}`],
+      ["Juros", `${formatMoney(t.valorJuros)}, entra como ${recebeu ? "receita" : "gasto"}`],
+    )
+  }
 
   const excluir = async () => {
     setOcupado(true); setErro(null)

@@ -266,6 +266,10 @@ function Linha({ e, vencimentos, aberta, aoAbrir, aoMudar }: {
       {erro && <p className={styles.alerta} role="alert">{erro}</p>}
       <DadosFicha>
         <div><dt>{emprestei(e) ? "Emprestado" : "Peguei"}</dt><dd><Dinheiro valor={e.valorTotal} /></dd></div>
+        {/* Com juros, o que volta é mais que o emprestado: o total deixa a conta fechar (já + falta = com os juros). */}
+        {!e.quitado && e.valorPago + e.valorRestante > e.valorTotal + 0.005 && (
+          <div><dt>Com os juros</dt><dd><Dinheiro valor={e.valorPago + e.valorRestante} /></dd></div>
+        )}
         <div><dt>{rotuloPago(e)}</dt><dd><Dinheiro valor={e.valorPago} /></dd></div>
         {!e.quitado && <div><dt>{rotuloFalta(e)}</dt><dd><Dinheiro valor={e.valorRestante} /></dd></div>}
         {e.valorPendente > 0 && <div><dt>{e.souCredor ? "Pra você confirmar" : "Esperando confirmar"}</dt><dd><Dinheiro valor={e.valorPendente} /></dd></div>}

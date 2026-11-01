@@ -48,6 +48,46 @@ public static class RegrasFinanceiras
     /// <summary><see cref="EntraNoResultado"/> pra lista já carregada em memória.</summary>
     public static readonly Func<Transacao, bool> EntraNoResultadoEmMemoria = EntraNoResultado.Compile();
 
+    // ── Juros de empréstimo no resultado (2026-11-01) ──────────────────────────
+    // O pagamento de empréstimo é um lançamento só (o valor inteiro no saldo), mas os juros/multa dentro dele são ganho
+    // de quem emprestou e gasto de quem pegou (contabilidade: o capital vai e volta, o custo do dinheiro é resultado).
+    // As somas de resultado (Visão geral, Relatórios, Transações, gastos por categoria, renda) usam o par abaixo: entram
+    // os lançamentos de sempre e os pagamentos de empréstimo com juros, cada um pelo ValorNoResultado. O resto do app
+    // (rateio, avisos, contagens) segue no EntraNoResultado, que deixa o empréstimo inteiro de fora.
+
+    /// <summary><see cref="EntraNoResultado"/> mais os pagamentos de empréstimo que têm juros (somar pelo <see cref="ValorNoResultado"/>).</summary>
+    public static readonly Expression<Func<Transacao, bool>> EntraNoResultadoComJuros =
+        Ou(EntraNoResultado, t => t.EhEmprestimo && t.ValorJuros > 0);
+
+    /// <summary>Quanto do lançamento é resultado: o valor inteiro, ou só os juros no pagamento de empréstimo.</summary>
+    public static readonly Expression<Func<Transacao, decimal>> ValorNoResultado =
+        t => t.EhEmprestimo ? (t.ValorJuros ?? 0m) : t.Valor;
+
+    /// <summary><see cref="EntraNoResultadoComJuros"/> pra lista já carregada em memória.</summary>
+    public static readonly Func<Transacao, bool> EntraNoResultadoComJurosEmMemoria = EntraNoResultadoComJuros.Compile();
+
+    /// <summary><see cref="ValorNoResultado"/> pra lista já carregada em memória.</summary>
+    public static readonly Func<Transacao, decimal> ValorNoResultadoEmMemoria = ValorNoResultado.Compile();
+
+    private static Expression<Func<Transacao, bool>> Ou(Expression<Func<Transacao, bool>> a, Expression<Func<Transacao, bool>> b)
+    {
+        var t = a.Parameters[0];
+        return Expression.Lambda<Func<Transacao, bool>>(Expression.OrElse(a.Body, new TrocaParametro(b.Parameters[0], t).Visit(b.Body)), t);
+    }
+
+    private sealed class TrocaParametro(ParameterExpression de, ParameterExpression para) : ExpressionVisitor
+    {
+        protected override Expression VisitParameter(ParameterExpression node) => node == de ? para : base.VisitParameter(node);
+    }
+
+    /// <summary>
+    /// Quanto de um pagamento é juros/multa, pela imputação do Código Civil (art. 354): havendo capital e juros, o
+    /// pagamento cobre primeiro os juros vencidos, depois o capital. Encargos = devido − capital; o que já foi pago
+    /// antes cobriu primeiro os encargos.
+    /// </summary>
+    public static decimal JurosDoPagamento(decimal capital, decimal devido, decimal encargosJaPagos, decimal valorAplicado) =>
+        Math.Clamp(Math.Min(valorAplicado, devido - capital - encargosJaPagos), 0m, valorAplicado);
+
     /// <summary>Entradas e saídas que formam o saldo real de uma conta.</summary>
     public readonly record struct MovimentoConta(decimal Receitas, decimal Despesas)
     {
@@ -582,10 +622,11 @@ public static class RegrasFinanceiras
         var minhas = await context.Transacoes.AsNoTracking()
             .Where(t => t.CriadoPor == usuarioId && t.Tipo == TipoTransacao.Despesa && t.Ativo
                         && t.StatusTransacao != StatusTransacao.Cancelado && t.Data >= inicio && t.Data < fim)
-            .Where(EntraNoResultado)
+            .Where(EntraNoResultadoComJuros)
             .Select(t => new
             {
-                t.Id, t.Data, t.CategoriaId, Efetivado = t.StatusTransacao == StatusTransacao.Executado, t.Valor,
+                t.Id, t.Data, t.CategoriaId, Efetivado = t.StatusTransacao == StatusTransacao.Executado,
+                Valor = t.EhEmprestimo ? (t.ValorJuros ?? 0m) : t.Valor, // ValorNoResultado: do empréstimo, só os juros
                 Dividida = t.FamiliaId != null && (t.StatusAprovacao == StatusAprovacaoDespesa.NaoRequerida
                                                    || t.StatusAprovacao == StatusAprovacaoDespesa.Aprovada),
                 TemPartes = t.Rateios.Any(),

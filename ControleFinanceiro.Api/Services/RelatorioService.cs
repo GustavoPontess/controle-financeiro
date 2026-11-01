@@ -1,4 +1,5 @@
 using ControleFinanceiro.Api.DTOs.Relatorios;
+using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -45,7 +46,7 @@ public class RelatorioService
             // Relatório de P&L: só movimento real executado. Exclui canceladas/previsões e
             // o que não é receita/despesa (RegrasFinanceiras.EntraNoResultado).
             .Where(t => t.Ativo && t.StatusTransacao == StatusTransacao.Executado)
-            .Where(RegrasFinanceiras.EntraNoResultado)
+            .Where(RegrasFinanceiras.EntraNoResultadoComJuros)
             .Include(t => t.Categoria)
             .Include(t => t.Conta)
             .Include(t => t.CartaoCredito)
@@ -61,6 +62,7 @@ public class RelatorioService
             query = query.Where(t => t.ContaId == contaId.Value || t.CartaoCreditoId == contaId.Value);
 
         var transacoes = await query.OrderBy(t => t.Data).ToListAsync();
+        SoOQueEhResultado(transacoes);
 
         var totalDespesas = transacoes.Where(t => t.Tipo == TipoTransacao.Despesa).Sum(t => t.Valor);
         var totalReceitas = transacoes.Where(t => t.Tipo == TipoTransacao.Receita).Sum(t => t.Valor);
@@ -161,6 +163,14 @@ public class RelatorioService
         return Encoding.UTF8.GetBytes(sb.ToString());
     }
 
+    // Pagamento de empréstimo entra só pelos juros (RegrasFinanceiras.ValorNoResultado): o relatório soma e lista o Valor,
+    // então a cópia carregada (AsNoTracking, nunca volta pro banco) passa a valer só a parte que é resultado.
+    private static void SoOQueEhResultado(List<Transacao> transacoes)
+    {
+        foreach (var t in transacoes)
+            t.Valor = RegrasFinanceiras.ValorNoResultadoEmMemoria(t);
+    }
+
     private static string SafeCsvText(string? value)
     {
         var normalized = (value ?? string.Empty)
@@ -188,10 +198,11 @@ public class RelatorioService
                         (t.Conta!.UsuarioIdProprietario == usuarioId ||
                          t.CartaoCredito!.CriadoPor == usuarioId))
             .Where(t => t.Ativo && t.StatusTransacao == StatusTransacao.Executado)
-            .Where(RegrasFinanceiras.EntraNoResultado)
+            .Where(RegrasFinanceiras.EntraNoResultadoComJuros)
             .Include(t => t.Categoria)
             .AsNoTracking()
             .ToListAsync();
+        SoOQueEhResultado(transacoes);
 
         var saldosFimDoMes = await RegrasFinanceiras.SaldosNoFimDeCadaMesAsync(_context, usuarioId, ano);
 

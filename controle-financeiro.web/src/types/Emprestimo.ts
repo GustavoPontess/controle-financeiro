@@ -120,6 +120,9 @@ export interface CriarEmprestimo {
   primeiroVencimento?: string
   /** Opcional. Parcelado: % mensal sobre o valor de cada parcela. À vista: % sobre o total. */
   taxaJuroMensal?: number
+  /** Opcional, parcelado, no lugar dos juros: o valor de cada parcela do contrato (banco). O app acha a taxa efetiva
+   *  e separa juros e amortização de cada parcela (Tabela Price). */
+  valorParcela?: number
   /** Opcional. % livre (sem teto/mínimo) sobre o valor (parcela ou total) quando atrasa. */
   percentualMultaAtraso?: number
 }

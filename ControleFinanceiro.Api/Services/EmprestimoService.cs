@@ -117,14 +117,6 @@ public class EmprestimoService(
         var query = VisivelPara(usuarioId);
         var ativos = query.Where(e => !e.Quitado);
 
-        var totalAReceber = await ativos
-            .Where(e => (e.CriadoPor == usuarioId && e.Tipo == TipoEmprestimo.Emprestei)
-                     || (e.CriadoPor != usuarioId && e.Tipo == TipoEmprestimo.PeguiEmprestado))
-            .SumAsync(e => (decimal?)(e.ValorTotal - e.ValorPago)) ?? 0m;
-        var totalAPagar = await ativos
-            .Where(e => (e.CriadoPor == usuarioId && e.Tipo == TipoEmprestimo.PeguiEmprestado)
-                     || (e.CriadoPor != usuarioId && e.Tipo == TipoEmprestimo.Emprestei))
-            .SumAsync(e => (decimal?)(e.ValorTotal - e.ValorPago)) ?? 0m;
         var qtdAtivos = await ativos.CountAsync();
         var qtdTotal = await query.CountAsync();
 
@@ -146,6 +138,9 @@ public class EmprestimoService(
             ? e.Parcelas.Where(p => p.Status == StatusParcelaEmprestimo.Pendente && p.DataVencimento.Date < hoje)
                 .Sum(RestanteDaParcela)
             : (e.DataVencimento.HasValue && e.DataVencimento.Value.Date < hoje ? RestanteAVista(e) : 0m));
+        // A receber / a pagar: o que falta com os juros (RestanteComJuros), não só o capital.
+        var totalAReceber = aReceberAtivos.Sum(RestanteComJuros);
+        var totalAPagar = aPagarAtivos.Sum(RestanteComJuros);
         var totalAReceberVencido = SomaVencido(aReceberAtivos);
         var totalAPagarVencido = SomaVencido(aPagarAtivos);
 
@@ -191,6 +186,13 @@ public class EmprestimoService(
                 throw new ArgumentException("Quantidade de parcelas deve ser entre 2 e 36.");
             if (!dto.PrimeiroVencimento.HasValue)
                 throw new ArgumentException("Informe o vencimento da primeira parcela.");
+            if (dto.ValorParcela.HasValue)
+            {
+                if (dto.TaxaJuroMensal.HasValue)
+                    throw new ArgumentException("Informe os juros ao mês ou o valor da parcela, não os dois.");
+                if (dto.ValorParcela.Value * dto.QuantidadeParcelas.Value < dto.ValorTotal)
+                    throw new ArgumentException("As parcelas somam menos do que o valor do empréstimo.");
+            }
         }
 
         // Banco é opcional; se informado tem que existir e estar ativo (catálogo global).
@@ -283,7 +285,13 @@ public class EmprestimoService(
             PercentualMultaAtraso = dto.PercentualMultaAtraso,
         };
 
-        if (dto.FormaPagamento == FormaPagamentoEmprestimo.Parcelado)
+        if (dto.FormaPagamento == FormaPagamentoEmprestimo.Parcelado && dto.ValorParcela.HasValue)
+        {
+            foreach (var parcela in GerarParcelasPrice(
+                emprestimo.Id, dto.ValorTotal, dto.ValorParcela.Value, dto.QuantidadeParcelas!.Value, dto.PrimeiroVencimento!.Value))
+                emprestimo.Parcelas.Add(parcela);
+        }
+        else if (dto.FormaPagamento == FormaPagamentoEmprestimo.Parcelado)
         {
             foreach (var parcela in GerarParcelas(
                 emprestimo.Id, dto.ValorTotal, dto.QuantidadeParcelas!.Value,
@@ -753,11 +761,12 @@ public class EmprestimoService(
                 var valorTotalDevido = p.ValorComMulta ?? p.ValorComJuros ?? p.Valor;
                 var valorDevido = valorTotalDevido - p.ValorPago;
                 var valorAplicado = Math.Min(restante, valorDevido);
+                var juros = JurosNaParcela(p, valorAplicado); // antes de somar no ValorPago da parcela
 
                 var sol = new EmprestimoPagamentoSolicitacao
                 {
                     Id = Guid.NewGuid(), EmprestimoId = emprestimo.Id, Valor = valorAplicado,
-                    SolicitadoPor = usuarioId, ParcelaId = p.Id,
+                    SolicitadoPor = usuarioId, ParcelaId = p.Id, ValorJuros = juros > 0 ? juros : null,
                 };
                 if (souCredor)
                 {
@@ -768,7 +777,10 @@ public class EmprestimoService(
                     p.ValorPago += valorAplicado;
                     if (p.ValorPago >= valorTotalDevido) p.Status = StatusParcelaEmprestimo.Paga;
                     p.SolicitacaoPagamentoId = sol.Id;
-                    emprestimo.ValorPago = Math.Min(emprestimo.ValorPago + valorAplicado, emprestimo.ValorTotal);
+                    // O pago do empréstimo é o CAPITAL devolvido (o saldo devedor é ValorTotal − ValorPago): os juros da
+                    // parcela não abatem o emprestado. Antes somava os juros e o empréstimo "quitava" com parcela pendente.
+                    emprestimo.ValorPago = Math.Min(emprestimo.ValorPago + valorAplicado - juros, emprestimo.ValorTotal);
+                    emprestimo.JurosPagos += juros;
                 }
                 else
                 {
@@ -790,9 +802,11 @@ public class EmprestimoService(
         }
         else
         {
+            var juros = JurosAVista(emprestimo, valor);
             var sol = new EmprestimoPagamentoSolicitacao
             {
                 Id = Guid.NewGuid(), EmprestimoId = emprestimo.Id, Valor = valor, SolicitadoPor = usuarioId,
+                ValorJuros = juros > 0 ? juros : null,
             };
             if (souCredor)
             {
@@ -800,7 +814,8 @@ public class EmprestimoService(
                 sol.StatusAprovacao = StatusAprovacaoPagamentoEmprestimo.Aprovada;
                 sol.AprovadoPorUsuarioId = usuarioId;
                 sol.AprovadoEm = DateTime.UtcNow;
-                emprestimo.ValorPago = Math.Min(emprestimo.ValorPago + valor, emprestimo.ValorTotal);
+                emprestimo.ValorPago = Math.Min(emprestimo.ValorPago + valor - juros, emprestimo.ValorTotal); // só o capital
+                emprestimo.JurosPagos += juros;
                 if (emprestimo.ValorPago >= emprestimo.ValorTotal) emprestimo.Quitado = true;
             }
             else
@@ -811,6 +826,11 @@ public class EmprestimoService(
             _context.EmprestimoPagamentoSolicitacoes.Add(sol);
             solicitacoesCriadas.Add(sol);
         }
+
+        // O lançamento é um só (valor inteiro no saldo); os juros das parcelas que ele pagou são ganho de quem recebe e
+        // gasto de quem paga (Transacao.ValorJuros).
+        var jurosDoLancamento = solicitacoesCriadas.Sum(s => s.ValorJuros ?? 0m);
+        transacao.ValorJuros = jurosDoLancamento > 0 ? jurosDoLancamento : null;
 
         foreach (var sol in solicitacoesCriadas)
         {
@@ -930,6 +950,15 @@ public class EmprestimoService(
 
         var emprestimo = solicitacao.Emprestimo;
 
+        // Juros deste pagamento, refeitos agora (a parcela pode ter recebido outro pagamento ou multa desde o pedido).
+        var parcela = solicitacao.ParcelaId.HasValue
+            ? await _context.EmprestimoParcelas.FirstOrDefaultAsync(p => p.Id == solicitacao.ParcelaId.Value)
+            : null;
+        var juros = solicitacao.ParcelaId.HasValue
+            ? (parcela != null ? JurosNaParcela(parcela, solicitacao.Valor) : 0m)
+            : JurosAVista(emprestimo, solicitacao.Valor);
+        solicitacao.ValorJuros = juros > 0 ? juros : null;
+
         // Aprovar sempre registra a entrada de verdade — vincular uma já lançada ou criar uma
         // nova, nunca pular (dinheiro recebido tem que aparecer na conta do credor também).
         if (dto.TransacaoExistenteId.HasValue)
@@ -946,7 +975,8 @@ public class EmprestimoService(
             if (jaVinculada)
                 throw new InvalidOperationException("Essa transação já está vinculada a outra solicitação de pagamento.");
 
-            existente.EhEmprestimo = true; // dinheiro de empréstimo: fora do resultado do mês
+            existente.EhEmprestimo = true; // dinheiro de empréstimo: fora do resultado do mês (menos os juros)
+            existente.ValorJuros = solicitacao.ValorJuros;
             solicitacao.TransacaoRecebimentoId = existente.Id;
         }
         else if (dto.ContaId.HasValue)
@@ -960,7 +990,8 @@ public class EmprestimoService(
                 Descricao = $"Recebimento empréstimo: {emprestimo.Descricao}",
                 Valor = solicitacao.Valor,
                 Tipo = TipoTransacao.Receita, // credor recebendo — entra na conta dele
-                EhEmprestimo = true, // vai e volta, como transferência: fora do resultado do mês
+                EhEmprestimo = true, // vai e volta, como transferência: fora do resultado do mês (menos os juros)
+                ValorJuros = solicitacao.ValorJuros,
                 ContaId = dto.ContaId,
                 CategoriaId = dto.CategoriaId,
                 Data = HorarioBrasil.Hoje(),
@@ -978,10 +1009,10 @@ public class EmprestimoService(
         solicitacao.AprovadoPorUsuarioId = usuarioId;
         solicitacao.AprovadoEm = DateTime.UtcNow;
 
+        await AtualizarJurosDoComprovanteAsync(solicitacao);
+
         if (solicitacao.ParcelaId.HasValue)
         {
-            var parcela = await _context.EmprestimoParcelas
-                .FirstOrDefaultAsync(p => p.Id == solicitacao.ParcelaId.Value);
             if (parcela != null)
             {
                 // Pode ser adiantamento parcial (valor da solicitação menor que o devido da
@@ -994,7 +1025,8 @@ public class EmprestimoService(
             }
         }
 
-        emprestimo.ValorPago = Math.Min(emprestimo.ValorPago + solicitacao.Valor, emprestimo.ValorTotal);
+        emprestimo.ValorPago = Math.Min(emprestimo.ValorPago + solicitacao.Valor - juros, emprestimo.ValorTotal); // só o capital
+        emprestimo.JurosPagos += juros;
         if (emprestimo.ValorPago >= emprestimo.ValorTotal) emprestimo.Quitado = true;
 
         _eventLog.Registrar(
@@ -1032,6 +1064,7 @@ public class EmprestimoService(
         solicitacao.AprovadoPorUsuarioId = usuarioId;
         solicitacao.AprovadoEm = DateTime.UtcNow;
         solicitacao.MotivoRejeicao = motivo;
+        await AtualizarJurosDoComprovanteAsync(solicitacao); // recusado não é pagamento: os juros saem
 
         _eventLog.Registrar(
             usuarioId: usuarioId,
@@ -1079,6 +1112,7 @@ public class EmprestimoService(
         solicitacao.StatusAprovacao = StatusAprovacaoPagamentoEmprestimo.Pendente;
         solicitacao.AprovadoPorUsuarioId = null;
         solicitacao.AprovadoEm = null;
+        await AtualizarJurosDoComprovanteAsync(solicitacao);
 
         await _context.SaveChangesAsync();
 
@@ -1700,8 +1734,10 @@ public class EmprestimoService(
         Emprestimo e, Guid usuarioId, IReadOnlyDictionary<Guid, string> nomes,
         IReadOnlyDictionary<Guid, (decimal Pendente, decimal Recusado)> agregados)
     {
-        var restante = e.ValorTotal - e.ValorPago;
-        var percentual = e.ValorTotal > 0 ? Math.Round(e.ValorPago / e.ValorTotal * 100, 1) : 0;
+        // "Já devolvi" = tudo o que foi pago (capital + juros); "falta" = o que ainda vai ser pago, com os juros.
+        var pago = e.ValorPago + e.JurosPagos;
+        var restante = RestanteComJuros(e);
+        var percentual = pago + restante > 0 ? Math.Round(pago / (pago + restante) * 100, 1) : 0;
         var vencido = !e.Quitado && e.DataVencimento.HasValue && e.DataVencimento.Value.Date < HorarioBrasil.HojeData();
 
         var souCriador = usuarioId == e.CriadoPor;
@@ -1728,7 +1764,7 @@ public class EmprestimoService(
             Descricao = e.Descricao,
             Pessoa = pessoa,
             ValorTotal = e.ValorTotal,
-            ValorPago = e.ValorPago,
+            ValorPago = pago,
             ValorRestante = restante,
             PercentualPago = percentual,
             ValorPendente = valorPendente,
@@ -1796,12 +1832,113 @@ public class EmprestimoService(
         return parcelas;
     }
 
+    // ── Juros de cada pagamento (2026-11-01) ──────────────────────────────────────────────────────────────────────
+    // Imputação do Código Civil (art. 354): o pagamento cobre primeiro os juros/multa, depois o capital. Encargos de
+    // uma parcela = devido − valor dela; o que a parcela já recebeu cobriu primeiro os encargos.
+
+    private static decimal JurosNaParcela(EmprestimoParcela p, decimal valorAplicado)
+    {
+        var devido = p.ValorComMulta ?? p.ValorComJuros ?? p.Valor;
+        return RegrasFinanceiras.JurosDoPagamento(p.Valor, devido, Math.Min(p.ValorPago, devido - p.Valor), valorAplicado);
+    }
+
+    private static decimal JurosAVista(Emprestimo e, decimal valor) =>
+        RegrasFinanceiras.JurosDoPagamento(e.ValorTotal, e.ValorComMulta ?? e.ValorComJuros ?? e.ValorTotal, e.JurosPagos, valor);
+
+    /// <summary>
+    /// O lançamento do devedor (comprovante) pode pagar várias parcelas: os juros dele são os das solicitações não
+    /// recusadas. A que está sendo avaliada entra pelo estado novo (ainda não gravado).
+    /// </summary>
+    private async Task AtualizarJurosDoComprovanteAsync(EmprestimoPagamentoSolicitacao avaliada)
+    {
+        if (avaliada.TransacaoComprovanteId is not { } id) return;
+        var comprovante = await _context.Transacoes.FirstOrDefaultAsync(t => t.Id == id);
+        if (comprovante is null) return;
+        var dasOutras = await _context.EmprestimoPagamentoSolicitacoes
+            .Where(s => s.TransacaoComprovanteId == id && s.Id != avaliada.Id && s.StatusAprovacao != StatusAprovacaoPagamentoEmprestimo.Rejeitada)
+            .SumAsync(s => s.ValorJuros ?? 0m);
+        var total = dasOutras + (avaliada.StatusAprovacao == StatusAprovacaoPagamentoEmprestimo.Rejeitada ? 0m : avaliada.ValorJuros ?? 0m);
+        comprovante.ValorJuros = total > 0 ? total : null;
+    }
+
+    // ── Empréstimo de banco: Tabela Price pela taxa efetiva (2026-11-01) ─────────────────────────────────────────────
+
+    /// <summary>
+    /// Taxa efetiva mensal (a TIR do empréstimo, a mesma conta do CET): a taxa que iguala o valor recebido ao valor
+    /// presente das parcelas, recebido = parcela × (1 − (1+i)^−n) / i. Como parte do recebido, já embute IOF e
+    /// tarifas. Newton-Raphson; parcelas que somam exatamente o recebido dão zero.
+    /// </summary>
+    public static decimal TaxaEfetivaMensal(decimal recebido, decimal parcela, int parcelas)
+    {
+        if (parcela * parcelas <= recebido) return 0m;
+        double pv = (double)recebido, pmt = (double)parcela, i = 0.01;
+        for (var passo = 0; passo < 200; passo++)
+        {
+            var desconto = Math.Pow(1 + i, -parcelas);
+            var f = pmt * (1 - desconto) / i - pv;
+            var df = pmt * (parcelas * desconto / (1 + i) * i - (1 - desconto)) / (i * i);
+            var proximo = i - f / df;
+            if (proximo <= 0) proximo = i / 2;
+            if (Math.Abs(proximo - i) < 1e-12) { i = proximo; break; }
+            i = proximo;
+        }
+        return (decimal)i;
+    }
+
+    /// <summary>
+    /// Parcelas pela Tabela Price (sistema francês, o dos empréstimos pessoais no Brasil): parcela fixa; em cada uma,
+    /// juros = saldo devedor × taxa efetiva e o resto amortiza. <c>Valor</c> = amortização (o capital) e
+    /// <c>ValorComJuros</c> = a parcela, então o pagamento separa os juros sozinho (<see cref="JurosNaParcela"/>). A
+    /// última fecha os centavos do saldo.
+    /// </summary>
+    private static List<EmprestimoParcela> GerarParcelasPrice(
+        Guid emprestimoId, decimal recebido, decimal valorParcela, int quantidade, DateTime primeiroVencimento)
+    {
+        var taxa = TaxaEfetivaMensal(recebido, valorParcela, quantidade);
+        var saldo = recebido;
+        var parcelas = new List<EmprestimoParcela>();
+        for (var i = 1; i <= quantidade; i++)
+        {
+            var juros = Math.Round(saldo * taxa, 2, MidpointRounding.ToEven);
+            var amortizacao = i == quantidade ? saldo : Math.Min(saldo, valorParcela - juros);
+            saldo -= amortizacao;
+            parcelas.Add(new EmprestimoParcela
+            {
+                Id = Guid.NewGuid(),
+                EmprestimoId = emprestimoId,
+                Numero = i,
+                QuantidadeTotal = quantidade,
+                DataVencimento = primeiroVencimento.AddMonths(i - 1).ToUniversalTime(),
+                Valor = amortizacao,
+                ValorComJuros = amortizacao + juros,
+                Status = StatusParcelaEmprestimo.Pendente,
+            });
+        }
+        return parcelas;
+    }
+
     /// <summary>O que falta de uma parcela (com multa, se já tiver o snapshot; senão com juros; senão o valor). Regra
     /// única: o vencido do topo e os próximos 30 dias (<see cref="ProximosEmprestimosService"/>) usam esta.</summary>
     public static decimal RestanteDaParcela(EmprestimoParcela p) => (p.ValorComMulta ?? p.ValorComJuros ?? p.Valor) - p.ValorPago;
 
-    /// <summary>O que falta de um empréstimo à vista (mesma regra da parcela).</summary>
-    public static decimal RestanteAVista(Emprestimo e) => (e.ValorComMulta ?? e.ValorComJuros ?? e.ValorTotal) - e.ValorPago;
+    /// <summary>O que falta de um empréstimo à vista: o devido (com juros/multa) menos o capital e os juros já pagos.</summary>
+    public static decimal RestanteAVista(Emprestimo e) =>
+        Math.Max(0m, (e.ValorComMulta ?? e.ValorComJuros ?? e.ValorTotal) - e.ValorPago - e.JurosPagos);
+
+    /// <summary>
+    /// Quanto falta de verdade, com os juros (o "Falta devolver/voltar" e o topo da tela): parcelado, o que falta das
+    /// parcelas pendentes; à vista, <see cref="RestanteAVista"/>. Antes era só o capital (ValorTotal − ValorPago), e um
+    /// empréstimo com juros mostrava menos do que a pessoa ainda ia pagar. Parcelado sem as parcelas carregadas cai no capital.
+    /// </summary>
+    public static decimal RestanteComJuros(Emprestimo e)
+    {
+        if (e.Quitado) return 0m;
+        if (e.FormaPagamento == FormaPagamentoEmprestimo.Parcelado)
+            return e.Parcelas.Count > 0
+                ? e.Parcelas.Where(p => p.Status == StatusParcelaEmprestimo.Pendente).Sum(RestanteDaParcela)
+                : e.ValorTotal - e.ValorPago;
+        return RestanteAVista(e);
+    }
 
     /// <summary>Snapshot único de multa na primeira leitura após o vencimento — não recalcula
     /// depois. Retorna true se alterou (pra saber se precisa SaveChanges).</summary>
@@ -1812,7 +1949,9 @@ public class EmprestimoService(
         if (p.ValorComMulta.HasValue) return false;
         if (!emprestimo.PercentualMultaAtraso.HasValue) return false;
 
-        p.ValorComMulta = Math.Round(p.Valor * (1 + emprestimo.PercentualMultaAtraso.Value / 100), 2);
+        // Multa sobre a PARCELA devida (com os juros dela), como diz a regra ("% sobre a parcela quando atrasa"). Antes era
+        // sobre o valor sem juros e substituía a parcela: atrasar podia sair mais barato que pagar em dia (achado 2026-11-01).
+        p.ValorComMulta = Math.Round((p.ValorComJuros ?? p.Valor) * (1 + emprestimo.PercentualMultaAtraso.Value / 100), 2);
         return true;
     }
 
@@ -1826,7 +1965,7 @@ public class EmprestimoService(
         if (!e.PercentualMultaAtraso.HasValue) return false;
         if (!e.DataVencimento.HasValue || e.DataVencimento.Value.Date >= HorarioBrasil.HojeData()) return false;
 
-        e.ValorComMulta = Math.Round(e.ValorTotal * (1 + e.PercentualMultaAtraso.Value / 100), 2);
+        e.ValorComMulta = Math.Round((e.ValorComJuros ?? e.ValorTotal) * (1 + e.PercentualMultaAtraso.Value / 100), 2); // sobre o devido, como a parcela
         return true;
     }
 

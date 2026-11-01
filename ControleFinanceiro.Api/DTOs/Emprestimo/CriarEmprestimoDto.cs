@@ -54,6 +54,13 @@ public class CriarEmprestimoDto
     /// <summary>Opcional, só usado se Parcelado. % mensal sobre o valor de cada parcela.</summary>
     public decimal? TaxaJuroMensal { get; set; }
 
+    /// <summary>
+    /// Opcional, só usado se Parcelado, no lugar de <see cref="TaxaJuroMensal"/> (2026-11-01): o valor de cada parcela
+    /// do contrato (empréstimo de banco). Com o valor recebido (<see cref="ValorTotal"/>) e o número de parcelas, o app
+    /// acha a taxa efetiva e separa juros e amortização de cada parcela pela Tabela Price.
+    /// </summary>
+    public decimal? ValorParcela { get; set; }
+
     /// <summary>Opcional, só usado se Parcelado. % livre (sem teto/mínimo) sobre a parcela quando atrasa.</summary>
     public decimal? PercentualMultaAtraso { get; set; }
 }

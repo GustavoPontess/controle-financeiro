@@ -556,6 +556,9 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<int>("FormaPagamento")
                         .HasColumnType("integer");
 
+                    b.Property<decimal>("JurosPagos")
+                        .HasColumnType("numeric");
+
                     b.Property<string>("Observacao")
                         .HasColumnType("text");
 
@@ -747,6 +750,9 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<decimal>("Valor")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal?>("ValorJuros")
                         .HasColumnType("numeric");
 
                     b.HasKey("Id");
@@ -2171,6 +2177,9 @@ namespace ControleFinanceiro.Api.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<decimal>("Valor")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal?>("ValorJuros")
                         .HasColumnType("numeric");
 
                     b.HasKey("Id");

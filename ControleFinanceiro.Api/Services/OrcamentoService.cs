@@ -202,7 +202,9 @@ public class OrcamentoService
             .Select(g => new
             {
                 g.Key.CategoriaId, g.Key.SubcategoriaId, g.Key.Efetivado,
-                Valor = g.Sum(t => t.Tipo == TipoTransacao.Receita && lado == Finalidade.Investimento ? -t.Valor : t.Valor),
+                // Renda que volta de empréstimo conta só os juros (RegrasFinanceiras.ValorNoResultado).
+                Valor = g.Sum(t => t.Tipo == TipoTransacao.Receita && lado == Finalidade.Investimento ? -t.Valor
+                    : t.EhEmprestimo ? (t.ValorJuros ?? 0m) : t.Valor),
             })
             .ToListAsync();
 
