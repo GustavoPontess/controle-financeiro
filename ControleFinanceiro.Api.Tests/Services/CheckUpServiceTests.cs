@@ -83,7 +83,9 @@ public class CheckUpServiceTests
         // Saldo hoje: 3 × 5.000 − (700 + 700 + 1.000) = 12.600 → 18 meses do gasto normal de 700.
         Assert.Equal(12600m, r.DinheiroGuardado);
         Assert.Equal(18m, r.MesesDeReserva);
-        Assert.Equal(new[] { 4300m, 4300m, 4000m }, r.MesAMes.TakeLast(3).Select(m => m.Sobrou));
+        // Pelo mês, não "os 3 últimos": o gráfico termina no mês de HOJE e, a partir de novembro, outubro já não era o
+        // último (quebrou em 2026-11-01).
+        Assert.Equal(new[] { 4300m, 4300m, 4000m }, r.MesAMes.Where(m => m.Ano == 2026 && m.Mes is >= 8 and <= 10).Select(m => m.Sobrou));
         Assert.Equal("positivo", r.Resposta.Tom);
         Assert.Contains("sobraram R$ 4.000,00 (80% do que entrou)", r.Resposta.Texto);
         Assert.Contains("Mercado veio 80% acima do normal.", r.Resposta.Texto);
