@@ -13,6 +13,7 @@ import type {
   CancelarParcelaResultado,
 } from '../types/ParcelaTransacao'
 import type { PagedResult } from '../types/Paged'
+import { mesAtual } from '../utils/dateTime'
 
 export const ParcelamentoService = {
   // ── Parcelamentos ──
@@ -111,8 +112,8 @@ export const ParcelamentoService = {
   },
 
   obterMesProximo(): string {
-    const agora = new Date()
-    agora.setMonth(agora.getMonth() + 1)
-    return this.formatarMesAno(agora)
+    // Dia 1 do mês seguinte: somar 1 no mês de "hoje" pulava fevereiro em 31/01 (31/02 vira 03/03).
+    const { ano, mes } = mesAtual()
+    return this.formatarMesAno(new Date(ano, mes, 1))
   },
 }

@@ -82,6 +82,27 @@ reabrir essa pesquisa só se o item de roadmap "Conexão com Open Finance" sair 
   registro de operações simplificados (Art. 9º/13º).
 - **Direitos do titular:** cumprimento manual (e-mail) é suficiente nesta fase — endpoint de
   autoatendimento (exportar/apagar) fica pro lançamento público.
+- **Transferência internacional (registro, 2026-10-31; decisão do Gustavo):** o servidor é uma VPS da Hostinger nos
+  **EUA** (São Paulo sem vaga na contratação, `docs/features/hospedagem-beta/decisao.md`). Guardar os dados num
+  operador no exterior é transferência internacional (Resolução CD/ANPD nº 19/2024, Anexo I, arts. 3º e 5º).
+  - **Mecanismo escolhido:** LGPD **art. 33, IX** (necessária pra executar o contrato, art. 7º, V), admitido pelo
+    art. 9º, II, "c" do regulamento, com finalidade informada, mínimo necessário e hipótese legal do art. 7º.
+    Consentimento (art. 33, VIII) descartado: exigiria caixa específica e em destaque só pra transferência, e quem
+    recusasse ou revogasse ficaria sem o app. O "Li e aceito a Política de Privacidade" do Pedir acesso é aceite da
+    política (que agora explica a transferência), não esse consentimento específico.
+  - **Por que não as cláusulas-padrão da ANPD (art. 16, texto integral, prazo de adoção acabou em ago/2025):**
+    conferido em 2026-10-31 que o DPA da Hostinger (`hostinger.com/legal/dpa`) cita a LGPD mas só traz as EU SCCs, e
+    o DPA da Cloudflare (`cloudflare.com/cloudflare-customer-dpa`) não menciona o Brasil; a ANPD não reconheceu as EU
+    SCCs como equivalentes. Reavaliar se algum deles passar a oferecer as cláusulas da ANPD.
+  - **Operadores e países:** Hostinger (servidor e banco, EUA), Cloudflare (proxy, rede global), Resend (e-mail,
+    região São Paulo, sem transferência). Sentry desligado em produção.
+  - **Transparência (art. 17, §§ 2º e 3º, usado como modelo):** seção em destaque "Onde seus dados ficam
+    (transferência internacional)" na `/privacidade` (`#onde-ficam`), com finalidade, destino, duração, base legal,
+    operadores, segurança, direitos (inclusive reclamar à ANPD) e controlador com contato.
+  - **Controlador:** Gustavo Pontes, pessoa física, enquanto não há CNPJ (`Legal.tsx`, `CONTROLADOR`/`CONTATO`).
+  - **Saída estrutural:** trazer o servidor pra São Paulo antes do lançamento público, se abrir vaga (elimina a
+    transferência principal; reinstalar apaga tudo; trabalho do chat do servidor).
+  - Fontes: Resolução CD/ANPD nº 19/2024 (gov.br/anpd, atos normativos) e LGPD arts. 7º, 9º e 33.
 - **Solicitações do beta (selo Beta, 2026-10-30):** texto, tela e até 5 anexos (print ou bloco apontado).
   Base: execução do pedido do titular (Art. 7º, V); valores à mostra só com **consentimento por envio**
   (Art. 7º, I; escolha "Mostrar meus valores nos anexos", desligada por padrão, gravada em

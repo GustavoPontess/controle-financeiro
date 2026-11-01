@@ -1,0 +1,3 @@
+/* Dentro do Dialogo (a caixa não tem respiro próprio; o título já tem 24px dos lados). */
+.texto { margin: 0; padding: 8px 24px 0; font-size: var(--v2-fs-md); line-height: 1.5; color: var(--v2-texto-2); text-align: center; }
+.acoes { display: flex; justify-content: flex-end; gap: 8px; padding: 20px 24px 20px; }

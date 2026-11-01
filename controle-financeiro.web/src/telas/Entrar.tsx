@@ -10,7 +10,7 @@ import { BarraDev, useEstadoDev } from "../dev/BarraDev"
 import { CONTAS_EXEMPLO, ESTADOS_ACESSO } from "../dev/estadosAcesso"
 import rosterService, { type ContaLembrada } from "../services/rosterService"
 import mfaService from "../services/mfaService"
-import { api, codigoDoErro, mensagemDeErro } from "../api/cliente"
+import { api, codigoDoErro, mensagemDeErro, sessaoCaiuPorInatividade } from "../api/cliente"
 import { useAuth } from "../auth/useAuth"
 import VerificacaoHumana, { useVerificacaoHumana } from "../componentes/VerificacaoHumana"
 
@@ -26,8 +26,10 @@ const emailValido = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
 export default function Entrar() {
   const { entrar, verificarMfa, reativar, adicionarConta, autenticado, carregando } = useAuth()
   const navigate = useNavigate()
-  const { state } = useLocation()
+  const { state, search } = useLocation()
   const contaExcluida = !!(state as { contaExcluida?: boolean } | null)?.contaExcluida
+  // Saiu por ficar parado: pela tela (SairPorInatividade manda ?motivo=inatividade) ou pelo servidor (SESSAO_INATIVA).
+  const saiuPorInatividade = new URLSearchParams(search).get("motivo") === "inatividade" || sessaoCaiuPorInatividade()
 
   const [email, setEmail] = useState("")
   const [senha, setSenha] = useState("")
@@ -204,7 +206,8 @@ export default function Entrar() {
     exclusao: () => { setMarcada(null); setReativarErro(null); setSenha("") },
     esqueci: () => { setEsqueci(false); setEsqueciEnviado(false); limparErros() },
   }
-  const avisoExcluida = contaExcluida && <p className="aviso-a" role="status">Sua conta foi marcada pra exclusão. Pra reativar, é só entrar de novo em até 30 dias.</p>
+  const avisoExcluida = (contaExcluida && <p className="aviso-a" role="status">Sua conta foi marcada pra exclusão. Pra reativar, é só entrar de novo em até 30 dias.</p>)
+    || (saiuPorInatividade && !adicionar && <p className="aviso-a" role="status">Você saiu porque ficou um tempo sem usar o app. Entre de novo.</p>)
 
   return (
     <MolduraAcesso titulo="Entrar · Pontes" foto="1740679954227-a0cd19c042a6-1400.webp" frase="O dinheiro da casa," fraseSuave="sem briga."

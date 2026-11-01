@@ -47,6 +47,7 @@ Peça que aparece em mais de uma tela vira componente aqui. A tela escolhe **var
 - Todo campo dentro de `Campo` (nunca `<label>` solto com `<input>` estilizado na tela).
 - Valida ao enviar, mostra erro **no campo** (vermelho, embaixo), limpa o erro ao editar, não chama o servidor se estiver inválido. Erro do servidor vai num aviso no topo do formulário. O erro do campo **não ocupa altura** (desenha no respiro de 18px entre campos — aparecer/sumir não mexe na tela), então é **uma linha curta** (corta com reticências; texto inteiro no title).
 - Limite de caracteres igual ao do back (ex.: descrição 255).
+- **O que é obrigatório pra criar é obrigatório pra editar, e vice-versa** (Gustavo, 2026-10-31). Criar e editar são o MESMO formulário com a MESMA validação; no servidor, a MESMA conferência (um método só, como `TransferenciaService.ConferirAsync`) e, de preferência, o mesmo corpo de requisição. Campo que não pode valer pros dois (ex.: dado antigo sem ele) vira opcional pros dois, nunca "obrigatório só ao criar". Ex.: a hora do lançamento é opcional em criar e editar (ao criar já vem a de agora). Teste do formulário prova as duas pontas.
 - Hover de linha de lista usa `--v2-hover-linha` (cor do fundo da página), nunca `--v2-superficie-2`: essa é a cor da bolinha, da etiqueta e do trilho que ficam DENTRO da linha e sumiam ao passar o mouse (2026-10-15).
 - Busca com espera de digitação: `utils/useAtrasado.ts` (Transações, lançamentos da fatura) — nunca bater no servidor a cada tecla.
 - **Ordem de Transações** (2026-10-19): sem período escolhido, a lista vai até HOJE com o mais recente em cima (as previsões das contas fixas, geradas meses pra frente, empurravam hoje pro fim). Filtro de status "Previsto" mostra os próximos do mais perto pro mais longe (`data_asc`); período escolhido vale como pedido.
@@ -78,6 +79,15 @@ Peça que aparece em mais de uma tela vira componente aqui. A tela escolhe **var
 - Página de formulário/detalhe **não** tem `max-width`: o conteúdo termina na mesma linha dos botões do topo (fresta à direita parece erro de alinhamento).
 - Formulário de dinheiro = layout lateral com `PreviaLancamento` à direita. Criar e editar usam **o mesmo** componente (`telas/FormularioTransacao.tsx`, com ou sem `transacao`; `telas/FormularioContaFixa.tsx`, com ou sem `recorrente`) — nunca dois formulários parecidos que divergem.
 - Filtro de período: o back trata `to` como exclusivo (`Data < to`) — mande `diaSeguinte(ate)` pra o "até" incluir o dia.
+
+## Data e hora (regra de hora, 2026-11-01)
+
+- **O relógio mora em `utils/dateTime.ts`:** `agora()` (o instante), `mesAtual()` ({ ano, mes }), `dataLocalISO()` ("YYYY-MM-DD" de hoje). Tudo no fuso de quem usa. Tela, componente e domínio não chamam `new Date()` nem `Date.now()` direto; `new Date(algo)` pra ler uma data pode. Exceção: `auth/SairPorInatividade.tsx`, que mede tempo parado.
+- **Nunca o dia de `toISOString()`:** é o dia em UTC, e das 21h à meia-noite de Brasília já é amanhã (Cadastro e Perfil usavam isso como "hoje" no limite do nascimento).
+- **Data sem hora se lê pelo que está escrito:** `new Date("2000-10-20")` é meia-noite UTC, que no Brasil ainda é dia 19. Separe ano, mês e dia (`split("-")`), como `idade` e `somaDias`.
+- **Mês seguinte = dia 1:** `new Date(ano, mes, 1)`, nunca `setMonth(+1)` em cima de hoje (31/01 + 1 mês vira 03/03).
+- **Testes:** todo teste roda no fuso de Brasília com o dia congelado em 20/10/2026, meio-dia (`test/setup.ts`, também na carga dos arquivos). Teste que precisa de outro dia chama `vi.setSystemTime`. Dado de teste com data usa data literal, nunca "hoje" calculado.
+- Trava: `test/relogioUnico.test.ts` lê o código e falha se o relógio voltar a ser lido fora daqui.
 
 ## Painel de dev — regra fixa (Gustavo, 2026-10-26)
 

@@ -28,6 +28,7 @@ import { NOME_BANDEIRA, diaMes, estadoDaFatura, indiceMes, indiceMesDeHoje, mesC
 import { marcarCartaoDaCasa } from "../services/familiaService"
 import DaCasa from "./DaCasa"
 import styles from "./Cartao.module.css"
+import { agora } from "../utils/dateTime"
 
 export default function Cartao() {
   const { id = "" } = useParams<{ id: string }>()
@@ -38,7 +39,7 @@ export default function Cartao() {
   const [excluindo, setExcluindo] = useState(false)
   const [ocupado, setOcupado] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
-  const hoje = useMemo(() => new Date(), [])
+  const hoje = useMemo(() => agora(), [])
 
   useEffect(() => {
     let vivo = true

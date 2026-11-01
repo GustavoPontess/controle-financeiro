@@ -11,6 +11,18 @@ export const createTransferencia = async (dto: CriarTransferencia, idempotencyKe
   return res.data
 }
 
+/** Edita a transferência inteira: o mesmo corpo de criar (regra do formulário); as duas pernas mudam juntas. */
+export const editarTransferencia = async (id: string, dto: CriarTransferencia): Promise<Transferencia> => {
+  const res = await api.put(`/transferencias/${id}`, dto)
+  return res.data
+}
+
+/** A transferência de que esta transação é uma perna (pra abrir a edição pela tela da transação). */
+export const getTransferenciaDaTransacao = async (transacaoId: string): Promise<Transferencia> => {
+  const res = await api.get(`/transferencias/da-transacao/${transacaoId}`)
+  return res.data
+}
+
 export const deleteTransferencia = async (id: string): Promise<void> => {
   await api.delete(`/transferencias/${id}`)
 }

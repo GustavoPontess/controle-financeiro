@@ -1,10 +1,32 @@
 // Setup dos testes do v2 (vitest + testing-library, jsdom).
 import "@testing-library/jest-dom/vitest"
-import { afterEach } from "vitest"
-import { cleanup } from "@testing-library/react"
+import { afterEach, beforeEach, vi } from "vitest"
+import { cleanup, configure } from "@testing-library/react"
+
+// Espera do findBy/waitFor: 5 s em vez de 1 s (2026-11-01). Com o PC dividido (dois runners do CI na mesma máquina)
+// a tela às vezes levava mais de 1 s pra aparecer e o teste falhava sem nada errado. Teste que passa não fica mais lento.
+configure({ asyncUtilTimeout: 5000 })
+
+// Relógio dos testes (regra de hora, 2026-11-01): todo teste roda no fuso de Brasília e com o dia congelado no dia dos
+// dados de exemplo. Antes o resultado dependia da máquina e do dia: o CI (UTC) virou o mês às 21h de Brasília e quebrou
+// as telas que abrem no mês de hoje. Teste que precisa de outro dia chama vi.setSystemTime; teste com relógio falso
+// inteiro (vi.useFakeTimers()) continua podendo. O Node aplica a troca de TZ na hora (também está no vite.config).
+process.env.TZ = "America/Sao_Paulo"
+export const AGORA_DOS_TESTES = new Date("2026-10-20T12:00:00-03:00")
+const congelar = () => {
+  vi.useFakeTimers({ toFake: ["Date"] })
+  vi.setSystemTime(AGORA_DOS_TESTES)
+}
+// Já aqui também: o que um arquivo calcula ao ser carregado (fora de função, ex.: o mês inicial em estado/espaco.ts)
+// vê o mesmo dia que os testes.
+congelar()
+beforeEach(congelar)
 
 // Sem `globals`, a testing-library não se registra sozinha pra limpar a tela entre os testes.
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  vi.useRealTimers()
+})
 
 // jsdom não implementa scrollIntoView (Selecao, faixa de meses do cartão).
 Element.prototype.scrollIntoView = function scrollIntoView() {}

@@ -2,6 +2,7 @@
 // título + mensagem, quando. Cada linha é um botão (quem usa decide: marcar lida e abrir o assunto).
 import type { Notificacao } from "../types/Notificacao"
 import styles from "./ListaNotificacoes.module.css"
+import { agora } from "../utils/dateTime"
 
 /** "agora", "12 min", "3 h", "ontem", "08/10" — curto, cabe na direita da linha. */
 function quando(iso: string, agora: Date): string {
@@ -20,7 +21,7 @@ export default function ListaNotificacoes({ itens, onAbrir, compacta }: {
   /** No painel do sino: mensagem numa linha só (cortada), respiro menor. */
   compacta?: boolean
 }) {
-  const agora = new Date()
+  const instante = agora()
   return (
     <ul className={styles.lista} data-compacta={compacta || undefined}>
       {itens.map((n) => (
@@ -31,7 +32,7 @@ export default function ListaNotificacoes({ itens, onAbrir, compacta }: {
               <span className={styles.titulo}>{n.titulo}</span>
               <span className={styles.mensagem}>{n.mensagem}</span>
             </span>
-            <span className={styles.quando}>{quando(n.criadoEm, agora)}</span>
+            <span className={styles.quando}>{quando(n.criadoEm, instante)}</span>
           </button>
         </li>
       ))}

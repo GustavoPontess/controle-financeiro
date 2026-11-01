@@ -13,8 +13,39 @@ public static class HorarioBrasil
     /// <summary>Fuso de Brasília.</summary>
     public static readonly TimeSpan Fuso = TimeSpan.FromHours(-3);
 
+    // Relógio de onde sai "agora" (regra de hora, 2026-11-01): em produção, o do sistema; teste fixa com
+    // FixarParaTeste() pra não depender do dia em que roda (a virada do dia/mês em UTC, às 21h de Brasília, quebrava
+    // teste). AsyncLocal: cada teste, e o que ele chama mesmo depois de await, vê o próprio relógio, sem vazar pros
+    // testes que rodam em paralelo.
+    private static readonly AsyncLocal<TimeProvider?> RelogioDoTeste = new();
+
+    /// <summary>O relógio do app (o do sistema, ou o fixado pelo teste).</summary>
+    public static TimeProvider Relogio => RelogioDoTeste.Value ?? TimeProvider.System;
+
+    /// <summary>
+    /// Só pra teste: "agora" vira este instante UTC até o Dispose (<c>using var _ = HorarioBrasil.FixarParaTeste(...)</c>).
+    /// Muda o que <see cref="Agora"/>, <see cref="Hoje"/> e <see cref="HojeData"/> respondem; carimbos (CriadoEm) seguem
+    /// o relógio de verdade.
+    /// </summary>
+    public static IDisposable FixarParaTeste(DateTime agoraUtc)
+    {
+        var anterior = RelogioDoTeste.Value;
+        RelogioDoTeste.Value = new RelogioFixo(DateTime.SpecifyKind(agoraUtc, DateTimeKind.Utc));
+        return new Restaurar(() => RelogioDoTeste.Value = anterior);
+    }
+
+    private sealed class RelogioFixo(DateTime agoraUtc) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => new(agoraUtc, TimeSpan.Zero);
+    }
+
+    private sealed class Restaurar(Action acao) : IDisposable
+    {
+        public void Dispose() => acao();
+    }
+
     /// <summary>A hora de parede em Brasília agora (Kind Unspecified, como as datas do app).</summary>
-    public static DateTime Agora() => DeUtc(DateTime.UtcNow);
+    public static DateTime Agora() => DeUtc(Relogio.GetUtcNow().UtcDateTime);
 
     /// <summary>Hoje em Brasília.</summary>
     public static DateOnly Hoje() => DateOnly.FromDateTime(Agora());

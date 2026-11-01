@@ -5,6 +5,7 @@
 // fechamento de M-1 até o de M (dia limitado ao último do mês); sem dia de fechamento, mês calendário.
 // Datas do servidor chegam como meia-noite UTC — tudo aqui lê/forma em UTC pra não escorregar de mês.
 import type { Fatura } from "../types/Fatura"
+import { agora } from "../utils/dateTime"
 
 /** Fatura real ou um mês sem lançamento (vazia: R$ 0, só pra navegação). */
 export type Ciclo = Fatura & { vazia?: boolean }
@@ -87,7 +88,7 @@ export function montarCiclos(p: { reais: Fatura[]; hoje: Date; cartaoId: string;
 const MESES_CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
 
 /** "out" / "out/25" (ano só quando não é o atual) — rótulo da faixa de meses. */
-export function mesCurto(dataFechamento: string, anoAtual = new Date().getFullYear()): string {
+export function mesCurto(dataFechamento: string, anoAtual = agora().getFullYear()): string {
   const ano = Number(dataFechamento.slice(0, 4))
   const m = MESES_CURTOS[Number(dataFechamento.slice(5, 7)) - 1]
   return ano === anoAtual ? m : `${m}/${String(ano).slice(2)}`
@@ -103,7 +104,7 @@ export function rotuloMesFatura(dataFechamento: string): string {
 export const diaMes = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "UTC" })
 
 /** Dias até a data (UTC), a partir do dia local de hoje. Negativo = já passou. */
-export function diasAte(iso: string, hoje = new Date()): number {
+export function diasAte(iso: string, hoje = agora()): number {
   const alvo = Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)))
   const base = Date.UTC(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())
   return Math.round((alvo - base) / 86_400_000)
@@ -112,7 +113,7 @@ export function diasAte(iso: string, hoje = new Date()): number {
 export type EstadoFatura = { rotulo: string; tom?: "positivo" | "negativo" | "alerta" }
 
 /** A etiqueta da fatura: o que a pessoa precisa saber dela num relance. */
-export function estadoDaFatura(f: Ciclo, hoje = new Date()): EstadoFatura {
+export function estadoDaFatura(f: Ciclo, hoje = agora()): EstadoFatura {
   if (f.vazia) return { rotulo: "Sem lançamentos" }
   if (f.valorTotal > 0 && f.valorRestante <= 0) return { rotulo: "Paga", tom: "positivo" }
   if (f.estaAtrasada || (f.vencida && f.valorRestante > 0)) return { rotulo: "Atrasada", tom: "negativo" }

@@ -16,6 +16,7 @@ import Etiqueta from "../componentes/Etiqueta"
 import { AcoesFicha, DadosFicha, GrupoFicha, InicialFicha, ItemFicha, ListaFicha } from "../componentes/ListaFicha"
 import { fraseSaldo, nomeDoMes, primeiroNome, rotuloModoRateio } from "../dominio/familia"
 import styles from "./Familias.module.css"
+import { mesAtual } from "../utils/dateTime"
 
 type Resumo = { detalhe: FamiliaDetalhe; balanco: BalancoFamilia | null }
 
@@ -101,8 +102,7 @@ function Convite({ c, aoResponder }: { c: ConviteFamilia; aoResponder: () => voi
 function Linha({ f, meuId, aberta, aoAbrir }: { f: Familia; meuId: string; aberta: boolean; aoAbrir: () => void }) {
   const navigate = useNavigate()
   const [resumo, setResumo] = useState<Resumo | null>(null)
-  const hoje = new Date()
-  const mes = hoje.getMonth() + 1, ano = hoje.getFullYear()
+  const { mes, ano } = mesAtual()
 
   useEffect(() => {
     if (!aberta || resumo) return

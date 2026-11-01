@@ -56,7 +56,7 @@ public class TransferenciaServiceTests
         var volta = await service.CriarAsync(new CriarTransferenciaDto
         {
             ContaOrigemId = destino.Id, ContaDestinoId = origem.Id, Valor = 100m,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)), Descricao = "Resgate"
+            Data = HorarioBrasil.Hoje().AddDays(-1), Descricao = "Resgate"
         }, usuarioId);
 
         // Pela descrição: total já vem filtrado (paginação correta).
@@ -173,7 +173,7 @@ public class TransferenciaServiceTests
     public async Task Criar_ComHora_GravaODiaEAHoraNasDuasPernas_ENaTransferencia()
     {
         var (ctx, usuarioId, origem, destino) = Seed();
-        var ontem = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1));
+        var ontem = HorarioBrasil.Hoje().AddDays(-1);
 
         var dto = await new TransferenciaService(ctx).CriarAsync(new CriarTransferenciaDto
         {
@@ -218,10 +218,134 @@ public class TransferenciaServiceTests
         await Assert.ThrowsAsync<ArgumentException>(() => new TransferenciaService(ctx).CriarAsync(new CriarTransferenciaDto
         {
             ContaOrigemId = origem.Id, ContaDestinoId = destino.Id, Valor = 500m,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2)), Descricao = "Reserva"
+            Data = HorarioBrasil.Hoje().AddDays(2), Descricao = "Reserva"
         }, usuarioId));
 
         Assert.Empty(await ctx.Transacoes.ToListAsync());
         Assert.Empty(await ctx.Transferencias.ToListAsync());
+    }
+
+    // ── Editar (regra do formulário: mesma conferência de criar, as duas pernas juntas) ─────────────
+
+    private static async Task<(AppDbContext ctx, Guid usuarioId, Conta origem, Conta destino, TransferenciaDto tf)> SeedComTransferencia()
+    {
+        var (ctx, usuarioId, origem, destino) = Seed();
+        var tf = await new TransferenciaService(ctx).CriarAsync(new CriarTransferenciaDto
+        {
+            ContaOrigemId = origem.Id, ContaDestinoId = destino.Id, Valor = 100m, Data = HorarioBrasil.Hoje(), Descricao = "Reserva",
+        }, usuarioId);
+        return (ctx, usuarioId, origem, destino, tf);
+    }
+
+    [Fact]
+    public async Task Editar_MudaContasValorDataHoraEDescricao_NasDuasPernasENaTransferencia()
+    {
+        var (ctx, usuarioId, origem, destino, tf) = await SeedComTransferencia();
+        var terceira = new Conta { Id = Guid.NewGuid(), Nome = "Terceira", UsuarioIdProprietario = usuarioId, Tipo = TipoConta.ContaCorrente };
+        ctx.Contas.Add(terceira);
+        ctx.SaveChanges();
+        var anteontem = HorarioBrasil.Hoje().AddDays(-2);
+
+        var editada = await new TransferenciaService(ctx).EditarAsync(tf.Id, new CriarTransferenciaDto
+        {
+            ContaOrigemId = destino.Id, ContaDestinoId = terceira.Id, Valor = 250m, Data = anteontem, Hora = new TimeOnly(9, 30), Descricao = "Ajuste",
+        }, usuarioId);
+
+        var t = await ctx.Transferencias.SingleAsync();
+        var saida = await ctx.Transacoes.SingleAsync(x => x.Id == t.TransacaoOrigemId);
+        var entrada = await ctx.Transacoes.SingleAsync(x => x.Id == t.TransacaoDestinoId);
+        Assert.Equal((destino.Id, TipoTransacao.Despesa), (saida.ContaId!.Value, saida.Tipo));
+        Assert.Equal((terceira.Id, TipoTransacao.Receita), (entrada.ContaId!.Value, entrada.Tipo));
+        Assert.All(new[] { saida, entrada }, p =>
+        {
+            Assert.Equal(250m, p.Valor);
+            Assert.Equal(anteontem, p.Data);
+            Assert.Equal(new TimeOnly(9, 30), p.Hora);
+            Assert.Equal("Ajuste", p.Descricao);
+            Assert.True(p.EhTransferencia);
+        });
+        Assert.Equal((destino.Id, terceira.Id, 250m), (t.ContaOrigemId, t.ContaDestinoId, t.Valor));
+        Assert.Equal(anteontem.ToDateTime(new TimeOnly(9, 30)), t.Data);
+        Assert.Equal("Terceira", editada.ContaDestinoNome);
+    }
+
+    [Fact]
+    public async Task Editar_DescricaoVazia_ViraOPadraoComAsContasNovas_ESemHoraFicaSemHora()
+    {
+        var (ctx, usuarioId, origem, destino, tf) = await SeedComTransferencia();
+
+        await new TransferenciaService(ctx).EditarAsync(tf.Id, new CriarTransferenciaDto
+        {
+            ContaOrigemId = destino.Id, ContaDestinoId = origem.Id, Valor = 100m, Data = HorarioBrasil.Hoje(), Hora = null, Descricao = " ",
+        }, usuarioId);
+
+        Assert.All(await ctx.Transacoes.ToListAsync(), p =>
+        {
+            Assert.Equal("Transferência: Destino → Origem", p.Descricao);
+            Assert.Null(p.Hora);
+        });
+    }
+
+    [Fact]
+    public async Task Editar_ComAsMesmasRegrasDeCriar_RecusaSemMexerEmNada()
+    {
+        var (ctx, usuarioId, origem, destino, tf) = await SeedComTransferencia();
+        var deOutro = new Conta { Id = Guid.NewGuid(), Nome = "De outro", UsuarioIdProprietario = Guid.NewGuid(), Tipo = TipoConta.ContaCorrente };
+        var encerrada = new Conta { Id = Guid.NewGuid(), Nome = "Encerrada", UsuarioIdProprietario = usuarioId, Tipo = TipoConta.ContaCorrente, EncerradaEm = DateTime.UtcNow };
+        ctx.Contas.AddRange(deOutro, encerrada);
+        ctx.SaveChanges();
+        var service = new TransferenciaService(ctx);
+        CriarTransferenciaDto Com(Guid de, Guid para, decimal valor = 100m, int dias = 0) =>
+            new() { ContaOrigemId = de, ContaDestinoId = para, Valor = valor, Data = HorarioBrasil.Hoje().AddDays(dias), Descricao = "X" };
+
+        await Assert.ThrowsAsync<ArgumentException>(() => service.EditarAsync(tf.Id, Com(origem.Id, origem.Id), usuarioId));
+        await Assert.ThrowsAsync<ArgumentException>(() => service.EditarAsync(tf.Id, Com(origem.Id, destino.Id, valor: 0m), usuarioId));
+        await Assert.ThrowsAsync<ArgumentException>(() => service.EditarAsync(tf.Id, Com(origem.Id, destino.Id, dias: 1), usuarioId));
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => service.EditarAsync(tf.Id, Com(origem.Id, deOutro.Id), usuarioId));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.EditarAsync(tf.Id, Com(encerrada.Id, destino.Id), usuarioId));
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => service.EditarAsync(tf.Id, Com(origem.Id, destino.Id), Guid.NewGuid()));
+
+        Assert.All(await ctx.Transacoes.ToListAsync(), p => { Assert.Equal(100m, p.Valor); Assert.Equal("Reserva", p.Descricao); });
+    }
+
+    [Fact]
+    public async Task Editar_PraCaixinhaDeMeta_Recusa_SoMetasMexeNela()
+    {
+        var (ctx, usuarioId, origem, _, tf) = await SeedComTransferencia();
+        var caixinha = new Conta { Id = Guid.NewGuid(), Nome = "Caixinha Viagem", UsuarioIdProprietario = usuarioId, Tipo = TipoConta.Caixinha };
+        ctx.Contas.Add(caixinha);
+        ctx.SaveChanges();
+
+        var erro = await Assert.ThrowsAsync<InvalidOperationException>(() => new TransferenciaService(ctx).EditarAsync(tf.Id, new CriarTransferenciaDto
+        {
+            ContaOrigemId = origem.Id, ContaDestinoId = caixinha.Id, Valor = 100m, Data = HorarioBrasil.Hoje(), Descricao = "Reserva",
+        }, usuarioId));
+        Assert.Equal(Conta.MensagemCaixinha, erro.Message);
+    }
+
+    [Fact]
+    public async Task ObterPelaPerna_AchaPelasDuasPernas_DizSeTemCaixinha_ENaoVazaDeOutroUsuario()
+    {
+        var (ctx, usuarioId, origem, destino, tf) = await SeedComTransferencia();
+        var service = new TransferenciaService(ctx);
+        var pernas = await ctx.Transacoes.Select(p => p.Id).ToListAsync();
+
+        foreach (var perna in pernas)
+        {
+            var achada = await service.ObterPelaPernaAsync(perna, usuarioId);
+            Assert.Equal(tf.Id, achada.Id);
+            Assert.False(achada.ComCaixinha);
+        }
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => service.ObterPelaPernaAsync(pernas[0], Guid.NewGuid()));
+
+        // Guardar numa meta (transferência pra caixinha, só com a trava liberada como o MetaService faz).
+        var caixinha = new Conta { Id = Guid.NewGuid(), Nome = "Caixinha", UsuarioIdProprietario = usuarioId, Tipo = TipoConta.Caixinha };
+        ctx.Contas.Add(caixinha);
+        ctx.SaveChanges();
+        TransferenciaDto guardar;
+        using (ctx.LiberarCaixinha())
+            guardar = await service.CriarAsync(new CriarTransferenciaDto { ContaOrigemId = origem.Id, ContaDestinoId = caixinha.Id, Valor = 10m, Data = HorarioBrasil.Hoje(), Descricao = "Guardar" }, usuarioId);
+        var pernaGuardar = (await ctx.Transferencias.SingleAsync(x => x.Id == guardar.Id)).TransacaoOrigemId;
+        Assert.True((await service.ObterPelaPernaAsync(pernaGuardar, usuarioId)).ComCaixinha);
     }
 }

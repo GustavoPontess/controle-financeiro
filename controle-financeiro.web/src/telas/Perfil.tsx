@@ -15,7 +15,7 @@ import Campo from "../componentes/Campo"
 import Dialogo from "../componentes/Dialogo"
 import Entrada from "../componentes/Entrada"
 import { LinhaCampos } from "../componentes/Formulario"
-import { dataBR } from "../utils/dateTime"
+import { dataBR, dataLocalISO } from "../utils/dateTime"
 import styles from "./Perfil.module.css"
 
 export const NOME_MAX = 200
@@ -33,7 +33,7 @@ export default function Perfil() {
   const [erro, setErro] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
-  const hoje = new Date().toISOString().slice(0, 10)
+  const hoje = dataLocalISO()
   const arquivo = useRef<HTMLInputElement>(null)
   const [fotoAberta, setFotoAberta] = useState(false)
   const [enviandoFoto, setEnviandoFoto] = useState(false)

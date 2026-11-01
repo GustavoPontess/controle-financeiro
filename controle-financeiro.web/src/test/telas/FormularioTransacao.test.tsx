@@ -4,11 +4,11 @@ import { MemoryRouter } from "react-router-dom"
 import userEvent from "@testing-library/user-event"
 
 vi.mock("../../services/transactionService", () => ({ createTransaction: vi.fn(), updateTransaction: vi.fn(), avisoDeCompra: vi.fn(async () => null) }))
-vi.mock("../../services/transferenciaService", () => ({ createTransferencia: vi.fn() }))
+vi.mock("../../services/transferenciaService", () => ({ createTransferencia: vi.fn(), editarTransferencia: vi.fn() }))
 vi.mock("../../services/familiaService", () => ({ getFamilias: vi.fn(async () => []), getFamilia: vi.fn() }))
 import { getFamilia, getFamilias } from "../../services/familiaService"
-import { avisoDeCompra, createTransaction } from "../../services/transactionService"
-import { createTransferencia } from "../../services/transferenciaService"
+import { avisoDeCompra, createTransaction, updateTransaction } from "../../services/transactionService"
+import { createTransferencia, editarTransferencia } from "../../services/transferenciaService"
 import FormularioTransacao from "../../telas/FormularioTransacao"
 
 const contas = [
@@ -16,6 +16,11 @@ const contas = [
   { id: "k2", nome: "Nubank", tipo: 1, tipoDescricao: "", saldoAtual: 0, isCarteira: false },
 ]
 const categorias = [{ id: "cat1", descricao: "Alimentação", finalidade: 1, isPadrao: true }]
+// Despesa já lançada, com hora (pra provar que dá pra tirar a hora ao editar). Antes do dia congelado do setup (20/10).
+const despesaComHora = {
+  id: "t1", descricao: "Feira", valor: 50, tipo: 1, data: "2026-10-15", hora: "10:00:00", contaId: "k1", contaNome: "Carteira",
+  categoriaId: "cat1" as string | null, statusTransacao: 1, meioPagamento: 4,
+}
 const renderizar = () => render(
   <FormularioTransacao contas={contas as never} cartoes={[]} categorias={categorias as never} subcategorias={[]} aoSair={vi.fn()} aoSalvo={vi.fn()} />,
 )
@@ -61,6 +66,50 @@ describe("FormularioTransacao", () => {
     expect(screen.getByText("Escolha a conta de origem")).toBeInTheDocument()
     expect(screen.getByText("Escolha a conta de destino")).toBeInTheDocument()
     expect(createTransferencia).not.toHaveBeenCalled()
+  })
+
+  // Regra do formulário: o que é obrigatório pra criar é pra editar. Hora é opcional nos dois.
+  it("hora é opcional ao criar e ao editar: sem hora salva com hora null", async () => {
+    const { unmount } = renderizar()
+    await userEvent.click(screen.getByRole("radio", { name: "Transferência" }))
+    await userEvent.type(screen.getByPlaceholderText("0,00"), "5000")
+    await userEvent.type(screen.getByPlaceholderText("Reserva de emergência"), "Guardar")
+    await userEvent.click(screen.getByRole("combobox", { name: "De" }))
+    await userEvent.click(screen.getByRole("option", { name: "Carteira" }))
+    await userEvent.click(screen.getByRole("combobox", { name: "Para" }))
+    await userEvent.click(screen.getByRole("option", { name: "Nubank" }))
+    await userEvent.clear(screen.getByPlaceholderText("HH:MM"))
+    expect(screen.getByText("Hora (opcional)")).toBeInTheDocument()
+    await userEvent.click(screen.getByRole("button", { name: "Transferir" }))
+    await waitFor(() => expect(createTransferencia).toHaveBeenCalledWith(expect.objectContaining({ hora: null }), expect.any(String)))
+    unmount()
+
+    render(<FormularioTransacao transacao={despesaComHora as never} contas={contas as never} cartoes={[]} categorias={categorias as never} subcategorias={[]} aoSair={vi.fn()} aoSalvo={vi.fn()} />)
+    await userEvent.clear(screen.getByPlaceholderText("HH:MM"))
+    await userEvent.click(screen.getByRole("button", { name: "Salvar" }))
+    await waitFor(() => expect(updateTransaction).toHaveBeenCalledWith("t1", expect.objectContaining({ hora: null }), expect.any(String)))
+    expect(screen.queryByText(/Informe a hora/)).toBeNull()
+  })
+
+  it("editar transferência: abre com as contas dela, sem trocar o tipo, e salva a transferência inteira", async () => {
+    vi.mocked(editarTransferencia).mockResolvedValue({} as never)
+    const aoSalvo = vi.fn()
+    const perna = { ...despesaComHora, id: "perna1", descricao: "Reserva", ehTransferencia: true, categoriaId: null }
+    render(<FormularioTransacao transacao={perna as never} transferenciaEditada={{ id: "tf1", contaOrigemId: "k1", contaDestinoId: "k2" }}
+      contas={contas as never} cartoes={[]} categorias={categorias as never} subcategorias={[]} aoSair={vi.fn()} aoSalvo={aoSalvo} />)
+
+    expect(screen.queryByRole("radio", { name: "Despesa" })).toBeNull()
+    expect(screen.getByRole("combobox", { name: "De" })).toHaveTextContent("Carteira")
+    expect(screen.getByRole("combobox", { name: "Para" })).toHaveTextContent("Nubank")
+    const valor = screen.getByPlaceholderText("0,00")
+    await userEvent.clear(valor)
+    await userEvent.type(valor, "7550")
+    await userEvent.click(screen.getByRole("button", { name: "Salvar" }))
+
+    await waitFor(() => expect(editarTransferencia).toHaveBeenCalledWith("tf1",
+      { contaOrigemId: "k1", contaDestinoId: "k2", valor: 75.5, data: "2026-10-15", hora: "10:00:00", descricao: "Reserva" }))
+    expect(updateTransaction).not.toHaveBeenCalledWith("perna1", expect.anything(), expect.anything())
+    expect(aoSalvo).toHaveBeenCalledWith(undefined)
   })
 
   it("despesa nova mostra o aviso do servidor quando a compra aperta uma conta fixa", async () => {

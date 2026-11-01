@@ -31,6 +31,15 @@ const turnstileFalso = () => {
 }
 
 describe("Entrar (beta fechado)", () => {
+  it("saiu por ficar parado (?motivo=inatividade): diz o motivo; sem o motivo, nada", async () => {
+    const { unmount } = render(<MemoryRouter initialEntries={["/entrar?motivo=inatividade"]}><Routes><Route path="/entrar" element={<Entrar />} /></Routes></MemoryRouter>)
+    expect(await screen.findByText("Você saiu porque ficou um tempo sem usar o app. Entre de novo.")).toBeInTheDocument()
+    unmount()
+    render(<MemoryRouter initialEntries={["/entrar"]}><Routes><Route path="/entrar" element={<Entrar />} /></Routes></MemoryRouter>)
+    await screen.findByRole("heading", { name: "Bem-vindo de volta" })
+    expect(screen.queryByText(/ficou um tempo sem usar/)).toBeNull()
+  })
+
   it("Pedir acesso abre o cadastro do app (o admin aprova em /admin); sem cadastro livre", async () => {
     render(<MemoryRouter initialEntries={["/entrar"]}><Routes><Route path="/entrar" element={<Entrar />} /></Routes></MemoryRouter>)
     expect(await screen.findByRole("link", { name: "Pedir acesso" })).toHaveAttribute("href", "/cadastro")

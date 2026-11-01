@@ -7,6 +7,8 @@ export interface Transferencia {
   valor: number
   data: string
   descricao: string
+  /** Uma das contas é caixinha de meta: guardar/resgatar só pela tela de Metas (não se edita aqui). */
+  comCaixinha?: boolean
 }
 
 export interface CriarTransferencia {

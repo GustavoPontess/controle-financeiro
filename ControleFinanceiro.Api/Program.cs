@@ -365,7 +365,8 @@ builder.Services.AddAuthentication(options =>
     {
         OnMessageReceived = ctx =>
         {
-            if (ctx.Request.Cookies.TryGetValue("jwt", out var jwtCookie) && !string.IsNullOrEmpty(jwtCookie))
+            // __Host-jwt em HTTPS: o "jwt" sem prefixo (plantável por outro site do domínio) nunca é lido.
+            if (ctx.Request.Cookies.TryGetValue(CookiesDoApp.Nome(ctx.Request, CookiesDoApp.Jwt), out var jwtCookie) && !string.IsNullOrEmpty(jwtCookie))
                 ctx.Token = jwtCookie;
             return Task.CompletedTask;
         },

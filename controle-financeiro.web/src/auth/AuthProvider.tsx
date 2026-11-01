@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
 import { api, codigoDoErro, definirContaDaAba, esperaDoLimite, mensagemDeErro } from "../api/cliente"
 import { AuthContext, type ContaConectada, type ResultadoEntrar, type Usuario } from "./contexto"
+import SairPorInatividade from "./SairPorInatividade"
 
 const SEM_TOAST = { skipErrorToast: true } as const
 const CHAVE_CONTAS = "v2:contas"
@@ -101,9 +102,23 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     await recarregar()
   }, [usuario?.id, contas, guardar, recarregar])
 
+  // Parado demais numa sessão sem "Manter-me conectado": sai de todas as contas deste navegador (num computador
+  // emprestado, quem sentar depois não troca pra uma parqueada) e recarrega na tela de entrar com o motivo.
+  const sairPorInatividade = useCallback(async () => {
+    await sair()
+    window.location.assign("/entrar?motivo=inatividade")
+  }, [sair])
+
   const valor = useMemo(
     () => ({ usuario, carregando, autenticado: usuario !== null, contas, entrar, verificarMfa, reativar, sair, recarregar, adicionarConta, trocarConta }),
     [usuario, carregando, contas, entrar, verificarMfa, reativar, sair, recarregar, adicionarConta, trocarConta],
   )
-  return <AuthContext.Provider value={valor}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={valor}>
+      {children}
+      {usuario?.sairPorInatividadeMinutos
+        ? <SairPorInatividade minutos={usuario.sairPorInatividadeMinutos} aoSair={() => void sairPorInatividade()} />
+        : null}
+    </AuthContext.Provider>
+  )
 }

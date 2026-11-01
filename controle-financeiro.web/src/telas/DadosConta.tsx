@@ -14,6 +14,7 @@ import Botao from "../componentes/Botao"
 import Campo from "../componentes/Campo"
 import Entrada from "../componentes/Entrada"
 import styles from "./DadosConta.module.css"
+import { dataLocalISO } from "../utils/dateTime"
 
 type Fase = "inicio" | "senha" | "codigo"
 
@@ -37,7 +38,7 @@ function BaixarDados() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `pontes-meus-dados-${new Date().toISOString().slice(0, 10)}.json`
+      a.download = `pontes-meus-dados-${dataLocalISO()}.json`
       a.click()
       URL.revokeObjectURL(url)
     } catch (e) { setErro(mensagemDeErro(e)) }

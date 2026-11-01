@@ -12,6 +12,9 @@
 .p a { color: var(--acc-2); font-weight: 700; }
 .lista { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 10px; font-size: 17px; line-height: 1.65; color: var(--mute); }
 .contato { padding: 16px 20px; border-radius: 20px; border: 1px solid var(--line); background: var(--card); font-size: 15px; line-height: 1.6; color: var(--fg); }
+.lista a, .contato a { color: var(--acc-2); font-weight: 700; }
+/* Seção que a lei pede "de forma destacada" (transferência internacional, Resolução CD/ANPD nº 19/2024 art. 17 § 3º). */
+.destaque { padding: 20px 22px; border-radius: 20px; border: 1px solid var(--line); background: var(--card-2); scroll-margin-top: 96px; }
 
 @media (max-width: 900px) {
   .miolo { padding-top: 4px; }

@@ -118,6 +118,10 @@ public class UsuarioDto
     public StatusUsuario Status { get; set; }
     public DateTime CriadoEm { get; set; }
 
+    /// <summary>Só no <c>/auth/me</c>: minutos sem mexer até a tela fechar a sessão (<see cref="Services.SessaoInativa"/>).
+    /// Null = sessão com "Manter-me conectado" (não sai por inatividade) ou resposta que não é do /me.</summary>
+    public int? SairPorInatividadeMinutos { get; set; }
+
     /// <summary>Admin global. Exposto pro front decidir se mostra a entrada do painel admin e libera
     /// a rota (defesa em profundidade — a fronteira real é a policy IsAdmin no backend, revalidada no
     /// banco a cada request). É atributo do próprio usuário: comum recebe false.</summary>

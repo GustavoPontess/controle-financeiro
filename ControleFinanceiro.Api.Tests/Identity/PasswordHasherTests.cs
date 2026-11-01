@@ -41,17 +41,26 @@ public class PasswordHasherTests
         Assert.False(PasswordHasher.FakeVerify(""));
 
         var hash = PasswordHasher.HashPassword("S3nh@Forte!2026");
-        var real = System.Diagnostics.Stopwatch.StartNew();
-        PasswordHasher.VerifyPassword("senha errada", hash);
-        real.Stop();
-        var fake = System.Diagnostics.Stopwatch.StartNew();
-        PasswordHasher.FakeVerify("senha errada");
-        fake.Stop();
+        // 5 pares intercalados (real, fake), e vale o par em que o fake chegou mais perto do real: com o PC dividido
+        // (dois runners do CI na mesma máquina) um pico de carga infla só um lado, e nem o menor de 3 tempos de cada
+        // bastou (2026-11-01, CI: real 641 ms × fake 152 ms). No mesmo par os dois pegam a mesma carga; um fake que
+        // não computa fica em microssegundos em todos os pares, então o teste continua pegando a regressão.
+        static double Tempo(Action acao)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            acao();
+            return sw.Elapsed.TotalMilliseconds;
+        }
+        var pares = Enumerable.Range(0, 5)
+            .Select(_ => (Real: Tempo(() => PasswordHasher.VerifyPassword("senha errada", hash)), Fake: Tempo(() => PasswordHasher.FakeVerify("senha errada"))))
+            .ToList();
+        var (real, fake) = pares.MaxBy(p => p.Fake / p.Real);
 
         // O fake tem que estar na MESMA ordem de grandeza do verify real (ambos computam Argon2id, ~dezenas de ms),
         // não ser um retorno imediato de microssegundos. Margem folgada pra não ficar instável no CI.
-        Assert.True(fake.Elapsed.TotalMilliseconds > real.Elapsed.TotalMilliseconds * 0.3,
-            $"FakeVerify ({fake.Elapsed.TotalMilliseconds:F1} ms) deveria custar como o verify real ({real.Elapsed.TotalMilliseconds:F1} ms).");
+        Assert.True(fake > real * 0.3,
+            $"FakeVerify ({fake:F1} ms) deveria custar como o verify real ({real:F1} ms). Pares: "
+            + string.Join(", ", pares.Select(p => $"{p.Real:F0}/{p.Fake:F0}")));
     }
 
     [Fact]

@@ -19,7 +19,7 @@ import Segmentos from "../componentes/Segmentos"
 import Selecao from "../componentes/Selecao"
 import SeletorData from "../componentes/SeletorData"
 import { PAPEL_PERMISSAO, primeiroNome } from "../dominio/familia"
-import { dataLocalISO } from "../utils/dateTime"
+import { dataLocalISO, mesAtual } from "../utils/dateTime"
 import { moneyParaCampo, parseMoney } from "../utils/money"
 import styles from "./Familia.module.css"
 
@@ -47,8 +47,7 @@ export default function NovoAcerto() {
   const [erro, setErro] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [chave, setChave] = useState(() => crypto.randomUUID())
-  const hoje = new Date()
-  const mes = hoje.getMonth() + 1, ano = hoje.getFullYear()
+  const { mes, ano } = mesAtual()
   const voltar = () => navigate(sugestao?.voltarPara ?? `/familias/${id}/entre-voces`, { replace: true })
 
   useEffect(() => {

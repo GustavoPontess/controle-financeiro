@@ -7,7 +7,7 @@ namespace ControleFinanceiro.Api.Tests.Infrastructure;
 /// <summary>
 /// "Hoje" do app é o dia no Brasil (2026-10-21). Com o dia UTC, das 21h à meia-noite de Brasília o servidor já estava
 /// no dia seguinte: aceitava lançamento efetivado com a data de amanhã, cobrava a conta fixa de amanhã. A trava lê o
-/// código da API e falha se alguém voltar a decidir o dia pelo relógio UTC ou da máquina.
+/// código da API e dos testes e falha se alguém voltar a decidir o dia pelo relógio UTC ou da máquina.
 /// </summary>
 public class HorarioBrasilTests
 {
@@ -24,29 +24,54 @@ public class HorarioBrasilTests
     [Fact]
     public void Hoje_EhODiaDeAgoraEmBrasilia()
     {
-        var antes = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(-3));
+        var antes = DateOnly.FromDateTime(HorarioBrasil.DeUtc(TimeProvider.System.GetUtcNow().UtcDateTime));
         var hoje = HorarioBrasil.Hoje();
-        var depois = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(-3));
+        var depois = DateOnly.FromDateTime(HorarioBrasil.DeUtc(TimeProvider.System.GetUtcNow().UtcDateTime));
         Assert.True(hoje == antes || hoje == depois);
     }
 
+    [Fact]
+    public async Task FixarParaTeste_MudaAgoraEHoje_InclusiveDepoisDeAwait_EODisposeVolta()
+    {
+        var real = HorarioBrasil.Hoje();
+        using (HorarioBrasil.FixarParaTeste(new DateTime(2026, 11, 1, 2, 30, 0, DateTimeKind.Utc))) // 23h30 de 31/10
+        {
+            Assert.Equal(new DateTime(2026, 10, 31, 23, 30, 0), HorarioBrasil.Agora());
+            Assert.Equal(new DateOnly(2026, 10, 31), HorarioBrasil.Hoje()); // em UTC já é 01/11: o mês não vira
+            await Task.Yield();
+            Assert.Equal(new DateOnly(2026, 10, 31), await Task.Run(HorarioBrasil.Hoje));
+
+            using (HorarioBrasil.FixarParaTeste(new DateTime(2030, 1, 15, 15, 0, 0, DateTimeKind.Utc)))
+                Assert.Equal(new DateOnly(2030, 1, 15), HorarioBrasil.Hoje());
+            Assert.Equal(new DateOnly(2026, 10, 31), HorarioBrasil.Hoje()); // o de dentro devolve o de fora
+        }
+        Assert.True(HorarioBrasil.Hoje() >= real);
+        Assert.Same(TimeProvider.System, HorarioBrasil.Relogio);
+    }
+
+    // Decidir o dia (ou o mês, o ano) pelo relógio UTC ou pelo da máquina. Carimbo (DateTime.UtcNow, .AddDays de prazo)
+    // continua livre: o que a trava pega é virar "que dia é".
     private static readonly Regex DiaPeloRelogioErrado = new(
-        @"DateTime\.UtcNow\.Date\b|DateOnly\.FromDateTime\(\s*DateTime\.UtcNow|DateTime\.Now\b|DateTime\.Today\b",
+        @"DateTime\.UtcNow\.(Date|Year|Month|Day)\b|DateOnly\.FromDateTime\(\s*DateTime\.UtcNow|DateTime\.Now\b|DateTime\.Today\b",
         RegexOptions.Compiled);
 
-    [Fact]
-    public void CodigoDaApi_NaoDecideODiaPeloRelogioUtcNemDaMaquina()
+    // A API e os testes (desde 2026-11-01): teste que monta "ontem" pelo dia UTC falhava das 21h à meia-noite de
+    // Brasília, porque a API já usa o dia do Brasil.
+    [Theory]
+    [InlineData("ControleFinanceiro.Api")]
+    [InlineData("ControleFinanceiro.Api.Tests")]
+    public void Codigo_NaoDecideODiaPeloRelogioUtcNemDaMaquina(string projeto)
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "controle-financeiro.sln")))
             dir = dir.Parent;
         Assert.NotNull(dir);
-        var api = Path.Combine(dir!.FullName, "ControleFinanceiro.Api");
+        var raiz = Path.Combine(dir!.FullName, projeto);
         var sep = Path.DirectorySeparatorChar;
-        var achados = Directory.EnumerateFiles(api, "*.cs", SearchOption.AllDirectories)
+        var achados = Directory.EnumerateFiles(raiz, "*.cs", SearchOption.AllDirectories)
             .Where(f => !f.Contains($"{sep}bin{sep}") && !f.Contains($"{sep}obj{sep}") && !f.Contains($"{sep}Migrations{sep}")
                         && !Path.GetFileName(f).StartsWith("MeuCenario") && Path.GetFileName(f) != "HorarioBrasil.cs")
-            .SelectMany(f => File.ReadLines(f).Select((linha, i) => (Arquivo: Path.GetRelativePath(api, f), Linha: i + 1, Texto: linha.Trim())))
+            .SelectMany(f => File.ReadLines(f).Select((linha, i) => (Arquivo: Path.GetRelativePath(raiz, f), Linha: i + 1, Texto: linha.Trim())))
             .Where(l => !l.Texto.StartsWith("//") && DiaPeloRelogioErrado.IsMatch(l.Texto))
             .Select(l => $"{l.Arquivo}:{l.Linha}: {l.Texto}")
             .ToList();
