@@ -256,6 +256,26 @@ Perguntar **uma de cada vez**, quando o item da fila chegar nela.
 
 ---
 
+## 🌱 Crescimento, retenção e proteção (anotado 2026-11-01, pedido do Gustavo)
+
+> Ordem sugerida: **B e C têm passos rápidos antes do lançamento público (M4)**; **A depende da cobrança existir** (plano pago via gateway, M4). Antes de codar cada um, pesquisa na fonte (LGPD/CDC no A, nomes atuais dos robôs no B e C).
+
+### A. Anti-churn (retenção)
+- [ ] 🟡 **P2 — Saber quem sai e por quê.** Classificar cada saída: **cancelou** (pergunta curta no cancelar: opções + texto livre), **não renovou** (plano venceu sem pagar), **cobrança recusada** (cartão recusado/vencido, Pix automático que falhou: saída involuntária, a mais fácil de recuperar) e **parou de usar** antes de sair (dias sem entrar, sem lançar: sinal de risco). Base: eventos de assinatura do gateway (webhooks) + uso do app. Admin: saídas do mês por motivo e quem está em risco.
+- [ ] 🟡 **P2 — Avisos de vencimento e de plano vencido (dunning).** Antes de vencer (ex.: 7 e 1 dia antes), no dia e depois de vencido em intervalos (ex.: 1, 3 e 7 dias), por e-mail + sino + faixa no topo do app; cobrança recusada avisa na hora com link pra trocar o cartão; retentativas automáticas do gateway; carência antes de bloquear, e bloquear = só leitura, **nunca apagar dados**. Reusar a infra dos avisos das contas fixas (`NotificacaoService`, e-mails, jobs do Hangfire). Cuidados: teto de frequência (nada de mensagem abusiva) e cancelar tão fácil quanto assinar (CDC).
+- [ ] ⚪ **P3 — IA de retenção.** Assistente que fala com quem cancelou, não renovou ou está em risco (e-mail/no app), entende o que houve e tenta resolver: dúvida de uso, bug (vira solicitação do selo Beta), preço (oferta definida antes); quando não resolve, passa pro Gustavo. Cuidados LGPD: dizer que é IA, opção de não receber, base legal registrada (legítimo interesse com teste de balanceamento, ou consentimento), dado mínimo no contexto (nunca os lançamentos da pessoa sem precisar), conversas registradas, nunca prometer o que não pode.
+
+### B. SEO e encontrabilidade (buscadores e IAs)
+- [ ] 🟡 **P2 — SEO clássico do site público.** Conferido 2026-11-01: não há `robots.txt`, `sitemap.xml` nem `llms.txt` em `public/`, e o `index.html` tem pouca meta. Fazer: title e description próprios por página, Open Graph, `canonical`, dados estruturados (schema.org `SoftwareApplication`, `Organization`, `FAQPage`), sitemap + robots, Google Search Console e Bing Webmaster (o índice do Bing também alimenta outros buscadores e assistentes), Core Web Vitals (o site já foi otimizado em 2026-10-26) e conteúdo que responde perguntas reais (ferramentas grátis do 3.2, guias tipo "como dividir as contas do casal"). **O HTML do site vem do rascunho do hub Pontes Dev** (`scripts/importarSite.py`): conteúdo e meta mudam lá ou no `AJUSTES` do script, nunca à mão aqui.
+- [ ] 🟡 **P2 — Ser encontrado pelas IAs (GEO/AEO).** Liberar os robôs de BUSCA das IAs no `robots.txt` e na Cloudflare (conferir os nomes atuais na documentação de cada uma: os de busca/consulta da OpenAI, Anthropic, Perplexity, Google e Bing), publicar `llms.txt` com o resumo do produto, páginas com respostas diretas + dados estruturados e presença onde as IAs costumam citar (comparativos, diretórios, fóruns, imprensa). Medir: perguntar de tempos em tempos às IAs "app pra dividir as contas do casal" e ver se o Pontes aparece.
+
+### C. Proteção contra cópia por IA e engenharia reversa
+- [ ] 🟡 **P2 — Barrar robôs de TREINO e raspagem, liberando os de busca do B** (é assim que B e C convivem): na Cloudflare, que já está na frente, ligar o bloqueio de robôs de IA/raspadores e regras de bot; no `robots.txt`, negar os de treino (conferir nomes atuais) e liberar os de busca; limite de taxa também no site público.
+- [ ] 🟡 **P2 — O valor fica atrás do login (manter assim).** O app exige conta e o beta é fechado, então não é indexável nem raspável sem entrar; o site público não baixa nada do app (2026-10-26); o build de produção não publica source maps (conferido 2026-11-01); a CSP já existe. Quem tem conta sempre consegue ler o front (minificação atrapalha, não impede), por isso **regra de negócio mora no servidor** (já é a direção: "a conta mora no servidor"). Avaliar sinais de automação na conta (muitas telas em pouco tempo) quando houver usuários de fora.
+- [ ] 🟡 **P2 — Proteção legal.** Termos de Uso proibindo raspagem, engenharia reversa e cópia (hoje o "Uso aceitável" não fala disso); marca no INPI (issue #125 já aberta) e, se valer, registro do software no INPI (programa de computador) pra ter data de autoria; o histórico do git também serve de prova. **Realismo:** dá pra dificultar bastante e ter base pra agir; impedir 100% alguém de usar o produto e copiar a ideia não dá. O fosso é velocidade, a parte de família e a marca.
+
+---
+
 ## Higiene / dívida conhecida
 
 > **Prioridade:** **P0** 🔴 bloqueador/segurança crítica · **P1** 🟠 alta · **P2** 🟡 média · **P3** ⚪ baixa. Todo achado entra aqui com nível, na hora.
