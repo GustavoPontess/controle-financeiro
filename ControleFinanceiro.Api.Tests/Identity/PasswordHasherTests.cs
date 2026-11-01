@@ -41,17 +41,20 @@ public class PasswordHasherTests
         Assert.False(PasswordHasher.FakeVerify(""));
 
         var hash = PasswordHasher.HashPassword("S3nh@Forte!2026");
-        var real = System.Diagnostics.Stopwatch.StartNew();
-        PasswordHasher.VerifyPassword("senha errada", hash);
-        real.Stop();
-        var fake = System.Diagnostics.Stopwatch.StartNew();
-        PasswordHasher.FakeVerify("senha errada");
-        fake.Stop();
+        // O MENOR de 3 tempos de cada um: com o PC dividido (dois runners do CI na mesma máquina), uma medida solta
+        // podia sair inflada e o teste falhava sem nada errado (2026-11-01). O menor é o custo de verdade.
+        static double MenorTempo(Action acao) => Enumerable.Range(0, 3).Min(_ =>
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            acao();
+            return sw.Elapsed.TotalMilliseconds;
+        });
+        var real = MenorTempo(() => PasswordHasher.VerifyPassword("senha errada", hash));
+        var fake = MenorTempo(() => PasswordHasher.FakeVerify("senha errada"));
 
         // O fake tem que estar na MESMA ordem de grandeza do verify real (ambos computam Argon2id, ~dezenas de ms),
         // não ser um retorno imediato de microssegundos. Margem folgada pra não ficar instável no CI.
-        Assert.True(fake.Elapsed.TotalMilliseconds > real.Elapsed.TotalMilliseconds * 0.3,
-            $"FakeVerify ({fake.Elapsed.TotalMilliseconds:F1} ms) deveria custar como o verify real ({real.Elapsed.TotalMilliseconds:F1} ms).");
+        Assert.True(fake > real * 0.3, $"FakeVerify ({fake:F1} ms) deveria custar como o verify real ({real:F1} ms).");
     }
 
     [Fact]
