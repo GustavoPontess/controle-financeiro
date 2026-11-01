@@ -1,0 +1,14 @@
+.lugar { position: relative; }
+.lugar[data-com-marca] { padding-bottom: 20px; }
+.barra { display: flex; height: 14px; border-radius: 999px; overflow: hidden; background: var(--v2-superficie-2); }
+/* A borda da cor da superfície é o respiro de 2px entre os pedaços (sem mudar a largura de cada um). */
+.pedaco { flex-shrink: 0; min-width: 3px; height: 100%; box-sizing: border-box; border-right: 2px solid var(--v2-superficie); }
+.marca { position: absolute; top: -4px; height: 24px; border-left: 2px solid var(--v2-texto); }
+.marcaRotulo { position: absolute; top: calc(100% + 2px); left: 0; transform: translateX(-50%); font-size: var(--v2-fs-xs); color: var(--v2-texto-2); white-space: nowrap; }
+[data-serie="1"] { background-color: var(--v2-serie-1); }
+[data-serie="2"] { background-color: var(--v2-serie-2); }
+[data-serie="3"] { background-color: var(--v2-serie-3); }
+[data-serie="4"] { background-color: var(--v2-serie-4); }
+[data-serie="5"] { background-color: var(--v2-serie-5); }
+[data-serie="cinza"] { background-color: var(--v2-serie-cinza); }
+[data-serie="cinza-2"] { background-color: var(--v2-serie-cinza-2); }

@@ -3,6 +3,8 @@
 // com o valor exato). Tocar num mês leva pra ele. No computador o que sobrou aparece também embaixo de cada mês. No
 // celular as colunas ficavam finas demais com 12 meses: lá vira uma lista, um mês por linha (o mais recente em cima),
 // com as duas barras deitadas e o que sobrou à direita; cresce pra baixo, nunca aperta. Lista equivalente pra leitor de tela.
+// 6 ou 12 meses (padrão: 12 no computador, 6 no celular). Uma linha do que sobrou por cima das colunas foi testada e
+// saiu (Gustavo, 2026-11-01: entendeu a função, não gostou de como ficou): o sobrou fica no número embaixo de cada mês.
 import { useLayoutEffect, useRef, useState } from "react"
 import { useHideBalance } from "../estado/ocultar"
 import { MONEY_MASK, formatMoney } from "../utils/money"
@@ -29,6 +31,7 @@ export default function GraficoBarras({ meses, escolhido, aoEscolher }: {
   const caixa = useRef<HTMLDivElement | null>(null)
   const [largura, setLargura] = useState(0)
   const [ativo, setAtivo] = useState<number | null>(null)
+  const [quantos, setQuantos] = useState<6 | 12 | null>(null)
   const [oculto] = useHideBalance()
 
   useLayoutEffect(() => {
@@ -43,7 +46,8 @@ export default function GraficoBarras({ meses, escolhido, aoEscolher }: {
   }, [])
 
   const estreito = largura > 0 && largura < ESTREITO
-  const visiveis = meses
+  const n = quantos ?? (estreito ? 6 : 12)
+  const visiveis = meses.slice(-n)
   const W = Math.max(largura, 10)
   const ALTURA = 210, BASE = 46, DIR = 40
   const max = Math.max(1, ...visiveis.map((m) => Math.max(m.entrou, m.saiu)))
@@ -57,6 +61,13 @@ export default function GraficoBarras({ meses, escolhido, aoEscolher }: {
   const sel = ativo ?? visiveis.findIndex(ehEscolhido)
   const dinheiro = (v: number) => (oculto ? MONEY_MASK : formatMoney(v))
   const mesEscolhido = meses.find(ehEscolhido)
+  const escolhaDeMeses = meses.length > 6 && (
+    <span className={styles.quantos} role="group" aria-label="Quantos meses">
+      {([6, 12] as const).map((q) => (
+        <button key={q} type="button" aria-pressed={n === q} onClick={() => setQuantos(q)}>{q} meses</button>
+      ))}
+    </span>
+  )
   const resumo = (m: MesDoGrafico | undefined) => m && (
     <div className={styles.resumo} aria-hidden="true">
       <span className={styles.resumoMes}>{nomeDoPeriodo(m)}</span>
@@ -67,7 +78,7 @@ export default function GraficoBarras({ meses, escolhido, aoEscolher }: {
   )
 
   if (estreito) {
-    const maior = Math.max(1, ...meses.map((m) => Math.max(m.entrou, m.saiu)))
+    const maior = Math.max(1, ...visiveis.map((m) => Math.max(m.entrou, m.saiu)))
     const largo = (v: number) => `${Math.max(v > 0 ? 2 : 0, (v / maior) * 100)}%`
     return (
       <div ref={caixa} className={styles.caixa}>
@@ -77,8 +88,9 @@ export default function GraficoBarras({ meses, escolhido, aoEscolher }: {
           <span><i data-tipo="saiu" aria-hidden="true" />Saiu</span>
           <span className={styles.legendaSobrou}>Sobrou</span>
         </div>
+        {escolhaDeMeses}
         <ul className={styles.lista} aria-label="Mês a mês">
-          {[...meses].reverse().map((m) => (
+          {[...visiveis].reverse().map((m) => (
             <li key={`${m.ano}-${m.mes}`}>
               <button type="button" className={styles.linhaMes} data-sel={ehEscolhido(m) || undefined} onClick={() => aoEscolher?.(m)}
                 aria-label={`${nomeDoPeriodo(m)}: entrou ${dinheiro(m.entrou)}, saiu ${dinheiro(m.saiu)}, sobrou ${dinheiro(m.sobrou)}`}>
@@ -101,6 +113,7 @@ export default function GraficoBarras({ meses, escolhido, aoEscolher }: {
       <div className={styles.legenda}>
         <span><i data-tipo="entrou" aria-hidden="true" />Entrou</span>
         <span><i data-tipo="saiu" aria-hidden="true" />Saiu</span>
+        {escolhaDeMeses}
       </div>
       {largura > 0 && (
         <svg className={styles.svg} width={W} height={ALTURA} viewBox={`0 0 ${W} ${ALTURA}`} role="img" aria-label="Entrou e saiu por mês"

@@ -4,13 +4,17 @@
 .csv { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: var(--v2-r-sm); border: 1px solid var(--v2-linha-forte); color: var(--v2-texto); font-size: var(--v2-fs-sm); font-weight: 600; text-decoration: none; }
 .csv:hover { background: var(--v2-hover-linha); }
 
-/* Como foi o mês: a resposta e os três números */
-.resumo { display: flex; flex-direction: column; gap: 18px; padding: 20px 24px; }
-.numeros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-.numero { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+/* Resumo do mês (o topo quando o dinheiro do mês não carrega): quanto sobrou grande à esquerda, a conta entrou − saiu à direita;
+   o mesmo desenho do "Quanto ainda posso gastar" (topo do mês atual) */
+.cabeca { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px 32px; flex-wrap: wrap; }
+.heroi { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.heroiValor { font-size: var(--v2-fs-3xl); font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.1; white-space: nowrap; }
+.conta { display: flex; gap: 24px; margin: 0; }
+.conta > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.conta dt { font-size: var(--v2-fs-xs); font-weight: 500; color: var(--v2-texto-2); white-space: nowrap; }
+.conta dd { margin: 0; font-size: var(--v2-fs-md); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.conta dd.sub { font-size: var(--v2-fs-xs); font-weight: 400; }
 .rotulo { font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-texto-2); }
-.numeroValor { font-size: var(--v2-fs-2xl); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.numeroEsqueleto { display: block; width: 140px; height: 28px; border-radius: 8px; background: var(--v2-superficie-2); }
 .extra { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); font-variant-numeric: tabular-nums; }
 .variacao { font-weight: 600; color: var(--v2-negativo); }
 .variacao[data-bom] { color: var(--v2-positivo); }
@@ -18,8 +22,13 @@
 /* O que vale olhar: as respostas empilhadas */
 .avisos { display: flex; flex-direction: column; gap: 8px; }
 
-.grade { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 20px; align-items: start; }
-.grade > :only-child { grid-column: 1 / -1; }
+/* Pra onde foi a sua renda: a barra + a lista à esquerda; onde dá pra economizar à direita */
+.renda { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px 32px; align-items: start; }
+.renda[data-com-corte] { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
+.rendaFrase { margin: 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-2); font-variant-numeric: tabular-nums; }
+.rendaFrase strong { color: var(--v2-texto); font-weight: 700; }
+.economizar { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.subtitulo { margin: 0; font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-texto); }
 .cartao { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .vazio { margin: 0; padding: 20px 24px 28px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
 .vazioSemRespiro { margin: 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
@@ -59,11 +68,11 @@
 .reservaNumero { display: flex; flex-direction: column; gap: 6px; }
 
 @media (max-width: 900px) {
-  .resumo { padding: 16px; }
-  .numeros { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-  .numero[data-largo] { grid-column: 1 / -1; }
-  .numeroValor { font-size: var(--v2-fs-lg); }
-  .grade, .comprometido, .reserva { grid-template-columns: minmax(0, 1fr); }
+  .heroiValor { font-size: var(--v2-fs-2xl); }
+  .cabeca { align-items: flex-start; }
+  .conta { width: 100%; justify-content: space-between; gap: 12px; }
+  .renda[data-com-corte], .comprometido, .reserva { grid-template-columns: minmax(0, 1fr); }
+  .economizar { padding-top: 16px; border-top: 1px solid var(--v2-linha); }
   .csvTexto { display: none; }
   .csv { width: 36px; padding: 0; }
   .vazio { padding: 16px 16px 24px; }
