@@ -32,7 +32,7 @@ import Selecao from "../componentes/Selecao"
 import SeletorData from "../componentes/SeletorData"
 import { FREQUENCIAS, MAX_DESCRICAO, MEIO, MEIOS_CONTA_FIXA, MEIOS_RECEBIMENTO_FIXO, TIPO } from "../dominio/transacao"
 import { aceitaTipo } from "../dominio/categoria"
-import { FREQUENCIA, descreverRegra, limitesDoInicio } from "../dominio/contaFixa"
+import { FREQUENCIA, descreverRegra, limitesDaEdicao, limitesDoInicio } from "../dominio/contaFixa"
 import { moneyParaCampo, parseMoney } from "../utils/money"
 import { dataLocalISO } from "../utils/dateTime"
 import styles from "./FormularioContaFixa.module.css"
@@ -97,8 +97,9 @@ export default function FormularioContaFixa({ recorrente, contas = [], cartoes =
   const tipo = receita ? TIPO.receita : TIPO.despesa
   const credito = !receita && meio === MEIO.credito
   const hoje = dataLocalISO()
-  // Na edição o começo antigo vale (pode ter sido há mais de 12 meses); criar segue o limite.
-  const limites = editando ? null : limitesDoInicio(hoje)
+  // Na edição o começo fica no mês do cadastro (pode ter sido há mais de 12 meses) e só o dia muda, como no servidor;
+  // criar segue o limite de 12 meses atrás a 5 anos à frente.
+  const limites = r ? limitesDaEdicao(r.dataInicio) : limitesDoInicio(hoje)
 
   const cats = useMemo(() => categorias.filter((c) => aceitaTipo(c, tipo)), [categorias, tipo])
   const subs = useMemo(() => subcategorias.filter((s) => s.categoriaId === categoriaId), [subcategorias, categoriaId])
@@ -136,7 +137,7 @@ export default function FormularioContaFixa({ recorrente, contas = [], cartoes =
     else if (!credito && !contaId) e.conta = "Escolha a conta"
     if (!categoriaId) e.categoria = "Escolha a categoria"
     if (!data) e.data = "Informe a data"
-    else if (limites && (data < limites.min || data > limites.max)) e.data = "Entre 12 meses atrás e 5 anos à frente"
+    else if (data < limites.min || data > limites.max) e.data = editando ? "Na edição, só o dia muda (o mês fica o do começo)" : "Entre 12 meses atrás e 5 anos à frente"
     if (dataFim && data && dataFim < data) e.dataFim = "Precisa ser depois do começo"
     setErros(e)
     return Object.keys(e).length === 0
@@ -226,7 +227,7 @@ export default function FormularioContaFixa({ recorrente, contas = [], cartoes =
               opcoes={FREQUENCIAS.map((f) => ({ valor: String(f.valor), rotulo: f.rotulo }))} />
           </Campo>
           <Campo rotulo={receita ? "Primeiro recebimento" : "Primeira cobrança"} erro={erros.data}>
-            <SeletorData valor={data} min={limites?.min} max={limites?.max} onChange={escolherData} />
+            <SeletorData valor={data} min={limites.min} max={limites.max} onChange={escolherData} />
           </Campo>
           <Campo rotulo="Até" erro={erros.dataFim}>
             <SeletorData valor={dataFim} min={data || undefined} limpavel placeholder="Sem fim" onChange={(x) => { setDataFim(x); limpa("dataFim") }} />

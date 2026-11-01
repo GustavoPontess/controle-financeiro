@@ -681,4 +681,21 @@ public class MetaServiceTests
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() => svc.AtualizarAsync(criada.Id, dto, user));
     }
+
+    [Fact]
+    public async Task AtualizarAsync_PelaTela_SemDescricaoNemCategoria_NaoApagaAsQueJaTinha()
+    {
+        var ctx = CreateContext();
+        var user = SeedUsuario(ctx, "u@test.com");
+        var categoria = new Categoria { Id = Guid.NewGuid(), Descricao = "Viagem", Finalidade = Finalidade.Despesa };
+        ctx.Categorias.Add(categoria);
+        ctx.SaveChanges();
+        var svc = Servico(ctx);
+        var criada = await svc.CriarAsync(new CriarMetaDto("Praia", "Férias de julho", 1000m, null, null, categoria.Id), user);
+
+        await svc.AtualizarAsync(criada.Id, new CriarMetaDto("Praia 2027", null, 1500m, null, null, null), user);
+
+        var salva = await ctx.Metas.SingleAsync(m => m.Id == criada.Id);
+        Assert.Equal(("Praia 2027", "Férias de julho", (Guid?)categoria.Id), (salva.Nome, salva.Descricao, salva.CategoriaId));
+    }
 }

@@ -5,7 +5,7 @@ namespace ControleFinanceiro.Api.DTOs.Recorrente;
 public class CriarRecorrenteDto
 {
     [Required]
-    [MaxLength(400)]
+    [MaxLength(255)] // como a descrição da transação que a cobrança vira (com 400, gerar a cobrança estourava)
     public string Descricao { get; set; } = string.Empty;
 
     [Range(0.01, double.MaxValue)]

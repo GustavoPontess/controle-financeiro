@@ -137,7 +137,7 @@ public class ContasDaCasaTests
         var c = await Build();
         await Despesas(c).MarcarContaDaCasaAsync(c.Conta, c.Gustavo, c.FamiliaId);
         var r = await new RecorrenteService(c.Ctx, new FaturaService(c.Ctx), new FinancialEventLogService(c.Ctx)).CriarAsync(new CriarRecorrenteDto
-        {
+        { MeioPagamento = (int)MeioPagamento.Boleto,
             Descricao = "Luz", Valor = 200m, Tipo = (int)TipoTransacao.Despesa, CategoriaId = c.Mercado, ContaId = c.Conta,
             Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 5, DataInicio = HorarioBrasil.HojeData().AddDays(1),
         }, c.Gustavo);

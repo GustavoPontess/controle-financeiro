@@ -357,7 +357,7 @@ public class LimiteCartaoRegraUnicaTests
     /// <summary>Recorrente mensal de R$ 80 no cartão pelo caminho real (modal de nova transação, modo recorrente).</summary>
     private static Task CriarRecorrenteNoCartaoAsync(AppDbContext ctx, Cenario c, DateTime inicio) =>
         Recorrentes(ctx).CriarAsync(new CriarRecorrenteDto
-        {
+        { MeioPagamento = (int)MeioPagamento.Boleto,
             Descricao = "Streaming", Valor = 80, Tipo = (int)TipoTransacao.Despesa, CartaoCreditoId = c.CartaoId,
             Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = inicio.Day, DataInicio = inicio,
         }, c.UsuarioId);

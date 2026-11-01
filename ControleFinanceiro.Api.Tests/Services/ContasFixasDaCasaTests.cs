@@ -49,7 +49,7 @@ public class ContasFixasDaCasaTests
     private static DespesaCompartilhadaService Despesas(Casa c) => new(c.Ctx, TestHelpers.Notif(c.Ctx), new RateioService(c.Ctx));
 
     private static CriarRecorrenteDto Aluguel(Casa c, Guid? familiaId, decimal valor = 1500.01m) => new()
-    {
+    { MeioPagamento = (int)MeioPagamento.Boleto,
         Descricao = "Aluguel", Valor = valor, Tipo = (int)TipoTransacao.Despesa, CategoriaId = c.Moradia, ContaId = c.Conta,
         Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 5, DataInicio = HorarioBrasil.HojeData().AddDays(1), FamiliaId = familiaId,
     };

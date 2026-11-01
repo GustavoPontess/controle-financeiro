@@ -166,7 +166,7 @@ public class RecorrenteContaFixaMotorTests
 
     private static CriarRecorrenteDto Dto(
         Recorrente r, int? dia = null, decimal? valor = null, Guid? contaId = null) => new()
-    {
+    { MeioPagamento = (int)MeioPagamento.Boleto,
         Descricao = r.Descricao,
         Valor = valor ?? r.Valor,
         Tipo = (int)r.Tipo,
@@ -189,7 +189,7 @@ public class RecorrenteContaFixaMotorTests
         var conta = SeedConta(ctx, u);
 
         var dto = await CreateService(ctx).CriarAsync(new CriarRecorrenteDto
-        {
+        { MeioPagamento = (int)MeioPagamento.Boleto,
             Descricao = "Aluguel", Valor = 1500m, Tipo = (int)TipoTransacao.Despesa, ContaId = conta,
             Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 5,
             DataInicio = new DateTime(2030, 9, 28, 0, 0, 0, DateTimeKind.Utc),
@@ -218,7 +218,7 @@ public class RecorrenteContaFixaMotorTests
         var conta = SeedConta(ctx, u);
 
         var dto = await CreateService(ctx).CriarAsync(new CriarRecorrenteDto
-        {
+        { MeioPagamento = (int)MeioPagamento.Boleto,
             Descricao = "Condomínio", Valor = 800m, Tipo = (int)TipoTransacao.Despesa, ContaId = conta,
             Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 31,
             DataInicio = new DateTime(2030, 1, 31, 0, 0, 0, DateTimeKind.Utc),
@@ -237,7 +237,7 @@ public class RecorrenteContaFixaMotorTests
         var inicio = D(2030, 9, 28);
 
         var dto = await CreateService(ctx).CriarAsync(new CriarRecorrenteDto
-        {
+        { MeioPagamento = (int)MeioPagamento.Boleto,
             Descricao = "Feira", Valor = 90m, Tipo = (int)TipoTransacao.Despesa, ContaId = conta,
             Frequencia = (int)FrequenciaRecorrencia.Semanal, Dia = 17, // Dia não se aplica à semanal
             DataInicio = Utc(inicio),
@@ -260,7 +260,7 @@ public class RecorrenteContaFixaMotorTests
         var conta = SeedConta(ctx, u);
 
         var dto = await CreateService(ctx).CriarAsync(new CriarRecorrenteDto
-        {
+        { MeioPagamento = (int)MeioPagamento.Boleto,
             Descricao = "Seguro", Valor = 2400m, Tipo = (int)TipoTransacao.Despesa, ContaId = conta,
             Frequencia = (int)FrequenciaRecorrencia.Anual, Dia = 5,
             DataInicio = new DateTime(2030, 9, 28, 0, 0, 0, DateTimeKind.Utc),
@@ -278,7 +278,7 @@ public class RecorrenteContaFixaMotorTests
         var conta = SeedConta(ctx, u);
 
         var dto = await CreateService(ctx).CriarAsync(new CriarRecorrenteDto
-        {
+        { MeioPagamento = (int)MeioPagamento.Boleto,
             Descricao = "Curso", Valor = 300m, Tipo = (int)TipoTransacao.Despesa, ContaId = conta,
             Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 5,
             DataInicio = new DateTime(2030, 9, 28, 0, 0, 0, DateTimeKind.Utc),
@@ -501,7 +501,7 @@ public class RecorrenteContaFixaMotorTests
         var dia = DiaDiferenteDe(hoje.Day, 5, 25);
         var svc = CreateService(ctx);
         var dto = await svc.CriarAsync(new CriarRecorrenteDto
-        {
+        { MeioPagamento = (int)MeioPagamento.Boleto,
             Descricao = "Aluguel", Valor = 1200m, Tipo = (int)TipoTransacao.Despesa, ContaId = SeedConta(ctx, u),
             Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = dia, DataInicio = Utc(hoje),
         }, u);
@@ -571,7 +571,7 @@ public class RecorrenteContaFixaMotorTests
                 await svc.EditarProximaOcorrenciaAsync(id, new EditarProximaOcorrenciaDto { Valor = 10m }, usuarioId); break;
             case "atualizar":
                 await svc.AtualizarAsync(id, new CriarRecorrenteDto
-                {
+                { MeioPagamento = (int)MeioPagamento.Boleto,
                     Descricao = "x", Valor = 1m, Tipo = (int)TipoTransacao.Despesa, ContaId = contaId,
                     Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 1, DataInicio = HorarioBrasil.HojeData(),
                 }, usuarioId);
@@ -641,7 +641,7 @@ public class RecorrenteContaFixaMotorTests
         var conta = SeedConta(ctx, u);
         var svc = CreateService(ctx);
         var criada = await svc.CriarAsync(new CriarRecorrenteDto
-        {
+        { MeioPagamento = (int)MeioPagamento.Boleto,
             Descricao = "Aluguel", Valor = 1200m, Tipo = (int)TipoTransacao.Despesa, ContaId = conta,
             Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 5, DataInicio = Utc(hoje),
         }, u);
@@ -831,7 +831,7 @@ public class RecorrenteContaFixaMotorTests
     {
         var cartao = SeedCartao(ctx, u);
         var dto = await CreateService(ctx).CriarAsync(new CriarRecorrenteDto
-        {
+        { MeioPagamento = (int)MeioPagamento.Boleto,
             Descricao = "Streaming", Valor = 50m, Tipo = (int)TipoTransacao.Despesa, CartaoCreditoId = cartao,
             Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 5,
             DataInicio = new DateTime(2030, 9, 28, 0, 0, 0, DateTimeKind.Utc),
@@ -1115,7 +1115,7 @@ public class RecorrenteContaFixaMotorTests
         var conta = SeedConta(ctx, u);
 
         await Assert.ThrowsAsync<ArgumentException>(() => CreateService(ctx).CriarAsync(new CriarRecorrenteDto
-        {
+        { MeioPagamento = (int)MeioPagamento.Boleto,
             Descricao = "Ataque", Valor = 1m, Tipo = (int)TipoTransacao.Despesa, ContaId = conta,
             Frequencia = (int)FrequenciaRecorrencia.Semanal, Dia = 1,
             DataInicio = new DateTime(1, 1, 1, 0, 0, 0, DateTimeKind.Utc),
@@ -1133,7 +1133,7 @@ public class RecorrenteContaFixaMotorTests
         var conta = SeedConta(ctx, u);
 
         await Assert.ThrowsAsync<ArgumentException>(() => CreateService(ctx).CriarAsync(new CriarRecorrenteDto
-        {
+        { MeioPagamento = (int)MeioPagamento.Boleto,
             Descricao = "Aluguel", Valor = 1500m, Tipo = (int)TipoTransacao.Despesa, ContaId = conta,
             Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 5,
             DataInicio = Utc(Hoje), DataFim = Utc(Hoje.AddDays(-1)),
@@ -1339,7 +1339,7 @@ public class RecorrenteContaFixaMotorTests
         var svc = CreateService(ctx);
 
         var dto = await svc.CriarAsync(new CriarRecorrenteDto
-        {
+        { MeioPagamento = (int)MeioPagamento.Boleto,
             Descricao = "Aluguel", Valor = 1500m, Tipo = (int)TipoTransacao.Despesa, ContaId = conta,
             Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 5, DataInicio = Utc(Hoje),
         }, u);
@@ -1475,7 +1475,7 @@ public class RecorrenteContaFixaMotorTests
         var inicio = new DateOnly(Hoje.Year, Hoje.Month, 1).AddMonths(-2);
 
         var dto = await CreateService(ctx).CriarAsync(new CriarRecorrenteDto
-        {
+        { MeioPagamento = (int)MeioPagamento.Boleto,
             Descricao = "Aluguel", Valor = 1800m, Tipo = (int)TipoTransacao.Despesa, ContaId = conta,
             Frequencia = (int)FrequenciaRecorrencia.Mensal, Dia = 1, DataInicio = Utc(inicio),
         }, u);

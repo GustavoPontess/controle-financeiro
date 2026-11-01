@@ -14,7 +14,9 @@ namespace ControleFinanceiro.Api.Services
         // Só dígitos (agência não tem dígito verificador na maioria dos bancos BR).
         private static readonly Regex AgenciaRegex = new(@"^\d{1,10}$", RegexOptions.Compiled);
         // Dígitos, com dígito verificador opcional separado por hífen (ex: 91205195-5).
-        private static readonly Regex NumeroContaRegex = new(@"^\d{1,20}(-\d)?$", RegexOptions.Compiled);
+        // A mesma regra do front (dominio/conta.ts), 2026-11-01: antes o front aceitava 30 dígitos e DV de 2. O DV do
+        // Banco do Brasil pode ser X.
+        private static readonly Regex NumeroContaRegex = new(@"^\d{1,20}(-[\dXx])?$", RegexOptions.Compiled);
 
         public ContaService(AppDbContext context, FinancialEventLogService eventLog)
         {
@@ -31,6 +33,12 @@ namespace ControleFinanceiro.Api.Services
 
         private static void ValidarFormato(Conta conta)
         {
+            // Nome: a mesma regra em criar e editar (antes o limite de 100 só era conferido ao criar).
+            if (string.IsNullOrWhiteSpace(conta.Nome))
+                throw new ArgumentException("Nome é obrigatório.");
+            if (conta.Nome.Length > 100)
+                throw new ArgumentException("Nome deve ter no máximo 100 caracteres.");
+
             if (!TiposPermitidos.Contains(conta.Tipo))
                 throw new ArgumentException("Tipo de conta inválido. Use conta corrente, poupança, dinheiro ou investimentos.");
 
@@ -72,12 +80,7 @@ namespace ControleFinanceiro.Api.Services
 
         public async Task<Conta> CriarAsync(Conta conta, Guid usuarioId, decimal saldoInicial = 0, DateTime? dataSaldoInicial = null)
         {
-            if (string.IsNullOrWhiteSpace(conta.Nome))
-                throw new ArgumentException("Nome é obrigatório.");
-
-            if (conta.Nome.Length > 100)
-                throw new ArgumentException("Nome deve ter no máximo 100 caracteres.");
-
+            // Nome: conferido no ValidarFormato abaixo (o mesmo do editar).
             if (saldoInicial < 0)
                 throw new ArgumentException("Saldo inicial não pode ser negativo.");
 
@@ -233,9 +236,6 @@ namespace ControleFinanceiro.Api.Services
                 throw new InvalidOperationException("A carteira não pode ser editada.");
             if (existente.Tipo == TipoConta.Caixinha)
                 throw new InvalidOperationException(MensagemCaixinha);
-
-            if (string.IsNullOrWhiteSpace(conta.Nome))
-                throw new ArgumentException("Nome é obrigatório.");
 
             ValidarFormato(conta);
 

@@ -299,4 +299,28 @@ public class CartaoCreditoServiceTests
 
         await Assert.ThrowsAsync<ArgumentException>(() => svc.AtualizarAsync(cartao.Id, dto, usuarioId));
     }
+
+    [Fact]
+    public async Task AtualizarAsync_CartaoExcluido_NaoAcha_ComoBuscarEExcluir()
+    {
+        var ctx = CreateContext();
+        var svc = new CartaoCreditoService(ctx);
+        var usuarioId = Guid.NewGuid();
+        var cartao = new CartaoCredito { Id = Guid.NewGuid(), Nome = "Antigo", TemCredito = true, LimiteTotal = 1000, CriadoPor = usuarioId, Ativo = false };
+        ctx.CartoesCredito.Add(cartao);
+        await ctx.SaveChangesAsync();
+
+        Assert.False(await svc.AtualizarAsync(cartao.Id, DtoValido(), usuarioId));
+    }
+
+    [Fact]
+    public async Task CriarAsync_SemCreditoNemDebito_Recusa_ComoOFormulario()
+    {
+        var svc = new CartaoCreditoService(CreateContext());
+        var dto = DtoValido();
+        dto.TemCredito = false;
+        dto.TemDebito = false;
+
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(dto, Guid.NewGuid()));
+    }
 }

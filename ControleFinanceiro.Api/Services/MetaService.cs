@@ -71,11 +71,15 @@ public class MetaService
             throw new ArgumentException("O prazo não pode ser num mês que já passou.");
 
         meta.Nome = ValidarNome(dto.Nome);
-        meta.Descricao = string.IsNullOrWhiteSpace(dto.Descricao) ? null : dto.Descricao.Trim();
+        // Descrição e categoria não estão no formulário (só na API): sem valor no pedido, ficam como estão. Antes editar
+        // pela tela apagava as duas (auditoria criar × editar, 2026-11-01). A família da meta não muda na edição.
+        if (dto.Descricao != null)
+            meta.Descricao = string.IsNullOrWhiteSpace(dto.Descricao) ? null : dto.Descricao.Trim();
         meta.Icone = ValidarIcone(dto.Icone ?? meta.Icone);
         meta.ValorAlvo = dto.ValorAlvo;
         meta.DataLimite = prazo;
-        meta.CategoriaId = dto.CategoriaId;
+        if (dto.CategoriaId.HasValue)
+            meta.CategoriaId = dto.CategoriaId;
         meta.AtualizadoEm = DateTime.UtcNow;
         if (meta.ContaId.HasValue && await _context.Contas.FindAsync(meta.ContaId.Value) is { } caixinha)
             caixinha.Nome = meta.Nome;

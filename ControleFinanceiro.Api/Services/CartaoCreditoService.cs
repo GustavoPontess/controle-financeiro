@@ -43,10 +43,15 @@ public class CartaoCreditoService(AppDbContext context)
         return ToDto(cartao, usado);
     }
 
-    public async Task<CartaoCreditoDto> CriarAsync(CriarCartaoCreditoDto dto, Guid usuarioId)
+    // Regra do formulário (CONVENCOES › Formulário): criar e editar conferem a MESMA coisa, num lugar só. Antes eram duas
+    // cópias iguais, que podiam se separar (auditoria criar × editar, 2026-11-01).
+    private static void Conferir(CriarCartaoCreditoDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Nome))
             throw new ArgumentException("Nome do cartão é obrigatório.");
+        // Como o formulário: cartão sem função nenhuma não existe (antes passava pela API).
+        if (!dto.TemCredito && !dto.TemDebito)
+            throw new ArgumentException("Marque crédito, débito ou os dois.");
 
         if (dto.TemCredito)
         {
@@ -59,6 +64,11 @@ public class CartaoCreditoService(AppDbContext context)
             if (!dto.DiaVencimento.HasValue || dto.DiaVencimento.Value is < 1 or > 28)
                 throw new ArgumentException("Dia de vencimento deve ser entre 1 e 28.");
         }
+    }
+
+    public async Task<CartaoCreditoDto> CriarAsync(CriarCartaoCreditoDto dto, Guid usuarioId)
+    {
+        Conferir(dto);
 
         if (!dto.EhPrePago && dto.ContaId.HasValue)
         {
@@ -92,23 +102,11 @@ public class CartaoCreditoService(AppDbContext context)
 
     public async Task<bool> AtualizarAsync(Guid id, CriarCartaoCreditoDto dto, Guid usuarioId)
     {
-        var cartao = await _context.CartoesCredito.FirstOrDefaultAsync(c => c.Id == id && c.CriadoPor == usuarioId);
+        // Cartão excluído (soft delete) não se edita, como não se busca nem se exclui de novo.
+        var cartao = await _context.CartoesCredito.FirstOrDefaultAsync(c => c.Id == id && c.CriadoPor == usuarioId && c.Ativo);
         if (cartao is null) return false;
 
-        if (string.IsNullOrWhiteSpace(dto.Nome))
-            throw new ArgumentException("Nome do cartão é obrigatório.");
-
-        if (dto.TemCredito)
-        {
-            if (!dto.Limite.HasValue || dto.Limite.Value <= 0)
-                throw new ArgumentException("Limite do cartão deve ser positivo.");
-
-            if (!dto.DiaFechamento.HasValue || dto.DiaFechamento.Value is < 1 or > 28)
-                throw new ArgumentException("Dia de fechamento deve ser entre 1 e 28.");
-
-            if (!dto.DiaVencimento.HasValue || dto.DiaVencimento.Value is < 1 or > 28)
-                throw new ArgumentException("Dia de vencimento deve ser entre 1 e 28.");
-        }
+        Conferir(dto);
 
         if (!dto.EhPrePago && dto.ContaId.HasValue && dto.ContaId != cartao.ContaId)
         {

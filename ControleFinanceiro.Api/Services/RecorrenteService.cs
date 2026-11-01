@@ -793,6 +793,9 @@ public class RecorrenteService
         if (dto.CartaoCreditoId.HasValue) return MeioPagamento.Credito;
         if (meio == MeioPagamento.Credito)
             throw new ArgumentException("Crédito é no cartão: escolha o cartão em vez da conta.");
+        // "Como paga" é obrigatório na conta fixa (decisão do PR #310), como no formulário; antes passava sem pela API.
+        if (meio is null)
+            throw new ArgumentException("Escolha como paga (ou recebe).");
         return meio;
     }
 
@@ -836,7 +839,12 @@ public class RecorrenteService
             await new RateioService(_context).RegravarPeloValorAsync(proxima);
         }
         if (dto.Descricao != null)
-            proxima.Descricao = dto.Descricao;
+        {
+            // Obrigatória como ao criar (auditoria criar × editar, 2026-11-01): antes vazia ou só espaços passava pela API.
+            if (string.IsNullOrWhiteSpace(dto.Descricao))
+                throw new ArgumentException("Informe a descrição.");
+            proxima.Descricao = dto.Descricao.Trim();
+        }
         // Editada à mão: alterar a conta fixa e o realinhamento não desfazem (antes regeravam por cima).
         proxima.EditadaPeloUsuario = true;
         if (dto.CategoriaId.HasValue)
@@ -916,11 +924,17 @@ public class RecorrenteService
         await ExigirReferenciasDoUsuarioAsync(dto.ContaId, dto.CartaoCreditoId, dto.CategoriaId, dto.SubcategoriaId, usuarioId);
         // Marcar/desmarcar da casa vale pras PRÓXIMAS cobranças (as previsões são geradas de novo abaixo).
         r.FamiliaId = await FamiliaDoCadastroAsync(dto, usuarioId);
-        // O início não muda na edição (fica o do cadastro); só o fim é conferido contra ele.
+        // O começo fica no MÊS do cadastro e só o dia acompanha o Dia da cobrança: é o que a tela deixa escolher na
+        // edição. Antes o servidor guardava o começo antigo inteiro e trocava só o Dia, enquanto a tela mandava (e
+        // mostrava) outra data, e o "Até" era conferido contra começos diferentes nos dois lados (auditoria criar ×
+        // editar, 2026-11-01). O fim é conferido contra esse começo.
+        var inicioAntigo = DateOnly.FromDateTime(r.DataInicio);
+        var diaDoInicio = Math.Clamp(dto.Dia, 1, DateTime.DaysInMonth(inicioAntigo.Year, inicioAntigo.Month));
         AgendaRecorrente.ValidarPeriodo(
-            DateOnly.FromDateTime(r.DataInicio),
+            new DateOnly(inicioAntigo.Year, inicioAntigo.Month, diaDoInicio),
             dto.DataFim is { } fimDto ? DateOnly.FromDateTime(fimDto.ToUniversalTime()) : null,
             HorarioBrasil.Hoje(), validarInicio: false);
+        r.DataInicio = r.DataInicio.AddDays(diaDoInicio - inicioAntigo.Day);
 
         r.Descricao = dto.Descricao;
         r.Valor = dto.Valor;

@@ -780,4 +780,29 @@ public class ContaServiceTests
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => svc.DeletarAsync(carteira.Id, usuarioId));
         Assert.Contains("carteira", ex.Message.ToLower());
     }
+
+    [Fact]
+    public async Task AtualizarAsync_NomeComMaisDe100_Recusa_ComoAoCriar()
+    {
+        var ctx = CreateContext();
+        var svc = CriarService(ctx);
+        var usuarioId = Guid.NewGuid();
+        var criada = await svc.CriarAsync(new Conta { Nome = "Conta Teste", Tipo = TipoConta.ContaCorrente }, usuarioId);
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            svc.AtualizarAsync(criada.Id, new Conta { Nome = new string('x', 101), Tipo = TipoConta.ContaCorrente }, usuarioId));
+    }
+
+    [Theory]
+    [InlineData("12345-X", true)]   // DV do Banco do Brasil
+    [InlineData("12345678901234567890", true)]
+    [InlineData("123456789012345678901", false)] // 21 dígitos: o front também recusa
+    [InlineData("12345-67", false)]  // DV de um caractere só
+    public async Task NumeroDaConta_AMesmaRegraDoFront(string numero, bool aceita)
+    {
+        var svc = CriarService(CreateContext());
+        var conta = new Conta { Nome = "Conta", Tipo = TipoConta.ContaCorrente, NumeroConta = numero };
+        if (aceita) Assert.Equal(numero, (await svc.CriarAsync(conta, Guid.NewGuid())).NumeroConta);
+        else await Assert.ThrowsAsync<ArgumentException>(() => svc.CriarAsync(conta, Guid.NewGuid()));
+    }
 }
