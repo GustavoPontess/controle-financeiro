@@ -16,9 +16,9 @@ const contas = [
   { id: "k2", nome: "Nubank", tipo: 1, tipoDescricao: "", saldoAtual: 0, isCarteira: false },
 ]
 const categorias = [{ id: "cat1", descricao: "Alimentação", finalidade: 1, isPadrao: true }]
-// Despesa já lançada, com hora (pra provar que dá pra tirar a hora ao editar).
+// Despesa já lançada, com hora (pra provar que dá pra tirar a hora ao editar). Antes do dia congelado do setup (20/10).
 const despesaComHora = {
-  id: "t1", descricao: "Feira", valor: 50, tipo: 1, data: "2026-10-30", hora: "10:00:00", contaId: "k1", contaNome: "Carteira",
+  id: "t1", descricao: "Feira", valor: 50, tipo: 1, data: "2026-10-15", hora: "10:00:00", contaId: "k1", contaNome: "Carteira",
   categoriaId: "cat1" as string | null, statusTransacao: 1, meioPagamento: 4,
 }
 const renderizar = () => render(
@@ -107,7 +107,7 @@ describe("FormularioTransacao", () => {
     await userEvent.click(screen.getByRole("button", { name: "Salvar" }))
 
     await waitFor(() => expect(editarTransferencia).toHaveBeenCalledWith("tf1",
-      { contaOrigemId: "k1", contaDestinoId: "k2", valor: 75.5, data: "2026-10-30", hora: "10:00:00", descricao: "Reserva" }))
+      { contaOrigemId: "k1", contaDestinoId: "k2", valor: 75.5, data: "2026-10-15", hora: "10:00:00", descricao: "Reserva" }))
     expect(updateTransaction).not.toHaveBeenCalledWith("perna1", expect.anything(), expect.anything())
     expect(aoSalvo).toHaveBeenCalledWith(undefined)
   })
