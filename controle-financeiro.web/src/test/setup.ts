@@ -1,7 +1,11 @@
 // Setup dos testes do v2 (vitest + testing-library, jsdom).
 import "@testing-library/jest-dom/vitest"
 import { afterEach, beforeEach, vi } from "vitest"
-import { cleanup } from "@testing-library/react"
+import { cleanup, configure } from "@testing-library/react"
+
+// Espera do findBy/waitFor: 5 s em vez de 1 s (2026-11-01). Com o PC dividido (dois runners do CI na mesma máquina)
+// a tela às vezes levava mais de 1 s pra aparecer e o teste falhava sem nada errado. Teste que passa não fica mais lento.
+configure({ asyncUtilTimeout: 5000 })
 
 // Relógio dos testes (regra de hora, 2026-11-01): todo teste roda no fuso de Brasília e com o dia congelado no dia dos
 // dados de exemplo. Antes o resultado dependia da máquina e do dia: o CI (UTC) virou o mês às 21h de Brasília e quebrou

@@ -52,7 +52,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
-    testTimeout: 15000,
+    // 30 s (2026-11-01): com o PC dividido pelos runners do CI, teste longo de formulário passava dos 15 s.
+    testTimeout: 30000,
     // Fuso fixo de Brasília (o CI roda em UTC); o dia dos testes fica congelado no setup.ts.
     env: { TZ: 'America/Sao_Paulo' },
   },
