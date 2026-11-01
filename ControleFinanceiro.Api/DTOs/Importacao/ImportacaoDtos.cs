@@ -7,7 +7,9 @@ namespace ControleFinanceiro.Api.DTOs.Importacao;
 /// <c>PixNoCredito</c>: perna do Pix no Crédito (a entrada do cartão ou o Pix que ela pagou) — entra no
 /// saldo, mas não é receita/despesa. <c>PagaFaturaFechamento</c>: "Pagamento de fatura" que vai quitar a
 /// fatura do app que fecha nessa data (o rótulo da tela Cartões); null = fica como despesa. A confirmação
-/// decide as duas de novo no servidor (não confia na prévia).</summary>
+/// decide as duas de novo no servidor (não confia na prévia). <c>Natureza</c> (2026-11-01): o que o sinal não diz
+/// ("entre-contas", "emprestimo", "investimento"; null = comum); <c>JuntaComConta</c>: a conta da outra perna que já
+/// está no app, quando é entre suas contas.</summary>
 public record ExtratoLinhaDto(
     DateTime Data,
     string Descricao,
@@ -18,7 +20,9 @@ public record ExtratoLinhaDto(
     Guid? CategoriaSugeridaId,
     string? CategoriaSugeridaNome,
     bool PixNoCredito = false,
-    DateTime? PagaFaturaFechamento = null);
+    DateTime? PagaFaturaFechamento = null,
+    string? Natureza = null,
+    string? JuntaComConta = null);
 
 /// <summary>
 /// Resultado do parse de um extrato — nada foi salvo ainda. No CSV vem também a tabela (colunas + até 5

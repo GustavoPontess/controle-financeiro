@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.DTOs.Fatura;
@@ -31,6 +32,109 @@ public class ImportacaoService
     }
 
     private record LinhaParaRegra(DateOnly Data, decimal Valor, TipoTransacao Tipo, string Descricao);
+
+    // ── O que o sinal não diz (P2, 2026-11-01) ─────────────────────────────────────────────────────────────────
+    // O extrato só traz entrada e saída. Três movimentos não são ganho nem gasto (partidas dobradas): dinheiro entre
+    // contas suas (só muda de lugar), empréstimo (o capital vai e volta; os juros, o Empréstimo separa) e aplicação ou
+    // resgate de investimento (o aplicado volta). Antes todos entravam como receita/despesa pelo sinal: os 3 Pix do
+    // Gustavo pra ele mesmo viravam R$ 5.454 de "renda".
+
+    public enum NaturezaExtrato { Comum, EntreSuasContas, Emprestimo, Investimento }
+
+    private static readonly Regex PalavraEmprestimo = new(@"\bemprestimo\b", RegexOptions.Compiled);
+    private static readonly Regex PalavraTransferencia = new(@"\b(pix|ted|doc|transferencia)\b", RegexOptions.Compiled);
+    private static readonly Regex PalavraInvestimento =
+        new(@"\b(rdb|cdb|lci|lca|tesouro|caixinha|aplicacao|resgate|investimento)\b", RegexOptions.Compiled);
+
+    /// <summary>A outra perna de uma transferência entre suas contas fica até estes dias de distância.</summary>
+    public const int DiasDoPar = 5;
+
+    /// <summary>
+    /// A natureza pela descrição. Empréstimo: a palavra "empréstimo". Entre suas contas: Pix, TED ou transferência com o
+    /// nome do titular (todas as partes do nome com 3+ letras, e pelo menos duas: "GUSTAVO NUNES PONTES").
+    /// Investimento: RDB, CDB, caixinha, aplicação, resgate, Tesouro…
+    /// </summary>
+    public static NaturezaExtrato NaturezaDaLinha(string descricao, string? nomeDoTitular)
+    {
+        var d = Simples(descricao);
+        if (PalavraEmprestimo.IsMatch(d)) return NaturezaExtrato.Emprestimo;
+        var partes = Simples(nomeDoTitular ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(p => p.Length >= 3).ToList();
+        if (partes.Count >= 2 && PalavraTransferencia.IsMatch(d) && partes.All(d.Contains)) return NaturezaExtrato.EntreSuasContas;
+        if (PalavraInvestimento.IsMatch(d)) return NaturezaExtrato.Investimento;
+        return NaturezaExtrato.Comum;
+    }
+
+    private static string? NaturezaParaTela(NaturezaExtrato n) => n switch
+    {
+        NaturezaExtrato.EntreSuasContas => "entre-contas",
+        NaturezaExtrato.Emprestimo => "emprestimo",
+        NaturezaExtrato.Investimento => "investimento",
+        _ => null,
+    };
+
+    // Minúsculas sem acento, sem Normalize/CultureInfo (a imagem de produção roda com globalização invariante).
+    private static string Simples(string texto)
+    {
+        var sb = new StringBuilder(texto.Length);
+        foreach (var c in texto.ToLowerInvariant())
+            sb.Append(c switch
+            {
+                'á' or 'à' or 'â' or 'ã' or 'ä' or 'Á' or 'À' or 'Â' or 'Ã' or 'Ä' => 'a',
+                'é' or 'è' or 'ê' or 'ë' or 'É' or 'È' or 'Ê' or 'Ë' => 'e',
+                'í' or 'ì' or 'î' or 'ï' or 'Í' or 'Ì' or 'Î' or 'Ï' => 'i',
+                'ó' or 'ò' or 'ô' or 'õ' or 'ö' or 'Ó' or 'Ò' or 'Ô' or 'Õ' or 'Ö' => 'o',
+                'ú' or 'ù' or 'û' or 'ü' or 'Ú' or 'Ù' or 'Û' or 'Ü' => 'u',
+                'ç' or 'Ç' => 'c',
+                _ => c,
+            });
+        return sb.ToString();
+    }
+
+    private Task<string?> NomeDoTitularAsync(Guid usuarioId) =>
+        _context.Usuarios.Where(u => u.Id == usuarioId).Select(u => (string?)u.Nome).FirstOrDefaultAsync();
+
+    private sealed record ParCandidato(Guid Id, string ContaNome, DateOnly Data, decimal Valor, TipoTransacao Tipo);
+
+    /// <summary>
+    /// A outra perna de cada linha "entre suas contas": o mesmo valor, com o sinal oposto, em outra conta sua (não
+    /// caixinha), até <see cref="DiasDoPar"/> dias de distância; a mais perto vence e cada lançamento junta com uma linha
+    /// só. É como os apps de finanças acham transferência (valor + sinal + data, com a descrição desempatando). Sem par:
+    /// a outra conta não está no app, e a linha entra como transferência solta (fora do resultado do mesmo jeito).
+    /// </summary>
+    private async Task<Dictionary<int, ParCandidato>> ParesEntreContasAsync(
+        Guid contaId, Guid usuarioId, IReadOnlyList<LinhaParaRegra> linhas, IReadOnlyList<NaturezaExtrato> naturezas)
+    {
+        var resultado = new Dictionary<int, ParCandidato>();
+        var indices = Enumerable.Range(0, linhas.Count).Where(i => naturezas[i] == NaturezaExtrato.EntreSuasContas).ToList();
+        if (indices.Count == 0) return resultado;
+
+        var de = indices.Min(i => linhas[i].Data).AddDays(-DiasDoPar);
+        var ate = indices.Max(i => linhas[i].Data).AddDays(DiasDoPar);
+        var valores = indices.Select(i => linhas[i].Valor).Distinct().ToList();
+        var candidatos = await _context.Transacoes.AsNoTracking()
+            .Where(t => t.ContaId != null && t.ContaId != contaId && t.Conta!.UsuarioIdProprietario == usuarioId
+                        && t.Conta.Tipo != TipoConta.Caixinha && t.Ativo && t.StatusTransacao == StatusTransacao.Executado
+                        && t.FamiliaId == null && !t.EhTransferencia && !t.EhPagamentoFatura && !t.EhSaldoInicial
+                        && !t.EhAjusteReconciliacao && !t.EhPixNoCredito && !t.EhEmprestimo && !t.EhAcerto
+                        && t.Data >= de && t.Data <= ate && valores.Contains(t.Valor))
+            .Select(t => new ParCandidato(t.Id, t.Conta!.Nome, t.Data, t.Valor, t.Tipo))
+            .ToListAsync();
+
+        var usados = new HashSet<Guid>();
+        foreach (var i in indices.OrderBy(i => linhas[i].Data).ThenBy(i => i))
+        {
+            var l = linhas[i];
+            var par = candidatos
+                .Where(c => !usados.Contains(c.Id) && c.Valor == l.Valor && c.Tipo != l.Tipo
+                            && Math.Abs(c.Data.DayNumber - l.Data.DayNumber) <= DiasDoPar)
+                .OrderBy(c => Math.Abs(c.Data.DayNumber - l.Data.DayNumber))
+                .FirstOrDefault();
+            if (par is null) continue;
+            usados.Add(par.Id);
+            resultado[i] = par;
+        }
+        return resultado;
+    }
 
     /// <summary>Lê o extrato e devolve a preview: linhas parseadas, deduplicadas
     /// e com sugestão de categoria. Nada é persistido.</summary>
@@ -99,6 +203,12 @@ public class ImportacaoService
             .ToList();
         var pixNoCredito = PernasDePixNoCredito(paraRegra.Select(l => (l.Data, l.Valor, l.Tipo, l.Descricao)).ToList());
         var faturasPagas = await ResolverPagamentosDeFaturaAsync(contaId, usuarioId, paraRegra);
+        var titular = await NomeDoTitularAsync(usuarioId);
+        var naturezas = paraRegra.Select(l => NaturezaDaLinha(l.Descricao, titular)).ToList();
+        var pares = await ParesEntreContasAsync(contaId, usuarioId, paraRegra, naturezas);
+        // Aplicação/resgate vai pra uma categoria de investimento (o que marca EhInvestimento e tira do resultado).
+        var deInvestimento = categorias.Where(c => c.Finalidade == Finalidade.Investimento)
+            .OrderBy(c => c.Descricao == "Renda fixa" ? 0 : 1).FirstOrDefault();
 
         // Pagamento de fatura já registrado no app (pela tela, ou importado de outro arquivo sem FITID): o
         // mesmo valor perto da mesma data. Importar de novo debitaria a conta 2x.
@@ -125,11 +235,16 @@ public class ImportacaoService
                     p.Valor == valor && Math.Abs(p.Data.DayNumber - paraRegra[i].Data.DayNumber) <= 3);
 
             var faturaPaga = faturasPagas.GetValueOrDefault(i);
-            var categoria = faturaPaga is null ? SugerirCategoria(linha.Descricao, tipo, categorias) : null;
+            var natureza = faturaPaga is null && !pixNoCredito[i] ? naturezas[i] : NaturezaExtrato.Comum;
+            var categoria = faturaPaga is not null || natureza is NaturezaExtrato.EntreSuasContas or NaturezaExtrato.Emprestimo
+                ? null
+                : natureza == NaturezaExtrato.Investimento ? deInvestimento ?? SugerirCategoria(linha.Descricao, tipo, categorias)
+                : SugerirCategoria(linha.Descricao, tipo, categorias);
 
             linhas.Add(new ExtratoLinhaDto(
                 linha.Data, linha.Descricao, valor, tipo, linha.FitId, duplicada,
-                categoria?.Id, categoria?.Descricao, pixNoCredito[i], faturaPaga?.DataFechamento));
+                categoria?.Id, categoria?.Descricao, pixNoCredito[i], faturaPaga?.DataFechamento,
+                NaturezaParaTela(natureza), pares.GetValueOrDefault(i)?.ContaNome));
         }
 
         return ComTabela(new PreviewImportacaoDto(
@@ -230,6 +345,9 @@ public class ImportacaoService
             .ToList();
         var pixNoCredito = PernasDePixNoCredito(paraRegra.Select(l => (l.Data, l.Valor, l.Tipo, l.Descricao)).ToList());
         var faturasPagas = await ResolverPagamentosDeFaturaAsync(dto.ContaId, usuarioId, paraRegra);
+        var titular = await NomeDoTitularAsync(usuarioId);
+        var naturezas = paraRegra.Select(l => NaturezaDaLinha(l.Descricao, titular)).ToList();
+        var pares = await ParesEntreContasAsync(dto.ContaId, usuarioId, paraRegra, naturezas);
 
         var importadas = 0;
         foreach (var (linha, i) in dto.Linhas.Select((l, i) => (l, i)))
@@ -246,6 +364,8 @@ public class ImportacaoService
                 continue;
             }
 
+            var natureza = pixNoCredito[i] ? NaturezaExtrato.Comum : naturezas[i];
+            var foraDoResultado = natureza is NaturezaExtrato.EntreSuasContas or NaturezaExtrato.Emprestimo;
             var transacao = new Transacao
             {
                 Id = Guid.NewGuid(),
@@ -255,14 +375,19 @@ public class ImportacaoService
                 Data = DateOnly.FromDateTime(linha.Data),
                 Hora = null, // lançamento importado de extrato é datado (sem hora de relógio)
                 ContaId = dto.ContaId,
-                CategoriaId = linha.CategoriaId,
+                CategoriaId = foraDoResultado ? null : linha.CategoriaId,
                 StatusTransacao = StatusTransacao.Executado,
                 Ativo = true,
                 ImportacaoFitId = linha.FitId,
                 EhPixNoCredito = pixNoCredito[i],
+                EhTransferencia = natureza == NaturezaExtrato.EntreSuasContas,
+                EhEmprestimo = natureza == NaturezaExtrato.Emprestimo,
             };
 
             await _transacaoService.CriarTransacaoAsync(transacao, usuarioId);
+            // A outra perna já está no app: as duas viram uma transferência de verdade (editável pela tela dela).
+            if (natureza == NaturezaExtrato.EntreSuasContas && pares.TryGetValue(i, out var par))
+                await TransferenciaService.JuntarPernasAsync(_context, usuarioId, transacao.Id, par.Id, linha.Descricao);
             importadas++;
         }
 
