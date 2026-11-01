@@ -8,7 +8,14 @@ public class Emprestimo
     public string Descricao { get; set; } = string.Empty;
     public string Pessoa { get; set; } = string.Empty;
     public decimal ValorTotal { get; set; }
+
+    /// <summary>O CAPITAL já devolvido (o saldo devedor é ValorTotal − ValorPago). Os juros pagos ficam em
+    /// <see cref="JurosPagos"/> (2026-11-01: antes os juros somavam aqui e o empréstimo quitava antes da hora).</summary>
     public decimal ValorPago { get; set; } = 0;
+
+    /// <summary>Juros e multa já pagos (imputação do Código Civil, art. 354: o pagamento cobre primeiro os juros). Com
+    /// <see cref="ValorPago"/>, dá o quanto falta no à vista e o "já devolvi" da tela (capital + juros).</summary>
+    public decimal JurosPagos { get; set; }
     public TipoEmprestimo Tipo { get; set; }
     public DateTime DataInicio { get; set; }
     public DateTime? DataVencimento { get; set; }

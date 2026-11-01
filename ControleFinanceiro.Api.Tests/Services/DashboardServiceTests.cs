@@ -1181,4 +1181,32 @@ public class DashboardServiceTests
 
         Assert.Equal(saida.Id, Assert.Single(dto.TransacoesRecentes).Id);
     }
+
+    [Fact]
+    public async Task SaldoTotal_SemAsCaixinhasDasMetas_GuardarTiraDoSaldoEDaEvolucao()
+    {
+        // Gustavo (2026-11-01): "o saldo total não deveria incluir caixinha de metas". O dinheiro da meta continua na
+        // lista de contas (a caixinha aparece à parte na tela), mas não no saldo, na variação nem no gráfico.
+        var ctx = CreateContext();
+        var u = Guid.NewGuid();
+        var conta = NovaConta(ctx, u, "Itaú");
+        var caixinha = new Conta { Id = Guid.NewGuid(), Nome = "Viagem", Tipo = TipoConta.Caixinha, UsuarioIdProprietario = u };
+        ctx.Contas.Add(caixinha);
+        var hoje = Hoje;
+        var inicioDoMes = PrimeiroDoMes(hoje).ToDateTime(TimeOnly.MinValue);
+        var entrada = Tx(conta.Id, TipoTransacao.Receita, 1000m, inicioDoMes.AddMonths(-1)); entrada.EhSaldoInicial = true;
+        var saida = Tx(conta.Id, TipoTransacao.Despesa, 300m, inicioDoMes); saida.EhTransferencia = true; saida.Descricao = "Guardado em Viagem";
+        var naMeta = Tx(caixinha.Id, TipoTransacao.Receita, 300m, inicioDoMes); naMeta.EhTransferencia = true; naMeta.Descricao = "Guardado em Viagem";
+        ctx.Transacoes.AddRange(entrada, saida, naMeta);
+        using (ctx.LiberarCaixinha()) // só Metas mexe na caixinha
+            await ctx.SaveChangesAsync();
+
+        var (ano, mes) = MesDe(hoje);
+        var dto = await Servico(ctx).GetResumoAsync(u, ano, mes);
+
+        Assert.Equal(700m, dto.SaldoTotal); // 1.000 − 300 guardados na meta
+        Assert.Equal(1000m, dto.SaldoMesAnterior);
+        Assert.Equal(700m, dto.EvolucaoSaldo[^1].Saldo); // o ponto do mês é o próprio saldo total
+        Assert.Equal(300m, dto.SaldoContas.Single(c => c.Id == caixinha.Id).Saldo); // a caixinha continua na lista
+    }
 }

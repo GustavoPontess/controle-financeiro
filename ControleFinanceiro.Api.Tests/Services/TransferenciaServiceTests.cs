@@ -348,4 +348,79 @@ public class TransferenciaServiceTests
         var pernaGuardar = (await ctx.Transferencias.SingleAsync(x => x.Id == guardar.Id)).TransacaoOrigemId;
         Assert.True((await service.ObterPelaPernaAsync(pernaGuardar, usuarioId)).ComCaixinha);
     }
+    // ── Log financeiro (achado 2026-10-31: transferência mexia no saldo de duas contas sem deixar registro) ──
+
+    private static async Task<List<FinancialEventLog>> Log(AppDbContext ctx, FinancialEventType tipo) =>
+        await ctx.FinancialEventLogs.Where(e => e.Tipo == tipo).ToListAsync();
+
+    [Fact]
+    public async Task Criar_GravaNoLog_UmEventoPorConta_ComOSaldoDeAntesEODeDepois_NaMesmaOperacao()
+    {
+        var (ctx, usuarioId, origem, destino) = Seed();
+        ctx.Transacoes.Add(new Transacao { Id = Guid.NewGuid(), Descricao = "Salário", Valor = 1000m, Tipo = TipoTransacao.Receita, ContaId = origem.Id, CriadoPor = usuarioId, Data = HorarioBrasil.Hoje() });
+        ctx.SaveChanges();
+
+        var tf = await new TransferenciaService(ctx).CriarAsync(new CriarTransferenciaDto
+        {
+            ContaOrigemId = origem.Id, ContaDestinoId = destino.Id, Valor = 300m, Data = HorarioBrasil.Hoje(), Descricao = "Reserva"
+        }, usuarioId);
+
+        var eventos = await Log(ctx, FinancialEventType.TransferenciaCriada);
+        Assert.Equal(2, eventos.Count);
+        Assert.Single(eventos.Select(e => e.CorrelationId).Distinct());
+        Assert.All(eventos, e => Assert.Equal(("Conta", usuarioId), (e.EntidadeAfetada, e.CriadoPor)));
+        Assert.All(eventos, e => Assert.Contains(tf.Id.ToString(), e.PayloadJson));
+        var naOrigem = eventos.Single(e => e.EntidadeId == origem.Id);
+        Assert.Equal((1000m, 700m), (naOrigem.ValorAntes, naOrigem.ValorDepois));
+        var noDestino = eventos.Single(e => e.EntidadeId == destino.Id);
+        Assert.Equal((0m, 300m), (noDestino.ValorAntes, noDestino.ValorDepois));
+    }
+
+    [Fact]
+    public async Task Editar_TrocandoAContaEOValor_GravaNoLogTodasAsContasMexidas_ComOAntesEODepois()
+    {
+        var (ctx, usuarioId, origem, destino, tf) = await SeedComTransferencia();
+        var terceira = new Conta { Id = Guid.NewGuid(), Nome = "Terceira", UsuarioIdProprietario = usuarioId, Tipo = TipoConta.ContaCorrente };
+        ctx.Contas.Add(terceira);
+        ctx.SaveChanges();
+        var valorAntigo = (await ctx.Transferencias.SingleAsync()).Valor;
+
+        await new TransferenciaService(ctx).EditarAsync(tf.Id, new CriarTransferenciaDto
+        {
+            ContaOrigemId = origem.Id, ContaDestinoId = terceira.Id, Valor = valorAntigo + 50m, Data = HorarioBrasil.Hoje(), Descricao = "Mudou"
+        }, usuarioId);
+
+        var eventos = await Log(ctx, FinancialEventType.TransferenciaEditada);
+        Assert.Equal(3, eventos.Count); // origem (a mesma), o destino velho e o novo
+        var naOrigem = eventos.Single(e => e.EntidadeId == origem.Id);
+        Assert.Equal(-50m, naOrigem.ValorDepois - naOrigem.ValorAntes); // saiu 50 a mais
+        var destinoVelho = eventos.Single(e => e.EntidadeId == destino.Id);
+        Assert.Equal((valorAntigo, 0m), (destinoVelho.ValorAntes, destinoVelho.ValorDepois));
+        var destinoNovo = eventos.Single(e => e.EntidadeId == terceira.Id);
+        Assert.Equal((0m, valorAntigo + 50m), (destinoNovo.ValorAntes, destinoNovo.ValorDepois));
+        Assert.Contains("\"antes\"", naOrigem.PayloadJson);
+        Assert.Contains("Mudou", naOrigem.PayloadJson);
+    }
+
+    [Fact]
+    public async Task Excluir_PelaTelaDeTransferenciasOuPelaPerna_GravaNoLogAVoltaDoSaldo()
+    {
+        var (ctx, usuarioId, origem, destino, tf) = await SeedComTransferencia();
+        var valor = (await ctx.Transferencias.SingleAsync()).Valor;
+        await new TransferenciaService(ctx).DeletarAsync(tf.Id, usuarioId);
+
+        var eventos = await Log(ctx, FinancialEventType.TransferenciaExcluida);
+        Assert.Equal(2, eventos.Count);
+        Assert.Equal((-valor, 0m), (eventos.Single(e => e.EntidadeId == origem.Id).ValorAntes, eventos.Single(e => e.EntidadeId == origem.Id).ValorDepois));
+        Assert.Equal((valor, 0m), (eventos.Single(e => e.EntidadeId == destino.Id).ValorAntes, eventos.Single(e => e.EntidadeId == destino.Id).ValorDepois));
+
+        // Pela tela de Transações (excluir uma perna), o mesmo registro.
+        var outra = await new TransferenciaService(ctx).CriarAsync(new CriarTransferenciaDto
+        {
+            ContaOrigemId = origem.Id, ContaDestinoId = destino.Id, Valor = 20m, Data = HorarioBrasil.Hoje(), Descricao = "Outra"
+        }, usuarioId);
+        var perna = (await ctx.Transferencias.SingleAsync(x => x.Id == outra.Id)).TransacaoDestinoId;
+        Assert.True(await Transacoes(ctx).DeletarAsync(perna, usuarioId));
+        Assert.Equal(4, (await Log(ctx, FinancialEventType.TransferenciaExcluida)).Count);
+    }
 }

@@ -20,6 +20,9 @@ public class DinheiroDoMesServiceTests
 
     private static DinheiroDoMesService Servico(AppDbContext ctx) => new(ctx, new RendaService(ctx));
 
+    /// <summary>Os testes falam de outubro de 2026 como o mês em andamento (a base da renda muda quando o mês acaba).</summary>
+    private static IDisposable EmOutubro() => HorarioBrasil.FixarParaTeste(new DateTime(2026, 10, 20, 15, 0, 0, DateTimeKind.Utc));
+
     private static Guid Usuario(AppDbContext ctx)
     {
         var u = new Usuario { Id = Guid.NewGuid(), Email = Guid.NewGuid() + "@t.com", Nome = "U", PasswordHash = "x" };
@@ -53,6 +56,7 @@ public class DinheiroDoMesServiceTests
     [Fact]
     public async Task SemRenda_PedeParaDizerARenda()
     {
+        using var _ = EmOutubro();
         var ctx = CreateContext();
         var u = Usuario(ctx);
 
@@ -66,6 +70,7 @@ public class DinheiroDoMesServiceTests
     [Fact]
     public async Task Sobra_ComOQueJaSaiuEOQueAindaVem_EmPartesEItens()
     {
+        using var _ = EmOutubro();
         var ctx = CreateContext();
         var u = Usuario(ctx);
         var moradia = Categoria(ctx, "Moradia");
@@ -90,6 +95,7 @@ public class DinheiroDoMesServiceTests
     [Fact]
     public async Task SaiuMaisDoQueEntrou_DizQuantoEOMaiorPeso_SemCategoriaPedeClassificar()
     {
+        using var _ = EmOutubro();
         var ctx = CreateContext();
         var u = Usuario(ctx);
         var moradia = Categoria(ctx, "Moradia");
@@ -111,6 +117,7 @@ public class DinheiroDoMesServiceTests
     [Fact]
     public async Task BaseEhOMaiorEntreEsperadoERecebido_EMaisDe5CategoriasViramOutras()
     {
+        using var _ = EmOutubro();
         var ctx = CreateContext();
         var u = Usuario(ctx);
         RendaEsperada(ctx, u, 3000m);
@@ -128,6 +135,7 @@ public class DinheiroDoMesServiceTests
     [Fact]
     public async Task FaturasAPagar_SaoOLadoDoCaixa_NaoSomamNoGastoDoMes()
     {
+        using var _ = EmOutubro();
         var ctx = CreateContext();
         var u = Usuario(ctx);
         RendaEsperada(ctx, u, 3000m);
@@ -187,6 +195,7 @@ public class DinheiroDoMesServiceTests
     [Fact]
     public async Task ParcelasJaCompradas_PraFrente_SoAsNaoPagas_ComTotalEAteQuando()
     {
+        using var _ = EmOutubro();
         var ctx = CreateContext();
         var u = Usuario(ctx);
         RendaEsperada(ctx, u, 3000m);
@@ -200,6 +209,22 @@ public class DinheiroDoMesServiceTests
         Assert.Equal((2000m, (int?)2026, (int?)12), (mes.ParcelasFuturas.Total, mes.ParcelasFuturas.AteAno, mes.ParcelasFuturas.AteMes));
         Assert.Equal([(11, 1000m), (12, 1000m)], mes.ParcelasFuturas.PorMes.Select(p => (p.Mes, p.Valor)));
         Assert.Equal(2000m, mes.Livre); // as dos próximos meses não comem a renda deste
+    }
+
+    [Fact]
+    public async Task MesQueJaAcabou_ABaseEhSoOQueCaiu_OEsperadoQueNaoVeioNaoConta()
+    {
+        using var _ = HorarioBrasil.FixarParaTeste(new DateTime(2026, 11, 5, 15, 0, 0, DateTimeKind.Utc));
+        var ctx = CreateContext();
+        var u = Usuario(ctx);
+        RendaEsperada(ctx, u, 3000m);
+        Lancar(ctx, u, null, 2500m, 5, TipoTransacao.Receita, descricao: "Salário menor");
+        Lancar(ctx, u, Categoria(ctx, "Mercado"), 1000m, 6);
+
+        var outubro = await Servico(ctx).CalcularAsync(u, 2026, 10);
+
+        // Outubro acabou: sobrou 2.500 − 1.000, não 3.000 − 1.000 (os 500 esperados nunca entraram).
+        Assert.Equal((3000m, 2500m, 2500m, 1500m), (outubro.RendaEsperada, outubro.RendaRecebida, outubro.RendaBase, outubro.Livre));
     }
 
     [Theory]

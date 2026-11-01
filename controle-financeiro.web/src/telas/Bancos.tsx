@@ -1,5 +1,7 @@
-// Bancos (contas) do v2: três números (saldo total, disponível em conta corrente + carteira, guardado na
-// poupança, investimentos e caixinhas das metas) e a lista de contas — abertas ou encerradas. As caixinhas
+// Bancos (contas) do v2: os números (saldo total, disponível em conta corrente + carteira, guardado na poupança e
+// nos investimentos e, à parte, o que está nas caixinhas das metas) e a lista de contas — abertas ou encerradas. O
+// saldo total não conta as caixinhas (Gustavo, 2026-11-01: o dinheiro da meta já tem destino), a mesma base do Início,
+// de Transações e da reserva de Relatórios: disponível + guardado = saldo total. As caixinhas
 // das metas aparecem num grupo próprio, só pra ver: a ficha leva pra página da meta (guardar e resgatar moram
 // lá); caixinha de meta excluída não aparece. A tela é SÓ das contas: clicar numa linha abre, ali
 // embaixo, a ficha dela (banco, tipo, agência, número, os cartões ligados a ela) e as ações (Excluir,
@@ -88,10 +90,12 @@ export default function Bancos() {
 
   const totais = useMemo(() => {
     if (!contas) return null
+    const semMetas = abertas.filter((c) => !ehCaixinha(c))
     return {
-      total: soma(abertas),
-      disponivel: soma(abertas.filter((c) => !ehGuardado(c))),
-      guardado: soma(abertas.filter(ehGuardado)),
+      total: soma(semMetas),
+      disponivel: soma(semMetas.filter((c) => !ehGuardado(c))),
+      guardado: soma(semMetas.filter(ehGuardado)),
+      nasMetas: abertas.some(ehCaixinha) ? soma(abertas.filter(ehCaixinha)) : null,
     }
   }, [contas, abertas])
 
@@ -112,6 +116,7 @@ export default function Bancos() {
           <Numero rotulo="Saldo total" valor={totais?.total} />
           <Numero rotulo="Disponível" valor={totais?.disponivel} />
           <Numero rotulo="Guardado" valor={totais?.guardado} />
+          {totais?.nasMetas != null && <Numero rotulo="Nas metas" valor={totais.nasMetas} />}
         </div>
       </Bloco>
 

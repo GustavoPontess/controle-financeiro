@@ -15,6 +15,10 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+### 📌 2026-11-01: Fase 0, bugs de dinheiro P2 (branch `fix/fase0-p2-dinheiro`, a partir da `main`, sem commit)
+
+Pedido do Gustavo: "vamos fazer a P2 inteira", com pesquisa antes pra resolver "da forma correta matematicamente". Feito: extrato importado (entre suas contas/empréstimo/investimento, junta pernas em transferência), transferência no log financeiro, write skew compra × pagamento (a fatura entra no UPDATE com xmin), juros de empréstimo no resultado (um lançamento só, art. 354, Tabela Price pela taxa efetiva pro banco; multa sobre a parcela devida; "já devolvi" = capital) e a auditoria criar × editar (conta fixa, meta, cartão, conta). Migrations `JurosNoPagamentoDeEmprestimo` e `JurosPagosDoEmprestimo` (esta recalcula os pagamentos antigos). Depois, a pedido do Gustavo, as sobras também: juros na visão Gastos, "Já está no app" pra ligar lançamento importado ao empréstimo, "Falta devolver" com juros e front × servidor alinhados. Detalhe no ROADMAP › Fase 0. Conferido no navegador interno (conta de teste Gabriel Dev): taxa efetiva no formulário, "Empréstimo · R$ 57,69 de juros" na lista e a separação no detalhe. Deploy segue com o Gustavo (outro PC).
+
 ### 📌 2026-11-01 (madrugada): relógio único, solução definitiva de hora (branch `fix/relogio-unico`, sobre a de docs)
 
 Pedido do Gustavo ("solução correta e definitiva", "Fazer tudo"). Fase 1 já subiu nos PRs #395 a #399 (testes do front em Brasília com o dia congelado; PasswordHasher pelo menor de 3 tempos; Acerto/Meta pelo `HorarioBrasil`). Fase 2 nesta branch: `HorarioBrasil.FixarParaTeste` (relógio fixável por AsyncLocal), trava do back lendo também os testes, relógio do front em `utils/dateTime.ts` com trava `relogioUnico.test.ts`, 4 bugs de data corrigidos (detalhe no ROADMAP). Regras em CLAUDE.md e `CONVENCOES.md` › Data e hora. **Ordem de merge:** #395 → #396 → #397 → #398 → #399 → este.

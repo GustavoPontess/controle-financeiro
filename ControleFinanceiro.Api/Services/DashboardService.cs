@@ -51,12 +51,13 @@ public class DashboardService
         var doMes = lancamentos
             .Where(t => t.Data >= inicioDoMes && t.Data < fimDoMes)
             .Where(t => t.Ativo && t.StatusTransacao != StatusTransacao.Cancelado);
-        var resultadoDoMes = doMes.Where(RegrasFinanceiras.EntraNoResultado);
+        // Com os juros dos pagamentos de empréstimo, cada lançamento pelo ValorNoResultado (o resto do empréstimo vai e volta).
+        var resultadoDoMes = doMes.Where(RegrasFinanceiras.EntraNoResultadoComJuros);
 
         // 6 KPIs (#81): Executado = realizado (Recebido/Pago); Previsao = futuro (A receber / A pagar).
         var porTipoEStatus = await resultadoDoMes
             .GroupBy(t => new { t.Tipo, t.StatusTransacao })
-            .Select(g => new { g.Key.Tipo, g.Key.StatusTransacao, Valor = g.Sum(t => t.Valor) })
+            .Select(g => new { g.Key.Tipo, g.Key.StatusTransacao, Valor = g.Sum(t => t.EhEmprestimo ? (t.ValorJuros ?? 0m) : t.Valor) })
             .ToListAsync();
         decimal Soma(TipoTransacao tipo, StatusTransacao status) =>
             porTipoEStatus.Where(x => x.Tipo == tipo && x.StatusTransacao == status).Sum(x => x.Valor);
@@ -75,9 +76,9 @@ public class DashboardService
             var linhas = await lancamentos
                 .Where(t => t.Data >= de && t.Data < ate)
                 .Where(t => t.Ativo && t.StatusTransacao == StatusTransacao.Executado && !t.UsadoComoCredito)
-                .Where(RegrasFinanceiras.EntraNoResultado)
+                .Where(RegrasFinanceiras.EntraNoResultadoComJuros)
                 .GroupBy(t => t.Tipo)
-                .Select(g => new { Tipo = g.Key, Valor = g.Sum(t => t.Valor) })
+                .Select(g => new { Tipo = g.Key, Valor = g.Sum(t => t.EhEmprestimo ? (t.ValorJuros ?? 0m) : t.Valor) })
                 .ToListAsync();
             return (linhas.Where(l => l.Tipo == TipoTransacao.Receita).Sum(l => l.Valor),
                     linhas.Where(l => l.Tipo == TipoTransacao.Despesa).Sum(l => l.Valor));
@@ -109,7 +110,10 @@ public class DashboardService
             Cor = c.Banco?.Cor
         }).ToList();
 
-        var saldoTotal = saldoContas.Sum(c => c.Saldo);
+        // Saldo total = o dinheiro das contas, sem as caixinhas das metas (Gustavo, 2026-11-01: "o saldo total não deveria
+        // incluir caixinha de metas"): o que está numa meta já tem destino. A tela mostra o guardado nas metas à parte, e
+        // é a mesma base de Bancos, Transações e da reserva de Relatórios.
+        var saldoTotal = saldoContas.Where(c => c.Tipo != (int)TipoConta.Caixinha).Sum(c => c.Saldo);
 
         // Maiores gastos = as saídas de caixa do mês por categoria. Mesma base do "Saiu" e sem
         // descartar nada: quem não tem categoria vira "Sem categoria" e, passando de 5 grupos, o
@@ -117,9 +121,9 @@ public class DashboardService
         const int MaxFatias = 5;
         var gastosPorCategoria = (await doMes
                 .Where(t => t.Tipo == TipoTransacao.Despesa && !t.UsadoComoCredito && t.StatusTransacao == StatusTransacao.Executado)
-                .Where(RegrasFinanceiras.EntraNoResultado)
+                .Where(RegrasFinanceiras.EntraNoResultadoComJuros)
                 .GroupBy(t => t.Categoria != null ? t.Categoria.Descricao : null)
-                .Select(g => new { Descricao = g.Key, Valor = g.Sum(t => t.Valor) })
+                .Select(g => new { Descricao = g.Key, Valor = g.Sum(t => t.EhEmprestimo ? (t.ValorJuros ?? 0m) : t.Valor) })
                 .ToListAsync())
             .GroupBy(g => g.Descricao ?? "Sem categoria")
             .Select(g => new { Descricao = g.Key, Valor = g.Sum(x => x.Valor) })
@@ -178,9 +182,10 @@ public class DashboardService
             }).ToList();
 
         // Movimento REAL das contas (mesma regra do saldo: Ativo + Executado, só o que tem conta), somado por
-        // mês no banco. É a base do saldo no tempo — o gráfico e a variação do hero falam o mesmo número.
+        // mês no banco. É a base do saldo no tempo — o gráfico e a variação do hero falam o mesmo número. Sem as
+        // caixinhas das metas, como o saldo total: guardar numa meta tira do saldo, resgatar põe de volta.
         var movimentoPorMes = await lancamentos
-            .Where(t => t.ContaId != null && t.Ativo && t.StatusTransacao == StatusTransacao.Executado)
+            .Where(t => t.ContaId != null && t.Conta!.Tipo != TipoConta.Caixinha && t.Ativo && t.StatusTransacao == StatusTransacao.Executado)
             .GroupBy(t => new { t.Data.Year, t.Data.Month })
             .Select(g => new { g.Key.Year, g.Key.Month, Valor = g.Sum(t => t.Tipo == TipoTransacao.Receita ? t.Valor : -t.Valor) })
             .ToListAsync();

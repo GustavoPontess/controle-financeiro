@@ -29,7 +29,8 @@ export const MAX_NOME_CONTA = 100
 /** Agência: só números, até 10 dígitos. */
 export const AGENCIA = /^\d{1,10}$/
 /** Número: só números, com dígito verificador opcional depois de hífen (91205195-5). */
-export const NUMERO_CONTA = /^\d{1,30}(-\d{1,2})?$/
+// A mesma regra do servidor (ContaService), 2026-11-01: até 20 dígitos; o DV do Banco do Brasil pode ser X.
+export const NUMERO_CONTA = /^\d{1,20}(-[\dXx])?$/
 
 /** "Conta corrente · ag 0001 · cc 1234-5". O banco fica de fora: a marca já mostra, e o nome que vem do
  *  Banco Central é a razão social ("NU PAGAMENTOS S.A. - INSTITUIÇÃO DE PAGAMENTO"). */

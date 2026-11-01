@@ -31,6 +31,14 @@ export function descreverRegra(frequencia: number, inicio: string, fim?: string)
 }
 
 /** O servidor aceita começar até 12 meses atrás e até 5 anos à frente (AgendaRecorrente). */
+/** Na edição o começo fica no mês do cadastro e só o dia muda (é o dia da cobrança; o servidor faz igual, 2026-11-01). */
+export function limitesDaEdicao(dataInicio: string): { min: string; max: string } {
+  const ano = Number(dataInicio.slice(0, 4)), mes = Number(dataInicio.slice(5, 7))
+  const ultimo = new Date(ano, mes, 0).getDate()
+  const mm = String(mes).padStart(2, "0")
+  return { min: `${ano}-${mm}-01`, max: `${ano}-${mm}-${String(ultimo).padStart(2, "0")}` }
+}
+
 export function limitesDoInicio(hoje: string): { min: string; max: string } {
   const [a, m, d] = hoje.split("-").map(Number)
   const iso = (x: Date) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`

@@ -17,6 +17,7 @@ import Campo from "../componentes/Campo"
 import { Dinheiro } from "../componentes/Dinheiro"
 import EntradaValor from "../componentes/EntradaValor"
 import Formulario, { Campos, LinhaCampos, PaginaFormulario, RodapeFormulario } from "../componentes/Formulario"
+import LancamentoJaNoApp, { JA_NO_APP } from "../componentes/LancamentoJaNoApp"
 import Selecao from "../componentes/Selecao"
 import SeletorData from "../componentes/SeletorData"
 import { acompanhaJunto, categoriaDeEmprestimo, emprestei, meioDiaUtc, parcelado, quemDoOutroLado, rotuloFalta, rotuloRegistrar } from "../dominio/emprestimo"
@@ -24,7 +25,7 @@ import { dataLocalISO } from "../utils/dateTime"
 import { formatMoney, moneyParaCampo, parseMoney } from "../utils/money"
 import styles from "./EmprestimoFormulario.module.css"
 
-type Erros = Partial<Record<"valor" | "data" | "conta" | "categoria", string>>
+type Erros = Partial<Record<"valor" | "data" | "conta" | "categoria" | "lancamento", string>>
 
 export default function RegistrarEmprestimo() {
   const { id = "" } = useParams<{ id: string }>()
@@ -39,6 +40,9 @@ export default function RegistrarEmprestimo() {
   const [data, setData] = useState(dataLocalISO)
   const [contaId, setContaId] = useState("")
   const [categoriaId, setCategoriaId] = useState("")
+  // "Já está no app": liga um lançamento que já existe (importado) em vez de lançar outro.
+  const [lancamentoId, setLancamentoId] = useState("")
+  const jaNoApp = contaId === JA_NO_APP
   const [erros, setErros] = useState<Erros>({})
   const [erro, setErro] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
@@ -80,12 +84,15 @@ export default function RegistrarEmprestimo() {
     if (!(v > 0)) x.valor = "Diga quanto."
     if (!data) x.data = "Diga quando."
     if (!contaId) x.conta = recebe ? "Escolha em qual conta entrou." : "Escolha de qual conta saiu."
-    if (!categoriaId) x.categoria = "Escolha a categoria do lançamento."
+    if (jaNoApp && !lancamentoId) x.lancamento = "Escolha o lançamento."
+    if (!jaNoApp && !categoriaId) x.categoria = "Escolha a categoria do lançamento."
     setErros(x)
     if (Object.keys(x).length > 0) return
     setEnviando(true)
     try {
-      await solicitarPagamentoEmprestimo(e.id, { valor: v, data: meioDiaUtc(data), contaId, categoriaId, idempotencyKey: chave })
+      await solicitarPagamentoEmprestimo(e.id, jaNoApp
+        ? { valor: v, data: meioDiaUtc(data), transacaoExistenteId: lancamentoId, idempotencyKey: chave }
+        : { valor: v, data: meioDiaUtc(data), contaId, categoriaId, idempotencyKey: chave })
       navigate(voltarPara, { replace: true, state: { abrir: e.id } })
     } catch (err) {
       setErro(mensagemDeErro(err))
@@ -100,7 +107,8 @@ export default function RegistrarEmprestimo() {
           <Campos>
             {erro && <p className={styles.alerta} role="alert">{erro}</p>}
             <div className={styles.resumo}>
-              <span>{rotuloFalta(e)} <strong><Dinheiro valor={e.valorRestante} /></strong> de <Dinheiro valor={e.valorTotal} /></span>
+              {/* "de" = o total a pagar, com os juros (o já pago + o que falta); sem juros é o próprio valor emprestado. */}
+              <span>{rotuloFalta(e)} <strong><Dinheiro valor={e.valorRestante} /></strong> de <Dinheiro valor={Math.max(e.valorTotal, e.valorPago + e.valorRestante)} /></span>
             </div>
             <LinhaCampos colunas="minmax(0, 1fr) minmax(0, 1fr)">
               <Campo rotulo="Quanto" erro={erros.valor}>
@@ -112,13 +120,21 @@ export default function RegistrarEmprestimo() {
             </LinhaCampos>
             <LinhaCampos>
               <Campo rotulo={recebe ? "Em qual conta entrou" : "De qual conta saiu"} erro={erros.conta}>
-                <Selecao valor={contaId} placeholder="Escolha a conta" onChange={(x) => { setContaId(x); limpa("conta") }}
-                  opcoes={contas.map((c) => ({ valor: c.id, rotulo: c.nome, detalhe: `${formatMoney(c.saldoAtual)} na conta` }))} />
+                <Selecao valor={contaId} placeholder="Escolha a conta" onChange={(x) => { setContaId(x); limpa("conta"); limpa("lancamento") }}
+                  opcoes={[...contas.map((c) => ({ valor: c.id, rotulo: c.nome, detalhe: `${formatMoney(c.saldoAtual)} na conta` })),
+                    { valor: JA_NO_APP, rotulo: "Já está no app (importado)" }]} />
               </Campo>
-              <Campo rotulo="Categoria do lançamento" erro={erros.categoria}>
-                <Selecao valor={categoriaId} placeholder="Escolha a categoria" onChange={(x) => { setCategoriaId(x); limpa("categoria") }}
-                  opcoes={cats.map((c) => ({ valor: c.id, rotulo: c.descricao }))} />
-              </Campo>
+              {jaNoApp ? (
+                <Campo rotulo="Qual lançamento" erro={erros.lancamento}>
+                  <LancamentoJaNoApp entrada={recebe} valor={parseMoney(valor)} escolhido={lancamentoId}
+                    onChange={(t) => { setLancamentoId(t.id); setValor(moneyParaCampo(t.valor)); setData(t.data.slice(0, 10)); limpa("lancamento") }} />
+                </Campo>
+              ) : (
+                <Campo rotulo="Categoria do lançamento" erro={erros.categoria}>
+                  <Selecao valor={categoriaId} placeholder="Escolha a categoria" onChange={(x) => { setCategoriaId(x); limpa("categoria") }}
+                    opcoes={cats.map((c) => ({ valor: c.id, rotulo: c.descricao }))} />
+                </Campo>
+              )}
             </LinhaCampos>
             {parcelado(e) && <p className={styles.aviso}>O valor vai abatendo as parcelas mais antigas.</p>}
             {acompanhaJunto(e) && !e.souCredor && (

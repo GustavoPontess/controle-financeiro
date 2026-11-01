@@ -126,6 +126,7 @@ namespace ControleFinanceiro.Api.Controllers
             EhPagamentoFatura = t.EhPagamentoFatura,
             EhTransferencia = t.EhTransferencia,
             EhEmprestimo = t.EhEmprestimo,
+            ValorJuros = t.ValorJuros,
             EhAcerto = t.EhAcerto,
             FamiliaId = t.FamiliaId,
             StatusAprovacao = (int)t.StatusAprovacao,

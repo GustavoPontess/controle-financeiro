@@ -84,6 +84,23 @@ describe("Bancos — lista com a ficha da conta", () => {
     expect(linha(/Carteira/)).toHaveAttribute("aria-expanded", "false")
   })
 
+  it("o saldo total não conta as caixinhas das metas: elas aparecem à parte, em Nas metas", async () => {
+    contas = [...contas, conta("m1", "Viagem", 3000, { tipo: 7 })]
+    renderizar()
+    await screen.findByRole("list", { name: "Contas" })
+    const numero = (rotulo: string) => screen.getAllByText(rotulo).map((e) => e.parentElement!).find((p) => p.querySelector("span + span"))!
+    // Saldo total 6.389,96 (sem os 3.000 da meta) = disponível 1.389,96 + guardado (XP) 5.000,00.
+    expect(numero("Saldo total")).toHaveTextContent(/6\.389,96/)
+    expect(numero("Guardado")).toHaveTextContent(/5\.000,00/)
+    expect(numero("Nas metas")).toHaveTextContent(/3\.000,00/)
+  })
+
+  it("sem caixinha de meta, o número Nas metas não aparece", async () => {
+    renderizar()
+    await screen.findByRole("list", { name: "Contas" })
+    expect(screen.queryByText("Nas metas")).not.toBeInTheDocument()
+  })
+
   it("Encerradas: a conta encerrada tem Reabrir; reabrir recarrega e volta pra Abertas", async () => {
     renderizar()
     await screen.findByRole("list", { name: "Contas" })

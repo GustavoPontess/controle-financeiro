@@ -58,7 +58,7 @@ public class RecorrentesHttpTests : IClassFixture<CustomWebApplicationFactory>
         {
             Content = JsonContent.Create(new
             {
-                descricao = "Internet", valor = 120m, tipo = (int)TipoTransacao.Despesa, contaId,
+                descricao = "Internet", valor = 120m, tipo = (int)TipoTransacao.Despesa, contaId, meioPagamento = (int)MeioPagamento.Boleto,
                 frequencia = (int)FrequenciaRecorrencia.Mensal, dia = 10,
                 dataInicio = HorarioBrasil.HojeData().AddDays(1),
             }),

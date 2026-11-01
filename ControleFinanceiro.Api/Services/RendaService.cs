@@ -28,10 +28,11 @@ public class RendaService
     }
 
     /// <summary>Receita que é renda: entra no resultado (fora transferência, pagamento de fatura, saldo inicial,
-    /// ajuste, Pix no Crédito, empréstimo) e não é "dinheiro que volta" (cashback, reembolso, estorno: categoria padrão).</summary>
+    /// ajuste, Pix no Crédito, empréstimo) e não é "dinheiro que volta" (cashback, reembolso, estorno: categoria padrão).
+    /// Do empréstimo que volta, os juros são renda (2026-11-01): entra pelo valor dos juros (RegrasFinanceiras.ValorNoResultado).</summary>
     public static readonly Expression<Func<Transacao, bool>> EhRenda = t =>
         t.Tipo == TipoTransacao.Receita && t.Ativo && t.StatusTransacao != StatusTransacao.Cancelado
-        && !t.EhTransferencia && !t.EhPagamentoFatura && !t.EhSaldoInicial && !t.EhAjusteReconciliacao && !t.EhPixNoCredito && !t.EhEmprestimo && !t.EhAcerto && !t.EhInvestimento
+        && !t.EhTransferencia && !t.EhPagamentoFatura && !t.EhSaldoInicial && !t.EhAjusteReconciliacao && !t.EhPixNoCredito && (!t.EhEmprestimo || t.ValorJuros > 0) && !t.EhAcerto && !t.EhInvestimento
         && (t.Categoria == null || t.Categoria.UsuarioId != null || t.Categoria.Descricao != CategoriaDinheiroQueVolta);
 
     // ── Pessoa ───────────────────────────────────────────────────────────────────────────────────
@@ -46,7 +47,7 @@ public class RendaService
             .OrderByDescending(t => t.Data).ThenByDescending(t => t.CriadoEm)
             .Select(t => new
             {
-                Entrada = new EntradaRendaDto(t.Id, t.Data, t.Descricao, t.Valor,
+                Entrada = new EntradaRendaDto(t.Id, t.Data, t.Descricao, t.EhEmprestimo ? (t.ValorJuros ?? 0m) : t.Valor,
                     t.Subcategoria != null ? t.Subcategoria.Nome : null,
                     t.StatusTransacao == StatusTransacao.Executado),
                 DeContaFixa = t.RecorrenteOrigemId != null,
@@ -209,7 +210,7 @@ public class RendaService
             .Where(EhRenda)
             .Where(t => t.CriadoPor == usuarioId && t.Data.Year == ano && t.Data.Month == mes
                         && t.StatusTransacao == StatusTransacao.Executado)
-            .SumAsync(t => t.Valor);
+            .Select(RegrasFinanceiras.ValorNoResultado).SumAsync();
         var (fixa, variavel, _) = await DeclaracaoAsync(usuarioId, ano, mes);
         return (recebido, fixa + variavel);
     }
@@ -241,7 +242,7 @@ public class RendaService
             .Where(EhRenda)
             .Where(t => t.CriadoPor == usuarioId && t.StatusTransacao == StatusTransacao.Executado && t.Data >= inicio && t.Data < fim)
             .GroupBy(t => new { t.Data.Year, t.Data.Month })
-            .Select(g => g.Sum(t => t.Valor))
+            .Select(g => g.Sum(t => t.EhEmprestimo ? (t.ValorJuros ?? 0m) : t.Valor))
             .ToListAsync();
         if (meses.Count == 0) return null;
         return Math.Round(meses.Average(), 2);

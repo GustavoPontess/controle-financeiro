@@ -83,11 +83,13 @@
   --v2-sombra-palco: 0 20px 48px -24px rgba(0, 0, 0, 0.8);
   --v2-rolagem: #30343C;
   --v2-rolagem-hover: #464B55;
-  --v2-serie-1: #FF7A3D;
-  --v2-serie-2: #5DCAA5;
-  --v2-serie-3: #A39DF0;
-  --v2-serie-4: #ED93B1;
-  --v2-serie-5: #EFB054;
+  /* Os mesmos matizes num passo mais escuro pro fundo escuro (OKLCH L 0.48–0.67), 2026-11-01: os de antes eram claros
+     demais e rosa × roxo quase não se distinguiam (validador do skill de gráficos). */
+  --v2-serie-1: #E15E1A;
+  --v2-serie-2: #36A885;
+  --v2-serie-3: #7B74C3;
+  --v2-serie-4: #CA7391;
+  --v2-serie-5: #C48724;
   --v2-serie-cinza: #8E8D87;
   --v2-serie-cinza-2: #5E5D59;
   --v2-faixa-1: #2A201A;

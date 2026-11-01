@@ -338,10 +338,11 @@ namespace ControleFinanceiro.Api.Services
             var lancamentos = TransacoesFiltradas(usuarioId, from, to, categoriaId, q, tipo, contaId, cartaoId,
                     valorMin, valorMax, status, apenasCaixa: false, meioPagamento, natureza)
                 .Where(t => t.Tipo == TipoTransacao.Despesa)
-                .Where(RegrasFinanceiras.EntraNoResultado)
+                .Where(RegrasFinanceiras.EntraNoResultadoComJuros) // parcela de empréstimo entra pelos juros (o gasto dela)
                 .Select(t => new ChaveDeLinha
                 {
-                    Id = t.Id, EhParcelamento = false, Data = t.Data, Hora = t.Hora, CriadoEm = t.CriadoEm, Valor = t.Valor,
+                    Id = t.Id, EhParcelamento = false, Data = t.Data, Hora = t.Hora, CriadoEm = t.CriadoEm,
+                    Valor = t.EhEmprestimo ? (t.ValorJuros ?? 0m) : t.Valor,
                     NoCartao = t.CartaoCreditoId != null,
                 });
 
@@ -466,7 +467,7 @@ namespace ControleFinanceiro.Api.Services
                     (t.CartaoCreditoId.HasValue && t.CartaoCredito!.CriadoPor == usuarioId))
                 .Where(t => t.Ativo
                             && t.StatusTransacao == Domain.Enums.StatusTransacao.Executado)
-                .Where(RegrasFinanceiras.EntraNoResultado)
+                .Where(RegrasFinanceiras.EntraNoResultadoComJuros) // do empréstimo, só os juros (ValorNoResultado)
                 .AsQueryable();
 
             if (from.HasValue) query = query.Where(t => t.Data >= from.Value);
@@ -476,18 +477,18 @@ namespace ControleFinanceiro.Api.Services
 
             var entradas = await query
                 .Where(t => t.Tipo == Domain.Enums.TipoTransacao.Receita)
-                .SumAsync(t => (decimal?)t.Valor) ?? 0m;
+                .Select(RegrasFinanceiras.ValorNoResultado).SumAsync();
             var saidas = await query
                 .Where(t => t.Tipo == Domain.Enums.TipoTransacao.Despesa)
-                .SumAsync(t => (decimal?)t.Valor) ?? 0m;
+                .Select(RegrasFinanceiras.ValorNoResultado).SumAsync();
             // Versões "caixa" — excluem UsadoComoCredito. Cards visíveis usam isso
             // pra bater com o Dashboard e com SaldoPeriodo.
             var entradasCaixa = await query
                 .Where(t => t.Tipo == Domain.Enums.TipoTransacao.Receita && !t.UsadoComoCredito)
-                .SumAsync(t => (decimal?)t.Valor) ?? 0m;
+                .Select(RegrasFinanceiras.ValorNoResultado).SumAsync();
             var saidasCaixa = await query
                 .Where(t => t.Tipo == Domain.Enums.TipoTransacao.Despesa && !t.UsadoComoCredito)
-                .SumAsync(t => (decimal?)t.Valor) ?? 0m;
+                .Select(RegrasFinanceiras.ValorNoResultado).SumAsync();
             var saldoPeriodo = entradasCaixa - saidasCaixa;
             var qtd = await query.CountAsync();
 

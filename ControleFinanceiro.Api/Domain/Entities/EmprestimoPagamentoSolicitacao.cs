@@ -17,6 +17,10 @@ public class EmprestimoPagamentoSolicitacao
 
     public decimal Valor { get; set; }
 
+    /// <summary>Quanto deste pagamento é juros ou multa (o resto devolve o que foi emprestado). Imputação do Código Civil
+    /// (art. 354): o pagamento cobre primeiro os juros, depois o capital. Estimado ao solicitar e refeito ao aprovar.</summary>
+    public decimal? ValorJuros { get; set; }
+
     /// <summary>Comprovante — a Transacao real (Pix/saída) que o devedor lançou. Obrigatório quando
     /// quem registra é o devedor (não existe solicitação dele sem prova); null quando é o credor
     /// que registra o próprio recebimento (nesse caso a prova é a TransacaoRecebimentoId).</summary>

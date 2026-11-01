@@ -15,6 +15,11 @@ export interface ExtratoLinha {
   /** "Pagamento de fatura" que vai quitar a fatura do app que fecha nessa data (rótulo de Cartões);
    *  null = fica como despesa (fatura de antes do app). Só pra mostrar — o servidor decide de novo. */
   pagaFaturaFechamento?: string | null
+  /** O que o sinal não diz: entre suas contas (transferência), empréstimo ou investimento. Os dois primeiros não
+   *  levam categoria (não são ganho nem gasto); investimento vem com uma categoria de investimento. */
+  natureza?: "entre-contas" | "emprestimo" | "investimento" | null
+  /** Entre suas contas: a conta da outra perna, quando ela já está no app (as duas viram uma transferência). */
+  juntaComConta?: string | null
 }
 
 /** Qual coluna (índice, a partir de 0) do CSV é o quê. Valor numa coluna OU entrada + saída. */

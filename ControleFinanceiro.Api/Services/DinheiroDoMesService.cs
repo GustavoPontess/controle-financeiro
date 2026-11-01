@@ -42,7 +42,12 @@ public class DinheiroDoMesService
         var nomes = await _context.Categorias.AsNoTracking().Where(c => ids.Contains(c.Id)).ToDictionaryAsync(c => c.Id, c => c.Descricao);
         string Nome(Guid? id) => id is null || id == RegrasFinanceiras.SemCategoria ? "Sem categoria" : nomes.GetValueOrDefault(id.Value, "Categoria");
 
-        var baseRenda = Math.Max(renda.Previsto, renda.Recebido);
+        // Mês em andamento: a base é o maior entre o esperado e o que já caiu (o salário ainda vem). Mês que já acabou: só
+        // o que caiu; o esperado que não veio não entra mais, senão o "sobrou" contava dinheiro que nunca entrou
+        // (2026-11-01: Relatórios mostra este bloco em qualquer mês, e o Início também navega pelos meses).
+        var hoje = HorarioBrasil.Hoje();
+        var fechado = new DateOnly(ano, mes, 1) < new DateOnly(hoje.Year, hoje.Month, 1);
+        var baseRenda = fechado ? renda.Recebido : Math.Max(renda.Previsto, renda.Recebido);
         decimal Pct(decimal v) => baseRenda > 0 ? Math.Round(v * 100m / baseRenda, 1) : 0m;
 
         var porCategoria = gastos.Where(kv => kv.Value.Gasto > 0)

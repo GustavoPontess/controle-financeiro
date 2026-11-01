@@ -74,6 +74,12 @@ public class TransferenciaService
             TransacaoDestinoId = transacaoEntrada.Id
         };
 
+        var efeitos = new Dictionary<Guid, decimal>();
+        Somar(efeitos, dto.ContaOrigemId, -dto.Valor);
+        Somar(efeitos, dto.ContaDestinoId, dto.Valor);
+        await RegistrarNoLogAsync(_context, FinancialEventType.TransferenciaCriada, usuarioId, transferencia.Id, efeitos,
+            Dados(transferencia));
+
         _context.Transacoes.Add(transacaoSaida);
         _context.Transacoes.Add(transacaoEntrada);
         _context.Transferencias.Add(transferencia);
@@ -143,6 +149,14 @@ public class TransferenciaService
             ?? throw new KeyNotFoundException("Transferência não encontrada.");
         var (contaOrigem, contaDestino, descricao) = await ConferirAsync(dto, usuarioId);
 
+        // Desfaz o efeito antigo e aplica o novo, por conta: com as contas trocadas, entram até 4 contas no log.
+        var antes = Dados(transferencia);
+        var efeitos = new Dictionary<Guid, decimal>();
+        Somar(efeitos, transferencia.ContaOrigemId, transferencia.Valor);
+        Somar(efeitos, transferencia.ContaDestinoId, -transferencia.Valor);
+        Somar(efeitos, dto.ContaOrigemId, -dto.Valor);
+        Somar(efeitos, dto.ContaDestinoId, dto.Valor);
+
         var pernas = await _context.Transacoes
             .Where(t => t.Id == transferencia.TransacaoOrigemId || t.Id == transferencia.TransacaoDestinoId)
             .ToListAsync();
@@ -160,9 +174,45 @@ public class TransferenciaService
         transferencia.Valor = dto.Valor;
         transferencia.Data = dto.Data.ToDateTime(dto.Hora ?? TimeOnly.MinValue);
         transferencia.Descricao = descricao;
+        await RegistrarNoLogAsync(_context, FinancialEventType.TransferenciaEditada, usuarioId, transferencia.Id, efeitos,
+            new { antes, depois = Dados(transferencia) });
         await _context.SaveChangesAsync();
 
         return MapToDto(transferencia, contaOrigem.Nome, contaDestino.Nome);
+    }
+
+    /// <summary>
+    /// Junta duas pernas que já existem (a do extrato importado e a que já estava na outra conta) numa transferência:
+    /// as duas passam a ser transferência, sem categoria, fora do resultado. Não move dinheiro (as duas já estavam no
+    /// saldo): o log registra o vínculo com o saldo igual antes e depois. Salva.
+    /// </summary>
+    public static async Task JuntarPernasAsync(AppDbContext context, Guid usuarioId, Guid pernaNovaId, Guid pernaExistenteId, string descricao)
+    {
+        var pernas = await context.Transacoes.Where(t => t.Id == pernaNovaId || t.Id == pernaExistenteId).ToListAsync();
+        var saida = pernas.Single(t => t.Tipo == TipoTransacao.Despesa);
+        var entrada = pernas.Single(t => t.Tipo == TipoTransacao.Receita);
+        foreach (var perna in pernas)
+        {
+            perna.EhTransferencia = true;
+            perna.CategoriaId = null;
+            perna.SubcategoriaId = null;
+        }
+        var transferencia = new Transferencia
+        {
+            Id = Guid.NewGuid(),
+            ContaOrigemId = saida.ContaId!.Value,
+            ContaDestinoId = entrada.ContaId!.Value,
+            Valor = saida.Valor,
+            Data = saida.Data.ToDateTime(saida.Hora ?? TimeOnly.MinValue),
+            Descricao = descricao,
+            CriadoPor = usuarioId,
+            TransacaoOrigemId = saida.Id,
+            TransacaoDestinoId = entrada.Id,
+        };
+        context.Transferencias.Add(transferencia);
+        await RegistrarNoLogAsync(context, FinancialEventType.TransferenciaCriada, usuarioId, transferencia.Id,
+            new Dictionary<Guid, decimal> { [saida.ContaId!.Value] = 0m, [entrada.ContaId!.Value] = 0m }, Dados(transferencia));
+        await context.SaveChangesAsync();
     }
 
     /// <summary>A transferência de que esta transação é uma perna (origem ou destino). 404 se não for, ou de outra pessoa.</summary>
@@ -285,6 +335,12 @@ public class TransferenciaService
     /// </summary>
     public static async Task CancelarComAsPernasAsync(AppDbContext context, Transferencia transferencia)
     {
+        var efeitos = new Dictionary<Guid, decimal>();
+        Somar(efeitos, transferencia.ContaOrigemId, transferencia.Valor);
+        Somar(efeitos, transferencia.ContaDestinoId, -transferencia.Valor);
+        await RegistrarNoLogAsync(context, FinancialEventType.TransferenciaExcluida, transferencia.CriadoPor, transferencia.Id,
+            efeitos, Dados(transferencia));
+
         var transacoes = await context.Transacoes
             .Where(t => t.Id == transferencia.TransacaoOrigemId || t.Id == transferencia.TransacaoDestinoId)
             .ToListAsync();
@@ -297,6 +353,36 @@ public class TransferenciaService
         }
         context.Transferencias.Remove(transferencia);
     }
+
+    // FinancialEventLog (CLAUDE.md: toda operação que afeta saldo; achado 2026-10-31): um evento por conta que a
+    // operação mexe, com o saldo antes e depois, gravado no MESMO SaveChanges da mudança (tudo ou nada). O antes é o
+    // saldo do banco, lido antes de salvar; o depois é o antes mais o efeito da operação naquela conta. Sem a chave de
+    // idempotência no payload (ela mora no RegistroIdempotencia).
+    private static async Task RegistrarNoLogAsync(AppDbContext context, FinancialEventType tipo, Guid usuarioId,
+        Guid transferenciaId, Dictionary<Guid, decimal> efeitos, object dados)
+    {
+        var saldos = await RegrasFinanceiras.SaldosDasContasAsync(context, efeitos.Keys, usuarioId);
+        var log = new FinancialEventLogService(context);
+        var correlacao = Guid.NewGuid();
+        foreach (var (contaId, efeito) in efeitos)
+        {
+            var antes = saldos[contaId].Saldo;
+            log.Registrar(usuarioId, tipo, "Conta", contaId, correlacao, "API", antes, antes + efeito,
+                new { transferenciaId, efeito, dados });
+        }
+    }
+
+    private static void Somar(Dictionary<Guid, decimal> efeitos, Guid contaId, decimal valor) =>
+        efeitos[contaId] = efeitos.GetValueOrDefault(contaId) + valor;
+
+    private static object Dados(Transferencia t) => new
+    {
+        contaOrigemId = t.ContaOrigemId,
+        contaDestinoId = t.ContaDestinoId,
+        valor = t.Valor,
+        data = t.Data,
+        descricao = t.Descricao,
+    };
 
     private static TransferenciaDto MapToDto(Transferencia t, string nomeOrigem, string nomeDestino) => new()
     {

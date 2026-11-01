@@ -139,6 +139,14 @@ public class Transacao
     /// resultado (<c>RegrasFinanceiras.EntraNoResultado</c>): gasto do mês, limites, renda, Entrou/Saiu.</summary>
     public bool EhEmprestimo { get; set; }
 
+    /// <summary>
+    /// Quanto deste pagamento de empréstimo é juros ou multa (2026-11-01, pedido do Gustavo: "se eu emprestei, ele volta
+    /// com juros"). O lançamento continua um só, com o valor inteiro no saldo; só esta parte é ganho (quem emprestou)
+    /// ou gasto (quem pegou), e entra no resultado (<c>RegrasFinanceiras.EntraNoResultadoComJuros</c>). O resto é o
+    /// dinheiro voltando. Null fora de empréstimo ou sem juros. Calculado pelo <c>EmprestimoService</c>.
+    /// </summary>
+    public decimal? ValorJuros { get; set; }
+
     /// <summary>true se a categoria desta Transacao é de INVESTIMENTO (aporte que sai, resgate que volta). Mexe no
     /// saldo, mas não é gasto nem renda: fora do resultado, como transferência. Marcado sozinho pelo
     /// <c>AppDbContext</c> a cada gravação pela categoria (nunca na mão); mudou o tipo da categoria, o

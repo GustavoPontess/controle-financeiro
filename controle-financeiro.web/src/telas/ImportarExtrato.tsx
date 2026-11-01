@@ -32,14 +32,16 @@ import styles from "./ImportarExtrato.module.css"
 
 const TAMANHO_MAX = 2 * 1024 * 1024
 const dataBR = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`
+// Entre suas contas e empréstimo: o dinheiro só muda de lugar ou vai e volta (sem categoria, fora das somas).
+const naoEhGanhoNemGasto = (l: ExtratoLinha) => l.natureza === "entre-contas" || l.natureza === "emprestimo"
 
-/** O que foi pra conta (pra tela final): o período e quanto entrou e saiu. Pix no crédito e pagamento de fatura
- *  não são ganho nem gasto, então ficam fora das somas. */
+/** O que foi pra conta (pra tela final): o período e quanto entrou e saiu. Pix no crédito, pagamento de fatura,
+ *  dinheiro entre suas contas e empréstimo não são ganho nem gasto, então ficam fora das somas. */
 type Resumo = { resultado: ResultadoImportacao; de: string; ate: string; entrou: number; saiu: number }
 function resumir(r: ResultadoImportacao, enviadas: LinhaImportar[], previa: PreviewImportacao): Resumo {
   const datas = enviadas.map((l) => l.data.slice(0, 10)).sort()
   const conta = (l: LinhaImportar) => !previa.linhas.some((p) => p.descricao === l.descricao && p.data === l.data
-    && p.valor === l.valor && (p.pixNoCredito || p.pagaFaturaFechamento))
+    && p.valor === l.valor && (p.pixNoCredito || p.pagaFaturaFechamento || naoEhGanhoNemGasto(p)))
   const soma = (tipo: number) => enviadas.filter((l) => l.tipo === tipo && conta(l)).reduce((t, l) => t + l.valor, 0)
   return { resultado: r, de: datas[0] ?? "", ate: datas[datas.length - 1] ?? "", entrou: soma(TIPO.receita), saiu: soma(TIPO.despesa) }
 }
@@ -411,7 +413,7 @@ function Previa({ previa, conta, categorias, aoTrocarColunas, aoCancelar, aoImpo
     setErro(null)
     const linhas = previa.linhas.flatMap((l, i) => (marcadas[i]
       ? [{ data: l.data, descricao: l.descricao, valor: l.valor, tipo: l.tipo, fitId: l.fitId,
-        categoriaId: l.pagaFaturaFechamento || l.pixNoCredito ? null : cats[i] || null }]
+        categoriaId: l.pagaFaturaFechamento || l.pixNoCredito || naoEhGanhoNemGasto(l) ? null : cats[i] || null }]
       : []))
     if (linhas.length === 0) { setErro("Marque pelo menos um lançamento."); return }
     setImportando(true)
@@ -462,18 +464,21 @@ function Linha({ l, marcada, categoria, opcoes, aoMarcar, aoCategoria }: {
 }) {
   const receita = l.tipo === TIPO.receita
   // Pagamento de fatura e Pix no crédito não levam categoria (não são gasto nem ganho).
-  const semCategoria = !!l.pagaFaturaFechamento || !!l.pixNoCredito
+  const semCategoria = !!l.pagaFaturaFechamento || !!l.pixNoCredito || naoEhGanhoNemGasto(l)
   return (
     <li className={styles.linha} data-desmarcada={marcada ? undefined : "true"}>
       <Marcar marcado={marcada} onChange={aoMarcar} ariaLabel={`Importar ${l.descricao}`} />
       <span className={styles.data}>{dataBR(l.data)}</span>
       <span className={styles.texto}>
         <span className={styles.descricao} title={l.descricao}>{l.descricao}</span>
-        {(l.duplicada || l.pixNoCredito || l.pagaFaturaFechamento) && (
+        {(l.duplicada || l.pixNoCredito || l.pagaFaturaFechamento || l.natureza) && (
           <span className={styles.etiquetas}>
             {l.duplicada && <Etiqueta tom="alerta">Já está no app</Etiqueta>}
             {l.pixNoCredito && <Etiqueta>Pix no crédito</Etiqueta>}
             {l.pagaFaturaFechamento && <Etiqueta>Paga a fatura de {rotuloMesFatura(l.pagaFaturaFechamento)}</Etiqueta>}
+            {l.natureza === "entre-contas" && <Etiqueta>{l.juntaComConta ? `Entre suas contas · junta com ${l.juntaComConta}` : "Entre suas contas"}</Etiqueta>}
+            {l.natureza === "emprestimo" && <Etiqueta>Empréstimo</Etiqueta>}
+            {l.natureza === "investimento" && <Etiqueta>Investimento</Etiqueta>}
           </span>
         )}
       </span>

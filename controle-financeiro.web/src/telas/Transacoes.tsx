@@ -274,7 +274,7 @@ export default function Transacoes() {
         ) : itens.length === 0 ? (
           <p className={styles.vazio}>{temFiltro ? "Nada com esses filtros." : gastos ? "Nenhum gasto ainda." : "Nenhum lançamento ainda."}</p>
         ) : (
-          <ListaPorDia itens={itens.map((t) => linhaDoLancamento(t, categorias[t.categoriaId ?? ""]))} />
+          <ListaPorDia itens={itens.map((t) => linhaDoLancamento(t, categorias[t.categoriaId ?? ""], { soOGasto: gastos }))} />
         )}
 
         {total > 0 && (
