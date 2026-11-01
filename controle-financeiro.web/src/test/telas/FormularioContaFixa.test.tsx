@@ -8,7 +8,6 @@ import { createRecorrente, updateRecorrente } from "../../services/recorrenteSer
 import { getFamilias } from "../../services/familiaService"
 import FormularioContaFixa from "../../telas/FormularioContaFixa"
 import { descreverRegra, limitesDoInicio } from "../../dominio/contaFixa"
-import { dataLocalISO } from "../../utils/dateTime"
 
 const contas = [
   { id: "k1", nome: "Carteira", tipo: 4, tipoDescricao: "", saldoAtual: 0, isCarteira: true },
@@ -43,8 +42,9 @@ const preencher = async (valor: string, descricao: string) => {
   await userEvent.type(screen.getByLabelText("Valor"), valor)
   await userEvent.type(screen.getByPlaceholderText("Aluguel"), descricao)
 }
-// A primeira cobrança começa hoje (dentro do limite de criar: 12 meses atrás a 5 anos à frente).
-const HOJE = dataLocalISO()
+// A primeira cobrança começa hoje (dentro do limite de criar: 12 meses atrás a 5 anos à frente). Hoje = o dia congelado
+// do setup.ts (20/10/2026): calculado no carregamento do arquivo, dataLocalISO() pegaria o relógio de verdade.
+const HOJE = "2026-10-20"
 const br = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`
 const erroDoCampo = (texto: string) => screen.getByText(texto, { selector: "small > span" })
 
