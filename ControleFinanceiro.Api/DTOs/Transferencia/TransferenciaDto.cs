@@ -26,4 +26,6 @@ public class TransferenciaDto
     public decimal Valor { get; set; }
     public DateTime Data { get; set; }
     public string Descricao { get; set; } = string.Empty;
+    /// <summary>Uma das contas é caixinha de meta: guardar/resgatar, que só se mexe pela tela de Metas (não se edita aqui).</summary>
+    public bool ComCaixinha { get; set; }
 }

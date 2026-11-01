@@ -1,10 +1,10 @@
 // Tela da transação do v2 — ver, editar e excluir. Mesmas regras do app atual:
-// - pagamento de fatura e perna de transferência não se editam (o outro lado ficaria desemparelhado):
-//   o pagamento se ESTORNA, a transferência se exclui inteira (as duas pernas juntas);
+// - pagamento de fatura não se edita (se ESTORNA); a transferência edita e exclui INTEIRA, as duas pernas juntas
+//   (editar pela perna abre a transferência no mesmo formulário; a de caixinha de meta só pela tela de Metas);
 // - a edição é o mesmo FormularioTransacao da criação; virar transferência/parcelado o servidor troca numa
 //   transação só do banco;
 // - data futura só em compra no cartão ou lançamento previsto (o back recusa o resto);
-// - lançamento sem hora pode continuar sem hora (decisão do Gustavo, PR #299); com hora, ela é obrigatória.
+// - hora é opcional em criar e editar (regra do formulário, 2026-10-31).
 import { useEffect, useRef, useState } from "react"
 import { useLocation, useNavigate, useParams } from "react-router-dom"
 import { Pencil, Trash2, Undo2 } from "lucide-react"
@@ -14,8 +14,10 @@ import { getCategories } from "../services/categoryService"
 import { getSubcategories } from "../services/subcategoryService"
 import { getContas } from "../services/contaService"
 import { getCartoes } from "../services/cartaoCreditoService"
+import { getTransferenciaDaTransacao } from "../services/transferenciaService"
 import { mensagemDeErro } from "../api/cliente"
 import type { Transaction } from "../types/Transaction"
+import type { Transferencia } from "../types/Transferencia"
 import type { Category } from "../types/Category"
 import type { Subcategory } from "../types/Subcategory"
 import type { Conta } from "../types/Conta"
@@ -84,7 +86,7 @@ export default function Transacao() {
   if (!t) return <div className={styles.pagina}><Bloco><Esqueleto linhas={5} altura={16} /></Bloco></div>
 
   // Acerto da família também não: desfaz em Entre vocês (o outro lado está ligado a ele).
-  const editavel = !t.ehPagamentoFatura && !t.ehTransferencia && !t.ehAcerto
+  const editavel = !t.ehPagamentoFatura && !t.ehAcerto
   if (editando && editavel)
     return <Editar t={t} categorias={categorias} subcategorias={subcategorias} contas={contas} cartoes={cartoes}
       // Virou transferência/parcelado: o id antigo não existe mais, volta pra lista.
@@ -217,10 +219,34 @@ function Editar({ t, categorias, subcategorias, contas, cartoes, aoSalvar, aoCan
   t: Transaction; categorias: Category[]; subcategorias: Subcategory[]; contas: Conta[]; cartoes: CartaoCredito[]
   aoSalvar: (r?: EdicaoLancamentoResultado) => void; aoCancelar: () => void
 }) {
+  // Perna de transferência: edita a transferência inteira, então precisa dela (id e as duas contas).
+  const [tf, setTf] = useState<Transferencia | null>(null)
+  const [tfErro, setTfErro] = useState<string | null>(null)
+  useEffect(() => {
+    if (!t.ehTransferencia) return
+    let vivo = true
+    getTransferenciaDaTransacao(t.id).then((x) => { if (vivo) setTf(x) }).catch((e) => { if (vivo) setTfErro(mensagemDeErro(e)) })
+    return () => { vivo = false }
+  }, [t.id, t.ehTransferencia])
+
+  if (t.ehTransferencia) {
+    if (tfErro) return <div className={styles.pagina}><h1 className={styles.titulo}>Editar transferência</h1><p className={styles.muted}>{tfErro}</p></div>
+    if (!tf) return <div className={styles.pagina}><Bloco><Esqueleto linhas={5} altura={16} /></Bloco></div>
+    if (tf.comCaixinha)
+      return (
+        <div className={styles.pagina}>
+          <h1 className={styles.titulo}>Editar transferência</h1>
+          <p className={styles.muted}>Esta transferência é de uma meta: guarde ou resgate pela tela de Metas.</p>
+          <RodapeFormulario><Botao onClick={aoCancelar}>Voltar</Botao></RodapeFormulario>
+        </div>
+      )
+  }
+
   return (
     <div className={styles.pagina}>
-      <h1 className={styles.titulo}>Editar transação</h1>
+      <h1 className={styles.titulo}>{t.ehTransferencia ? "Editar transferência" : "Editar transação"}</h1>
       <FormularioTransacao transacao={t} contas={contas} cartoes={cartoes} categorias={categorias} subcategorias={subcategorias}
+        transferenciaEditada={tf ? { id: tf.id, contaOrigemId: tf.contaOrigemId, contaDestinoId: tf.contaDestinoId } : undefined}
         aoSair={aoCancelar} aoSalvo={aoSalvar} />
     </div>
   )

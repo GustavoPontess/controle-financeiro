@@ -66,6 +66,24 @@ public class TransferenciasController : ControllerBase
         return CreatedAtAction(nameof(Listar), resultado);
     }
 
+    /// <summary>
+    /// Edita a transferência inteira: o mesmo corpo e a mesma conferência de criar (regra do formulário). As duas
+    /// pernas mudam juntas.
+    /// </summary>
+    [HttpPut("{id}")]
+    [ProducesResponseType(typeof(TransferenciaDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Editar(Guid id, [FromBody] CriarTransferenciaDto dto) =>
+        Ok(await _service.EditarAsync(id, dto, GetUserId()));
+
+    /// <summary>A transferência de uma perna (a tela da transação abre a edição por ela).</summary>
+    [HttpGet("da-transacao/{transacaoId}")]
+    [ProducesResponseType(typeof(TransferenciaDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ObterPelaPerna(Guid transacaoId) =>
+        Ok(await _service.ObterPelaPernaAsync(transacaoId, GetUserId()));
+
     [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

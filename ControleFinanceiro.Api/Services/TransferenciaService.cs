@@ -30,35 +30,7 @@ public class TransferenciaService
                 return anterior;
         }
 
-        if (dto.ContaOrigemId == dto.ContaDestinoId)
-            throw new ArgumentException("Conta de origem e destino não podem ser iguais.");
-
-        if (dto.Valor <= 0)
-            throw new ArgumentException("O valor da transferência deve ser positivo.");
-
-        // As duas pernas nascem efetivadas (entram no saldo na hora): transferência futura moveria um
-        // dinheiro que ainda não saiu. O front já barrava; o back não — mesma regra do lançamento em conta.
-        if (dto.Data > HorarioBrasil.Hoje())
-            throw new ArgumentException("A data da transferência não pode ser futura.");
-
-        var contaOrigem = await _context.Contas
-            .FirstOrDefaultAsync(c => c.Id == dto.ContaOrigemId && c.UsuarioIdProprietario == usuarioId);
-        if (contaOrigem == null)
-            throw new KeyNotFoundException("Conta de origem não encontrada.");
-
-        var contaDestino = await _context.Contas
-            .FirstOrDefaultAsync(c => c.Id == dto.ContaDestinoId && c.UsuarioIdProprietario == usuarioId);
-        if (contaDestino == null)
-            throw new KeyNotFoundException("Conta de destino não encontrada.");
-        // Conta encerrada não recebe nem manda dinheiro novo (reabra antes).
-        if (contaOrigem.EncerradaEm != null)
-            throw new InvalidOperationException(DonoRecursos.MensagemContaEncerrada(contaOrigem.Nome));
-        if (contaDestino.EncerradaEm != null)
-            throw new InvalidOperationException(DonoRecursos.MensagemContaEncerrada(contaDestino.Nome));
-
-        var descricao = string.IsNullOrWhiteSpace(dto.Descricao)
-            ? $"Transferência: {contaOrigem.Nome} → {contaDestino.Nome}"
-            : dto.Descricao;
+        var (contaOrigem, contaDestino, descricao) = await ConferirAsync(dto, usuarioId);
 
         var transacaoSaida = new Transacao
         {
@@ -122,6 +94,88 @@ public class TransferenciaService
         }
 
         return MapToDto(transferencia, contaOrigem.Nome, contaDestino.Nome);
+    }
+
+    // Regra do formulário (2026-10-31): criar e editar conferem a MESMA coisa, num lugar só. Devolve as contas e a
+    // descrição (vazia vira "Transferência: A → B").
+    private async Task<(Conta Origem, Conta Destino, string Descricao)> ConferirAsync(CriarTransferenciaDto dto, Guid usuarioId)
+    {
+        if (dto.ContaOrigemId == dto.ContaDestinoId)
+            throw new ArgumentException("Conta de origem e destino não podem ser iguais.");
+
+        if (dto.Valor <= 0)
+            throw new ArgumentException("O valor da transferência deve ser positivo.");
+
+        // As duas pernas nascem efetivadas (entram no saldo na hora): transferência futura moveria um
+        // dinheiro que ainda não saiu. O front já barrava; o back não — mesma regra do lançamento em conta.
+        if (dto.Data > HorarioBrasil.Hoje())
+            throw new ArgumentException("A data da transferência não pode ser futura.");
+
+        var contaOrigem = await _context.Contas
+            .FirstOrDefaultAsync(c => c.Id == dto.ContaOrigemId && c.UsuarioIdProprietario == usuarioId);
+        if (contaOrigem == null)
+            throw new KeyNotFoundException("Conta de origem não encontrada.");
+
+        var contaDestino = await _context.Contas
+            .FirstOrDefaultAsync(c => c.Id == dto.ContaDestinoId && c.UsuarioIdProprietario == usuarioId);
+        if (contaDestino == null)
+            throw new KeyNotFoundException("Conta de destino não encontrada.");
+        // Conta encerrada não recebe nem manda dinheiro novo (reabra antes).
+        if (contaOrigem.EncerradaEm != null)
+            throw new InvalidOperationException(DonoRecursos.MensagemContaEncerrada(contaOrigem.Nome));
+        if (contaDestino.EncerradaEm != null)
+            throw new InvalidOperationException(DonoRecursos.MensagemContaEncerrada(contaDestino.Nome));
+
+        var descricao = string.IsNullOrWhiteSpace(dto.Descricao)
+            ? $"Transferência: {contaOrigem.Nome} → {contaDestino.Nome}"
+            : dto.Descricao;
+        return (contaOrigem, contaDestino, descricao);
+    }
+
+    /// <summary>
+    /// Edita a transferência inteira (contas, valor, data, hora, descrição) com a mesma conferência de criar. As DUAS
+    /// pernas mudam juntas, no mesmo SaveChanges: tudo ou nada. Caixinha de meta fica de fora pela trava do
+    /// AppDbContext (409): guardar e resgatar só por Metas.
+    /// </summary>
+    public async Task<TransferenciaDto> EditarAsync(Guid id, CriarTransferenciaDto dto, Guid usuarioId)
+    {
+        var transferencia = await _context.Transferencias.FirstOrDefaultAsync(t => t.Id == id && t.CriadoPor == usuarioId)
+            ?? throw new KeyNotFoundException("Transferência não encontrada.");
+        var (contaOrigem, contaDestino, descricao) = await ConferirAsync(dto, usuarioId);
+
+        var pernas = await _context.Transacoes
+            .Where(t => t.Id == transferencia.TransacaoOrigemId || t.Id == transferencia.TransacaoDestinoId)
+            .ToListAsync();
+        foreach (var perna in pernas)
+        {
+            perna.ContaId = perna.Id == transferencia.TransacaoOrigemId ? dto.ContaOrigemId : dto.ContaDestinoId;
+            perna.Valor = dto.Valor;
+            perna.Data = dto.Data;
+            perna.Hora = dto.Hora;
+            perna.Descricao = descricao;
+        }
+
+        transferencia.ContaOrigemId = dto.ContaOrigemId;
+        transferencia.ContaDestinoId = dto.ContaDestinoId;
+        transferencia.Valor = dto.Valor;
+        transferencia.Data = dto.Data.ToDateTime(dto.Hora ?? TimeOnly.MinValue);
+        transferencia.Descricao = descricao;
+        await _context.SaveChangesAsync();
+
+        return MapToDto(transferencia, contaOrigem.Nome, contaDestino.Nome);
+    }
+
+    /// <summary>A transferência de que esta transação é uma perna (origem ou destino). 404 se não for, ou de outra pessoa.</summary>
+    public async Task<TransferenciaDto> ObterPelaPernaAsync(Guid transacaoId, Guid usuarioId)
+    {
+        var t = await _context.Transferencias.AsNoTracking()
+            .Include(x => x.ContaOrigem)
+            .Include(x => x.ContaDestino)
+            .FirstOrDefaultAsync(x => (x.TransacaoOrigemId == transacaoId || x.TransacaoDestinoId == transacaoId) && x.CriadoPor == usuarioId)
+            ?? throw new KeyNotFoundException("Transferência não encontrada.");
+        var dto = MapToDto(t, t.ContaOrigem?.Nome ?? "", t.ContaDestino?.Nome ?? "");
+        dto.ComCaixinha = t.ContaOrigem?.Tipo == TipoConta.Caixinha || t.ContaDestino?.Tipo == TipoConta.Caixinha;
+        return dto;
     }
 
     /// <summary>Transferência já criada com esta chave (replay) ou null. 409 se excluída depois ou com outros dados.</summary>

@@ -8,12 +8,15 @@
 // Editar é o MESMO formulário (Gustavo: "posso ter colocado tudo e errado o tipo"): um PUT só, com tudo.
 // O servidor muda conta/cartão/status no lugar e, quando vira transferência / parcelado, troca o
 // registro numa transação só do banco (tudo ou nada). Idempotency-Key em criar e editar: reenviar não repete.
-// Lançamento sem hora pode continuar sem hora (PR #299).
+// Regra do formulário (Gustavo, 2026-10-31): o que é obrigatório pra criar é obrigatório pra editar, e vice-versa,
+// aqui e no servidor. Hora é opcional nos dois (ao criar já vem a de agora): lançamento antigo, importado, de conta
+// fixa ou parcela edita sem inventar hora. Transferência existente edita inteira (contas, valor, data, hora,
+// descrição) pelo mesmo formulário e pela mesma conferência do servidor; não vira despesa/receita.
 // Despesa nova: antes de salvar, o servidor diz se a compra tira o dinheiro das contas fixas dos próximos 30 dias
 // (limite no cartão, saldo na conta) e a resposta aparece embaixo da prévia. Só avisa (decisão do Gustavo 2026-10-19).
 import { useEffect, useMemo, useState } from "react"
 import { avisoDeCompra, createTransaction, updateTransaction, type EdicaoLancamentoResultado } from "../services/transactionService"
-import { createTransferencia } from "../services/transferenciaService"
+import { createTransferencia, editarTransferencia } from "../services/transferenciaService"
 import { getFamilia, getFamilias } from "../services/familiaService"
 import { mensagemDeErro } from "../api/cliente"
 import type { Transaction } from "../types/Transaction"
@@ -53,9 +56,11 @@ const NATUREZAS: { valor: Natureza; rotulo: string }[] = [
 ]
 const centavos = (n: number) => Math.round(n * 100) / 100
 
-export default function FormularioTransacao({ transacao, contas = [], cartoes = [], categorias, subcategorias, aoSair, aoSalvo }: {
+export default function FormularioTransacao({ transacao, transferenciaEditada, contas = [], cartoes = [], categorias, subcategorias, aoSair, aoSalvo }: {
   /** Com transação = editar; sem = nova. */
   transacao?: Transaction
+  /** Editando uma transferência (a transação é uma perna dela): o id e as duas contas. */
+  transferenciaEditada?: { id: string; contaOrigemId: string; contaDestinoId: string }
   contas?: Conta[]
   cartoes?: CartaoCredito[]
   categorias: Category[]
@@ -66,9 +71,9 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
 }) {
   const t = transacao ?? null
   const editando = !!t
-  const horaOpcional = !!t && !t.hora
+  const tf = transferenciaEditada ?? null
 
-  const [natureza, setNatureza] = useState<Natureza>(t?.tipo === TIPO.receita ? "receita" : "despesa")
+  const [natureza, setNatureza] = useState<Natureza>(tf ? "transferencia" : t?.tipo === TIPO.receita ? "receita" : "despesa")
   const [valor, setValor] = useState(t ? moneyParaCampo(t.valor) : "")
   const [descricao, setDescricao] = useState(t?.descricao ?? "")
   const [meio, setMeio] = useState<number>(t ? (t.cartaoCreditoId ? MEIO.credito : t.meioPagamento ?? MEIO.pix) : MEIO.pix)
@@ -80,9 +85,10 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
   const [hora, setHora] = useState(() => (t ? (t.hora ? t.hora.slice(0, 5) : "") : horaLocalHHMM()))
   const [categoriaId, setCategoriaId] = useState(t?.categoriaId ?? "")
   const [subcategoriaId, setSubcategoriaId] = useState(t?.subcategoriaId ?? "")
-  // Virou transferência: a conta do lançamento é a origem (despesa) ou o destino (receita).
-  const [origemId, setOrigemId] = useState(t && t.tipo !== TIPO.receita ? t.contaId ?? "" : "")
-  const [destinoId, setDestinoId] = useState(t && t.tipo === TIPO.receita ? t.contaId ?? "" : "")
+  // Transferência existente: as contas dela. Virou transferência: a conta do lançamento é a origem (despesa) ou o
+  // destino (receita).
+  const [origemId, setOrigemId] = useState(tf ? tf.contaOrigemId : t && t.tipo !== TIPO.receita ? t.contaId ?? "" : "")
+  const [destinoId, setDestinoId] = useState(tf ? tf.contaDestinoId : t && t.tipo === TIPO.receita ? t.contaId ?? "" : "")
   const [erros, setErros] = useState<Record<string, string>>({})
   const [erro, setErro] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
@@ -101,8 +107,8 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
   const parcelado = credito && parcelas > 1
   // Parcela de parcelamento e ocorrência de conta fixa não viram outra coisa.
   const podeConverter = !t || (!t.parcelamentoId && !t.recorrenteOrigemId)
-  // Na edição, isto vira outro registro no servidor (o lançamento antigo é cancelado).
-  const viraOutroRegistro = !!t && (transferencia || parcelado)
+  // Na edição, isto vira outro registro no servidor (o lançamento antigo é cancelado). Transferência editada continua a mesma.
+  const viraOutroRegistro = !!t && !tf && (transferencia || parcelado)
   const comHora = !parcelado
   const hoje = dataLocalISO()
   const ontem = somaDias(hoje, -1)
@@ -156,10 +162,8 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
     if (!data) e.data = "Informe a data"
     else if (dataMax && data > dataMax)
       e.data = transferencia ? "Transferência não pode ser no futuro" : `Data futura só como previsão: desligue "${receita ? "Já recebi" : "Já paguei"}"`
-    if (comHora) {
-      if (!hora) { if (!horaOpcional) e.hora = "Informe a hora" }
-      else if (!horaValida(hora)) e.hora = "Hora inválida (HH:MM)"
-    }
+    // Hora é opcional em criar e editar; se preencheu, tem que ser válida.
+    if (comHora && hora && !horaValida(hora)) e.hora = "Hora inválida (HH:MM)"
     setErros(e)
     return Object.keys(e).length === 0
   }
@@ -173,7 +177,10 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
     const horaEnvio = comHora && hora ? `${hora}:00` : null
     let resultado: EdicaoLancamentoResultado | undefined
     try {
-      if (t) {
+      if (tf) {
+        // Mesmo corpo de criar; a transação (perna) continua existindo, então a tela fica nela.
+        await editarTransferencia(tf.id, { contaOrigemId: origemId, contaDestinoId: destinoId, valor: v, data, hora: horaEnvio, descricao: desc })
+      } else if (t) {
         resultado = await updateTransaction(t.id, {
           descricao: desc, valor: v, tipo,
           categoriaId: transferencia ? null : categoriaId || null,
@@ -289,7 +296,8 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
       <Campos>
         {erro && <p className={styles.alerta} role="alert">{erro}</p>}
 
-        <Segmentos ariaLabel="Tipo de lançamento" cheio valor={natureza} onChange={trocarNatureza} opcoes={NATUREZAS} />
+        {/* Transferência existente não vira despesa/receita: sem a escolha do tipo. */}
+        {!tf && <Segmentos ariaLabel="Tipo de lançamento" cheio valor={natureza} onChange={trocarNatureza} opcoes={NATUREZAS} />}
 
         <Campo rotulo="Valor" erro={erros.valor}>
           <EntradaValor valor={valor} tom={tom} autoFocus={!editando} onChange={(x) => { setValor(x); limpa("valor") }} />
@@ -309,7 +317,7 @@ export default function FormularioTransacao({ transacao, contas = [], cartoes = 
             </div>
           </Campo>
           {comHora && (
-            <Campo rotulo={horaOpcional ? "Hora (opcional)" : "Hora"} erro={erros.hora}>
+            <Campo rotulo="Hora (opcional)" erro={erros.hora}>
               <Entrada inputMode="numeric" placeholder="HH:MM" maxLength={5} value={hora}
                 onChange={(e) => { setHora(mascararHora(e.target.value)); limpa("hora") }} />
             </Campo>

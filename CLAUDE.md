@@ -174,6 +174,7 @@ Pelo app: launch `web` (:5174) e `api` (:5293). O `/admin` no dev abre o mini-ap
 - **Layout:** ações da página no pé, à direita (`RodapeFormulario`); "Voltar" é a seta do topo (o layout põe); página de formulário sem `max-width`; formulário dentro de caixa preenche a caixa (`LinhaCampos`).
 - **Listas:** busca, filtro e página **no servidor**; busca com espera de digitação (`useAtrasado`); lista com ficha na linha = `ListaFicha` (modelo Bancos), nunca dropdown de ficha; cadastros são "ficha + ações na linha", sem página de detalhe.
 - **Texto:** PT-BR simples, sem travessão; dinheiro entre pessoas é fato ("pagou a mais", "pra equilibrar o mês X passa Y pra Z"), nunca deve/dívida/cobrar; sem subtítulo explicativo nem contador redundante.
+- **Criar e editar exigem o mesmo** (Gustavo, 2026-10-31): mesmo formulário, mesma validação no front e UMA conferência no servidor pros dois (ex.: `TransferenciaService.ConferirAsync`, `PUT /transferencias/{id}` com o mesmo corpo do `POST`). Campo que não cabe nos dois vira opcional nos dois (a hora do lançamento é opcional em criar e editar). Detalhe em `CONVENCOES.md` › Formulário.
 - **Respostas:** a frase que responde ("vai dar?") vem pronta do servidor (`RespostaDto`); o front mostra (`componentes/Resposta`), nunca calcula.
 - **Teste:** toda tela nova sai com teste (vitest + testing-library): submit vazio bloqueia + fluxo feliz; fluxos de dinheiro têm o seu.
 - **Dados demo:** toda tela nova ganha um bloco no `DemoSeeder` (conta Gabriel Dev, `SEED_DEMO=true`), com registros em todos os estados.

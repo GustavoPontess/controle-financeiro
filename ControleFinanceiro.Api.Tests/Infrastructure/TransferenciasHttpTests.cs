@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using ControleFinanceiro.Api.Domain.Entities;
 using ControleFinanceiro.Api.Domain.Enums;
+using ControleFinanceiro.Api.DTOs.Transferencia;
 using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -101,5 +102,55 @@ public class TransferenciasHttpTests : IClassFixture<CustomWebApplicationFactory
 
         Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
         Assert.Empty(Pernas(usuarioId));
+    }
+
+    [Fact]
+    public async Task Editar_PeloPut_200_AchaPelaPerna_EMudaAsDuasPernas()
+    {
+        const string email = "transferencia-editar@test.com";
+        var (usuarioId, origemId, destinoId) = SeedUsuarioComContas(email);
+        var (client, csrf) = await LoginClientAsync(email);
+        var hoje = HorarioBrasil.Hoje().ToString("yyyy-MM-dd");
+        (await client.SendAsync(CriarRequest(origemId, destinoId, csrf, hoje, null))).EnsureSuccessStatusCode();
+        var perna = Pernas(usuarioId).First();
+
+        // A tela da transação acha a transferência pela perna.
+        var tf = await client.GetFromJsonAsync<TransferenciaDto>($"/api/v1/transferencias/da-transacao/{perna.Id}");
+        Assert.Equal(origemId, tf!.ContaOrigemId);
+
+        // Inverte as contas, muda valor e põe hora: o mesmo corpo de criar.
+        var put = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/transferencias/{tf.Id}")
+        {
+            Content = JsonContent.Create(new { contaOrigemId = destinoId, contaDestinoId = origemId, valor = 75.5m, data = hoje, hora = "08:15:00", descricao = "Volta" }),
+        };
+        put.Headers.Add("X-CSRF-Token", csrf);
+        var resp = await client.SendAsync(put);
+
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        var pernas = Pernas(usuarioId);
+        Assert.All(pernas, t => { Assert.Equal(75.5m, t.Valor); Assert.Equal(new TimeOnly(8, 15), t.Hora); Assert.Equal("Volta", t.Descricao); });
+        Assert.Contains(pernas, t => t.Tipo == TipoTransacao.Despesa && t.ContaId == destinoId);
+        Assert.Contains(pernas, t => t.Tipo == TipoTransacao.Receita && t.ContaId == origemId);
+    }
+
+    [Fact]
+    public async Task Editar_TransferenciaDeOutraPessoa_404()
+    {
+        var (_, origemA, destinoA) = SeedUsuarioComContas("transferencia-dona@test.com");
+        SeedUsuarioComContas("transferencia-intrusa@test.com");
+        var (dona, csrfDona) = await LoginClientAsync("transferencia-dona@test.com");
+        (await dona.SendAsync(CriarRequest(origemA, destinoA, csrfDona, HorarioBrasil.Hoje().ToString("yyyy-MM-dd"), null))).EnsureSuccessStatusCode();
+        Guid idDaDona;
+        using (var scope = _factory.Services.CreateScope())
+            idDaDona = scope.ServiceProvider.GetRequiredService<AppDbContext>().Transferencias.AsNoTracking().Single(t => t.ContaOrigemId == origemA).Id;
+
+        var (intrusa, csrfIntrusa) = await LoginClientAsync("transferencia-intrusa@test.com");
+        var put = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/transferencias/{idDaDona}")
+        {
+            Content = JsonContent.Create(new { contaOrigemId = origemA, contaDestinoId = destinoA, valor = 1m, data = HorarioBrasil.Hoje().ToString("yyyy-MM-dd"), hora = (string?)null, descricao = "" }),
+        };
+        put.Headers.Add("X-CSRF-Token", csrfIntrusa);
+
+        Assert.Equal(HttpStatusCode.NotFound, (await intrusa.SendAsync(put)).StatusCode);
     }
 }

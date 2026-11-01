@@ -15,7 +15,11 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
-### 📌 2026-11-01 (madrugada): sair por inatividade (branch `feat/sair-por-inatividade`, sobre a da LGPD, sem commit)
+### 📌 2026-11-01 (madrugada): editar transferência + hora opcional + regra do formulário (branch `feat/editar-transferencia`, sobre a da inatividade, sem commit)
+
+Regra do Gustavo: o que é obrigatório pra criar é obrigatório pra editar (CONVENCOES › Formulário, CLAUDE.md). Transferência edita inteira (`PUT /transferencias/{id}`, mesmo corpo e mesma conferência do `POST`, as duas pernas juntas; caixinha de meta fora); hora opcional em criar e editar. Testado no navegador interno. Achados catalogados: auditar os outros formulários pela regra (P2); transferência sem `FinancialEventLog` (P2). **Dev local:** o `.env` da API passou a usar `Host=127.0.0.1` (com `localhost` o Npgsql estourava o tempo de conexão logo depois de reiniciar a API neste PC). **Ordem de merge:** #395 → #396 → #397 → este.
+
+### 📌 2026-11-01 (madrugada): sair por inatividade (PR #397, empilhado sobre o #396)
 
 P2 da auditoria do front, regra aprovada pelo Gustavo: sessão sem "Manter-me conectado" avisa aos 14 min e sai aos 15 (de todas as contas do navegador); servidor recusa refresh/troca de conta de refresh com mais de jwt + 15 min (`SessaoInativa`, 401 `SESSAO_INATIVA`); `/auth/me` manda o limite; tela de entrar diz o motivo. Testado no navegador interno com o relógio da página adiantado (aviso, continuar, saída, recado). **Ordem de merge:** #395 (cookies) → #396 (LGPD) → este.
 
@@ -41,7 +45,7 @@ Selo "Beta" (balão + "Beta") ao lado do nome no menu lateral liga o modo aponta
 
 **Banco local:** a conta gut.n.pontes foi refeita só com os 10 extratos Nubank (seeder local, gitignored); pagamento de fatura virou gasto na categoria "Fatura do cartão" (sem a fatura detalhada), Pix no Crédito fora do resultado, Pix do Inter como transferência (perna solta).
 
-**Pendências que saíram daqui:** 🟡 **P2 transferência não tem Editar** (back e front; só excluir e lançar de novo) · ⚪ importar extratos do Inter pra os meses que vieram do Inter fecharem · ⚪ carregar `financeiro.xlsx` (salário, aluguel, contas fixas) no Orçamento local · ⚪ DemoSeeder do Relatórios · ⚪ PR #392 (folga em degraus) vai conflitar no `ViabilidadeMetaService` depois deste entrar.
+**Pendências que saíram daqui:** ✅ ~~P2 transferência não tem Editar~~ (feito 2026-10-31) · ⚪ importar extratos do Inter pra os meses que vieram do Inter fecharem · ⚪ carregar `financeiro.xlsx` (salário, aluguel, contas fixas) no Orçamento local · ⚪ DemoSeeder do Relatórios · ⚪ PR #392 (folga em degraus) vai conflitar no `ViabilidadeMetaService` depois deste entrar.
 
 ### 📌 2026-10-29: Turnstile não trava mais na 2ª tentativa (#391, NO AR)
 
