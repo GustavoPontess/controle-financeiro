@@ -41,6 +41,8 @@ public class AppDbContext : DbContext
         if (entradas.Count > 0)
             MarcarInvestimento(entradas, Categorias.AsNoTracking()
                 .Where(c => categorias.Contains(c.Id) && c.Finalidade == Finalidade.Investimento).Select(c => c.Id).ToHashSet());
+        foreach (var id in FaturasComTotalMexido())
+            TocarFatura(Faturas.Local.FirstOrDefault(f => f.Id == id) ?? Faturas.Find(id));
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
 
@@ -55,7 +57,48 @@ public class AppDbContext : DbContext
         if (ids.Count > 0 && await Contas.AsNoTracking().AnyAsync(c => ids.Contains(c.Id) && c.Tipo == TipoConta.Caixinha, cancellationToken))
             throw new InvalidOperationException(Conta.MensagemCaixinha);
         BarrarCaixinhaNova(ids);
+        foreach (var id in FaturasComTotalMexido())
+            TocarFatura(Faturas.Local.FirstOrDefault(f => f.Id == id) ?? await Faturas.FindAsync([id], cancellationToken));
         return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    // ── Compra e parcela "tocam" a fatura (write skew, P2, 2026-11-01) ─────────────────────────
+    // Lançar, mudar ou tirar compra/parcela de uma fatura não alterava a linha da Fatura, e o xmin (concorrência
+    // otimista) só confere UPDATE/DELETE da própria linha (doc do EF): um pagamento simultâneo validava o restante
+    // contra um total velho e podia pagar a mais ou marcar "Pago" o que não foi. Conflito materializado na linha da
+    // fatura: todo SaveChanges que muda o que compõe o total (RegrasFinanceiras.CompoeTotalFatura) grava a fatura
+    // também (UPDATE ... WHERE xmin = @lido), e quem salvar por último com a fatura velha leva 409 e recarrega.
+
+    /// <summary>Faturas cujo total muda neste SaveChanges (a de antes também, quando a compra troca de fatura).</summary>
+    private HashSet<Guid> FaturasComTotalMexido()
+    {
+        var ids = new HashSet<Guid>();
+        foreach (var e in ChangeTracker.Entries<Transacao>())
+            if (e.State is EntityState.Added or EntityState.Deleted
+                || (e.State == EntityState.Modified && (e.Property(t => t.Valor).IsModified || e.Property(t => t.FaturaId).IsModified
+                    || e.Property(t => t.Ativo).IsModified || e.Property(t => t.UsadoComoCredito).IsModified)))
+            {
+                if (e.Entity.FaturaId is { } atual) ids.Add(atual);
+                if (e.State != EntityState.Added && e.Property(t => t.FaturaId).OriginalValue is { } antes) ids.Add(antes);
+            }
+        foreach (var e in ChangeTracker.Entries<ParcelaTransacao>())
+            if (e.State is EntityState.Added or EntityState.Deleted
+                || (e.State == EntityState.Modified && (e.Property(p => p.Status).IsModified || e.Property(p => p.Valor).IsModified
+                    || e.Property(p => p.ValorComJuros).IsModified || e.Property(p => p.FaturaId).IsModified)))
+            {
+                ids.Add(e.Entity.FaturaId);
+                if (e.State != EntityState.Added) ids.Add(e.Property(p => p.FaturaId).OriginalValue);
+            }
+        return ids;
+    }
+
+    /// <summary>Faz a fatura entrar no UPDATE (mesmo valor), pra o xmin conferir e mudar. Nova ou excluída, não precisa.</summary>
+    private void TocarFatura(Fatura? fatura)
+    {
+        if (fatura is null) return;
+        var entrada = Entry(fatura);
+        if (entrada.State == EntityState.Unchanged)
+            entrada.Property(f => f.ValorPago).IsModified = true;
     }
 
     private void BarrarEscritaEmCaixinha(Func<List<Guid>, bool> haCaixinhaNoBanco)

@@ -74,4 +74,10 @@ public enum FinancialEventType
     ReconciliacaoRemovida = 91,
     /// <summary>Marco já gravado teve a diferença fechada depois (ajuste lançado ou recálculo que passou a bater).</summary>
     ReconciliacaoAtualizada = 92,
+
+    // Transferência entre contas (2026-11-01): um evento por conta afetada, com o saldo de antes e o de depois;
+    // os eventos da mesma operação dividem o CorrelationId.
+    TransferenciaCriada = 100,
+    TransferenciaEditada = 101,
+    TransferenciaExcluida = 102,
 }
