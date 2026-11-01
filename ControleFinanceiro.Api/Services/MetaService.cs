@@ -394,7 +394,7 @@ public class MetaService
         var mes = InicioDoMes(prazo.Value);
         if (!permitirPassado && mes < InicioDoMes(HorarioBrasil.Agora()))
             throw new ArgumentException("O prazo não pode ser num mês que já passou.");
-        if (mes.Year > DateTime.UtcNow.Year + 60)
+        if (mes.Year > HorarioBrasil.Agora().Year + 60)
             throw new ArgumentException("Prazo longe demais.");
         return mes;
     }

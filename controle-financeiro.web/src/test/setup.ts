@@ -9,10 +9,14 @@ import { cleanup } from "@testing-library/react"
 // inteiro (vi.useFakeTimers()) continua podendo. O Node aplica a troca de TZ na hora (também está no vite.config).
 process.env.TZ = "America/Sao_Paulo"
 export const AGORA_DOS_TESTES = new Date("2026-10-20T12:00:00-03:00")
-beforeEach(() => {
+const congelar = () => {
   vi.useFakeTimers({ toFake: ["Date"] })
   vi.setSystemTime(AGORA_DOS_TESTES)
-})
+}
+// Já aqui também: o que um arquivo calcula ao ser carregado (fora de função, ex.: o mês inicial em estado/espaco.ts)
+// vê o mesmo dia que os testes.
+congelar()
+beforeEach(congelar)
 
 // Sem `globals`, a testing-library não se registra sozinha pra limpar a tela entre os testes.
 afterEach(() => {

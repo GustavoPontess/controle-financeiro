@@ -23,6 +23,7 @@ import Selecao from "../componentes/Selecao"
 import { ICONES_META, MAX_NOME_META, MESES, TEMAS_META, prazoIso, type ModeloMeta } from "../dominio/meta"
 import { moneyParaCampo, parseMoney } from "../utils/money"
 import styles from "./MetaFormulario.module.css"
+import { mesAtual } from "../utils/dateTime"
 
 type Erros = Partial<Record<"nome" | "valor" | "prazo", string>>
 
@@ -32,10 +33,9 @@ export default function MetaFormulario() {
   const estado = useLocation().state as { voltarPara?: string; modelo?: ModeloMeta } | null
   const voltarPara = estado?.voltarPara ?? (id ? `/metas/${id}` : "/metas")
   const modelo = id ? undefined : estado?.modelo
-  const hoje = new Date()
-  const anoAtual = hoje.getFullYear(), mesAtual = hoje.getMonth() + 1
+  const { ano: anoAtual, mes: mesDeHoje } = mesAtual()
   // Prazo do modelo: a mesma duração, contando este mês (3 meses em out → dez).
-  const fimModelo = modelo?.meses ? new Date(anoAtual, mesAtual - 1 + modelo.meses - 1, 1) : null
+  const fimModelo = modelo?.meses ? new Date(anoAtual, mesDeHoje - 1 + modelo.meses - 1, 1) : null
   const [carregando, setCarregando] = useState(!!id)
   const [erroCarga, setErroCarga] = useState<string | null>(null)
   const [nome, setNome] = useState(modelo?.nome ?? "")
@@ -99,7 +99,7 @@ export default function MetaFormulario() {
       if (!mes || !ano) e.prazo = "Escolha o mês e o ano."
       else {
         dataLimite = prazoIso(Number(ano), Number(mes))
-        const passou = Number(ano) * 12 + Number(mes) < anoAtual * 12 + mesAtual
+        const passou = Number(ano) * 12 + Number(mes) < anoAtual * 12 + mesDeHoje
         if (passou && dataLimite.slice(0, 7) !== prazoOriginal) e.prazo = "Esse mês já passou."
       }
     }

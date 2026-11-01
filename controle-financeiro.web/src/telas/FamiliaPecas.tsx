@@ -30,15 +30,16 @@ import { AcoesFicha, DadosFicha, InicialFicha, ItemFicha } from "../componentes/
 import Selecao from "../componentes/Selecao"
 import { APROVACAO, MODOS_RATEIO, PAPEL_PERMISSAO, fraseSaldo, primeiroNome, sugerirEquilibrio } from "../dominio/familia"
 import { mesAnoCurto } from "../dominio/meta"
-import { dataBR, diaDeInstante } from "../utils/dateTime"
+import { agora, dataBR, diaDeInstante } from "../utils/dateTime"
 import { formatMoney, moneyParaCampo, parseMoney } from "../utils/money"
 import styles from "./Familia.module.css"
 
 export const diaMes = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
 export const idade = (nascimento: string) => {
-  const n = new Date(nascimento.slice(0, 10)), h = new Date()
-  let a = h.getFullYear() - n.getFullYear()
-  if (h.getMonth() < n.getMonth() || (h.getMonth() === n.getMonth() && h.getDate() < n.getDate())) a--
+  // O dia escrito, sem passar por Date: new Date("2000-10-20") é meia-noite UTC, que no Brasil ainda é dia 19.
+  const [ano, mes, dia] = nascimento.slice(0, 10).split("-").map(Number), h = agora()
+  let a = h.getFullYear() - ano
+  if (h.getMonth() + 1 < mes || (h.getMonth() + 1 === mes && h.getDate() < dia)) a--
   return a
 }
 

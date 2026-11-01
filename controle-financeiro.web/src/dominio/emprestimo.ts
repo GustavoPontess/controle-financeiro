@@ -3,6 +3,7 @@
 // cobrar, a receber ou a pagar. Decisão do Gustavo, 2026-10-19.
 import type { Emprestimo } from "../types/Emprestimo"
 import { FormaPagamentoEmprestimo, StatusVinculoEmprestimo, TipoEmprestimo } from "../types/Emprestimo"
+import { agora } from "../utils/dateTime"
 
 /** Você emprestou (o dinheiro volta pra você)? O tipo já vem relativo a quem olha. */
 export const emprestei = (e: Pick<Emprestimo, "tipo">) => e.tipo === TipoEmprestimo.Emprestei
@@ -27,7 +28,7 @@ export const acompanhaJunto = (e: Pick<Emprestimo, "statusVinculo">) => e.status
 export const conviteEnviado = (e: Pick<Emprestimo, "statusVinculo">) => e.statusVinculo === StatusVinculoEmprestimo.PendenteAceite
 
 /** "dia 25" no mês de hoje; "5/11" em outro mês (dia de calendário, sem fuso). */
-export function quandoCurto(iso: string, hoje = new Date()): string {
+export function quandoCurto(iso: string, hoje = agora()): string {
   const [a, m, d] = [Number(iso.slice(0, 4)), Number(iso.slice(5, 7)), Number(iso.slice(8, 10))]
   return a === hoje.getFullYear() && m === hoje.getMonth() + 1 ? `dia ${d}` : `${d}/${m}`
 }

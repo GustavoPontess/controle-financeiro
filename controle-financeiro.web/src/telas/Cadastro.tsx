@@ -13,6 +13,7 @@ import { mensagemDeErro } from "../api/cliente"
 import { useAuth } from "../auth/useAuth"
 import { ehErroDaSenha, SENHA_MAX, senhaValida } from "../dominio/senha"
 import VerificacaoHumana, { useVerificacaoHumana } from "../componentes/VerificacaoHumana"
+import { dataLocalISO } from "../utils/dateTime"
 
 const MAX_NOME = 200
 const MAX_EMAIL = 255
@@ -35,7 +36,7 @@ export default function Cadastro() {
   const limpa = (k: keyof Erros) => setErros((e) => ({ ...e, [k]: undefined }))
   // Pedir acesso manda e-mail pro endereço digitado: sempre com o "não sou robô" (quando ligado).
   const verif = useVerificacaoHumana()
-  const hoje = new Date().toISOString().slice(0, 10)
+  const hoje = dataLocalISO()
 
   // DEV: a barra de estados põe a tela direto em cada passo (sem API). Some no build.
   useEstadoDev(import.meta.env.DEV ? (e) => { setEnviado(e === "enviado"); setErros({}); setErro(null) } : undefined)

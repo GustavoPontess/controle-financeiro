@@ -76,7 +76,7 @@ public class TransferenciasHttpTests : IClassFixture<CustomWebApplicationFactory
         const string email = "transferencia-hora@test.com";
         var (usuarioId, origemId, destinoId) = SeedUsuarioComContas(email);
         var (client, csrf) = await LoginClientAsync(email);
-        var ontem = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1));
+        var ontem = HorarioBrasil.Hoje().AddDays(-1);
 
         var resp = await client.SendAsync(CriarRequest(origemId, destinoId, csrf, ontem.ToString("yyyy-MM-dd"), "21:40:00"));
 
@@ -96,7 +96,7 @@ public class TransferenciasHttpTests : IClassFixture<CustomWebApplicationFactory
         const string email = "transferencia-futura@test.com";
         var (usuarioId, origemId, destinoId) = SeedUsuarioComContas(email);
         var (client, csrf) = await LoginClientAsync(email);
-        var depois = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(3));
+        var depois = HorarioBrasil.Hoje().AddDays(3);
 
         var resp = await client.SendAsync(CriarRequest(origemId, destinoId, csrf, depois.ToString("yyyy-MM-dd"), "10:00:00"));
 

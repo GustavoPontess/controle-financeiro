@@ -15,6 +15,10 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
+### 📌 2026-11-01 (madrugada): relógio único, solução definitiva de hora (branch `fix/relogio-unico`, sobre a de docs)
+
+Pedido do Gustavo ("solução correta e definitiva", "Fazer tudo"). Fase 1 já subiu nos PRs #395 a #399 (testes do front em Brasília com o dia congelado; PasswordHasher pelo menor de 3 tempos; Acerto/Meta pelo `HorarioBrasil`). Fase 2 nesta branch: `HorarioBrasil.FixarParaTeste` (relógio fixável por AsyncLocal), trava do back lendo também os testes, relógio do front em `utils/dateTime.ts` com trava `relogioUnico.test.ts`, 4 bugs de data corrigidos (detalhe no ROADMAP). Regras em CLAUDE.md e `CONVENCOES.md` › Data e hora. **Ordem de merge:** #395 → #396 → #397 → #398 → #399 → este.
+
 ### 📌 2026-11-01 (madrugada): editar transferência + hora opcional + regra do formulário (branch `feat/editar-transferencia`, sobre a da inatividade, sem commit)
 
 Regra do Gustavo: o que é obrigatório pra criar é obrigatório pra editar (CONVENCOES › Formulário, CLAUDE.md). Transferência edita inteira (`PUT /transferencias/{id}`, mesmo corpo e mesma conferência do `POST`, as duas pernas juntas; caixinha de meta fora); hora opcional em criar e editar. Testado no navegador interno. Achados catalogados: auditar os outros formulários pela regra (P2); transferência sem `FinancialEventLog` (P2). **Dev local:** o `.env` da API passou a usar `Host=127.0.0.1` (com `localhost` o Npgsql estourava o tempo de conexão logo depois de reiniciar a API neste PC). **Ordem de merge:** #395 → #396 → #397 → este.

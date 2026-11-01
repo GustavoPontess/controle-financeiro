@@ -1,7 +1,20 @@
+// Relógio do app (regra de hora, 2026-11-01): todo "agora", "hoje" e "mês atual" do front sai daqui, no fuso de
+// quem usa. Tela não chama `new Date()` / `Date.now()` direto (trava em test/relogioUnico.test.ts): um lugar só
+// pra ler o relógio, e o dia nunca pelo UTC (`toISOString()`). Os testes congelam este relógio no setup.ts.
+export function agora(): Date {
+  return new Date()
+}
+
+/** O mês de hoje no fuso de quem usa (mes de 1 a 12). */
+export function mesAtual(): { ano: number; mes: number } {
+  const h = agora()
+  return { ano: h.getFullYear(), mes: h.getMonth() + 1 }
+}
+
 // Data "YYYY-MM-DD" no fuso LOCAL de quem usa (padrão: hoje). Nunca usar
 // `new Date().toISOString().split("T")[0]` pra "hoje": isso é o dia em UTC, e das
 // 21h à meia-noite (Brasília) já é amanhã — formulário abria com a data de amanhã.
-export function dataLocalISO(d: Date = new Date()): string {
+export function dataLocalISO(d: Date = agora()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 }
 
@@ -15,7 +28,7 @@ export function dataLocalISO(d: Date = new Date()): string {
 // dia+hora). Data passada/futura usa meio-dia (sem horário "real" a capturar).
 export function dataComHora(dateStr: string): string {
   if (dateStr === dataLocalISO()) {
-    const n = new Date()
+    const n = agora()
     return new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate(), n.getHours(), n.getMinutes(), n.getSeconds())).toISOString()
   }
   const [y, m, d] = dateStr.split("-").map(Number)
@@ -24,7 +37,7 @@ export function dataComHora(dateStr: string): string {
 
 // Hora atual "HH:MM" no fuso LOCAL (default do campo de hora). Usa componentes locais,
 // não UTC — é a hora de parede de quem lança.
-export function horaLocalHHMM(d: Date = new Date()): string {
+export function horaLocalHHMM(d: Date = agora()): string {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
 }
 

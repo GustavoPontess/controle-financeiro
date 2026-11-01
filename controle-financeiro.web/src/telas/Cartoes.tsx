@@ -18,6 +18,7 @@ import Etiqueta from "../componentes/Etiqueta"
 import FaceCartao from "../componentes/FaceCartao"
 import { NOME_BANDEIRA, diaMes, diasAte, estadoDaFatura, indiceMes, indiceMesDeHoje } from "../dominio/fatura"
 import styles from "./Cartoes.module.css"
+import { agora } from "../utils/dateTime"
 
 /** O que a linha do cartão precisa da lista de faturas dele. */
 type ResumoCartao = {
@@ -57,7 +58,7 @@ export default function Cartoes() {
     return () => { vivo = false }
   }, [])
 
-  const hoje = useMemo(() => new Date(), [])
+  const hoje = useMemo(() => agora(), [])
   const resumos = useMemo(() => {
     const r: Record<string, ResumoCartao> = {}
     for (const c of cartoes ?? []) r[c.id] = resumir(c, faturas?.[c.id] ?? [], hoje)

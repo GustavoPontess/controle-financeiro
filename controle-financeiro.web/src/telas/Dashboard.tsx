@@ -16,12 +16,13 @@ import { TIPO_CONTA } from "../dominio/conta"
 import GraficoLinha from "../componentes/GraficoLinha"
 import Mosaico from "../componentes/Mosaico"
 import styles from "./Dashboard.module.css"
+import { mesAtual } from "../utils/dateTime"
 
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
 
 export default function Dashboard() {
-  const hoje = new Date()
-  const [ref, setRef] = useState({ ano: hoje.getFullYear(), mes: hoje.getMonth() + 1 })
+  const hoje = mesAtual()
+  const [ref, setRef] = useState(hoje)
   const [dados, setDados] = useState<DashboardData | null>(null)
   const [erro, setErro] = useState(false)
   // O dinheiro do mês (renda × o que saiu e o que vem): pedido à parte, a Visão geral não espera por ele.
@@ -41,7 +42,7 @@ export default function Dashboard() {
     const i = ano * 12 + (mes - 1) + passo
     return { ano: Math.floor(i / 12), mes: (i % 12) + 1 }
   })
-  const ehMesAtual = ref.ano === hoje.getFullYear() && ref.mes === hoje.getMonth() + 1
+  const ehMesAtual = ref.ano === hoje.ano && ref.mes === hoje.mes
   const mesAnterior = MESES[(ref.mes + 10) % 12]
   const d = dados
   const diferenca = d ? d.saldoTotal - d.saldoMesAnterior : 0

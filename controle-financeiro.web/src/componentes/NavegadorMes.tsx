@@ -5,12 +5,12 @@
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import Botao from "./Botao"
 import styles from "./NavegadorMes.module.css"
+import { mesAtual } from "../utils/dateTime"
 
 export type Periodo = { ano: number; mes: number }
 
 export function periodoDeHoje(): Periodo {
-  const h = new Date()
-  return { ano: h.getFullYear(), mes: h.getMonth() + 1 }
+  return mesAtual()
 }
 
 export function somaMeses(p: Periodo, delta: number): Periodo {

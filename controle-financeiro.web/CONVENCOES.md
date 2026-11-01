@@ -80,6 +80,15 @@ Peça que aparece em mais de uma tela vira componente aqui. A tela escolhe **var
 - Formulário de dinheiro = layout lateral com `PreviaLancamento` à direita. Criar e editar usam **o mesmo** componente (`telas/FormularioTransacao.tsx`, com ou sem `transacao`; `telas/FormularioContaFixa.tsx`, com ou sem `recorrente`) — nunca dois formulários parecidos que divergem.
 - Filtro de período: o back trata `to` como exclusivo (`Data < to`) — mande `diaSeguinte(ate)` pra o "até" incluir o dia.
 
+## Data e hora (regra de hora, 2026-11-01)
+
+- **O relógio mora em `utils/dateTime.ts`:** `agora()` (o instante), `mesAtual()` ({ ano, mes }), `dataLocalISO()` ("YYYY-MM-DD" de hoje). Tudo no fuso de quem usa. Tela, componente e domínio não chamam `new Date()` nem `Date.now()` direto; `new Date(algo)` pra ler uma data pode. Exceção: `auth/SairPorInatividade.tsx`, que mede tempo parado.
+- **Nunca o dia de `toISOString()`:** é o dia em UTC, e das 21h à meia-noite de Brasília já é amanhã (Cadastro e Perfil usavam isso como "hoje" no limite do nascimento).
+- **Data sem hora se lê pelo que está escrito:** `new Date("2000-10-20")` é meia-noite UTC, que no Brasil ainda é dia 19. Separe ano, mês e dia (`split("-")`), como `idade` e `somaDias`.
+- **Mês seguinte = dia 1:** `new Date(ano, mes, 1)`, nunca `setMonth(+1)` em cima de hoje (31/01 + 1 mês vira 03/03).
+- **Testes:** todo teste roda no fuso de Brasília com o dia congelado em 20/10/2026, meio-dia (`test/setup.ts`, também na carga dos arquivos). Teste que precisa de outro dia chama `vi.setSystemTime`. Dado de teste com data usa data literal, nunca "hoje" calculado.
+- Trava: `test/relogioUnico.test.ts` lê o código e falha se o relógio voltar a ser lido fora daqui.
+
 ## Painel de dev — regra fixa (Gustavo, 2026-10-26)
 
 Toda tela com **mais de um jeito de ser vista** (passos de fluxo, vazio × com dados, erro, carregando, casos como os da /casa, modais) aparece no **painel de dev**, só em desenvolvimento: um cartão pequeno no canto com o seletor "Estado da tela" e, se a tela tiver, um segundo seletor de atalhos (ex.: "Contas de teste" do login). Cada estado põe a tela nele sem passar pelo fluxo real (sem login, sem API: dados de exemplo).

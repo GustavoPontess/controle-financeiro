@@ -56,7 +56,7 @@ public class TransferenciaServiceTests
         var volta = await service.CriarAsync(new CriarTransferenciaDto
         {
             ContaOrigemId = destino.Id, ContaDestinoId = origem.Id, Valor = 100m,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)), Descricao = "Resgate"
+            Data = HorarioBrasil.Hoje().AddDays(-1), Descricao = "Resgate"
         }, usuarioId);
 
         // Pela descrição: total já vem filtrado (paginação correta).
@@ -173,7 +173,7 @@ public class TransferenciaServiceTests
     public async Task Criar_ComHora_GravaODiaEAHoraNasDuasPernas_ENaTransferencia()
     {
         var (ctx, usuarioId, origem, destino) = Seed();
-        var ontem = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1));
+        var ontem = HorarioBrasil.Hoje().AddDays(-1);
 
         var dto = await new TransferenciaService(ctx).CriarAsync(new CriarTransferenciaDto
         {
@@ -218,7 +218,7 @@ public class TransferenciaServiceTests
         await Assert.ThrowsAsync<ArgumentException>(() => new TransferenciaService(ctx).CriarAsync(new CriarTransferenciaDto
         {
             ContaOrigemId = origem.Id, ContaDestinoId = destino.Id, Valor = 500m,
-            Data = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2)), Descricao = "Reserva"
+            Data = HorarioBrasil.Hoje().AddDays(2), Descricao = "Reserva"
         }, usuarioId));
 
         Assert.Empty(await ctx.Transacoes.ToListAsync());
