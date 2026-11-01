@@ -2,7 +2,7 @@
 // conta_desatualizada sempre avisa, mesmo em tela que mostra o erro no campo.
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { AxiosAdapter, InternalAxiosRequestConfig } from "axios"
-import { api, definirContaDaAba, esperaDoLimite, mensagemDeErro, nomeCookieCsrf } from "../../api/cliente"
+import { api, definirContaDaAba, esperaDoLimite, mensagemDeErro, nomeCookieCsrf, sessaoCaiuPorInatividade } from "../../api/cliente"
 
 const original = api.defaults.adapter
 let enviados: InternalAxiosRequestConfig[] = []
@@ -68,6 +68,28 @@ describe("cliente: cookie do CSRF", () => {
       expect(enviados[0].headers["X-CSRF-Token"]).toBe("abc==")
     } finally {
       document.cookie = "X-CSRF-Token=; expires=Thu, 01 Jan 1970 00:00:00 GMT"
+    }
+  })
+})
+
+describe("cliente: sessão parada", () => {
+  // O servidor recusa o refresh com SESSAO_INATIVA: vai pra tela de entrar com o motivo, e a tela fica sabendo.
+  it("refresh recusado com SESSAO_INATIVA manda pra /entrar?motivo=inatividade", async () => {
+    const adapter: AxiosAdapter = async (config) => {
+      enviados.push(config)
+      const sessaoParada = config.url?.includes("/auth/refresh")
+      const resposta = { data: sessaoParada ? { code: "SESSAO_INATIVA" } : {}, status: 401, statusText: "", headers: {}, config }
+      throw Object.assign(new Error("401"), { config, response: resposta, isAxiosError: true })
+    }
+    api.defaults.adapter = adapter
+    const local = window.location
+    Object.defineProperty(window, "location", { configurable: true, value: { ...local, pathname: "/dashboard", href: "/dashboard" } })
+    try {
+      await expect(api.get("/transacoes")).rejects.toBeTruthy()
+      expect(window.location.href).toBe("/entrar?motivo=inatividade")
+      expect(sessaoCaiuPorInatividade()).toBe(true)
+    } finally {
+      Object.defineProperty(window, "location", { configurable: true, value: local })
     }
   })
 })

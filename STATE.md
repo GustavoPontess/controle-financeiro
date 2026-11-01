@@ -15,7 +15,11 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 
 ## Em execução
 
-### 📌 2026-10-31 (noite): transferência internacional na política (branch `fix/lgpd-transferencia-internacional`, sobre a dos cookies, sem commit)
+### 📌 2026-11-01 (madrugada): sair por inatividade (branch `feat/sair-por-inatividade`, sobre a da LGPD, sem commit)
+
+P2 da auditoria do front, regra aprovada pelo Gustavo: sessão sem "Manter-me conectado" avisa aos 14 min e sai aos 15 (de todas as contas do navegador); servidor recusa refresh/troca de conta de refresh com mais de jwt + 15 min (`SessaoInativa`, 401 `SESSAO_INATIVA`); `/auth/me` manda o limite; tela de entrar diz o motivo. Testado no navegador interno com o relógio da página adiantado (aviso, continuar, saída, recado). **Ordem de merge:** #395 (cookies) → #396 (LGPD) → este.
+
+### 📌 2026-10-31 (noite): transferência internacional na política (PR #396, empilhado sobre o #395)
 
 P1 do gate: servidor nos EUA. Base decidida pelo Gustavo: **art. 33, IX** (execução do contrato), porque nem a Hostinger nem a Cloudflare oferecem as cláusulas-padrão da ANPD (conferido nos DPAs). `/privacidade` ganhou aviso no topo + seção em destaque `#onde-ficam` (finalidade, destino, duração, base, operadores, segurança, direitos, controlador) e "reclamar à ANPD"; as duas páginas legais trocaram "quem te convidou" por controlador (Gustavo Pontes, pessoa física) + e-mail (`CONTATO` em `Legal.tsx`). Registro em `docs/CONFORMIDADE_BR.md`. Teste novo `Legal.test.tsx`. **E-mail:** o Gustavo mandou seguir com `pontes@pontesdev.com.br`; a confirmação da caixa que recebe (anotada no outro PC) e a correção dos docs que dizem que o domínio não recebe viraram P2 no ROADMAP. Próximo (P2): servidor pra São Paulo antes do lançamento público.
 

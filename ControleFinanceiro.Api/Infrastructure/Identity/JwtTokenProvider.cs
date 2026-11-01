@@ -20,6 +20,9 @@ public class JwtTokenProvider
         _expirationMinutes = expirationMinutes;
     }
 
+    /// <summary>Vida do access token (JWT_EXPIRATION_MINUTES). A regra de inatividade conta a partir dela.</summary>
+    public int MinutosDeVida => _expirationMinutes;
+
     // sessionId (opcional) = família de sessão (FamiliaId do refresh) → vira o claim "sid". Um
     // middleware valida por request se essa sessão ainda está viva → revogação INSTANTÂNEA (não
     // espera o token expirar). Null = sem sid (compat com tokens legados).

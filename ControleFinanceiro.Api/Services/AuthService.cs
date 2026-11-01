@@ -673,6 +673,9 @@ public class AuthService
         if (rt.Usuario.Status != StatusUsuario.Ativo)
             throw new UnauthorizedAccessException(MensagemStatusBloqueado(rt.Usuario.Status));
 
+        if (SessaoInativa.Venceu(rt, DateTime.UtcNow, _tokenProvider.MinutosDeVida))
+            await EncerrarPorInatividadeAsync(rt);
+
         // Rotação: revoga o atual e cria o sucessor na MESMA família (reuse-detection).
         rt.Revogado = true;
         rt.UltimoUsoEm = DateTime.UtcNow;
@@ -732,6 +735,10 @@ public class AuthService
         if (rt.Usuario.Status != StatusUsuario.Ativo)
             throw new UnauthorizedAccessException(MensagemStatusBloqueado(rt.Usuario.Status));
 
+        // Conta parqueada também: num computador emprestado, quem sentar depois não troca pra ela.
+        if (SessaoInativa.Venceu(rt, DateTime.UtcNow, _tokenProvider.MinutosDeVida))
+            await EncerrarPorInatividadeAsync(rt);
+
         // Rotação na MESMA família (reuse-detection).
         rt.Revogado = true;
         rt.UltimoUsoEm = DateTime.UtcNow;
@@ -752,6 +759,25 @@ public class AuthService
             LembrarSessao = novoRt.LembrarSessao,
         };
     }
+
+    // Sessão sem "Manter-me conectado" parada além do limite (SessaoInativa): revoga sem sucessor (sai da lista de
+    // sessões, não é roubo, então sem reuse-detection nem aviso ao admin) e responde SESSAO_INATIVA.
+    private async Task EncerrarPorInatividadeAsync(RefreshToken rt)
+    {
+        rt.Revogado = true;
+        rt.UltimoUsoEm = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("Sessão encerrada por inatividade. UsuarioId={UsuarioId} FamiliaId={FamiliaId}", rt.UsuarioId, rt.FamiliaId);
+        throw new SessaoInativaException();
+    }
+
+    /// <summary>A sessão (família do refresh, claim <c>sid</c>) foi aberta com "Manter-me conectado"? Null se não achar.</summary>
+    public async Task<bool?> SessaoLembradaAsync(Guid familiaId) =>
+        await _context.RefreshTokens
+            .Where(r => r.FamiliaId == familiaId)
+            .OrderByDescending(r => r.CriadoEm)
+            .Select(r => (bool?)r.LembrarSessao)
+            .FirstOrDefaultAsync();
 
     /// <summary>
     /// Revoga o refresh token (logout). Silencioso se token não encontrado.

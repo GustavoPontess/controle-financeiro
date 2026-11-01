@@ -605,10 +605,12 @@ public class MetaServiceTests
         var ctx = CreateContext();
         var user = SeedUsuario(ctx, "u@test.com");
         var svc = Servico(ctx);
-        var passado = DateTime.UtcNow.AddMonths(-1);
+        // "Mês que passou" pelo dia de Brasília (HorarioBrasil), como o serviço: com o relógio UTC, das 21h à meia-noite
+        // do último dia do mês o "mês passado" do teste era o mês atual pro serviço.
+        var passado = HorarioBrasil.Agora().AddMonths(-1);
         await Assert.ThrowsAsync<ArgumentException>(
             () => svc.CriarAsync(new CriarMetaDto("X", null, 100m, passado, null, null), user));
-        var futuro = DateTime.UtcNow.AddMonths(3);
+        var futuro = HorarioBrasil.Agora().AddMonths(3);
         var meta = await svc.CriarAsync(new CriarMetaDto("  Y ", null, 100m, new DateTime(futuro.Year, futuro.Month, 17), null, null), user);
         Assert.Equal("Y", meta.Nome);
         Assert.Equal(1, meta.DataLimite!.Value.Day);

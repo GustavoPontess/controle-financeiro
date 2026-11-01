@@ -471,6 +471,10 @@ public class AuthController : ControllerBase
         var usuario = await _authService.GetUsuarioAsync(ExigirUsuarioId());
         if (usuario == null) return NotFound();
 
+        // Sessão sem "Manter-me conectado": a tela fecha depois de N minutos sem mexer (a trava de verdade é o refresh).
+        if (Guid.TryParse(User.FindFirstValue("sid"), out var sid) && await _authService.SessaoLembradaAsync(sid) == false)
+            usuario.SairPorInatividadeMinutos = SessaoInativa.Minutos;
+
         return Ok(usuario);
     }
 

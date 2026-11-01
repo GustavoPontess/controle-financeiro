@@ -149,8 +149,9 @@ public class AcertoServiceTests
         Assert.Equal(150m, dto.Valor);
         Assert.Equal("Ana", dto.DeNome);
         Assert.Equal("Bia", dto.ParaNome);
-        Assert.Equal(DateTime.UtcNow.Month, dto.Mes);
-        Assert.Equal(DateTime.UtcNow.Year, dto.Ano);
+        // O mês do acerto é o de Brasília (HorarioBrasil): com o relógio UTC, das 21h à meia-noite do último dia o teste errava.
+        Assert.Equal(HorarioBrasil.Agora().Month, dto.Mes);
+        Assert.Equal(HorarioBrasil.Agora().Year, dto.Ano);
     }
 
     [Fact]

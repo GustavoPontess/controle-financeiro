@@ -69,6 +69,11 @@ export function esperaDoLimite(erro: unknown): number | null {
 let refreshEmVoo: Promise<unknown> | null = null
 const renovarSessao = () => (refreshEmVoo ??= api.post("/auth/refresh").finally(() => { refreshEmVoo = null }))
 const REFRESH_EM_CORRIDA = "REFRESH_EM_CORRIDA"
+// O servidor recusou renovar porque a sessão ficou parada (SessaoInativa na API): a tela de entrar diz o motivo.
+const SESSAO_INATIVA = "SESSAO_INATIVA"
+let caiuPorInatividade = false
+/** A sessão caiu por ficar parada (o servidor respondeu SESSAO_INATIVA)? A tela de entrar mostra o aviso. */
+export const sessaoCaiuPorInatividade = () => caiuPorInatividade
 const CONTA_DESATUALIZADA = "conta_desatualizada"
 const codigo = (e: unknown) => (e as { response?: { data?: { code?: unknown } } })?.response?.data?.code
 /** Code do erro da API (ex.: "VERIFICACAO_HUMANA"), ou null. */
@@ -87,11 +92,15 @@ api.interceptors.response.use(
       original._retry = true
       let renovada = false
       try { await renovarSessao(); renovada = true }
-      catch (e) { renovada = codigo(e) === REFRESH_EM_CORRIDA }
+      catch (e) {
+        renovada = codigo(e) === REFRESH_EM_CORRIDA
+        if (codigo(e) === SESSAO_INATIVA) caiuPorInatividade = true
+      }
       if (renovada) return api(original)
     }
     if (status === 401) {
-      if (!window.location.pathname.startsWith("/entrar") && !ehAuth) window.location.href = "/entrar"
+      if (!window.location.pathname.startsWith("/entrar") && !ehAuth)
+        window.location.href = caiuPorInatividade ? "/entrar?motivo=inatividade" : "/entrar"
       return Promise.reject(erro)
     }
     // Aba defasada (trocou de conta em outra aba): avisa sempre, mesmo em tela que mostra o erro no campo.

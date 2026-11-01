@@ -11,6 +11,8 @@ export interface Usuario {
   /** Quando a conta foi criada (ISO). */
   criadoEm?: string
   isAdmin?: boolean
+  /** Só no /auth/me: minutos sem mexer até sair (sessão sem "Manter-me conectado"); null = não sai por inatividade. */
+  sairPorInatividadeMinutos?: number | null
 }
 
 /** Resultado do 1º passo do login: entrou; pede o 2º fator; ou a conta está na carência de exclusão. */
