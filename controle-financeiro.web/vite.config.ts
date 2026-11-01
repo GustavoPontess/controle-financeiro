@@ -53,5 +53,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     testTimeout: 15000,
+    // Fuso fixo de Brasília (o CI roda em UTC); o dia dos testes fica congelado no setup.ts.
+    env: { TZ: 'America/Sao_Paulo' },
   },
 })
