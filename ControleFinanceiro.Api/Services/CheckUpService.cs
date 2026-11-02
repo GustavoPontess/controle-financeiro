@@ -219,10 +219,48 @@ public class CheckUpService
         var primeiroLancamento = await _context.Transacoes.AsNoTracking().Where(t => t.CriadoPor == usuarioId && t.Ativo)
             .MinAsync(t => (DateOnly?)t.Data);
         var primeiroAno = Math.Min(primeiroLancamento?.Year ?? hoje.Year, hoje.Year);
+
+        // O ritmo (etapa 2): a média dos meses fechados com movimento; o mês em andamento puxaria pra baixo.
+        static bool Mexeu(MesDoCheckUpDto m) => m.Entrou > 0 || m.Saiu > 0;
+        var fechados = ateHoje.Where(m => (!anoAtual || m.Mes < ateMes) && Mexeu(m)).ToList();
+        var naMedia = fechados.Count > 0 ? fechados : ateHoje.Where(Mexeu).ToList();
+        RitmoDoAnoDto? ritmo = null;
+        if (naMedia.Count > 0)
+        {
+            var sobraPorMes = Math.Round(naMedia.Average(m => m.Sobrou), 2);
+            // Ano atual: o que sobrou nos meses fechados + a média de sobra nos que faltam (o atual inclusive).
+            decimal? fechaCom = anoAtual && fechados.Count > 0
+                ? ateHoje.Where(m => m.Mes < ateMes).Sum(m => m.Sobrou) + sobraPorMes * (12 - (ateMes - 1))
+                : null;
+            ritmo = new RitmoDoAnoDto(naMedia.Count, Math.Round(naMedia.Average(m => m.Entrou), 2), Math.Round(naMedia.Average(m => m.Saiu), 2),
+                sobraPorMes, fechaCom);
+        }
+
+        // Contas fixas e parcelas no ano: as ocorrências de conta fixa efetivadas até hoje e as parcelas dos meses.
+        var fimDoQueJaFoi = DateOnly.FromDateTime(anoAtual ? hoje : new DateTime(ano, 12, 31));
+        var inicioD = DateOnly.FromDateTime(inicio);
+        var contasFixas = await _context.Transacoes.AsNoTracking()
+            .Where(t => t.CriadoPor == usuarioId && t.Ativo && t.Tipo == TipoTransacao.Despesa && t.RecorrenteOrigemId != null
+                        && t.StatusTransacao == StatusTransacao.Executado && t.Data >= inicioD && t.Data <= fimDoQueJaFoi)
+            .SumAsync(t => t.Valor);
+        var parcelas = (await RegrasFinanceiras.ParcelasPorMesAsync(_context, usuarioId, inicio, ateMes, soPendentes: false)).Sum(p => p.Valor);
+        var parcelasAteDezembro = anoAtual && ateMes < 12
+            ? (await RegrasFinanceiras.ParcelasPorMesAsync(_context, usuarioId, new DateTime(ano, ateMes + 1, 1), 12 - ateMes, soPendentes: true)).Sum(p => p.Valor)
+            : 0m;
+        var comprometido = new ComprometidoDoAnoDto(contasFixas, parcelas, parcelasAteDezembro,
+            entrou > 0 ? Math.Round((contasFixas + parcelas) * 100m / entrou, 0) : null);
+
+        // Reserva: o dinheiro de hoje contra o gasto médio por mês do ano.
+        var dinheiro = await RegrasFinanceiras.SaldoDisponivelAsync(_context, usuarioId);
+        var nasMetas = await RegrasFinanceiras.GuardadoNasCaixinhasAsync(_context, usuarioId);
+        decimal? gastoMedio = ritmo is { SaiuPorMes: > 0 } ? ritmo.SaiuPorMes : null;
+        decimal? mesesDeReserva = gastoMedio is > 0 && dinheiro > 0 ? Math.Round(dinheiro / gastoMedio.Value, 1) : null;
+        var reserva = new ReservaDoAnoDto(dinheiro, nasMetas, gastoMedio, mesesDeReserva, ResponderReserva(mesesDeReserva, dinheiro, gastoMedio, "do seu gasto médio por mês no ano"));
+
         return new AnoDoCheckUpDto(ano, ateMes, anoAtual, entrou, totalSaiu, entrou - totalSaiu, ateHoje.Sum(m => m.Investido),
             ateHoje.Sum(m => m.RendaEsperada), ateHoje.Sum(m => m.DespesasPlanejadas), ateHoje.Sum(m => m.InvestimentosPlanejados),
             meses, categorias, semCategoriaValor > 0 ? new SemCategoriaDto(semCategoriaValor, Pct(semCategoriaValor), semCategoriaQtd) : null,
-            primeiroAno);
+            primeiroAno, ritmo, comprometido, reserva);
     }
 
     /// <summary>Transações filtrada pela URL: o que ficou sem categoria no mês (a tela lê os parâmetros e mostra o filtro).</summary>
@@ -293,10 +331,10 @@ public class CheckUpService
     }
 
     /// <summary>A frase da reserva: quantos meses o que está nas contas cobre e quanto falta pra 3.</summary>
-    public static RespostaDto? ResponderReserva(decimal? meses, decimal dinheiro, decimal? gastoNormal)
+    public static RespostaDto? ResponderReserva(decimal? meses, decimal dinheiro, decimal? gastoNormal, string doGasto = "do seu gasto normal")
     {
         if (meses is not { } m || gastoNormal is not { } g) return null;
-        var cobre = $"O que está nas contas cobre {Duracao(m)} do seu gasto normal.";
+        var cobre = $"O que está nas contas cobre {Duracao(m)} {doGasto}.";
         if (m >= 6) return new RespostaDto("positivo", cobre, []);
         if (m >= 3) return new RespostaDto("neutro", cobre, []);
         return new RespostaDto("alerta", $"{cobre} Pra cobrir 3 meses, faltam {Reais.Formatar(Math.Max(0m, g * 3m - dinheiro))}.",

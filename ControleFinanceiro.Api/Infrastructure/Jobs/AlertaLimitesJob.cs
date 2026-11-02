@@ -25,15 +25,18 @@ public class AlertaLimitesJob
         _logger = logger;
     }
 
-    /// <param name="agora">Só pra teste. O mês é o de Brasília (UTC−3): o app ainda não guarda fuso por pessoa.</param>
+    /// <param name="agora">Só pra teste. O mês é o do fuso da conta de cada pessoa (2026-11-02; sem fuso, Brasília).</param>
     public async Task ExecuteAsync(DateTime? agora = null)
     {
-        var hoje = agora.HasValue ? HorarioBrasil.DeUtc(agora.Value) : HorarioBrasil.Agora();
         var usuarios = await _context.Orcamentos.Select(o => o.UsuarioId).Distinct().ToListAsync();
+        var fusos = await FusoHorarioService.DosUsuariosAsync(_context, usuarios);
         foreach (var usuarioId in usuarios)
         {
             try
             {
+                // O mês dela e tudo que o cálculo dos limites chama ("hoje", o que ainda vem) no fuso dela.
+                using var _ = HorarioBrasil.UsarFuso(fusos.GetValueOrDefault(usuarioId));
+                var hoje = agora.HasValue ? HorarioBrasil.DeUtc(agora.Value) : HorarioBrasil.Agora();
                 await AvisarAsync(usuarioId, hoje.Year, hoje.Month);
             }
             catch (Exception ex)

@@ -25,18 +25,26 @@ public class ExecutarRecorrentesJob
     /// <summary>Chave do aviso "não passou por falta de limite" (um por ocorrência).</summary>
     public static string ChaveSemLimite(Guid transacaoId) => $"cobranca-sem-limite:{transacaoId}";
 
+    /// <summary>A conta fixa é cobrada às 00h30 do dia dela, no fuso do dono (2026-11-02: o job roda de hora em hora e
+    /// trata cada pessoa no horário dela; antes era 00h30 de Brasília, e no Acre a conta de "amanhã" passava às 22h30).</summary>
+    public static readonly TimeSpan HoraDaCobranca = new(0, 30, 0);
+
     public async Task ExecuteAsync()
     {
-        var hoje = HorarioBrasil.HojeData();
-        var hojeData = DateOnly.FromDateTime(hoje);
-
-        var transacoes = await _context.Transacoes
-            .Where(t => t.StatusTransacao == StatusTransacao.Previsao && t.Data <= hojeData && t.Ativo && t.RecorrenteOrigemId != null)
+        // Nenhum fuso está dois dias à frente: pega as candidatas e cobra pelo dia de cada dono.
+        var limite = DateOnly.FromDateTime(HorarioBrasil.Agora()).AddDays(2);
+        var candidatas = await _context.Transacoes
+            .Where(t => t.StatusTransacao == StatusTransacao.Previsao && t.Data <= limite && t.Ativo && t.RecorrenteOrigemId != null)
             // Só cobra conta fixa que ainda deve cobrar: pausada, cancelada, excluída ou apagada (sem a linha)
             // NÃO efetiva. Antes efetivava toda previsão com RecorrenteOrigemId — pausar/excluir não parava a cobrança.
             .Where(t => _context.Recorrentes.Any(r => r.Id == t.RecorrenteOrigemId
                                                       && r.Ativo && r.CanceladoEm == null && r.ExcluidoEm == null))
             .ToListAsync();
+        if (candidatas.Count == 0) return;
+        var donos = candidatas.Select(t => t.CriadoPor).Distinct().ToList();
+        var fusos = await FusoHorarioService.DosUsuariosAsync(_context, donos);
+        var hojeDe = donos.ToDictionary(u => u, u => DateOnly.FromDateTime(HorarioBrasil.HojeDoJob(fusos.GetValueOrDefault(u), HoraDaCobranca)));
+        var transacoes = candidatas.Where(t => t.Data <= hojeDe[t.CriadoPor]).ToList();
         if (transacoes.Count == 0) return;
 
         var semLimite = await RegrasFinanceiras.CobrarOcorrenciasAsync(_context, transacoes);

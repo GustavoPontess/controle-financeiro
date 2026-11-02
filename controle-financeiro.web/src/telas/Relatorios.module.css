@@ -17,6 +17,9 @@
   .pagina { gap: 12px; }
   .pagina * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 }
+/* O ritmo do ano: uma frase só, embaixo do resumo. */
+.ritmo { order: 3; flex-basis: 100%; margin: 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-2); line-height: 1.5; }
+.ritmo b { color: var(--v2-texto); font-weight: 600; }
 /* O ano: o planejado embaixo de cada número. */
 .conta dd.planejado { font-size: var(--v2-fs-xs); font-weight: 400; color: var(--v2-texto-2); }
 

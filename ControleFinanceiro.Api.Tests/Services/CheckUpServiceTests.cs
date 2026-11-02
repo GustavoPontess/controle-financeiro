@@ -305,6 +305,35 @@ public class CheckUpServiceTests
     }
 
     [Fact]
+    public async Task Ano_RitmoContasFixasEReserva_PelosMesesFechados()
+    {
+        // 15/11/2026: os meses fechados com movimento são ago (entrou 5.000, saiu 500), set (saiu 500) e out (conta fixa 300).
+        using var _ = HorarioBrasil.FixarParaTeste(new DateTime(2026, 11, 15, 15, 0, 0, DateTimeKind.Utc));
+        var c = Seed();
+        Lancar(c, c.Salario, 5000m, 8, TipoTransacao.Receita);
+        Lancar(c, c.Mercado, 500m, 8);
+        Lancar(c, c.Mercado, 500m, 9);
+        c.Ctx.Transacoes.Add(new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "Aluguel", Valor = 300m, Tipo = TipoTransacao.Despesa, CategoriaId = c.Mercado, ContaId = c.Conta,
+            CriadoPor = c.U, Data = new DateOnly(2026, 10, 5), StatusTransacao = StatusTransacao.Executado, Ativo = true, RecorrenteOrigemId = Guid.NewGuid(),
+        });
+        c.Ctx.SaveChanges();
+
+        var r = await Servico(c.Ctx).AnoAsync(c.U, 2026);
+
+        Assert.NotNull(r.Ritmo);
+        Assert.Equal(3, r.Ritmo!.MesesNaMedia); // o mês em andamento (novembro) não entra na média
+        Assert.Equal((1666.67m, 433.33m, 1233.33m), (r.Ritmo.EntrouPorMes, r.Ritmo.SaiuPorMes, r.Ritmo.SobrouPorMes));
+        Assert.Equal(3700m + 1233.33m * 2, r.Ritmo.FechaOAnoCom); // o que sobrou até outubro + a média em nov e dez
+        Assert.Equal((300m, 0m, 6m), (r.Comprometido!.ContasFixas, r.Comprometido.Parcelas, r.Comprometido.PercentualDoQueEntrou));
+        Assert.Equal(433.33m, r.Reserva!.GastoMedioPorMes);
+
+        // Num ano passado não há projeção (o ano já fechou).
+        Assert.Null((await Servico(c.Ctx).AnoAsync(c.U, 2025)).Ritmo);
+    }
+
+    [Fact]
     public async Task Ano_SomaOsMeses_CategoriasContraOMesmoPeriodoDoAnoAnterior_ELimiteDoAno()
     {
         // "Ano completo": o ano somado. Mercado: 2025 (só ago) 300; 2026 ago 500 + set 400. Limite de Mercado R$ 600 desde

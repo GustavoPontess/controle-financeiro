@@ -63,6 +63,12 @@ export interface AnoDoCheckUp {
   semCategoria: { valor: number; percentualDoGasto: number; quantidade: number } | null
   /** O ano do primeiro lançamento (o seletor de ano vai dele até o atual). */
   primeiroAno: number
+  /** Médias por mês dos meses fechados com movimento e, no ano atual, quanto o ano fecha sobrando. Null sem movimento. */
+  ritmo: { mesesNaMedia: number; entrouPorMes: number; saiuPorMes: number; sobrouPorMes: number; fechaOAnoCom: number | null } | null
+  /** Contas fixas pagas e parcelas do ano; no ano atual, as parcelas que ainda caem até dezembro. */
+  comprometido: { contasFixas: number; parcelas: number; parcelasAteDezembro: number; percentualDoQueEntrou: number | null } | null
+  /** O dinheiro de hoje contra o gasto médio por mês do ano. */
+  reserva: { dinheiroGuardado: number; guardadoNasMetas: number; gastoMedioPorMes: number | null; mesesDeReserva: number | null; resposta: Sinal["resposta"] | null } | null
 }
 
 export interface CategoriaDoAno {

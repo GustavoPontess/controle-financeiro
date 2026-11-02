@@ -182,7 +182,18 @@ export default function Relatorios() {
             </div>
           )}
         </Bloco>
-      ) : erro ? <Bloco lado={baixar}>{linhaDoTempo}<p className={styles.vazio} role="alert">Não deu pra carregar o check-up.</p></Bloco> : (
+      ) : erro ? <Bloco lado={baixar}>{linhaDoTempo}<p className={styles.vazio} role="alert">Não deu pra carregar o check-up.</p></Bloco> : null}
+      {/* O ano completo também responde "o que vem pela frente?" e "se apertar, aguento?" (etapa 2, 2026-11-02). */}
+      {anoCompleto && doAno?.comprometido && (
+        <Bloco titulo="Contas fixas e parcelas"><ComprometidoDoAno a={doAno} /></Bloco>
+      )}
+      {anoCompleto && doAno?.reserva && (
+        <Bloco titulo="Reserva de emergência">
+          <ReservaDeEmergencia meses={doAno.reserva.mesesDeReserva} dinheiro={doAno.reserva.dinheiroGuardado} nasMetas={doAno.reserva.guardadoNasMetas}
+            gastoPorMes={doAno.reserva.gastoMedioPorMes} rotuloDoGasto="de gasto médio por mês no ano" resposta={doAno.reserva.resposta} />
+        </Bloco>
+      )}
+      {!anoCompleto && !erro && (
         <>
           {/* 1. Como estou e por quê? O mesmo bloco em qualquer mês, com as categorias numa lista só (a legenda da barra). */}
           {topoDaRenda ? (
@@ -218,30 +229,8 @@ export default function Relatorios() {
           {/* 4. Se apertar, aguento? */}
           <Bloco titulo="Reserva de emergência">
             {!dados ? <Esqueleto linhas={2} altura={18} /> : (
-              <div className={styles.reserva}>
-                <div className={styles.reservaNumero}>
-                  <span className={styles.grande}>
-                    {dados.mesesDeReserva != null ? `${numero(dados.mesesDeReserva)} ${dados.mesesDeReserva === 1 ? "mês" : "meses"}` : <Dinheiro valor={dados.dinheiroGuardado} />}
-                  </span>
-                  <span className={styles.extra}>
-                    <Dinheiro valor={dados.dinheiroGuardado} /> nas contas
-                    {dados.gastoNormal != null ? <> ÷ <Dinheiro valor={dados.gastoNormal} /> de gasto normal por mês</> : " · sem meses anteriores pra comparar"}
-                  </span>
-                  {dados.mesesDeReserva != null && (
-                    <Bullet valor={Math.min(100, (dados.mesesDeReserva / REGUA_RESERVA) * 100)} faixas={[25, 50]}
-                      escala={["0", "3 meses", "6 meses", `${REGUA_RESERVA}+`]}
-                      rotulo={`Reserva de ${numero(dados.mesesDeReserva)} meses numa régua de 0 a ${REGUA_RESERVA}, com marcas em 3 e 6`} />
-                  )}
-                </div>
-                <div className={styles.cartao}>
-                  {dados.respostaReserva && <Resposta tom={dados.respostaReserva.tom} texto={dados.respostaReserva.texto} acoes={dados.respostaReserva.acoes} />}
-                  {dados.guardadoNasMetas > 0 && (
-                    <dl className={styles.dados}>
-                      <div><dt>Guardado nas metas (fora da reserva)</dt><dd><Dinheiro valor={dados.guardadoNasMetas} /></dd></div>
-                    </dl>
-                  )}
-                </div>
-              </div>
+              <ReservaDeEmergencia meses={dados.mesesDeReserva} dinheiro={dados.dinheiroGuardado} nasMetas={dados.guardadoNasMetas}
+                gastoPorMes={dados.gastoNormal} rotuloDoGasto="de gasto normal por mês" resposta={dados.respostaReserva} />
             )}
           </Bloco>
         </>
@@ -286,6 +275,21 @@ function ResumoDoMes({ dados, anterior }: { dados: CheckUp; anterior: string | n
 const recolherAsMenores = (linhas: LinhaComparacao[]): LinhaComparacao[] =>
   linhas.map((l) => (l.serie === "cinza-2" ? { ...l, recolhida: true } : l))
 
+/** O ritmo do ano (o equivalente anual do "quanto dá pra gastar por dia"): a média por mês dos meses fechados e, no ano
+ *  atual, quanto o ano fecha sobrando se continuar assim. */
+function RitmoDoAno({ a }: { a: AnoDoCheckUp }) {
+  const r = a.ritmo!
+  return (
+    <p className={styles.ritmo}>
+      Por mês, em média{r.mesesNaMedia > 1 ? ` (${r.mesesNaMedia} meses)` : ""}: entrou <Dinheiro valor={r.entrouPorMes} />, saiu <Dinheiro valor={r.saiuPorMes} />,
+      {" "}{r.sobrouPorMes >= 0 ? <>sobrou <Dinheiro valor={r.sobrouPorMes} /></> : <>faltou <Dinheiro valor={-r.sobrouPorMes} /></>}.
+      {r.fechaOAnoCom != null && (
+        <> No ritmo de agora, {a.ano} fecha com <b><Dinheiro valor={Math.abs(r.fechaOAnoCom)} tom={r.fechaOAnoCom < 0 ? "negativo" : undefined} /></b> {r.fechaOAnoCom >= 0 ? "sobrando" : "faltando"}.</>
+      )}
+    </p>
+  )
+}
+
 /** O topo do "Ano completo": quanto sobrou no ano em destaque e, ao lado, entrou, saiu e investiu, cada um com o
  *  planejado do ano embaixo (a soma do planejado de cada mês; sem planejado, a linha some). */
 function ResumoDoAno({ a }: { a: AnoDoCheckUp }) {
@@ -307,6 +311,7 @@ function ResumoDoAno({ a }: { a: AnoDoCheckUp }) {
           {a.anoAtual ? `janeiro a ${nomeDoPeriodo({ ano: a.ano, mes: a.ateMes }).split(" de ")[0].toLowerCase()}` : "janeiro a dezembro"}
         </span>
       </div>
+      {a.ritmo && <RitmoDoAno a={a} />}
       <dl className={`${styles.conta} ${styles.contaDoAno}`}>
         {fato("Entrou", a.entrou, a.rendaEsperada)}
         {fato(<><span aria-hidden="true">− </span>Saiu</>, a.saiu, a.despesasPlanejadas)}
@@ -314,6 +319,58 @@ function ResumoDoAno({ a }: { a: AnoDoCheckUp }) {
         {a.investido < 0 ? fato("Resgatou", -a.investido, 0) : fato("Investiu", a.investido, a.investimentosPlanejados)}
       </dl>
     </div>
+  )
+}
+
+/** "Se apertar, aguento?": quantos meses o dinheiro de hoje cobre (régua de 0 a 12, marcas em 3 e 6), a conta e a frase.
+ *  O mesmo bloco no mês (contra o gasto normal) e no ano (contra o gasto médio por mês do ano). */
+function ReservaDeEmergencia({ meses, dinheiro, nasMetas, gastoPorMes, rotuloDoGasto, resposta }: {
+  meses: number | null; dinheiro: number; nasMetas: number; gastoPorMes: number | null
+  rotuloDoGasto: string; resposta: Sinal["resposta"] | null
+}) {
+  return (
+    <div className={styles.reserva}>
+      <div className={styles.reservaNumero}>
+        <span className={styles.grande}>
+          {meses != null ? `${numero(meses)} ${meses === 1 ? "mês" : "meses"}` : <Dinheiro valor={dinheiro} />}
+        </span>
+        <span className={styles.extra}>
+          <Dinheiro valor={dinheiro} /> nas contas
+          {gastoPorMes != null ? <> ÷ <Dinheiro valor={gastoPorMes} /> {rotuloDoGasto}</> : " · sem meses anteriores pra comparar"}
+        </span>
+        {meses != null && (
+          <Bullet valor={Math.min(100, (meses / REGUA_RESERVA) * 100)} faixas={[25, 50]}
+            escala={["0", "3 meses", "6 meses", `${REGUA_RESERVA}+`]}
+            rotulo={`Reserva de ${numero(meses)} meses numa régua de 0 a ${REGUA_RESERVA}, com marcas em 3 e 6`} />
+        )}
+      </div>
+      <div className={styles.cartao}>
+        {resposta && <Resposta tom={resposta.tom} texto={resposta.texto} acoes={resposta.acoes} />}
+        {nasMetas > 0 && (
+          <dl className={styles.dados}>
+            <div><dt>Guardado nas metas (fora da reserva)</dt><dd><Dinheiro valor={nasMetas} /></dd></div>
+          </dl>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** Contas fixas e parcelas no ano: o que já foi pago, quanto isso é do que entrou e, no ano atual, as parcelas que ainda
+ *  caem até dezembro. */
+function ComprometidoDoAno({ a }: { a: AnoDoCheckUp }) {
+  const c = a.comprometido!
+  return (
+    <dl className={styles.dados}>
+      <div><dt>Contas fixas pagas{a.anoAtual ? " até agora" : " no ano"}</dt><dd><Dinheiro valor={c.contasFixas} /></dd></div>
+      <div><dt>Parcelas{a.anoAtual ? " até agora" : " no ano"}</dt><dd><Dinheiro valor={c.parcelas} /></dd></div>
+      {a.anoAtual && c.parcelasAteDezembro > 0 && (
+        <div><dt>Parcelas que ainda caem até dezembro</dt><dd><Dinheiro valor={c.parcelasAteDezembro} /></dd></div>
+      )}
+      {c.percentualDoQueEntrou != null && (
+        <div><dt>Contas fixas e parcelas levaram<span className={styles.sub}>do que entrou no ano</span></dt><dd>{c.percentualDoQueEntrou}%</dd></div>
+      )}
+    </dl>
   )
 }
 

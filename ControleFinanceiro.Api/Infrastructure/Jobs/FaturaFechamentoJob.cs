@@ -22,12 +22,27 @@ public class FaturaFechamentoJob
         _logger = logger ?? NullLogger<FaturaFechamentoJob>.Instance;
     }
 
+    /// <summary>A fatura fecha às 23h do dia do fechamento, no fuso do dono (2026-11-02: o job roda de hora em hora e trata
+    /// cada pessoa no horário dela; antes era 23h de Brasília pra todo mundo).</summary>
+    public static readonly TimeSpan HoraDoFechamento = new(23, 0, 0);
+
     public async Task ExecuteAsync()
     {
-        var hoje = HorarioBrasil.HojeData();
-        var faturas = await AFechar(hoje).ToListAsync();
-        if (faturas.Count == 0)
+        // Nenhum fuso está dois dias à frente: pega as candidatas e decide pelo dia de cada dono.
+        var limite = HorarioBrasil.Agora().Date.AddDays(2);
+        var candidatas = await _context.Faturas.AsNoTracking()
+            .Where(f => f.EstadoCiclo == EstadoCicloFatura.Aberta && f.DataFechamento <= limite)
+            .Select(f => new { f.Id, f.CriadoPor, f.DataFechamento })
+            .ToListAsync();
+        if (candidatas.Count == 0)
             return;
+        var donos = candidatas.Select(c => c.CriadoPor).Distinct().ToList();
+        var fusos = await FusoHorarioService.DosUsuariosAsync(_context, donos);
+        var hojeDe = donos.ToDictionary(u => u, u => HorarioBrasil.HojeDoJob(fusos.GetValueOrDefault(u), HoraDoFechamento));
+        var ids = candidatas.Where(c => c.DataFechamento <= hojeDe[c.CriadoPor]).Select(c => c.Id).ToList();
+        if (ids.Count == 0)
+            return;
+        var faturas = await AFechar().Where(f => ids.Contains(f.Id)).ToListAsync();
 
         var agora = DateTime.UtcNow;
         // Uma execução do job = uma operação: os eventos dela compartilham o CorrelationId.
@@ -47,20 +62,20 @@ public class FaturaFechamentoJob
             // uma a uma, relendo cada fatura: o fechamento passa a olhar o ValorPago já atualizado.
             _context.ChangeTracker.Clear();
             foreach (var id in faturas.Select(f => f.Id))
-                await FecharUmaAsync(id, hoje, agora, correlationId);
+                await FecharUmaAsync(id, agora, correlationId);
         }
     }
 
     // Transacoes + ParcelasTransacao: o fechamento reconcilia o estado de pagamento pelo total.
-    private IQueryable<Fatura> AFechar(DateTime hoje) =>
+    private IQueryable<Fatura> AFechar() =>
         _context.Faturas
-            .Where(f => f.EstadoCiclo == EstadoCicloFatura.Aberta && f.DataFechamento <= hoje)
+            .Where(f => f.EstadoCiclo == EstadoCicloFatura.Aberta)
             .Include(f => f.Transacoes)
             .Include(f => f.ParcelasTransacao);
 
-    private async Task FecharUmaAsync(Guid faturaId, DateTime hoje, DateTime agora, Guid correlationId)
+    private async Task FecharUmaAsync(Guid faturaId, DateTime agora, Guid correlationId)
     {
-        var fatura = await AFechar(hoje).FirstOrDefaultAsync(f => f.Id == faturaId);
+        var fatura = await AFechar().FirstOrDefaultAsync(f => f.Id == faturaId);
         if (fatura == null)
             return;
         Fechar(fatura, agora, correlationId);
@@ -70,7 +85,7 @@ public class FaturaFechamentoJob
         }
         catch (DbUpdateConcurrencyException)
         {
-            // Mexeram nela de novo no meio do caminho: segue Aberta e fecha na próxima execução (diária),
+            // Mexeram nela de novo no meio do caminho: segue Aberta e fecha na próxima execução (de hora em hora),
             // sem travar o fechamento das outras.
             _context.ChangeTracker.Clear();
             _logger.LogWarning("FaturaFechamentoJob: fatura {FaturaId} alterada durante o job; fecha na próxima execução.", faturaId);

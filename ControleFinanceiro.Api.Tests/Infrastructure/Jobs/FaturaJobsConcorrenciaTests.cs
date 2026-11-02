@@ -114,8 +114,38 @@ public class FaturaJobsConcorrenciaTests
     }
 
     [Fact]
+    public async Task Fechamento_NoHorarioDeCadaDono_BrasiliaENoronhaFecham_AcreAindaNao()
+    {
+        // 02h30 UTC de 10/10: 23h30 de 09/10 em Brasília, 21h30 de 09/10 no Acre e 00h30 de 10/10 em Noronha. A fatura
+        // fecha às 23h do dia do fechamento (09/10) no fuso do dono (fuso da conta, 2026-11-02).
+        using var _relogio = HorarioBrasil.FixarParaTeste(new DateTime(2026, 10, 10, 2, 30, 0, DateTimeKind.Utc));
+        var (ctx, _, _) = CriarContextos();
+        var fechamento = new DateTime(2026, 10, 9);
+        async Task<Guid> FaturaDe(string? fuso)
+        {
+            var id = await SeedFaturaAsync(ctx, fechamento, fechamento.AddDays(10), 100, ciclo: EstadoCicloFatura.Aberta);
+            var dono = (await ctx.Faturas.FindAsync(id))!.CriadoPor;
+            ctx.Usuarios.Add(new Usuario { Id = dono, Email = $"{dono}@t.com", Nome = "U", PasswordHash = "x", FusoHorario = fuso });
+            await ctx.SaveChangesAsync();
+            return id;
+        }
+        var brasilia = await FaturaDe(null);
+        var acre = await FaturaDe("America/Rio_Branco");
+        var noronha = await FaturaDe("America/Noronha");
+
+        await new FaturaFechamentoJob(ctx, new FinancialEventLogService(ctx)).ExecuteAsync();
+
+        ctx.ChangeTracker.Clear();
+        Assert.Equal(EstadoCicloFatura.Fechada, (await ctx.Faturas.FindAsync(brasilia))!.EstadoCiclo);
+        Assert.Equal(EstadoCicloFatura.Aberta, (await ctx.Faturas.FindAsync(acre))!.EstadoCiclo); // 21h30 lá: ainda não
+        Assert.Equal(EstadoCicloFatura.Fechada, (await ctx.Faturas.FindAsync(noronha))!.EstadoCiclo);
+    }
+
+    [Fact]
     public async Task Fechamento_ConflitoNoLote_RefazUmaAUma_FechaTodas_SemEventoDuplicado()
     {
+        // 23h30 de 09/10 em Brasília: o fechamento roda a partir das 23h do dia do fechamento (fuso da conta, 2026-11-02).
+        using var _relogio = HorarioBrasil.FixarParaTeste(new DateTime(2026, 10, 10, 2, 30, 0, DateTimeKind.Utc));
         var (ctx, outro, interceptor) = CriarContextos();
         var hoje = HorarioBrasil.HojeData();
         // Coberta: ValorPago = total com o ciclo aberto (cancelamento de parcela) → o fechamento quita e audita.

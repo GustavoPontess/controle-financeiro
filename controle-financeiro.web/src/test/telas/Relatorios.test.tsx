@@ -46,6 +46,9 @@ const doAno: AnoDoCheckUp = {
   ],
   semCategoria: null,
   primeiroAno: 2025,
+  ritmo: { mesesNaMedia: 3, entrouPorMes: 5000, saiuPorMes: 800, sobrouPorMes: 4200, fechaOAnoCom: 37000 },
+  comprometido: { contasFixas: 1500, parcelas: 300, parcelasAteDezembro: 200, percentualDoQueEntrou: 12 },
+  reserva: { dinheiroGuardado: 9600, guardadoNasMetas: 0, gastoMedioPorMes: 800, mesesDeReserva: 12, resposta: null },
 }
 const avisos: Sinal[] = [{ chave: "fatura-x", origem: "fatura", peso: 655.9, ehDeHoje: false,
   resposta: { tom: "alerta", texto: "Fatura do Nubank atrasada: R$ 655,90 desde 05/09.", acoes: [{ rotulo: "Ver cartões", para: "/cartoes" }] } }]
@@ -160,8 +163,13 @@ describe("Relatórios = check-up do mês", () => {
     await userEvent.click(screen.getByRole("button", { name: "Baixar este relatório em PDF" }))
     expect(imprimir).toHaveBeenCalled()
     imprimir.mockRestore()
-    // O que é próprio de mês não aparece.
-    expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual(["2026 até agora"])
+    // Etapa 2: o ritmo do ano no topo, contas fixas e parcelas do ano e a reserva pelo gasto médio do ano; "O que dá pra
+    // fazer" (do mês) não aparece.
+    expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual(["2026 até agora", "Contas fixas e parcelas", "Reserva de emergência"])
+    expect(screen.getByText(/Por mês, em média/).textContent).toMatch(/entrou R\$\s5\.000,00, saiu R\$\s800,00, sobrou R\$\s4\.200,00\. No ritmo de agora, 2026 fecha com R\$\s37\.000,00 sobrando/)
+    expect(screen.getByText("Parcelas que ainda caem até dezembro")).toBeInTheDocument()
+    expect(screen.getByText("12 meses")).toBeInTheDocument()
+    expect(screen.getByText(/de gasto médio por mês no ano/)).toBeInTheDocument()
 
     // Tocar num mês volta pro mês.
     await userEvent.click(within(screen.getByRole("group", { name: "Meses" })).getByRole("button", { name: /^Setembro de 2026/ }))
