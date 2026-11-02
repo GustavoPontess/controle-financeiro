@@ -157,7 +157,7 @@ export default function V2Layout() {
   return (
     <div className={`v2 ${styles.raiz}`} data-menu={recolhido ? "trilho" : undefined}>
       {menuAberto && <button type="button" className={styles.veu} aria-label="Fechar menu" onClick={() => setMenuAberto(false)} />}
-      <aside className={styles.lateral} data-aberto={menuAberto ? "true" : undefined}>
+      <aside className={styles.lateral} data-aberto={menuAberto ? "true" : undefined} data-nao-imprime>
         <div className={styles.marca}>
           <span className={styles.logo}><img src="/site/estaiada-laranja.svg" width={34} height={34} alt="" />Pontes</span>
           {/* No trilho a marca compacta É o botão: mostra o "P" e, ao passar o mouse, vira a seta de expandir.
@@ -255,7 +255,7 @@ export default function V2Layout() {
       </aside>
 
       <div className={styles.corpo}>
-        <header className={styles.topo}>
+        <header className={styles.topo} data-nao-imprime>
           {/* Mesmo ícone do recolher/expandir do computador — no celular abre/fecha a gaveta. */}
           <button type="button" className={styles.abrirMenu} aria-label="Abrir menu" onClick={() => setMenuAberto(true)}><PanelLeftOpen size={18} strokeWidth={2} /></button>
           {emTelaInterna && (

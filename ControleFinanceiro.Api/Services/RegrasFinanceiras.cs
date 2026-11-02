@@ -610,6 +610,23 @@ public static class RegrasFinanceiras
             .GetValueOrDefault((ano, mes)) ?? new Dictionary<Guid, GastoCategoria>();
 
     /// <summary>
+    /// O investido em cada mês (aporte soma, resgate desconta; só o efetivado), a mesma conta do realizado da seção
+    /// Investimentos do Orçamento, pra vários meses de uma vez (a linha do tempo de Relatórios). Mês sem nada não aparece.
+    /// </summary>
+    public static async Task<Dictionary<(int Ano, int Mes), decimal>> InvestidoPorMesAsync(AppDbContext context, Guid usuarioId, DateTime de, int meses)
+    {
+        var inicio = new DateOnly(de.Year, de.Month, 1);
+        var fim = inicio.AddMonths(meses);
+        var linhas = await context.Transacoes.AsNoTracking()
+            .Where(t => t.CriadoPor == usuarioId && t.EhInvestimento && t.Ativo && t.StatusTransacao == StatusTransacao.Executado
+                        && t.Data >= inicio && t.Data < fim)
+            .GroupBy(t => new { t.Data.Year, t.Data.Month })
+            .Select(g => new { g.Key.Year, g.Key.Month, Valor = g.Sum(t => t.Tipo == TipoTransacao.Receita ? -t.Valor : t.Valor) })
+            .ToListAsync();
+        return linhas.ToDictionary(l => (l.Year, l.Month), l => l.Valor);
+    }
+
+    /// <summary>
     /// A MESMA regra de <see cref="GastosPorCategoriaDoMesAsync"/>, pra vários meses de uma vez (o check-up de
     /// Relatórios lê 12 meses: antes eram 12 rodadas das mesmas consultas). Chave = (ano, mês); mês sem nada não
     /// aparece.

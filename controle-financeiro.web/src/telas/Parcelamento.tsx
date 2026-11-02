@@ -19,7 +19,7 @@ import Etiqueta from "../componentes/Etiqueta"
 import { RodapeFormulario } from "../componentes/Formulario"
 import Menu from "../componentes/Menu"
 import { diaMes, rotuloMesFatura } from "../dominio/fatura"
-import { dataBR } from "../utils/dateTime"
+import { dataBR, diaDeInstante } from "../utils/dateTime"
 import { formatMoney } from "../utils/money"
 import styles from "./Parcelamento.module.css"
 
@@ -74,7 +74,7 @@ export default function Parcelamento() {
           </div>
         </div>
         <div className={styles.chips}>
-          {!p.ativo && <Etiqueta tom="negativo">Cancelado{p.canceladoEm ? ` em ${dataBR(p.canceladoEm)}` : ""}</Etiqueta>}
+          {!p.ativo && <Etiqueta tom="negativo">Cancelado{p.canceladoEm ? ` em ${diaDeInstante(p.canceladoEm)}` : ""}</Etiqueta>}
           {p.taxaJuroMensal ? <Etiqueta>juros {p.taxaJuroMensal}% a.m.</Etiqueta> : null}
           <Etiqueta>{`${p.quantidadeParcelas}x de ${formatMoney(total / p.quantidadeParcelas)}`}</Etiqueta>
         </div>
@@ -106,8 +106,8 @@ export default function Parcelamento() {
                   <span className={styles.nome}>Parcela {x.numero} de {x.quantidadeTotal}</span>
                   <span className={styles.sub}>fatura de {rotuloMesFatura(x.faturaMesReferencia).toLowerCase()} · vence {diaMes(x.faturaDataVencimento)}</span>
                 </span>
-                {cancelada ? <Etiqueta>Cancelada{x.canceladoEm ? ` em ${dataBR(x.canceladoEm)}` : ""}</Etiqueta>
-                  : x.status === StatusParcela.Paga ? <Etiqueta tom="positivo">Paga{x.pagoEm ? ` em ${dataBR(x.pagoEm)}` : ""}</Etiqueta>
+                {cancelada ? <Etiqueta>Cancelada{x.canceladoEm ? ` em ${diaDeInstante(x.canceladoEm)}` : ""}</Etiqueta>
+                  : x.status === StatusParcela.Paga ? <Etiqueta tom="positivo">Paga{x.pagoEm ? ` em ${diaDeInstante(x.pagoEm)}` : ""}</Etiqueta>
                   : <Etiqueta tom="alerta">Pendente</Etiqueta>}
                 <Dinheiro valor={valor} className={styles.valor} tom={cancelada ? "neutro" : undefined} />
                 <span className={styles.acoes}>

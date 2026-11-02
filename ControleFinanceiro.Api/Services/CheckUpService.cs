@@ -20,7 +20,6 @@ public class CheckUpService
 {
     private const int MesesNaSerie = 12;
     private const int MesesDoNormal = 3;
-    private const int MaxCategorias = 6;
     private const int MaioresContasFixas = 5;
     private const int MaxCortes = 3;
     /// <summary>Faixas do comprometido (% da renda): até 40 tranquilo, até 60 atenção, acima alerta.</summary>
@@ -61,7 +60,9 @@ public class CheckUpService
         if (inicio.AddMonths(-MesesDoNormal) < primeiro) primeiro = inicio.AddMonths(-MesesDoNormal);
         var meses = (fim.Year - primeiro.Year) * 12 + fim.Month - primeiro.Month + 1;
         var gastosPorMes = await RegrasFinanceiras.GastosPorCategoriaPorMesAsync(_context, usuarioId, primeiro, meses);
-        var serie = new List<(int Ano, int Mes, decimal Entrou, Dictionary<Guid, RegrasFinanceiras.GastoCategoria> Gastos)>();
+        var investidoPorMes = await RegrasFinanceiras.InvestidoPorMesAsync(_context, usuarioId, primeiro, meses);
+        var planejadoPorMes = await OrcamentoService.PlanejadoPorMesAsync(_context, usuarioId, primeiro, meses);
+        var serie = new List<(int Ano, int Mes, decimal Entrou, decimal RendaEsperada, Dictionary<Guid, RegrasFinanceiras.GastoCategoria> Gastos)>();
         var idx = (inicio.Year - primeiro.Year) * 12 + inicio.Month - primeiro.Month;
         decimal rendaEsperadaDoMes = 0m;
         for (var i = 0; i < meses; i++)
@@ -69,7 +70,7 @@ public class CheckUpService
             var m = primeiro.AddMonths(i);
             var renda = await _renda.ObterMesAsync(usuarioId, m.Year, m.Month);
             if (i == idx) rendaEsperadaDoMes = renda.Previsto;
-            serie.Add((m.Year, m.Month, renda.Recebido, gastosPorMes.GetValueOrDefault((m.Year, m.Month)) ?? new()));
+            serie.Add((m.Year, m.Month, renda.Recebido, renda.Previsto, gastosPorMes.GetValueOrDefault((m.Year, m.Month)) ?? new()));
         }
         static decimal Gasto(Dictionary<Guid, RegrasFinanceiras.GastoCategoria> g) => g.Values.Sum(x => x.Gasto);
 
@@ -89,8 +90,8 @@ public class CheckUpService
             ? Math.Round(mesesDoNormal.Sum(m => m.Gastos.GetValueOrDefault(categoria).Gasto) / mesesDoNormal.Count, 2)
             : null;
 
-        // Pra onde foi: as maiores categorias do mês; "Sem categoria" fica fora do ranking (vem à parte, com ação);
-        // passando de 6, o resto vira "Outras".
+        // Pra onde foi: todas as categorias do mês, as maiores primeiro (a tela mostra as 5 maiores e recolhe o resto, sem
+        // esconder nenhuma); "Sem categoria" fica fora do ranking (vem à parte, com ação).
         decimal PctDoGasto(decimal v) => saiu > 0 ? Math.Round(v * 100m / saiu, 1) : 0m;
         static decimal? Variacao(decimal valor, decimal? normal) =>
             normal is > 0 ? Math.Round((valor - normal.Value) * 100m / normal.Value, 0) : null;
@@ -98,7 +99,7 @@ public class CheckUpService
             .OrderByDescending(kv => kv.Value.Gasto).ThenByDescending(kv => kv.Value.Previsto).ToList();
         var ids = porCategoria.Select(kv => kv.Key).ToList();
         var nomes = await _context.Categorias.AsNoTracking().Where(c => ids.Contains(c.Id)).ToDictionaryAsync(c => c.Id, c => c.Descricao);
-        var praOndeFoi = porCategoria.Take(porCategoria.Count > MaxCategorias ? MaxCategorias - 1 : MaxCategorias)
+        var praOndeFoi = porCategoria
             .Select(kv =>
             {
                 var normal = NormalDa(kv.Key);
@@ -106,14 +107,6 @@ public class CheckUpService
                     normal, Variacao(kv.Value.Gasto, normal), kv.Value.Previsto);
             })
             .ToList();
-        if (porCategoria.Count > MaxCategorias)
-        {
-            var resto = porCategoria.Skip(MaxCategorias - 1).ToList();
-            var valor = resto.Sum(kv => kv.Value.Gasto);
-            decimal? normal = mesesDoNormal.Count > 0 ? resto.Sum(kv => NormalDa(kv.Key) ?? 0m) : null;
-            praOndeFoi.Add(new CategoriaDoCheckUpDto(null, "Outras", valor, PctDoGasto(valor), normal, Variacao(valor, normal),
-                resto.Sum(kv => kv.Value.Previsto)));
-        }
         var semCategoriaValor = doMes.Gastos.GetValueOrDefault(RegrasFinanceiras.SemCategoria).Gasto;
         SemCategoriaDto? semCategoria = semCategoriaValor > 0
             ? new SemCategoriaDto(semCategoriaValor, PctDoGasto(semCategoriaValor),
@@ -134,7 +127,14 @@ public class CheckUpService
         var nasMetas = await RegrasFinanceiras.GuardadoNasCaixinhasAsync(_context, usuarioId);
         decimal? mesesDeReserva = gastoNormal is > 0 && dinheiro > 0 ? Math.Round(dinheiro / gastoNormal.Value, 1) : null;
 
-        var mesAMes = serie.TakeLast(MesesNaSerie).Select(m => new MesDoCheckUpDto(m.Ano, m.Mes, m.Entrou, Gasto(m.Gastos), m.Entrou - Gasto(m.Gastos))).ToList();
+        var mesAMes = serie.TakeLast(MesesNaSerie)
+            .Select(m =>
+            {
+                var planejado = planejadoPorMes.GetValueOrDefault((m.Ano, m.Mes));
+                return new MesDoCheckUpDto(m.Ano, m.Mes, m.Entrou, Gasto(m.Gastos), m.Entrou - Gasto(m.Gastos), investidoPorMes.GetValueOrDefault((m.Ano, m.Mes)),
+                    m.RendaEsperada, planejado.Despesas, planejado.Investimentos);
+            })
+            .ToList();
         decimal? pctQueSobrou = entrou > 0 ? Math.Round(sobrou * 100m / entrou, 0) : null;
 
         var corte = gastoNormal is null ? null : await CorteAsync(usuarioId, ano, mes, nomeMes, sobrou, praOndeFoi);
@@ -150,6 +150,79 @@ public class CheckUpService
             contasFixas, parcelas, comprometido, praOndeFoi, semCategoria, mesAMes,
             dinheiro, nasMetas, gastoNormal, mesesDeReserva, ResponderReserva(mesesDeReserva, dinheiro, gastoNormal),
             detalhe, corte, sinais, resposta);
+    }
+
+    /// <summary>
+    /// O "Ano completo": de janeiro até o mês de hoje (ano atual) ou dezembro (ano passado), pelas mesmas regras do mês.
+    /// Cada mês = a linha do tempo (realizado e planejado); o ano = a soma dos meses; cada categoria = o gasto somado, contra
+    /// o mesmo período do ano anterior (o normal do ano) e a soma do limite vigente em cada mês. Sem categoria, à parte.
+    /// </summary>
+    public async Task<AnoDoCheckUpDto> AnoAsync(Guid usuarioId, int ano)
+    {
+        var hoje = HorarioBrasil.HojeData();
+        if (ano < 2000 || ano > hoje.Year)
+            throw new ArgumentException("Esse ano ainda não chegou.");
+        var anoAtual = ano == hoje.Year;
+        var ateMes = anoAtual ? hoje.Month : 12;
+        var inicio = new DateTime(ano, 1, 1);
+        // Um ano antes também, pro normal (o mesmo período do ano anterior), numa consulta só.
+        var gastosPorMes = await RegrasFinanceiras.GastosPorCategoriaPorMesAsync(_context, usuarioId, inicio.AddYears(-1), 12 + ateMes);
+        var investidoPorMes = await RegrasFinanceiras.InvestidoPorMesAsync(_context, usuarioId, inicio, ateMes);
+        var planejadoPorMes = await OrcamentoService.PlanejadoPorMesAsync(_context, usuarioId, inicio, 12);
+        var limites = await OrcamentoService.LimitesPorCategoriaAsync(_context, usuarioId, inicio, ateMes);
+
+        var meses = new List<MesDoCheckUpDto>();
+        var doAno = new Dictionary<Guid, decimal>();
+        var antes = new Dictionary<Guid, decimal>();
+        var semCategoriaQtd = 0;
+        for (var mes = 1; mes <= ateMes; mes++)
+        {
+            var renda = await _renda.ObterMesAsync(usuarioId, ano, mes);
+            var gastos = gastosPorMes.GetValueOrDefault((ano, mes)) ?? new();
+            var saiu = gastos.Values.Sum(g => g.Gasto);
+            var planejado = planejadoPorMes.GetValueOrDefault((ano, mes));
+            meses.Add(new MesDoCheckUpDto(ano, mes, renda.Recebido, saiu, renda.Recebido - saiu, investidoPorMes.GetValueOrDefault((ano, mes)),
+                renda.Previsto, planejado.Despesas, planejado.Investimentos));
+            foreach (var (categoria, g) in gastos) doAno[categoria] = doAno.GetValueOrDefault(categoria) + g.Gasto;
+            foreach (var (categoria, g) in gastosPorMes.GetValueOrDefault((ano - 1, mes)) ?? new()) antes[categoria] = antes.GetValueOrDefault(categoria) + g.Gasto;
+            if (gastos.GetValueOrDefault(RegrasFinanceiras.SemCategoria).Gasto > 0)
+                semCategoriaQtd += await RegrasFinanceiras.QuantidadeSemCategoriaDoMesAsync(_context, usuarioId, ano, mes);
+        }
+        // Os totais e o planejado do ano são até o mês de hoje (comparar o que aconteceu com o planejado do mesmo período).
+        // A linha do tempo vai sempre até dezembro: os meses que ainda não chegaram trazem só o planejado.
+        for (var mes = ateMes + 1; mes <= 12; mes++)
+        {
+            var renda = await _renda.ObterMesAsync(usuarioId, ano, mes);
+            var planejado = planejadoPorMes.GetValueOrDefault((ano, mes));
+            meses.Add(new MesDoCheckUpDto(ano, mes, 0m, 0m, 0m, 0m, renda.Previsto, planejado.Despesas, planejado.Investimentos));
+        }
+        var ateHoje = meses.Where(m => m.Mes <= ateMes).ToList();
+        var totalSaiu = ateHoje.Sum(m => m.Saiu);
+        var temAnoAnterior = antes.Values.Any(v => v > 0);
+        decimal Pct(decimal v) => totalSaiu > 0 ? Math.Round(v * 100m / totalSaiu, 1) : 0m;
+
+        // As categorias com gasto ou limite no ano (as maiores primeiro); Sem categoria fica à parte, com a ação.
+        var ids = doAno.Where(kv => kv.Value > 0).Select(kv => kv.Key).Union(limites.Keys).Where(id => id != RegrasFinanceiras.SemCategoria).ToList();
+        var nomes = await _context.Categorias.AsNoTracking().Where(c => ids.Contains(c.Id)).ToDictionaryAsync(c => c.Id, c => c.Descricao);
+        var categorias = ids.Select(id =>
+            {
+                var valor = doAno.GetValueOrDefault(id);
+                decimal? normal = temAnoAnterior ? antes.GetValueOrDefault(id) : null;
+                decimal? variacao = normal is > 0 ? Math.Round((valor - normal.Value) * 100m / normal.Value, 0) : null;
+                return new CategoriaDoAnoDto(id, nomes.GetValueOrDefault(id, "Categoria"), valor, Pct(valor), normal, variacao,
+                    limites.TryGetValue(id, out var l) ? l : null);
+            })
+            .OrderByDescending(c => c.Valor).ThenByDescending(c => c.Limite ?? 0m).ToList();
+        var semCategoriaValor = doAno.GetValueOrDefault(RegrasFinanceiras.SemCategoria);
+
+        var entrou = ateHoje.Sum(m => m.Entrou);
+        var primeiroLancamento = await _context.Transacoes.AsNoTracking().Where(t => t.CriadoPor == usuarioId && t.Ativo)
+            .MinAsync(t => (DateOnly?)t.Data);
+        var primeiroAno = Math.Min(primeiroLancamento?.Year ?? hoje.Year, hoje.Year);
+        return new AnoDoCheckUpDto(ano, ateMes, anoAtual, entrou, totalSaiu, entrou - totalSaiu, ateHoje.Sum(m => m.Investido),
+            ateHoje.Sum(m => m.RendaEsperada), ateHoje.Sum(m => m.DespesasPlanejadas), ateHoje.Sum(m => m.InvestimentosPlanejados),
+            meses, categorias, semCategoriaValor > 0 ? new SemCategoriaDto(semCategoriaValor, Pct(semCategoriaValor), semCategoriaQtd) : null,
+            primeiroAno);
     }
 
     /// <summary>Transações filtrada pela URL: o que ficou sem categoria no mês (a tela lê os parâmetros e mostra o filtro).</summary>

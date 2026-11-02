@@ -1,5 +1,5 @@
 import { api } from "../api/cliente"
-import type { CheckUp, RelatorioData, Sinal } from "../types/Relatorio"
+import type { AnoDoCheckUp, CheckUp, RelatorioData, Sinal } from "../types/Relatorio"
 
 export const getRelatorio = async (ano?: number): Promise<RelatorioData> => {
   const params = ano ? `?ano=${ano}` : ""
@@ -10,6 +10,12 @@ export const getRelatorio = async (ano?: number): Promise<RelatorioData> => {
 /** O check-up do mês (Relatórios do v2): o servidor faz a conta e a frase. */
 export const getCheckUp = async (ano: number, mes: number): Promise<CheckUp> => {
   const res = await api.get("/relatorios/check-up", { params: { ano, mes } })
+  return res.data
+}
+
+/** O "Ano completo": o ano somado (totais contra o planejado, os meses da linha do tempo e as categorias). */
+export const getAno = async (ano: number): Promise<AnoDoCheckUp> => {
+  const res = await api.get("/relatorios/ano", { params: { ano } })
   return res.data
 }
 

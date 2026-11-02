@@ -12,7 +12,7 @@ export type OpcaoSelecao = { valor: string; rotulo: string; detalhe?: string }
 
 const BUSCA_A_PARTIR_DE = 9
 
-export default function Selecao({ valor, onChange, opcoes, placeholder = "Escolha…", invalido, desabilitado, tamanho = "md", ariaLabel, id }: {
+export default function Selecao({ valor, onChange, opcoes, placeholder = "Escolha…", invalido, desabilitado, tamanho = "md", ariaLabel, id, semBusca }: {
   valor: string
   onChange: (valor: string) => void
   opcoes: OpcaoSelecao[]
@@ -23,6 +23,8 @@ export default function Selecao({ valor, onChange, opcoes, placeholder = "Escolh
   tamanho?: "md" | "sm" | "xs"
   ariaLabel?: string
   id?: string
+  /** Sem a busca mesmo com a lista longa (ex.: os meses, que a pessoa já sabe onde estão). */
+  semBusca?: boolean
 }) {
   // Dentro de um Campo: o rótulo aponta pra cá e o erro vem de lá (props explícitas ganham).
   const campo = useCampo()
@@ -41,7 +43,7 @@ export default function Selecao({ valor, onChange, opcoes, placeholder = "Escolh
   const lista = useRef<HTMLUListElement | null>(null)
   const campoBusca = useRef<HTMLInputElement | null>(null)
   const idLista = useId()
-  const comBusca = opcoes.length >= BUSCA_A_PARTIR_DE
+  const comBusca = !semBusca && opcoes.length >= BUSCA_A_PARTIR_DE
 
   const visiveis = useMemo(() => {
     const q = busca.trim().toLocaleLowerCase("pt-BR")

@@ -1,5 +1,10 @@
 .raiz { min-height: 100vh; display: grid; grid-template-columns: 240px minmax(0, 1fr); background: var(--v2-bg); color: var(--v2-texto); font-family: var(--v2-font); font-size: var(--v2-fs-base); line-height: 1.45; -webkit-font-smoothing: antialiased; transition: grid-template-columns 0.2s ease; }
 .raiz[data-menu="trilho"] { grid-template-columns: 70px minmax(0, 1fr); }
+/* Impressão / PDF: sem o menu, o conteúdo ocupa a folha inteira. */
+@media print {
+  .raiz, .raiz[data-menu="trilho"] { display: block; min-height: 0; background: var(--v2-superficie); }
+  .conteudo { padding: 0; animation: none; max-width: none; }
+}
 
 /* Menu lateral plano: sem cartão, sem mancha; separa do conteúdo só por um fio. */
 /* z-index acima do topo (5): o menu do avatar no trilho abre por cima do conteúdo. */

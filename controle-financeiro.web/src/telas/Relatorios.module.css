@@ -1,8 +1,24 @@
 .pagina { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 .pagina > * { min-width: 0; }
-.topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.csv { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: var(--v2-r-sm); border: 1px solid var(--v2-linha-forte); color: var(--v2-texto); font-size: var(--v2-fs-sm); font-weight: 600; text-decoration: none; }
-.csv:hover { background: var(--v2-hover-linha); }
+/* A linha do tempo, logo abaixo do título do bloco de cima, separada do resto por uma linha */
+.linhaDoTempo { min-width: 0; padding-bottom: 12px; border-bottom: 1px solid var(--v2-linha); }
+/* "Baixar" ao lado do título (os lançamentos do mês em CSV) */
+.baixar { background: transparent; font: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: var(--v2-r-sm); border: 1px solid var(--v2-linha-forte); color: var(--v2-texto); font-size: var(--v2-fs-sm); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.baixar:hover { background: var(--v2-hover-linha); }
+.baixar:focus-visible { outline: 2px solid var(--v2-acento); outline-offset: 1px; }
+/* Ao lado do título: ‹ ano ›, o período (um mês ou o ano completo) e o Baixar, na mesma altura. */
+.controles { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.ano { width: 88px; }
+.periodo { width: 150px; }
+/* O PDF (imprimir → salvar como PDF): só o relatório, com as cores dos gráficos; os blocos não quebram no meio. */
+.soNoPdf { display: none; }
+@media print {
+  .soNoPdf { display: block; margin: 0 0 8px; font-size: var(--v2-fs-sm); color: var(--v2-texto-2); }
+  .pagina { gap: 12px; }
+  .pagina * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+}
+/* O ano: o planejado embaixo de cada número. */
+.conta dd.planejado { font-size: var(--v2-fs-xs); font-weight: 400; color: var(--v2-texto-2); }
 
 /* Resumo do mês (o topo quando o dinheiro do mês não carrega): quanto sobrou grande à esquerda, a conta entrou − saiu à direita;
    o mesmo desenho do "Quanto ainda posso gastar" (topo do mês atual) */
@@ -22,18 +38,19 @@
 /* O que vale olhar: as respostas empilhadas */
 .avisos { display: flex; flex-direction: column; gap: 8px; }
 
-/* Pra onde foi a sua renda: a barra + a lista à esquerda; onde dá pra economizar à direita */
-.renda { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px 32px; align-items: start; }
-.renda[data-com-corte] { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
-.rendaFrase { margin: 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-2); font-variant-numeric: tabular-nums; }
-.rendaFrase strong { color: var(--v2-texto); font-weight: 700; }
-.economizar { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+/* As categorias do mês (dentro do topo, a legenda da barra): o limite de todos os gastos numa linha e a lista */
+.categorias { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding-top: 14px; border-top: 1px solid var(--v2-linha); }
+.limiteGeral { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 0; padding: 0 10px; font-size: var(--v2-fs-sm); color: var(--v2-texto-2); font-variant-numeric: tabular-nums; }
+/* O que dá pra fazer: onde dá pra economizar e os avisos lado a lado no computador, um embaixo do outro no celular */
+.fazer { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px 32px; align-items: start; }
 .subtitulo { margin: 0; font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-texto); }
 .cartao { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .vazio { margin: 0; padding: 20px 24px 28px; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
 .vazioSemRespiro { margin: 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
-.legendaNormal { display: inline-flex; align-items: center; gap: 6px; font-size: var(--v2-fs-xs); color: var(--v2-texto-3); padding: 0 10px; }
+.legendaNormal { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: var(--v2-fs-xs); color: var(--v2-texto-3); padding: 0 10px; }
 .legendaNormal i { width: 2px; height: 12px; border-radius: 1px; background: var(--v2-texto); }
+.legendaNormal i[data-tipo="limite"] { width: 0; background: none; border-left: 2px dashed var(--v2-texto-2); border-radius: 0; }
+.legendaNormal a { color: var(--v2-acento); font-weight: 600; }
 
 /* Dá pra cortar onde */
 .cortes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
@@ -71,10 +88,18 @@
   .heroiValor { font-size: var(--v2-fs-2xl); }
   .cabeca { align-items: flex-start; }
   .conta { width: 100%; justify-content: space-between; gap: 12px; }
-  .renda[data-com-corte], .comprometido, .reserva { grid-template-columns: minmax(0, 1fr); }
-  .economizar { padding-top: 16px; border-top: 1px solid var(--v2-linha); }
-  .csvTexto { display: none; }
-  .csv { width: 36px; padding: 0; }
+  /* O ano no celular: o título numa linha, os controles na de baixo (o período estica, o Baixar fica só o ícone). */
+  .controles { width: 100%; flex-wrap: nowrap; justify-content: flex-start; }
+  .periodo { flex: 1 1 auto; min-width: 0; width: auto; }
+  .baixar { padding: 0 9px; }
+  .baixarTexto { display: none; }
+  /* Entrou, saiu e investiu viram linhas (rótulo à esquerda, valor e planejado à direita): três colunas não cabem. */
+  .contaDoAno { flex-direction: column; gap: 8px; }
+  .contaDoAno > div { display: grid; grid-template-columns: 1fr auto; column-gap: 12px; }
+  .contaDoAno dt { align-self: center; }
+  .contaDoAno dd { text-align: right; }
+  .contaDoAno dd.planejado { grid-column: 1 / -1; text-align: right; }
+  .comprometido, .reserva { grid-template-columns: minmax(0, 1fr); }
   .vazio { padding: 16px 16px 24px; }
   .grande { font-size: var(--v2-fs-2xl); }
 }

@@ -24,7 +24,7 @@ import Etiqueta from "../componentes/Etiqueta"
 import Menu, { type ItemMenu } from "../componentes/Menu"
 import Paginacao from "../componentes/Paginacao"
 import Segmentos, { type OpcaoSegmento } from "../componentes/Segmentos"
-import { dataBR } from "../utils/dateTime"
+import { diaDeInstante } from "../utils/dateTime"
 import { mascararEmail } from "../utils/mascararEmail"
 import { useHideBalance } from "../estado/ocultar"
 import casca from "../layout/V2Layout.module.css"
@@ -334,9 +334,9 @@ function PainelAdmin({ meuId }: { meuId: string }) {
                       </span>
                     </span>
                     <span className={styles.celula} data-rotulo="Situação">{etiqueta}</span>
-                    <span className={styles.celula} data-rotulo="Cadastro">{dataBR(u.criadoEm)}</span>
+                    <span className={styles.celula} data-rotulo="Cadastro">{diaDeInstante(u.criadoEm)}</span>
                     <span className={styles.celula} data-rotulo="Último acesso" data-mudo={u.ultimoAcessoEm ? undefined : "true"}>
-                      {u.ultimoAcessoEm ? dataBR(u.ultimoAcessoEm) : "Nunca"}
+                      {u.ultimoAcessoEm ? diaDeInstante(u.ultimoAcessoEm) : "Nunca"}
                     </span>
                     <span className={styles.acoes}>
                       {itens.length > 0 && <Menu itens={itens} ariaLabel={`Ações de ${u.nome}`} />}

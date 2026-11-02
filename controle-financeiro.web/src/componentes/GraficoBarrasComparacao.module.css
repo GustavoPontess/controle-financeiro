@@ -4,17 +4,26 @@ button.linha { cursor: pointer; }
 button.linha:hover { background: var(--v2-hover-linha); }
 button.linha:focus-visible { outline: 2px solid var(--v2-acento); outline-offset: 1px; }
 .topo { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-width: 0; }
-.nome { display: inline-flex; align-items: center; gap: 8px; min-width: 0; font-size: var(--v2-fs-md); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nome { display: inline-flex; align-items: center; gap: 8px; min-width: 0; font-size: var(--v2-fs-md); font-weight: 500; }
+.nomeTexto { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nome i { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
 .valor { display: inline-flex; align-items: baseline; gap: 8px; font-size: var(--v2-fs-md); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .parte { font-size: var(--v2-fs-xs); font-weight: 500; color: var(--v2-texto-3); }
 .trilha { position: relative; display: block; height: 12px; border-radius: 6px; background: var(--v2-superficie-2); }
 .barra { position: absolute; left: 0; top: 0; height: 100%; border-radius: 6px; }
 .previsto { position: absolute; top: 0; height: 100%; opacity: 0.45; background-image: repeating-linear-gradient(135deg, transparent 0 3px, var(--v2-superficie) 3px 6px); border-radius: 0 6px 6px 0; }
+.previsto[data-sozinho] { border-radius: 6px; }
+/* "Mais N categorias": a última linha, abre as menores ali mesmo. */
+.mais { display: inline-flex; align-items: center; gap: 6px; margin: 4px 0 0; padding: 8px 10px; border: 0; border-radius: var(--v2-r-sm); background: transparent; color: var(--v2-texto-2); font: inherit; font-size: var(--v2-fs-sm); font-weight: 600; cursor: pointer; }
+.mais:hover { background: var(--v2-hover-linha); color: var(--v2-texto); }
+.mais:focus-visible { outline: 2px solid var(--v2-acento); outline-offset: 1px; }
+@media print { .mais { display: none; } }
 .normal { position: absolute; top: -4px; width: 2px; height: 20px; margin-left: -1px; border-radius: 1px; background: var(--v2-texto); }
+/* O limite: tracejado, pra não confundir com o traço cheio do normal. */
+.limite { position: absolute; top: -4px; height: 20px; margin-left: -1px; border-left: 2px dashed var(--v2-texto-2); }
 .comparacao { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); font-variant-numeric: tabular-nums; }
-.comparacao[data-tom="alerta"] { color: var(--v2-alerta); font-weight: 600; }
-.comparacao[data-tom="positivo"] { color: var(--v2-positivo); }
+.comparacao [data-tom="alerta"] { color: var(--v2-alerta); font-weight: 600; }
+.comparacao [data-tom="positivo"] { color: var(--v2-positivo); }
 [data-serie="1"] { background-color: var(--v2-serie-1); }
 [data-serie="2"] { background-color: var(--v2-serie-2); }
 [data-serie="3"] { background-color: var(--v2-serie-3); }

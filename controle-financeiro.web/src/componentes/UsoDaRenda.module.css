@@ -8,6 +8,7 @@
 .barraLugar { position: relative; padding: 6px 0 20px; }
 .barra { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: var(--v2-superficie-2); }
 .pedaco { flex-shrink: 0; min-width: 2px; height: 100%; }
+.pedaco:last-child { border-radius: 0 999px 999px 0; } /* a ponta da parte cheia, arredondada */
 .marca { position: absolute; top: 0; bottom: 14px; border-left: 2px solid var(--v2-texto); }
 .marcaRotulo { position: absolute; top: calc(100% + 2px); left: 0; transform: translateX(-50%); font-size: var(--v2-fs-xs); color: var(--v2-texto-2); white-space: nowrap; }
 [data-serie="1"] { background: var(--v2-serie-1); }

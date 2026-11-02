@@ -45,12 +45,50 @@ export interface CategoriaDoCheckUp {
   previsto: number
 }
 
+/** O "Ano completo" (espelha AnoDoCheckUpDto): de janeiro até ateMes (o mês de hoje no ano atual, dezembro nos passados). */
+export interface AnoDoCheckUp {
+  ano: number
+  ateMes: number
+  anoAtual: boolean
+  entrou: number
+  saiu: number
+  sobrou: number
+  investido: number
+  /** O planejado do ano: a soma do planejado de cada mês. */
+  rendaEsperada: number
+  despesasPlanejadas: number
+  investimentosPlanejados: number
+  meses: MesDoCheckUp[]
+  categorias: CategoriaDoAno[]
+  semCategoria: { valor: number; percentualDoGasto: number; quantidade: number } | null
+  /** O ano do primeiro lançamento (o seletor de ano vai dele até o atual). */
+  primeiroAno: number
+}
+
+export interface CategoriaDoAno {
+  categoriaId: string
+  nome: string
+  valor: number
+  percentualDoGasto: number
+  /** O mesmo período do ano anterior (0 = nova no ano; null sem nada no ano anterior). */
+  normal: number | null
+  variacaoPercentual: number | null
+  /** A soma do limite vigente em cada mês; null sem limite. */
+  limite: number | null
+}
+
 export interface MesDoCheckUp {
   ano: number
   mes: number
   entrou: number
   saiu: number
   sobrou: number
+  /** Aportes menos resgates efetivados no mês (fora do saiu: investir não é gasto). */
+  investido: number
+  /** O planejado do mês (a cor clara da linha do tempo): renda prevista, soma dos limites, soma das fontes de investimento. */
+  rendaEsperada: number
+  despesasPlanejadas: number
+  investimentosPlanejados: number
 }
 
 export interface ContaFixaDoCheckUp { id: string; descricao: string; porMes: number }

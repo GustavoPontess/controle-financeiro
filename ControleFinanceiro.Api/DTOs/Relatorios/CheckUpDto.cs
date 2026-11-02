@@ -29,7 +29,7 @@ public record CheckUpDto(
     decimal ParcelasDoMes,
     // (Contas fixas + parcelas) ÷ renda do mês (a maior entre esperada e recebida), em %. Null sem renda.
     decimal? PercentualComprometido,
-    // As categorias do mês (sem "Sem categoria", que vem à parte), as maiores primeiro; passando de 6, "Outras".
+    // Todas as categorias do mês (sem "Sem categoria", que vem à parte), as maiores primeiro.
     List<CategoriaDoCheckUpDto> PraOndeFoi,
     // O gasto do mês sem categoria (importação de extrato), fora do ranking. Null quando não há.
     SemCategoriaDto? SemCategoria,
@@ -57,8 +57,28 @@ public record CategoriaDoCheckUpDto(Guid? CategoriaId, string Nome, decimal Valo
 /// <summary>O gasto do mês sem categoria: quanto e em quantos lançamentos.</summary>
 public record SemCategoriaDto(decimal Valor, decimal PercentualDoGasto, int Quantidade);
 
-/// <summary>Um mês da série: o que entrou (renda), o que saiu (gasto) e o que sobrou.</summary>
-public record MesDoCheckUpDto(int Ano, int Mes, decimal Entrou, decimal Saiu, decimal Sobrou);
+/// <summary>
+/// O "Ano completo" de Relatórios: o ano somado, de janeiro até <c>AteMes</c> (o mês de hoje no ano atual, dezembro nos
+/// passados). <c>Meses</c> vai sempre de janeiro a dezembro: os que ainda não chegaram vêm zerados, só com o planejado. Os totais contra o planejado (a soma dos meses), os meses da linha do tempo e as categorias somadas, cada
+/// uma contra o normal (o mesmo período do ano anterior) e o limite do ano (a soma do limite vigente em cada mês).
+/// <c>PrimeiroAno</c>: o do primeiro lançamento da pessoa (o seletor de ano vai dele até o atual).
+/// </summary>
+public record AnoDoCheckUpDto(int Ano, int AteMes, bool AnoAtual, decimal Entrou, decimal Saiu, decimal Sobrou, decimal Investido,
+    decimal RendaEsperada, decimal DespesasPlanejadas, decimal InvestimentosPlanejados,
+    List<MesDoCheckUpDto> Meses, List<CategoriaDoAnoDto> Categorias, SemCategoriaDto? SemCategoria, int PrimeiroAno);
+
+/// <summary>Uma categoria no ano: o que saiu, a parte do gasto, o normal (o mesmo período do ano anterior: 0 = nova no ano; null sem nada
+/// lá), a variação contra ele e o limite do ano (null sem limite).</summary>
+public record CategoriaDoAnoDto(Guid CategoriaId, string Nome, decimal Valor, decimal PercentualDoGasto, decimal? Normal,
+    decimal? VariacaoPercentual, decimal? Limite);
+
+/// <summary>Um mês da linha do tempo de Relatórios: receita, despesa e investimentos, cada um com o realizado e o
+/// planejado (como a planilha do Gustavo: cor forte é o que aconteceu, cor clara é o orçado). <c>Investido</c> = aportes
+/// menos resgates efetivados (fora do Saiu: investir não é gasto). <c>RendaEsperada</c> = a renda prevista do mês;
+/// <c>DespesasPlanejadas</c> = a soma dos limites por categoria; <c>InvestimentosPlanejados</c> = a soma das fontes de
+/// investimento planejadas.</summary>
+public record MesDoCheckUpDto(int Ano, int Mes, decimal Entrou, decimal Saiu, decimal Sobrou, decimal Investido = 0m,
+    decimal RendaEsperada = 0m, decimal DespesasPlanejadas = 0m, decimal InvestimentosPlanejados = 0m);
 
 /// <summary>
 /// "Quanto da renda já tem dono antes do mês começar?": as contas fixas que mais pesam, as parcelas dos próximos meses,

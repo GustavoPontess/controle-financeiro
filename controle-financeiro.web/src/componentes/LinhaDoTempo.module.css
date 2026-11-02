@@ -1,0 +1,60 @@
+.linha { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+/* Com um mês escolhido no ano, os outros ficam em cinza (o mouse em cima devolve a cor). */
+.faixa[data-com-escolhido] .mes[aria-pressed="false"] .barras { filter: grayscale(1); opacity: 0.45; transition: filter 0.15s, opacity 0.15s; }
+.faixa[data-com-escolhido] .mes[aria-pressed="false"]:hover .barras { filter: none; opacity: 1; }
+/* O mês que ainda não chegou: só o planejado (o tom claro), apagado e sem clique. */
+.mes[data-futuro] { cursor: default; }
+.mes[data-futuro]:hover { background: transparent; }
+.mes[data-futuro] .barras, .faixa[data-com-escolhido] .mes[data-futuro]:hover .barras { opacity: 0.6; filter: none; }
+/* Uma coluna por mês; no computador elas dividem a largura, no celular a faixa rola de lado (com encaixe por mês). */
+.faixa { position: relative; display: flex; gap: 4px; min-width: 0; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: thin; padding: 2px; }
+.mes { flex: 1 1 0; min-width: 52px; max-width: 120px; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 8px 4px; border: 0; border-radius: var(--v2-r-md); background: transparent; color: inherit; font: inherit; cursor: pointer; scroll-snap-align: end; }
+.mes:hover { background: var(--v2-hover-linha); }
+.mes[aria-pressed="true"] { background: var(--v2-superficie-2); }
+.mes:focus-visible { outline: 2px solid var(--v2-acento); outline-offset: 1px; }
+/* Três pílulas por mês (receita, despesa, investimentos), na mesma língua das barras das categorias logo abaixo:
+   finas (10px), pontas arredondadas, cada uma sobre a trilha, sem linha de base. A trilha vai até o topo da escala (o
+   maior valor da linha enche a trilha). Em cada trilha, uma pilha a partir do chão, três tons da mesma cor: vivo (o
+   realizado até o planejado), escuro por cima (o que passou do planejado), claro por cima (o planejado que falta);
+   2px da cor da superfície entre os pedaços. */
+.barras { display: flex; align-items: flex-end; justify-content: center; gap: 4px; width: 100%; height: 110px; }
+.trilha { position: relative; width: 10px; height: 100%; border-radius: 999px; background: var(--v2-superficie-2); }
+.mes[aria-pressed="true"] .trilha { background: var(--v2-linha); }
+.pilha { position: absolute; left: 0; bottom: 0; display: flex; flex-direction: column-reverse; gap: 2px; width: 100%; border-radius: 999px; overflow: hidden; }
+.pilha > span { display: block; flex-basis: 0; }
+.pilha > span[style*="flex-grow: 0"] { display: none; }
+.trilha[data-tipo="receita"] [data-tom="realizado"] { background: var(--v2-receita); }
+.trilha[data-tipo="receita"] [data-tom="alem"] { background: var(--v2-receita-alem); }
+.trilha[data-tipo="receita"] [data-tom="planejado"] { background: var(--v2-receita-clara); }
+.trilha[data-tipo="despesa"] [data-tom="realizado"] { background: var(--v2-despesa); }
+.trilha[data-tipo="despesa"] [data-tom="alem"] { background: var(--v2-despesa-alem); }
+.trilha[data-tipo="despesa"] [data-tom="planejado"] { background: var(--v2-despesa-clara); }
+.trilha[data-tipo="investimento"] [data-tom="realizado"] { background: var(--v2-investimento); }
+.trilha[data-tipo="investimento"] [data-tom="alem"] { background: var(--v2-investimento-alem); }
+.trilha[data-tipo="investimento"] [data-tom="planejado"] { background: var(--v2-investimento-clara); }
+.rotulo { font-size: var(--v2-fs-sm); font-weight: 500; color: var(--v2-texto-3); white-space: nowrap; }
+.mes[aria-pressed="true"] .rotulo { color: var(--v2-texto); font-weight: 700; }
+.sobrou { font-size: var(--v2-fs-xs); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--v2-texto-3); }
+.sobrou[data-tom="positivo"] { color: var(--v2-positivo); }
+.sobrou[data-tom="negativo"] { color: var(--v2-negativo); }
+/* Legenda: as duas cores e o que é o número de baixo */
+.legenda { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 0 6px; font-size: var(--v2-fs-xs); color: var(--v2-texto-3); }
+.legenda span { display: inline-flex; align-items: center; gap: 6px; }
+.legenda i { width: 10px; height: 10px; border-radius: 3px; }
+.legenda i[data-tipo="receita"] { background: var(--v2-receita); }
+.legenda i[data-tipo="despesa"] { background: var(--v2-despesa); }
+.legenda i[data-tipo="investimento"] { background: var(--v2-investimento); }
+.legenda i[data-tom="planejado"] { background: linear-gradient(to top, var(--v2-receita) 50%, var(--v2-receita-clara) 50%); }
+
+@media (max-width: 900px) {
+  .mes { flex: 0 0 62px; }
+  .barras { height: 88px; }
+}
+/* No PDF a folha é estreita (cai na regra do celular acima): os 12 meses dividem a largura, sem rolar nem cortar. */
+@media print {
+  .faixa { overflow: visible; gap: 2px; }
+  .mes { flex: 1 1 0; min-width: 0; padding: 6px 0; }
+  .barras { height: 110px; gap: 3px; }
+  .trilha { width: 8px; }
+  .rotulo { font-size: var(--v2-fs-xs); }
+}

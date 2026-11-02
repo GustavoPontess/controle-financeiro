@@ -31,6 +31,16 @@ public class RelatoriosController : ControllerBase
         => Ok(await _checkUp.CalcularAsync(GetUserId(), ano, mes));
 
     /// <summary>
+    /// O "Ano completo" (Relatórios do v2): o ano somado, de janeiro até o mês de hoje (ou dezembro, num ano passado):
+    /// entrou, saiu, investiu e sobrou contra o planejado, os meses da linha do tempo e as categorias com o normal (o mesmo
+    /// período do ano anterior) e o limite do ano.
+    /// </summary>
+    [HttpGet("ano")]
+    [ProducesResponseType(typeof(AnoDoCheckUpDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Ano([FromQuery] int ano)
+        => Ok(await _checkUp.AnoAsync(GetUserId(), ano));
+
+    /// <summary>
     /// "O que vale olhar" (Relatórios do v2): os avisos que as outras telas já dão (limite passando, metas que não cabem,
     /// empréstimo que o saldo não cobre, fatura atrasada, conta fixa sem limite, orçamento sem destino), juntos e na
     /// ordem do que precisa de ação primeiro. Só agrega: cada frase vem da tela de onde nasce.

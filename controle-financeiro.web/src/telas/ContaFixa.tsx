@@ -17,7 +17,7 @@ import Etiqueta from "../componentes/Etiqueta"
 import { RodapeFormulario } from "../componentes/Formulario"
 import { SITUACAO, descreverRepeticao } from "../dominio/contaFixa"
 import { TIPO } from "../dominio/transacao"
-import { dataBR } from "../utils/dateTime"
+import { dataBR, diaDeInstante } from "../utils/dateTime"
 import styles from "./ContaFixa.module.css"
 
 const MAX_MOTIVO = 200
@@ -81,7 +81,7 @@ export default function ContaFixa() {
       <header className={styles.cabecalho}>
         <h2 className={styles.titulo}>{r.descricao}</h2>
         <div className={styles.chips}>
-          <Etiqueta tom={sit.tom}>{sit.rotulo}{r.situacao === "cancelada" && r.canceladoEm ? ` em ${dataBR(r.canceladoEm)}` : ""}</Etiqueta>
+          <Etiqueta tom={sit.tom}>{sit.rotulo}{r.situacao === "cancelada" && r.canceladoEm ? ` em ${diaDeInstante(r.canceladoEm)}` : ""}</Etiqueta>
           <Etiqueta tom={receita ? "positivo" : undefined}>{receita ? "Receita" : "Despesa"}</Etiqueta>
         </div>
       </header>

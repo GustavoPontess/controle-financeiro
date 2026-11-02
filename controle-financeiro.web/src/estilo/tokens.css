@@ -47,6 +47,18 @@
   --v2-serie-5: #BA7517;
   --v2-serie-cinza: #8C8B85;
   --v2-serie-cinza-2: #B9B8B1;
+  /* A linha do tempo de Relatórios (receita, despesa, investimento), como a planilha do Gustavo, em três tons por cor:
+     claro = o planejado que ainda não aconteceu; vivo = o que aconteceu, até o planejado; escuro = o que passou do
+     planejado. Cores fora das séries das categorias, pra não confundir com a lista logo abaixo. */
+  --v2-receita-clara: #C9EBD7;
+  --v2-receita: #12B76A;
+  --v2-receita-alem: #0B5E37;
+  --v2-despesa-clara: #F7CFCD;
+  --v2-despesa: #E5484D;
+  --v2-despesa-alem: #9B1C1F;
+  --v2-investimento-clara: #CFDDF7;
+  --v2-investimento: #2F7CF6;
+  --v2-investimento-alem: #173E8C;
   /* Faixas de um bullet (uma medida contra limites: Comprometido de Relatórios): um matiz só, do claro ao forte. */
   --v2-faixa-1: #F4E7DB;
   --v2-faixa-2: #E8D2BD;
@@ -92,6 +104,16 @@
   --v2-serie-5: #C48724;
   --v2-serie-cinza: #8E8D87;
   --v2-serie-cinza-2: #5E5D59;
+  /* No fundo escuro o "além" fica mais claro e vivo que o realizado (é o que chama atenção), e o planejado bem fechado. */
+  --v2-receita-clara: #1E4A33;
+  --v2-receita: #25AC6C;
+  --v2-receita-alem: #8BE3B4;
+  --v2-despesa-clara: #5A2A28;
+  --v2-despesa: #E15953;
+  --v2-despesa-alem: #F7A09B;
+  --v2-investimento-clara: #233E6B;
+  --v2-investimento: #6292E0;
+  --v2-investimento-alem: #A9C6F5;
   --v2-faixa-1: #2A201A;
   --v2-faixa-2: #3B2D23;
   --v2-faixa-3: #57412F;
