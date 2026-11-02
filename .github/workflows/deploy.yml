@@ -12,6 +12,10 @@
 #            Não confere o CI (a versão já passou por ele quando subiu) e não monta imagem.
 #   O hook pre-deploy faz backup no deploy e no rollback da API; no setup pula (o Kamal roda o hook antes de ligar
 #   o Postgres novo; o backup da virada é feito pelo chat do servidor).
+#
+# Onde roda (2026-11-02): por padrão nos runners do GitHub (ubuntu-latest). O upload da internet de casa é ~0,5 MB/s e
+# o envio da imagem e do cache pro GHCR travou um deploy no runner do PC. Pra voltar pro PC (cota do Actions acabou,
+# por exemplo): variável do repositório RUNNER_DEPLOY=local (Settings > Secrets and variables > Actions > Variables).
 name: Deploy
 
 on:
@@ -43,7 +47,7 @@ jobs:
   deploy:
     name: Kamal ${{ inputs.acao }}
     if: github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, pontes-local]
+    runs-on: ${{ vars.RUNNER_DEPLOY == 'local' && fromJSON('["self-hosted","pontes-local"]') || 'ubuntu-latest' }}
     environment: production
     permissions:
       contents: read
@@ -89,10 +93,12 @@ jobs:
             [ -z "$linha" ] || grep -qxF "$linha" ~/.ssh/known_hosts || printf '%s\n' "$linha" >> ~/.ssh/known_hosts
           done
 
-      # O runner (imagem em E:\VSCode\pontes\PontesDev\base\runner-github) já traz Ruby e o Kamal 2.12.0; o setup-ruby
-      # não tem permissão de instalar lá. Só confere a versão.
+      # O runner do PC (imagem em E:\VSCode\pontes\PontesDev\base\runner-github) já traz Ruby e o Kamal 2.12.0; o
+      # setup-ruby não tem permissão de instalar lá. No runner do GitHub (ubuntu-latest, que já tem Ruby) instala a versão
+      # certa. Depois confere.
       - name: Conferir o Kamal
         run: |
+          command -v kamal >/dev/null || sudo gem install kamal -v 2.12.0 --no-document
           v=$(kamal version)
           echo "Kamal $v"
           [ "$v" = "2.12.0" ] || { echo "::error::o runner tem Kamal $v; o deploy espera 2.12.0"; exit 1; }
