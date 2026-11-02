@@ -1,8 +1,8 @@
 ---
 owner: Gustavo
-last_reviewed: 2026-10-27
+last_reviewed: 2026-11-02
 status: EM_PROGRESSO
-foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DECIDIDA (caminho A/Hostinger, 2026-08-24), mas execução ADIADA por orçamento (contrata quando receber) e NENHUM DEPLOY ACONTECEU. Detalhe em `docs/features/hospedagem-beta/decisao.md`. O código é neutro (Dockerfiles, nginx.conf, health checks, ForwardedHeaders, CORS/baseURL por env var) e serve pra qualquer host de container. Trabalho de segurança já fechado localmente: (1) conformidade LGPD/BACEN pesquisada (`docs/CONFORMIDADE_BR.md` — BACEN fora do escopo, DPO dispensado); (2) sweep de segurança (Hangfire fechado, rotas demo DEV-only, força bruta por conta, cookie Secure atrás de proxy TLS); (3) hardening de auth em 2026-08-23: **MFA opt-in (TOTP + backup codes)**, **pepper de senha**, **remoção da regra de composição** (NIST), **JWT local rotacionado**; (4) pentest ao vivo (2 achados corrigidos: cookie Secure, duplicidade de e-mail case-insensitive); (5) `/privacidade` + `/termos-de-uso` (rascunho) + consentimento no cadastro. Criptografia de campo em repouso: catalogada P2 (análise pronta no ROADMAP), decisão do Gustavo de não fazer agora. TUDO MERGEADO na `main` (`b482c93`): base beta (#236-#241) + multi-conta P0 (#246) + empty-states (#247) + 5 services testados (#248) + **trusted-device MFA (#249)** + **login-experience: manter-conectado + roster (#252)** + **UX toolbars + primitivos DS PontesSegmented/Stack/Inline (#251)**. Auth agora tem: troca real de conta, sessões/dispositivos, reuse-detection, revogação INSTANTÂNEA (access 15min + claim `sid` + OnTokenValidated), trusted-device opt-in, manter-conectado + roster. Pré-condição de PROD (gate 1.0.0, não-código): rotacionar `Jwt:Key`. Histórico no corpo abaixo.'
+foco: 'Produção NO AR em https://app.pontesdev.com.br (VPS Hostinger + Kamal 2, deploy por clique na main; desde 2026-11-02 o deploy roda nos runners do GitHub). Beta fechado em uso. Foco atual: Relatórios (check-up do mês e do ano) e as regras de data e fuso; o resto da fila no ROADMAP.'
 ---
 
 # STATE — onde parei
@@ -14,6 +14,20 @@ foco: 'Preparação de CÓDIGO/segurança pra um beta fechado — HOSPEDAGEM DEC
 ---
 
 ## Em execução
+
+### 📌 2026-11-02: Relatórios do ano, fuso da conta e deploy pelo GitHub (PRs #404 a #410)
+
+**Relatórios (no ar desde 01/11 e 02/11, #404 e #405):** linha do tempo de janeiro a dezembro no bloco de cima (receita, despesa e investimentos com o planejado em tom claro e o que passou em tom escuro; o mês escolhido colorido, os outros em cinza; os que não chegaram apagados, só com o planejado); seletores **Ano** (do primeiro lançamento até o atual) e **Período** (um mês ou "Ano completo") na lista do site (`Selecao`); **Baixar** = este relatório em PDF (impressão do navegador só com o relatório); todas as categorias (servidor não junta mais em "Outras"; a tela mostra as 5 maiores com cor e recolhe o resto em "Mais N categorias", sempre por último); o orçamento de cada categoria em tom claro da cor dela, e o que passou em tom escuro (no lugar da linha tracejada); pontas arredondadas em todas as barras.
+
+**"Ano completo" (`GET /relatorios/ano`, #404 e #409):** o ano somado contra o planejado; categorias do ano contra o mesmo período do ano anterior e o limite do ano; etapa 2 (#409): ritmo do ano (média por mês dos meses fechados e, no ano atual, quanto o ano fecha sobrando), contas fixas e parcelas do ano e a reserva pelo gasto médio do ano.
+
+**Fuso da conta (#408) e jobs no fuso de cada pessoa (#409):** `Usuario.FusoHorario` (IANA) gravado sozinho pelo aparelho (o Gustavo NÃO quer campo pra escolher); o "hoje" do servidor (`FusoDaPessoaMiddleware` + `HorarioBrasil.UsarFuso`) e da tela (`definirFusoDaConta`) segue esse fuso; `AvisoDeFuso` pergunta uma vez quando o aparelho está em outro horário. Fatura (fecha 23h, atrasa 23h30) e cobrança da conta fixa (00h30) rodam de hora em hora no horário local de cada dono (`HorarioBrasil.HojeDoJob`); alertas e limites por pessoa. A imagem da API instala `tzdata`. Datas de instantes no admin, contas fixas e parcelamentos no dia de quem vê (o "último acesso no dia seguinte" do amigo do Gustavo era isso).
+
+**Deploy:** o envio da imagem e do cache pelo upload de casa (~0,5 MB/s) travou dois deploys no runner do PC; o #410 passa o deploy pros runners do GitHub (`ubuntu-latest`, instala o Kamal 2.12.0); `RUNNER_DEPLOY=local` (variável do repositório) volta pro PC. O CI continua nos runners do PC (`pontes-local`). Cota do Actions (GitHub Pro de estudante): US$ 18 incluídos por mês (~3.000 min Linux), zera todo dia 1º; em 02/11, US$ 0 usados.
+
+**Em andamento ao fechar a sessão:** #410 com merge automático e, depois do CI da main, o deploy com tudo de 02/11 (#406 a #410) pelo GitHub. Produção estava no #405 (`e9820eec`). Se o deploy pelo GitHub falhar no SSH (firewall da VPS), a versão no ar continua e é só pôr `RUNNER_DEPLOY=local`.
+
+> As entradas abaixo, de 2026-11-01 pra trás, já foram todas mescladas (PRs #393 a #403); ficam como histórico.
 
 ### 📌 2026-11-01: Fase 0, bugs de dinheiro P2 (branch `fix/fase0-p2-dinheiro`, a partir da `main`, sem commit)
 
@@ -1808,6 +1822,15 @@ shippada, mesmo espírito de exceção de "copy/CSS" do §7), `npm run build` li
 Commitado e pushado: `135f301` (em cima de `bc74a78` do unificar/consolidar).
 
 ## Próxima ação concreta
+
+**Atualizado em 2026-11-02 (o Gustavo continua do outro PC):**
+
+1. **Conferir o deploy de 02/11** (Actions › Deploy): tem que estar em `main` depois do #410. Se falhou no SSH, `RUNNER_DEPLOY=local` e rodar de novo. Depois, no admin, o último acesso do amigo dele tem que aparecer no dia certo (01/11).
+2. **Decidir onde rodam CI e deploy** (anotado, decidir com o Gustavo): recomendação = deploy no GitHub (feito no #410) e CI no PC; trocar com a variável.
+3. **Fila do ROADMAP** (na ordem): sobras P3 da Fase 0 (vencimento da fatura não pula fim de semana/feriado; estorno de parcela "quitada pela fatura"; os dois jobs das contas fixas podem se sobrepor), reconciliação P1 (saldo do dia do saldo inicial), CSRF chegando como "falha de rede", listas restantes no padrão, conferências no celular de verdade, decisões pendentes (cartão dia 29–31, unificar os dois jeitos de parcelar, "Ativos | Encerrados" em Empréstimos).
+4. **Limpeza no PC do trabalho** (só com OK dele): branches locais já mescladas e as pastas `Documents/cf-educacao` e `Documents/cf-pilha` (nada pendente nelas); contas de teste do dogfood.
+
+**Itens antigos desta seção (até 2026-10):**
 
 1. **Decidir hospedagem** (do Gustavo, sem pressa, nada escolhido). Discussão/pesquisa em
    `docs/features/hospedagem-beta/decisao.md` — trava nas restrições dele (orçamento, cartão
