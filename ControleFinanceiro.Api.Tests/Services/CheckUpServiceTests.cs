@@ -1,4 +1,5 @@
 using ControleFinanceiro.Api.Domain.Entities;
+using ControleFinanceiro.Api.DTOs.Relatorios;
 using ControleFinanceiro.Api.Domain.Enums;
 using ControleFinanceiro.Api.Infrastructure;
 using ControleFinanceiro.Api.Services;
@@ -256,5 +257,117 @@ public class CheckUpServiceTests
         Assert.Equal("Nenhuma conta fixa cadastrada.", r.Comprometido.Resposta!.Texto);
         Assert.Equal("/contas-fixas/nova", Assert.Single(r.Comprometido.Resposta.Acoes).Para);
         Assert.Equal((40m, 60m), (r.Comprometido.FaixaAtencao, r.Comprometido.FaixaAlerta));
+    }
+
+    [Fact]
+    public async Task MesAMes_TrazOInvestidoDeCadaMes_AporteMenosResgate_ForaDoSaiu()
+    {
+        // A linha do tempo de Relatórios mostra receita, despesa e investimentos lado a lado (Gustavo, 2026-11-01).
+        var c = Seed();
+        var xp = new Categoria { Id = Guid.NewGuid(), Descricao = "Renda fixa", Finalidade = Finalidade.Investimento };
+        c.Ctx.Add(xp); c.Ctx.SaveChanges();
+        Lancar(c, c.Salario, 5000m, 9, TipoTransacao.Receita);
+        Lancar(c, c.Mercado, 800m, 9);
+        void Investir(decimal valor, TipoTransacao tipo) => c.Ctx.Transacoes.Add(new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "CDB", Valor = valor, Tipo = tipo, CategoriaId = xp.Id, ContaId = c.Conta, CriadoPor = c.U,
+            Data = new DateOnly(2026, 9, 15), StatusTransacao = StatusTransacao.Executado, Ativo = true, EhInvestimento = true,
+        });
+        Investir(1000m, TipoTransacao.Despesa); // aporte
+        Investir(200m, TipoTransacao.Receita);  // resgate
+        c.Ctx.SaveChanges();
+
+        var r = await Servico(c.Ctx).CalcularAsync(c.U, 2026, 9);
+
+        var set = r.MesAMes.Single(m => m.Mes == 9);
+        Assert.Equal((5000m, 800m, 800m), (set.Entrou, set.Saiu, set.Investido)); // investir não é gasto: fica fora do saiu
+        Assert.Equal(0m, r.MesAMes.Single(m => m.Mes == 8).Investido);
+    }
+
+    [Fact]
+    public async Task PraOndeFoi_TrazTodasAsCategorias_SemJuntarEmOutras()
+    {
+        // Relatórios mostra todas (as 5 maiores com cor, o resto recolhido na tela): o servidor não junta nenhuma.
+        var c = Seed();
+        for (var i = 1; i <= 8; i++)
+        {
+            var cat = new Categoria { Id = Guid.NewGuid(), Descricao = $"Cat {i}", Finalidade = Finalidade.Despesa };
+            c.Ctx.Add(cat);
+            c.Ctx.SaveChanges();
+            Lancar(c, cat.Id, 100m * i, 9);
+        }
+
+        var r = await Servico(c.Ctx).CalcularAsync(c.U, 2026, 9);
+
+        Assert.Equal(8, r.PraOndeFoi.Count);
+        Assert.All(r.PraOndeFoi, x => Assert.NotNull(x.CategoriaId));
+        Assert.Equal("Cat 8", r.PraOndeFoi[0].Nome); // as maiores primeiro
+    }
+
+    [Fact]
+    public async Task Ano_SomaOsMeses_CategoriasContraOMesmoPeriodoDoAnoAnterior_ELimiteDoAno()
+    {
+        // "Ano completo": o ano somado. Mercado: 2025 (só ago) 300; 2026 ago 500 + set 400. Limite de Mercado R$ 600 desde
+        // setembro de 2026: vale todo mês dali até o mês de hoje, e o limite do ano é a soma.
+        var c = Seed();
+        c.Ctx.Transacoes.Add(new Transacao
+        {
+            Id = Guid.NewGuid(), Descricao = "x", Valor = 300m, Tipo = TipoTransacao.Despesa, CategoriaId = c.Mercado, ContaId = c.Conta, CriadoPor = c.U,
+            Data = new DateOnly(2025, 8, 10), StatusTransacao = StatusTransacao.Executado, Ativo = true,
+        });
+        Lancar(c, c.Salario, 5000m, 8, TipoTransacao.Receita);
+        Lancar(c, c.Mercado, 500m, 8);
+        Lancar(c, c.Mercado, 400m, 9);
+        Lancar(c, c.Lazer, 100m, 9);
+        c.Ctx.Orcamentos.Add(new Orcamento { Id = Guid.NewGuid(), UsuarioId = c.U, CategoriaId = c.Mercado, Ano = 2026, Mes = 9, ValorLimite = 600m });
+        c.Ctx.SaveChanges();
+
+        var r = await Servico(c.Ctx).AnoAsync(c.U, 2026);
+
+        var ateMes = HorarioBrasil.HojeData().Year == 2026 ? HorarioBrasil.HojeData().Month : 12;
+        Assert.Equal(Enumerable.Range(1, 12), r.Meses.Select(m => m.Mes)); // sempre jan a dez
+        Assert.All(r.Meses.Where(m => m.Mes > ateMes), m => Assert.Equal((0m, 0m), (m.Entrou, m.Saiu)));
+        if (ateMes < 12) Assert.Equal(600m, r.Meses.Single(m => m.Mes == 12).DespesasPlanejadas); // o que não chegou: só o planejado
+        Assert.Equal((5000m, 1000m, 4000m), (r.Entrou, r.Saiu, r.Sobrou));
+        Assert.Equal(600m * (ateMes - 8), r.DespesasPlanejadas);
+        var mercado = r.Categorias[0];
+        Assert.Equal(("Mercado", 900m, 90m), (mercado.Nome, mercado.Valor, mercado.PercentualDoGasto));
+        Assert.Equal((300m, 200m), (mercado.Normal, mercado.VariacaoPercentual)); // contra ago/2025
+        Assert.Equal(600m * (ateMes - 8), mercado.Limite);
+        var lazer = r.Categorias[1];
+        Assert.Equal((100m, (decimal?)0m, (decimal?)null), (lazer.Valor, lazer.Normal, lazer.Limite)); // nada em 2025: nova no ano
+        Assert.Null(r.SemCategoria);
+        Assert.Equal(2025, r.PrimeiroAno); // o lançamento de agosto de 2025
+
+        // Um ano passado vai de janeiro a dezembro; um ano que não chegou é recusado.
+        Assert.Equal(12, (await Servico(c.Ctx).AnoAsync(c.U, 2025)).Meses.Count);
+        await Assert.ThrowsAsync<ArgumentException>(() => Servico(c.Ctx).AnoAsync(c.U, HorarioBrasil.HojeData().Year + 1));
+    }
+
+    [Fact]
+    public async Task MesAMes_TrazOPlanejadoDeCadaMes_RendaEsperadaLimitesEInvestimentos_ValendoAteMudar()
+    {
+        // A linha do tempo mostra, por mês, o realizado (cor forte) contra o planejado (cor clara), como a planilha.
+        var c = Seed();
+        var xp = new Categoria { Id = Guid.NewGuid(), Descricao = "Renda fixa", Finalidade = Finalidade.Investimento };
+        c.Ctx.Add(xp);
+        c.Ctx.Add(new RendaPrevista { Id = Guid.NewGuid(), UsuarioId = c.U, Ano = 2026, Mes = 8, FixaEsperada = 6000m, VariavelEsperada = 0m });
+        // Limite de Mercado desde julho (R$ 900) e mudado em setembro (R$ 700); limite geral ("todos os gastos") não soma;
+        // investimento planejado desde agosto. Vale todo mês até mudar.
+        c.Ctx.Orcamentos.AddRange(
+            new Orcamento { Id = Guid.NewGuid(), UsuarioId = c.U, CategoriaId = c.Mercado, Ano = 2026, Mes = 7, ValorLimite = 900m },
+            new Orcamento { Id = Guid.NewGuid(), UsuarioId = c.U, CategoriaId = c.Mercado, Ano = 2026, Mes = 9, ValorLimite = 700m },
+            new Orcamento { Id = Guid.NewGuid(), UsuarioId = c.U, CategoriaId = null, Ano = 2026, Mes = 7, ValorLimite = 5000m },
+            new Orcamento { Id = Guid.NewGuid(), UsuarioId = c.U, CategoriaId = xp.Id, Ano = 2026, Mes = 8, ValorLimite = 1000m });
+        c.Ctx.SaveChanges();
+
+        var r = await Servico(c.Ctx).CalcularAsync(c.U, 2026, 9);
+
+        MesDoCheckUpDto Mes(int m) => r.MesAMes.Single(x => x.Mes == m);
+        Assert.Equal((0m, 0m, 0m), (Mes(6).RendaEsperada, Mes(6).DespesasPlanejadas, Mes(6).InvestimentosPlanejados));
+        Assert.Equal((0m, 900m, 0m), (Mes(7).RendaEsperada, Mes(7).DespesasPlanejadas, Mes(7).InvestimentosPlanejados));
+        Assert.Equal((900m, 1000m), (Mes(8).DespesasPlanejadas, Mes(8).InvestimentosPlanejados));
+        Assert.Equal((700m, 1000m), (Mes(9).DespesasPlanejadas, Mes(9).InvestimentosPlanejados));
+        Assert.True(Mes(8).RendaEsperada >= 6000m); // a renda prevista de agosto (a regra dela mora em RendaService)
     }
 }

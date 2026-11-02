@@ -389,6 +389,78 @@ public class OrcamentoService
     }
 
     /// <summary>A linha que vale em cada categoria no mês (a mais recente até ele), sem as "sem limite".</summary>
+    /// <summary>
+    /// O planejado de cada mês de uma janela, numa consulta só (a linha do tempo de Relatórios): as despesas planejadas
+    /// (a mesma soma do TotalLimite de <see cref="DoMesAsync"/>: os limites por categoria vigentes no mês, sem o de
+    /// "todos os gastos" nem subcategoria) e os investimentos planejados (a soma do TotalPlanejado de
+    /// <see cref="InvestimentosDoMesAsync"/>: as fontes de investimento vigentes). Vigente = o último valor lançado até o
+    /// mês, igual a <see cref="VigentesAsync"/>. Mês sem planejado não aparece.
+    /// </summary>
+    public static async Task<Dictionary<(int Ano, int Mes), (decimal Despesas, decimal Investimentos)>> PlanejadoPorMesAsync(
+        AppDbContext context, Guid usuarioId, DateTime de, int meses)
+    {
+        var ultimaChave = Chave(de.Year, de.Month) + meses - 1;
+        var linhas = await context.Orcamentos.AsNoTracking()
+            .Where(o => o.UsuarioId == usuarioId && o.Ano * 12 + o.Mes <= ultimaChave)
+            .Select(o => new { o.CategoriaId, o.SubcategoriaId, o.Ano, o.Mes, o.ValorLimite })
+            .ToListAsync();
+        if (linhas.Count == 0) return new();
+        var lados = await context.Categorias.AsNoTracking()
+            .Where(c => (c.Finalidade == Finalidade.Receita || c.Finalidade == Finalidade.Investimento) && (c.UsuarioId == null || c.UsuarioId == usuarioId))
+            .Select(c => new { c.Id, c.Finalidade })
+            .ToListAsync();
+        var investimento = lados.Where(c => c.Finalidade == Finalidade.Investimento).Select(c => c.Id).ToHashSet();
+        var foraDasDespesas = lados.Select(c => c.Id).ToHashSet();
+        var porFonte = linhas.GroupBy(o => (o.CategoriaId, o.SubcategoriaId)).ToList();
+        var resultado = new Dictionary<(int, int), (decimal, decimal)>();
+        for (var i = 0; i < meses; i++)
+        {
+            var m = de.AddMonths(i);
+            var chave = Chave(m.Year, m.Month);
+            decimal despesas = 0m, investimentos = 0m;
+            foreach (var fonte in porFonte)
+            {
+                var vigente = fonte.Where(o => Chave(o.Ano, o.Mes) <= chave).MaxBy(o => Chave(o.Ano, o.Mes));
+                if (vigente is null || vigente.ValorLimite <= 0) continue;
+                if (fonte.Key.CategoriaId is { } c && investimento.Contains(c)) investimentos += vigente.ValorLimite;
+                else if (fonte.Key.CategoriaId is { } d && fonte.Key.SubcategoriaId is null && !foraDasDespesas.Contains(d)) despesas += vigente.ValorLimite;
+            }
+            if (despesas > 0 || investimentos > 0) resultado[(m.Year, m.Month)] = (despesas, investimentos);
+        }
+        return resultado;
+    }
+
+    /// <summary>
+    /// O limite de cada categoria somado nos meses de uma janela (o "Ano completo" de Relatórios: o limite do ano é a soma
+    /// do limite vigente em cada mês). Só limite de categoria de despesa, sem subcategoria nem "todos os gastos", como em
+    /// <see cref="PlanejadoPorMesAsync"/>. Categoria sem limite na janela não aparece.
+    /// </summary>
+    public static async Task<Dictionary<Guid, decimal>> LimitesPorCategoriaAsync(AppDbContext context, Guid usuarioId, DateTime de, int meses)
+    {
+        var ultimaChave = Chave(de.Year, de.Month) + meses - 1;
+        var linhas = await context.Orcamentos.AsNoTracking()
+            .Where(o => o.UsuarioId == usuarioId && o.Ano * 12 + o.Mes <= ultimaChave && o.CategoriaId != null && o.SubcategoriaId == null)
+            .Select(o => new { CategoriaId = o.CategoriaId!.Value, o.Ano, o.Mes, o.ValorLimite })
+            .ToListAsync();
+        if (linhas.Count == 0) return new();
+        var foraDasDespesas = (await context.Categorias.AsNoTracking()
+            .Where(c => (c.Finalidade == Finalidade.Receita || c.Finalidade == Finalidade.Investimento) && (c.UsuarioId == null || c.UsuarioId == usuarioId))
+            .Select(c => c.Id).ToListAsync()).ToHashSet();
+        var resultado = new Dictionary<Guid, decimal>();
+        foreach (var fonte in linhas.Where(o => !foraDasDespesas.Contains(o.CategoriaId)).GroupBy(o => o.CategoriaId))
+        {
+            var soma = 0m;
+            for (var i = 0; i < meses; i++)
+            {
+                var m = de.AddMonths(i);
+                var vigente = fonte.Where(o => Chave(o.Ano, o.Mes) <= Chave(m.Year, m.Month)).MaxBy(o => Chave(o.Ano, o.Mes));
+                if (vigente is { ValorLimite: > 0 }) soma += vigente.ValorLimite;
+            }
+            if (soma > 0) resultado[fonte.Key] = soma;
+        }
+        return resultado;
+    }
+
     private async Task<List<Orcamento>> VigentesAsync(Guid usuarioId, int ano, int mes)
     {
         var chave = Chave(ano, mes);

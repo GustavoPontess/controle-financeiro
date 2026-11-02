@@ -11,20 +11,22 @@
 .conta > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .conta dt { font-size: var(--v2-fs-xs); font-weight: 500; color: var(--v2-texto-2); white-space: nowrap; }
 .conta dd { margin: 0; font-size: var(--v2-fs-md); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.conta dd.sub { font-size: var(--v2-fs-xs); font-weight: 400; }
+.conta dd.sub { font-size: var(--v2-fs-xs); font-weight: 400; white-space: normal; }
 .sub { font-size: var(--v2-fs-xs); font-weight: 400; color: var(--v2-texto-3); font-variant-numeric: tabular-nums; }
 .variacao { font-weight: 600; color: var(--v2-negativo); }
 .variacao[data-bom] { color: var(--v2-positivo); }
 
 /* A barra da renda: já saiu (um pedaço por categoria, na cor dela) · ainda vem (listrado) · livre (a trilha vazia);
    pontas arredondadas como as do "Pra onde foi" e 2px entre os pedaços (a borda da cor da superfície) */
-.barraLugar { position: relative; padding-bottom: 4px; }
+.barraLugar { position: relative; display: flex; flex-direction: column; gap: 10px; }
 .barra { display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: var(--v2-superficie-2); }
 .pedaco { flex-shrink: 0; min-width: 3px; height: 100%; box-sizing: border-box; border-right: 2px solid var(--v2-superficie); }
 .pedaco[data-tipo="vem"] { background: repeating-linear-gradient(45deg, var(--v2-serie-cinza) 0 2px, transparent 2px 5px); }
+/* O último pedaço termina arredondado (a ponta da barra cheia, contra o que está livre), como todas as barras do app. */
+.pedaco:last-child { border-right: 0; border-radius: 0 999px 999px 0; }
 .marca { position: absolute; top: -4px; height: 22px; border-left: 2px solid var(--v2-texto); }
 .marcaRotulo { position: absolute; top: calc(100% + 2px); left: 0; transform: translateX(-50%); font-size: var(--v2-fs-xs); color: var(--v2-texto-2); white-space: nowrap; }
-.barraLugar:has(.marca) { padding-bottom: 22px; }
+.barraLugar:has(.marca) .legenda { margin-top: 14px; }
 .legenda { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: var(--v2-fs-xs); color: var(--v2-texto-2); }
 .legenda span { display: inline-flex; align-items: center; gap: 6px; }
 .legenda i { width: 10px; height: 10px; border-radius: 3px; }
@@ -33,19 +35,6 @@
 
 .parte { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; border-top: 1px solid var(--v2-linha); }
 .titulo { margin: 0; font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-texto); }
-
-/* Limites: gasto (cheio) + ainda vem (listrado) na cor da categoria contra o limite (a trilha), com as pontas
-   arredondadas e o listrado iguais aos do "Pra onde foi" (GraficoBarrasComparacao) */
-.limites { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 32px; }
-.limites li { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.limiteTopo { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.limiteNome { flex: 1; min-width: 0; font-size: var(--v2-fs-md); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.limiteValor { font-size: var(--v2-fs-md); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.trilha { position: relative; display: block; height: 12px; border-radius: 6px; background: var(--v2-superficie-2); overflow: hidden; }
-.medida, .medidaVem { position: absolute; top: 0; height: 100%; }
-.medida { left: 0; border-radius: 6px; }
-.medidaVem { opacity: 0.45; background-image: repeating-linear-gradient(135deg, transparent 0 3px, var(--v2-superficie) 3px 6px); border-radius: 0 6px 6px 0; }
-.limiteMarca { position: absolute; top: 0; height: 100%; width: 2px; margin-left: -1px; background: var(--v2-texto); }
 
 [data-serie="1"] { background-color: var(--v2-serie-1); }
 [data-serie="2"] { background-color: var(--v2-serie-2); }
@@ -59,6 +48,5 @@
 @media (max-width: 900px) {
   .valor { font-size: var(--v2-fs-2xl); }
   .cabeca { align-items: flex-start; }
-  .conta { width: 100%; justify-content: space-between; gap: 12px; }
-  .limites { grid-template-columns: minmax(0, 1fr); }
+  .conta { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 }

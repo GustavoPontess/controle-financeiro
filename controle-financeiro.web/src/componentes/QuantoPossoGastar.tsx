@@ -4,30 +4,27 @@
 // gastar, por dia até o fim do mês. No mês que já acabou (`fechado`), quanto sobrou e a parte do que entrou. Ao lado, o
 // que entrou e o que saiu (Gustavo: "sentindo falta de mostrar quanto entrou, quanto saiu"), cada um com a frase que
 // faz sentido no mês: no atual, o que entrou de quanto se esperava e o que saiu contra o seu normal; no fechado, contra
-// o mês anterior. Os limites dizem quanto ainda dá (mês atual) ou quanto sobrou ou passou (fechado). A barra é a renda: o que já
-// saiu, um pedaço por categoria na cor dela (as mesmas cores do "Pra onde foi"; pedido do Gustavo, 2026-11-01: "tirou
-// as cores, ficou feio"), o que ainda vem listrado e o vazio é o livre; passou da renda, a barra cresce além da marca
-// "sua renda". Embaixo, o que ainda vem e os limites por categoria (gasto + o que ainda vem contra o limite, na cor da
-// categoria). A distribuição da renda pelas categorias (olhando pra trás) é outra seção ("Pra onde foi a sua renda").
-// As faturas de cartão a pagar ficam só em "Contas fixas e parcelas" (não somam no livre: as compras delas já contaram
-// quando foram feitas). A conta vem pronta do servidor (DinheiroDoMesService e LimiteService); aqui só a vitrine e os
-// dias que faltam.
+// o mês anterior. A barra é a renda: o que já saiu, um pedaço por categoria na cor dela (pedido do Gustavo,
+// 2026-11-01: "tirou as cores, ficou feio"), o que ainda vem listrado e o vazio é o livre; passou da renda, a barra
+// cresce além da marca "sua renda". Logo abaixo da barra (`children`) vem a lista das categorias, que é a legenda dela
+// e junta o pra onde foi, o normal e o limite de cada uma (Gustavo: "dá pra juntar tudo sem repetir"); depois, o que
+// ainda vem no mês, item por item. As faturas de cartão a pagar ficam só em "Contas fixas e parcelas" (não somam no
+// livre: as compras delas já contaram quando foram feitas). A conta vem pronta do servidor (DinheiroDoMesService);
+// aqui só a vitrine e os dias que faltam.
+import type { ReactNode } from "react"
 import { Link } from "react-router-dom"
 import type { DinheiroDoMes } from "../types/DinheiroDoMes"
-import type { LimiteDoMes, LimitesDoMes } from "../types/Limite"
 import { dataLocalISO } from "../utils/dateTime"
 import { Dinheiro } from "./Dinheiro"
-import Etiqueta from "./Etiqueta"
 import ListaAindaVem from "./ListaAindaVem"
 import styles from "./QuantoPossoGastar.module.css"
 
 /** O que ainda vem com linha própria; o resto vira "e mais N". */
 const MAX_AINDA_VEM = 5
 
-export default function QuantoPossoGastar({ dados, limites, serieDe, fechado, comparacao, gastoNormal }: {
+export default function QuantoPossoGastar({ dados, serieDe, fechado, comparacao, gastoNormal, children }: {
   dados: DinheiroDoMes
-  limites: LimitesDoMes | null
-  /** A cor de cada categoria (dominio/serieDaCategoria), a mesma das outras seções. */
+  /** A cor de cada categoria (dominio/serieDaCategoria), a mesma da lista de categorias. */
   serieDe: (categoriaId: string | null, nome: string) => string
   /** O mês já acabou: "sobrou" no lugar de "ainda dá pra gastar". */
   fechado?: boolean
@@ -35,6 +32,8 @@ export default function QuantoPossoGastar({ dados, limites, serieDe, fechado, co
   comparacao?: { entrou: number | null; saiu: number | null; anterior: string | null }
   /** O gasto normal por mês (média dos meses anteriores), pra pôr o que já saiu em perspectiva no mês atual. */
   gastoNormal?: number | null
+  /** Logo abaixo da barra: a lista das categorias (a legenda da barra, com o normal e o limite de cada uma). */
+  children?: ReactNode
 }) {
   const temRenda = dados.rendaBase > 0
   const usado = dados.jaSaiu + dados.aindaVemTotal
@@ -46,7 +45,6 @@ export default function QuantoPossoGastar({ dados, limites, serieDe, fechado, co
   const faltam = Math.max(1, ultimoDia - Number(hoje.slice(8, 10)) + 1)
   const porDia = temRenda && !passou && !fechado ? dados.livre / faltam : null
   const pct = (v: number) => `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(v)}%`
-  const comLimite = limites?.limites ?? []
 
   return (
     <div className={styles.gastar}>
@@ -85,27 +83,25 @@ export default function QuantoPossoGastar({ dados, limites, serieDe, fechado, co
       </div>
 
       {temRenda && (
-        <>
-          <div className={styles.barraLugar}>
-            <div className={styles.barra} role="img"
-              aria-label={`Da renda: já saiu ${Math.round((dados.jaSaiu / dados.rendaBase) * 100)}%, ainda vem ${Math.round((dados.aindaVemTotal / dados.rendaBase) * 100)}%`}>
-              {dados.jaSaiuPorCategoria.filter((p) => p.valor > 0).map((p, i) => (
-                <span key={`${p.categoriaId ?? p.nome}-${i}`} className={styles.pedaco} data-serie={serieDe(p.categoriaId, p.nome)}
-                  style={{ width: largura(p.valor) }} title={`${p.nome}: já saiu`} />
-              ))}
-              {dados.aindaVemTotal > 0 && <span className={styles.pedaco} data-tipo="vem" style={{ width: largura(dados.aindaVemTotal) }} title="Ainda vem" />}
-            </div>
-            {passou && <span className={styles.marca} style={{ left: largura(dados.rendaBase) }}><span className={styles.marcaRotulo}>sua renda</span></span>}
-          </div>
-          <div className={styles.legenda} aria-hidden="true">
+        <div className={styles.barraLugar}>
+          <div className={styles.barra} role="img"
+            aria-label={`Da renda: já saiu ${Math.round((dados.jaSaiu / dados.rendaBase) * 100)}%, ainda vem ${Math.round((dados.aindaVemTotal / dados.rendaBase) * 100)}%`}>
             {dados.jaSaiuPorCategoria.filter((p) => p.valor > 0).map((p, i) => (
-              <span key={`${p.categoriaId ?? p.nome}-${i}`}><i data-serie={serieDe(p.categoriaId, p.nome)} />{p.nome}</span>
+              <span key={`${p.categoriaId ?? p.nome}-${i}`} className={styles.pedaco} data-serie={serieDe(p.categoriaId, p.nome)}
+                style={{ width: largura(p.valor) }} title={`${p.nome}: já saiu`} />
             ))}
+            {dados.aindaVemTotal > 0 && <span className={styles.pedaco} data-tipo="vem" style={{ width: largura(dados.aindaVemTotal) }} title="Ainda vem" />}
+          </div>
+          {passou && <span className={styles.marca} style={{ left: largura(dados.rendaBase) }}><span className={styles.marcaRotulo}>sua renda</span></span>}
+          {/* As categorias têm a legenda delas (a lista logo abaixo); aqui só o que não é categoria. */}
+          <div className={styles.legenda} aria-hidden="true">
             {(!fechado || dados.aindaVemTotal > 0) && <span><i data-tipo="vem" />{fechado ? "Ficou previsto" : "Ainda vem"}</span>}
             {!passou && <span><i data-tipo="livre" />{fechado ? "Sobrou" : "Livre"}</span>}
           </div>
-        </>
+        </div>
       )}
+
+      {children}
 
       {dados.aindaVem.length > 0 && (
         <div className={styles.parte}>
@@ -118,18 +114,6 @@ export default function QuantoPossoGastar({ dados, limites, serieDe, fechado, co
           )}
         </div>
       )}
-
-      <div className={styles.parte}>
-        <h3 className={styles.titulo}>Limites por categoria</h3>
-        {comLimite.length === 0 ? (
-          <span className={styles.extra}>Nenhum limite neste mês.{!fechado && <> <Link to="/orcamento">Pôr um limite</Link> avisa antes de passar.</>}</span>
-        ) : (
-          <ul className={styles.limites} aria-label="Limites por categoria">
-            {comLimite.map((l) => <LinhaLimite key={l.categoriaId ?? "todos"} l={l} serie={serieDe(l.categoriaId, l.categoria)} fechado={fechado} />)}
-          </ul>
-        )}
-      </div>
-
     </div>
   )
 }
@@ -142,45 +126,5 @@ function Variacao({ valor, sobeEhBom, anterior }: { valor: number | null; sobeEh
     <dd className={styles.sub}>
       <span className={styles.variacao} data-bom={bom || undefined}>{Math.abs(valor)}% {valor > 0 ? "a mais" : "a menos"}</span> que {anterior}
     </dd>
-  )
-}
-
-const ETIQUETA: Record<LimiteDoMes["situacao"], { texto: string; tom: "negativo" | "alerta" } | null> = {
-  passou: { texto: "Passou", tom: "negativo" },
-  "vai-passar": { texto: "Vai passar", tom: "alerta" },
-  perto: { texto: "Perto", tom: "alerta" },
-  ok: null,
-}
-
-/** Um limite: gasto (cheio) + ainda vem (listrado), na cor da categoria, contra o limite (a trilha); o que sobra ou
- *  quanto passou. A situação (passou, vai passar, perto) vai na etiqueta, com o texto. No mês fechado não tem "ainda
- *  vem" nem "vai passar": só quanto sobrou do limite ou quanto passou. */
-function LinhaLimite({ l, serie, fechado }: { l: LimiteDoMes; serie: string; fechado?: boolean }) {
-  if (fechado) l = { ...l, previsto: 0 }
-  const escala = Math.max(l.limite, l.gasto + l.previsto) || 1
-  const pct = (v: number) => `${(v / escala) * 100}%`
-  const etiqueta = fechado ? (l.gasto > l.limite ? ETIQUETA.passou : null) : ETIQUETA[l.situacao]
-  const resta = l.limite - l.gasto - l.previsto
-  return (
-    <li>
-      <span className={styles.limiteTopo}>
-        <span className={styles.limiteNome}>{l.categoriaId ? l.categoria : "Todos os gastos"}</span>
-        {etiqueta && <Etiqueta tom={etiqueta.tom}>{etiqueta.texto}</Etiqueta>}
-        <span className={styles.limiteValor}><Dinheiro valor={l.gasto + l.previsto} /> <span className={styles.sub}>de <Dinheiro valor={l.limite} /></span></span>
-      </span>
-      <span className={styles.trilha} aria-hidden="true">
-        <span className={styles.medida} data-serie={serie} style={{ width: pct(l.gasto) }} />
-        {l.previsto > 0 && <span className={styles.medidaVem} data-serie={serie} style={{ left: pct(l.gasto), width: pct(l.previsto) }} />}
-        {l.gasto + l.previsto > l.limite && <span className={styles.limiteMarca} style={{ left: pct(l.limite) }} />}
-      </span>
-      <span className={styles.sub}>
-        {/* A sobra do servidor é limite − gasto; aqui conta também o que ainda vem (é o que dá pra gastar de verdade). */}
-        {fechado ? (resta >= 0 ? <>sobrou <Dinheiro valor={resta} /> do limite</> : <>passou <Dinheiro valor={-resta} /></>)
-          : resta >= 0 ? <>dá pra gastar mais <Dinheiro valor={resta} /></>
-          : l.sobra < 0 ? <>passou <Dinheiro valor={-l.sobra} /></>
-          : <>passa <Dinheiro valor={-resta} /> com o que ainda vem</>}
-        {l.previsto > 0 && resta >= 0 && <> · já contando <Dinheiro valor={l.previsto} /> que ainda vem</>}
-      </span>
-    </li>
   )
 }

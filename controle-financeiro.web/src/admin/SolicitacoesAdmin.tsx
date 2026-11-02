@@ -14,7 +14,7 @@ import Etiqueta from "../componentes/Etiqueta"
 import Paginacao from "../componentes/Paginacao"
 import Segmentos, { type OpcaoSegmento } from "../componentes/Segmentos"
 import Selecao from "../componentes/Selecao"
-import { dataBR } from "../utils/dateTime"
+import { diaDeInstante } from "../utils/dateTime"
 import { mascararEmail } from "../utils/mascararEmail"
 import { useHideBalance } from "../estado/ocultar"
 import VerAnexos, { type AnexoParaVer } from "../componentes/VerAnexos"
@@ -68,7 +68,7 @@ export default function SolicitacoesAdmin() {
                   <span className={styles.texto}>
                     <span className={styles.oque}>{s.titulo}</span>
                     <span className={styles.onde}>
-                      {TIPOS_SOLICITACAO[s.tipo]} · {s.tela}{s.anexos.length ? ` · ${s.anexos.length === 1 ? "1 anexo" : `${s.anexos.length} anexos`}` : ""} · {s.nomeUsuario} ({oculto ? mascararEmail(s.emailUsuario) : s.emailUsuario}) · {dataBR(s.criadoEm)}
+                      {TIPOS_SOLICITACAO[s.tipo]} · {s.tela}{s.anexos.length ? ` · ${s.anexos.length === 1 ? "1 anexo" : `${s.anexos.length} anexos`}` : ""} · {s.nomeUsuario} ({oculto ? mascararEmail(s.emailUsuario) : s.emailUsuario}) · {diaDeInstante(s.criadoEm)}
                     </span>
                   </span>
                   {s.prioridade !== null && <Etiqueta>P{s.prioridade}</Etiqueta>}
