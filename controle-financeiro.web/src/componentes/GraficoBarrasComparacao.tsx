@@ -78,10 +78,15 @@ export default function GraficoBarrasComparacao({ linhas: todas, aoEscolher, rot
               </span>
             </span>
             <span className={styles.trilha} aria-hidden="true">
+              {/* O orçamento como na linha do tempo (Gustavo, 2026-11-01): tom claro da cor até o limite, atrás; o gasto
+                  vivo por cima; o que passou do limite em tom escuro. */}
+              {l.limite && <span className={styles.orcado} data-serie={l.serie} style={{ width: pct(l.limite.valor) }} />}
               <span className={styles.barra} data-serie={l.serie} style={{ width: pct(l.valor) }} />
+              {l.limite && l.valor > l.limite.valor && (
+                <span className={styles.alem} data-serie={l.serie} style={{ left: pct(l.limite.valor), width: pct(l.valor - l.limite.valor) }} />
+              )}
               {!!l.previsto && <span className={styles.previsto} data-serie={l.serie} data-sozinho={l.valor <= 0 || undefined} style={{ left: pct(l.valor), width: pct(l.previsto) }} />}
               {l.normal != null && l.normal > 0 && <span className={styles.normal} style={{ left: pct(l.normal) }} />}
-              {l.limite && <span className={styles.limite} style={{ left: pct(l.limite.valor) }} />}
             </span>
             <span className={styles.comparacao}>
               {c && <span data-tom={c.tom}>{c.texto}</span>}

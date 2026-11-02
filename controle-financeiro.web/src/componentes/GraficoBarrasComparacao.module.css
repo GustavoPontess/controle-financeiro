@@ -19,15 +19,19 @@ button.linha:focus-visible { outline: 2px solid var(--v2-acento); outline-offset
 .mais:focus-visible { outline: 2px solid var(--v2-acento); outline-offset: 1px; }
 @media print { .mais { display: none; } }
 .normal { position: absolute; top: -4px; width: 2px; height: 20px; margin-left: -1px; border-radius: 1px; background: var(--v2-texto); }
-/* O limite: tracejado, pra não confundir com o traço cheio do normal. */
-.limite { position: absolute; top: -4px; height: 20px; margin-left: -1px; border-left: 2px dashed var(--v2-texto-2); }
+/* O orçamento (limite), no padrão da linha do tempo: tom claro da cor da categoria até o limite, atrás da barra; o que
+   passou dele, em tom escuro por cima. Os tons saem da cor da série (--cor), misturada com a superfície (claro) ou com
+   o texto (escuro), então funcionam no tema claro e no escuro. */
+.trilha .orcado { position: absolute; left: 0; top: 0; height: 100%; border-radius: 6px; background-color: color-mix(in srgb, var(--cor) 26%, var(--v2-superficie)); }
+.trilha .alem { position: absolute; top: 0; height: 100%; border-radius: 0 6px 6px 0; background-color: color-mix(in srgb, var(--cor) 60%, var(--v2-texto)); }
 .comparacao { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); font-variant-numeric: tabular-nums; }
 .comparacao [data-tom="alerta"] { color: var(--v2-alerta); font-weight: 600; }
 .comparacao [data-tom="positivo"] { color: var(--v2-positivo); }
-[data-serie="1"] { background-color: var(--v2-serie-1); }
-[data-serie="2"] { background-color: var(--v2-serie-2); }
-[data-serie="3"] { background-color: var(--v2-serie-3); }
-[data-serie="4"] { background-color: var(--v2-serie-4); }
-[data-serie="5"] { background-color: var(--v2-serie-5); }
-[data-serie="cinza"] { background-color: var(--v2-serie-cinza); }
-[data-serie="cinza-2"] { background-color: var(--v2-serie-cinza-2); }
+[data-serie] { background-color: var(--cor); }
+[data-serie="1"] { --cor: var(--v2-serie-1); }
+[data-serie="2"] { --cor: var(--v2-serie-2); }
+[data-serie="3"] { --cor: var(--v2-serie-3); }
+[data-serie="4"] { --cor: var(--v2-serie-4); }
+[data-serie="5"] { --cor: var(--v2-serie-5); }
+[data-serie="cinza"] { --cor: var(--v2-serie-cinza); }
+[data-serie="cinza-2"] { --cor: var(--v2-serie-cinza-2); }

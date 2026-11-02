@@ -350,7 +350,7 @@ function CategoriasDoAno({ a, aoEscolher }: { a: AnoDoCheckUp; aoEscolher: (chav
       )}
       <span className={styles.legendaNormal}>
         {a.categorias.some((c) => c.normal) && <><i aria-hidden="true" />{periodoAntes} · </>}
-        {a.categorias.some((c) => c.limite != null) && <><i data-tipo="limite" aria-hidden="true" />limite do ano · </>}
+        {a.categorias.some((c) => c.limite != null) && <><i data-tipo="limite" aria-hidden="true" />claro: orçamento do ano · escuro: passou dele · </>}
         % {daRenda ? "do que entrou" : "do gasto"} · toque pra ver os lançamentos
       </span>
     </div>
@@ -444,7 +444,7 @@ function CategoriasDoMes({ dados, limites, renda, serieDe, fechado, mesNome, aoE
       )}
       <span className={styles.legendaNormal}>
         {dados.praOndeFoi.some((c) => c.normal) && <><i aria-hidden="true" />o seu normal · </>}
-        {porCategoria.size > 0 && <><i data-tipo="limite" aria-hidden="true" />limite · </>}
+        {porCategoria.size > 0 && <><i data-tipo="limite" aria-hidden="true" />claro: orçamento · escuro: passou dele · </>}
         listrado: ainda vem · % {!daRenda ? "do gasto" : fechado ? "do que entrou" : "da renda do mês"} · toque pra ver os lançamentos
         {porCategoria.size === 0 && !geral && !fechado && <> · nenhum limite neste mês: <Link to="/orcamento">pôr um limite</Link></>}
       </span>
