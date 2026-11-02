@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from "react"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import {
   ArrowLeft, ArrowLeftRight, BarChart3, Bell, Check, ChevronsUpDown, CreditCard, Handshake, Landmark, LayoutDashboard, LogOut, Mail, MessageCircleMore,
-  PanelLeftClose, PanelLeftOpen, Plus, Receipt, Repeat, Scale, Settings, SlidersHorizontal, Tags, Target, Upload, Users, Eye, EyeOff, Wallet,
+  PanelLeftClose, PanelLeftOpen, Plus, Receipt, Repeat, Scale, Settings, SlidersHorizontal, Tags, Target, Upload, Users, Eye, EyeOff, Wallet, X,
 } from "lucide-react"
 import Avatar, { urlFoto } from "../componentes/Avatar"
 import Botao from "../componentes/Botao"
@@ -54,6 +54,8 @@ const FAMILIA_GERENCIAR = (id: string): ItemMenu[] => [
   { para: `/familias/${id}/regras`, rotulo: "Regras", icone: SlidersHorizontal },
 ]
 const CHAVE_MENU = "v2:menu"
+/** Dica do selo Beta: aparece uma vez por aparelho, some no × ou ao abrir o Beta. */
+const CHAVE_DICA_BETA = "v2:dicaBeta"
 
 /** Seção da rota (prefixo mais longo): dá o título do topo e a raiz pra "voltar". `semMenu` = tela que não
  *  tem item no menu (Notificações, pelo sino; a lista de famílias, pelo seletor): o topo mostra a seta de
@@ -107,6 +109,8 @@ export default function V2Layout() {
   // O bloco da pessoa (avatar + nome) abre o menu da conta: e-mail, Configurações, Sair. Vale com o menu
   // aberto, no trilho e na gaveta do celular. Fecha ao clicar fora, no Esc e ao trocar de tela.
   const [menuUsuario, setMenuUsuario] = useState(false)
+  const [dicaBeta, setDicaBeta] = useState(() => { try { return localStorage.getItem(CHAVE_DICA_BETA) !== "1" } catch { return false } })
+  const fecharDicaBeta = () => { setDicaBeta(false); try { localStorage.setItem(CHAVE_DICA_BETA, "1") } catch { /* sem armazenamento */ } }
   const [erroConta, setErroConta] = useState<string | null>(null)
   const [trocando, setTrocando] = useState(false)
   const usuarioRef = useRef<HTMLDivElement>(null)
@@ -190,10 +194,16 @@ export default function V2Layout() {
             </button>
             {/* Beta (2026-10-29): abre o formulário de algo errado / melhoria (apontar na tela é opcional lá dentro). Some quando o beta acabar. */}
             <button type="button" className={styles.selo} title="Algo errado ou uma melhoria"
-              aria-label="Beta: contar algo errado ou uma melhoria" onClick={() => { setMenuAberto(false); setMenuUsuario(false); abrirSolicitacao() }}>
+              aria-label="Beta: contar algo errado ou uma melhoria" onClick={() => { setMenuAberto(false); setMenuUsuario(false); fecharDicaBeta(); abrirSolicitacao() }}>
               <MessageCircleMore size={15} strokeWidth={2} aria-hidden="true" /><span className={styles.itemRotulo}>Beta</span>
             </button>
             </div>
+            {dicaBeta && !recolhido && !menuUsuario && (
+              <div className={styles.dicaBeta} role="note">
+                <span>Achou algo estranho? Toque em Beta.</span>
+                <button type="button" className={styles.dicaBetaFechar} aria-label="Fechar a dica" onClick={fecharDicaBeta}><X size={14} strokeWidth={2} /></button>
+              </div>
+            )}
             {menuUsuario && (
               <div className={styles.menuUsuario} role="menu" aria-label="Conta e espaços">
                 {/* A própria conta é o espaço pessoal: clicar nela sai da família. */}

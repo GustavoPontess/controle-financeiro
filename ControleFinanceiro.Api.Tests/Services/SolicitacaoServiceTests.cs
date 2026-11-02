@@ -22,7 +22,8 @@ public class SolicitacaoServiceTests
         var u = new Usuario { Id = Guid.NewGuid(), Email = "ana@t.com", Nome = "Ana", PasswordHash = "x" };
         ctx.Usuarios.Add(u);
         ctx.SaveChanges();
-        return (ctx, new SolicitacaoService(ctx, new AdminAuditService(ctx)), u.Id);
+        return (ctx, new SolicitacaoService(ctx, new AdminAuditService(ctx),
+            new NotificacaoService(ctx, Microsoft.Extensions.Logging.Abstractions.NullLogger<NotificacaoService>.Instance)), u.Id);
     }
 
     private static CriarSolicitacaoDto Dto(string titulo = "O gráfico some quando toco no mês", int tipo = 1, string tela = "/relatorios?mes=2026-10",
@@ -139,6 +140,30 @@ public class SolicitacaoServiceTests
         Assert.Equal(2, (await servico.ListarAsync(null)).Total);
         // A nota do admin não volta pra quem mandou.
         Assert.DoesNotContain(typeof(MinhaSolicitacaoDto).GetProperties(), p => p.Name == "NotaAdmin");
+    }
+
+    [Fact]
+    public async Task Admin_MudarStatus_AvisaQuemMandou_UmaVezPorStatus_SemANota()
+    {
+        var (ctx, servico, u) = Seed();
+        var a = await servico.CriarAsync(u, Dto(titulo: "Fatura no topo"));
+        var admin = Guid.NewGuid();
+
+        // Só prioridade/nota (status igual) não avisa.
+        await servico.AtualizarAsync(a.Id, new AtualizarSolicitacaoDto((int)StatusSolicitacao.Recebida, 2, "olhar depois"), admin, "admin@t.com");
+        Assert.Empty(ctx.Notificacoes);
+
+        await servico.AtualizarAsync(a.Id, new AtualizarSolicitacaoDto((int)StatusSolicitacao.NoBacklog, 2, "nota interna"), admin, "admin@t.com");
+        await servico.AtualizarAsync(a.Id, new AtualizarSolicitacaoDto((int)StatusSolicitacao.Recebida, 2, null), admin, "admin@t.com");
+        await servico.AtualizarAsync(a.Id, new AtualizarSolicitacaoDto((int)StatusSolicitacao.NoBacklog, 2, null), admin, "admin@t.com");
+        await servico.AtualizarAsync(a.Id, new AtualizarSolicitacaoDto((int)StatusSolicitacao.Feita, 2, null), admin, "admin@t.com");
+
+        var avisos = ctx.Notificacoes.OrderBy(n => n.CriadoEm).ToList();
+        Assert.Equal(2, avisos.Count); // vai e volta pra fila não repete o aviso; voltar pra Recebida não avisa
+        Assert.All(avisos, n => Assert.Equal((u, TipoNotificacao.SolicitacaoAtualizada), (n.UsuarioId, n.Tipo)));
+        Assert.Contains(avisos, n => n.Titulo == "Sua solicitação entrou na fila" && n.Mensagem.Contains("Fatura no topo"));
+        Assert.Contains(avisos, n => n.Titulo == "Sua solicitação foi feita");
+        Assert.DoesNotContain(avisos, n => n.Mensagem.Contains("nota interna"));
     }
 
     [Theory]

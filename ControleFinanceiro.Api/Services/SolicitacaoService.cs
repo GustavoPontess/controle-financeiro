@@ -25,11 +25,13 @@ public partial class SolicitacaoService
 
     private readonly AppDbContext _context;
     private readonly AdminAuditService _auditoria;
+    private readonly NotificacaoService _notificacoes;
 
-    public SolicitacaoService(AppDbContext context, AdminAuditService auditoria)
+    public SolicitacaoService(AppDbContext context, AdminAuditService auditoria, NotificacaoService notificacoes)
     {
         _context = context;
         _auditoria = auditoria;
+        _notificacoes = notificacoes;
     }
 
     public async Task<MinhaSolicitacaoDto> CriarAsync(Guid usuarioId, CriarSolicitacaoDto dto)
@@ -132,6 +134,7 @@ public partial class SolicitacaoService
         var s = await _context.Solicitacoes.Include(x => x.Usuario).FirstOrDefaultAsync(x => x.Id == id)
                 ?? throw new KeyNotFoundException("Solicitação não encontrada.");
 
+        var statusAntes = s.Status;
         s.Status = (StatusSolicitacao)dto.Status;
         s.Prioridade = dto.Prioridade;
         s.NotaAdmin = Curto(dto.NotaAdmin, 1000);
@@ -140,6 +143,9 @@ public partial class SolicitacaoService
         _auditoria.Registrar(adminId, adminEmail, AcaoAdmin.AtualizarSolicitacao, "Solicitacao", s.Id, s.Titulo,
             "status=" + s.Status + "; prioridade=" + prioridade);
         await _context.SaveChangesAsync();
+        if (s.Status != statusAntes && AvisoDoStatus(s.Status, s.Titulo) is { } aviso)
+            await _notificacoes.CriarUmaVezAsync(s.UsuarioId, $"solicitacao:{s.Id}:{(int)s.Status}",
+                TipoNotificacao.SolicitacaoAtualizada, aviso.Titulo, aviso.Mensagem);
         var anexos = await _context.SolicitacoesAnexo.AsNoTracking()
             .Where(a => a.SolicitacaoId == s.Id).OrderBy(a => a.Ordem)
             .Select(a => new AnexoAdminDto(a.Id, (int)a.Tipo, a.Tela, a.Bloco, a.TextoDoBloco, a.MostrarValores))
@@ -165,6 +171,18 @@ public partial class SolicitacaoService
         await _context.SaveChangesAsync();
         return vencidos.Count;
     }
+
+    /// <summary>
+    /// O que a pessoa recebe no sino quando o status muda (a lista é só do Admin, então é por aqui que ela sabe). Volta pra
+    /// "Recebida" não avisa. A nota do admin nunca vai junto.
+    /// </summary>
+    public static (string Titulo, string Mensagem)? AvisoDoStatus(StatusSolicitacao status, string titulo) => status switch
+    {
+        StatusSolicitacao.NoBacklog => ("Sua solicitação entrou na fila", $"\"{titulo}\" está na nossa lista pra fazer."),
+        StatusSolicitacao.Feita => ("Sua solicitação foi feita", $"\"{titulo}\" já está no app. Obrigado por mandar."),
+        StatusSolicitacao.NaoVamosFazer => ("Sobre a sua solicitação", $"Por agora não vamos fazer \"{titulo}\". Obrigado por mandar."),
+        _ => null,
+    };
 
     /// <summary>Esconde valores: "R$ 1.234,56" e números com 5+ dígitos (conta, cartão, documento) viram "••••".</summary>
     public static string? Mascarar(string? texto)
