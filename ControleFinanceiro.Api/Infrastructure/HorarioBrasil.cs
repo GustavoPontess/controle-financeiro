@@ -80,6 +80,18 @@ public static class HorarioBrasil
         : DateTime.SpecifyKind(utc + Fuso, DateTimeKind.Unspecified);
 
     /// <summary>
+    /// O "hoje" que um job diário das <paramref name="horaLocal"/> veria agora no <paramref name="fuso"/> (2026-11-02). Os
+    /// jobs de fatura e de conta fixa rodam de hora em hora e tratam cada pessoa no horário local dela, como se rodassem
+    /// uma vez por dia na casa dela: antes da hora do job, ainda é o dia de ontem pra ele. Ex.: o fechamento (23h) às 22h
+    /// do dia 10 vê o dia 9; às 23h, o dia 10. Fuso vazio ou desconhecido = Brasília.
+    /// </summary>
+    public static DateTime HojeDoJob(string? fuso, TimeSpan horaLocal)
+    {
+        using var _ = UsarFuso(fuso);
+        return Agora().Add(TimeSpan.FromDays(1) - horaLocal).Date.AddDays(-1);
+    }
+
+    /// <summary>
     /// O dia MAIS CEDO no Brasil agora (Acre, UTC−5). Só pra checagem que não pode ser mais estrita que o formulário,
     /// que usa o dia local de quem usa (ex.: a fatura mais antiga que ainda aceita parcela). Pra "que dia é hoje",
     /// <see cref="Hoje"/>.

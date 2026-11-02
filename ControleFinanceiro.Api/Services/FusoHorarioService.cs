@@ -35,6 +35,14 @@ public class FusoHorarioService
         return fuso;
     }
 
+    /// <summary>O fuso de cada pessoa (null = Brasília), pros jobs que tratam muita gente de uma vez.</summary>
+    public static async Task<Dictionary<Guid, string?>> DosUsuariosAsync(AppDbContext context, ICollection<Guid> usuarioIds)
+    {
+        if (usuarioIds.Count == 0) return new();
+        return await context.Usuarios.AsNoTracking().Where(u => usuarioIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.FusoHorario);
+    }
+
     /// <summary>Grava o fuso do aparelho na conta. Recusa nome que o sistema não conhece (não vira Brasília calado).</summary>
     public async Task SalvarAsync(Guid usuarioId, string fuso)
     {

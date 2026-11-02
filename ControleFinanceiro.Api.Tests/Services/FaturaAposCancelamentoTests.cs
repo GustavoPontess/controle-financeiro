@@ -228,6 +228,8 @@ public class FaturaAposCancelamentoTests
     [Fact]
     public async Task FechamentoDoCiclo_FaturaCobertaPorCancelamentoComCicloAberto_ViraPago()
     {
+        // 23h30 de 09/10 em Brasília: o fechamento roda a partir das 23h do dia do fechamento (fuso da conta, 2026-11-02).
+        using var _relogio = HorarioBrasil.FixarParaTeste(new DateTime(2026, 10, 10, 2, 30, 0, DateTimeKind.Utc));
         var ctx = CreateContext();
         var c = await SeedAsync(ctx, cicloFechado: false);
         await PagarFaturaAsync(ctx, c, 100m);

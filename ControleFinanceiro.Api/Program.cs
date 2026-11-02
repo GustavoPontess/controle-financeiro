@@ -666,13 +666,15 @@ if (!isTesting)
         var recManager = app.Services.GetRequiredService<IRecurringJobManager>();
         var utc = new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc };
 
-        recManager.AddOrUpdate<FaturaFechamentoJob>("fatura-fechamento", job => job.ExecuteAsync(), "0 2 * * *", utc);
-        recManager.AddOrUpdate<FaturaAtrasoJob>("fatura-atraso", job => job.ExecuteAsync(), "30 2 * * *", utc);
-        // As contas fixas rodam depois da meia-noite em TODO o Brasil (05h UTC = meia-noite no Acre, 2h em Brasília; fuso
-        // da conta, 2026-11-02): antes, às 00h30 de Brasília, quem mora no Acre ainda estava no dia anterior e a conta de
-        // "amanhã" já era cobrada. Entre 05h e 21h UTC os quatro fusos do Brasil estão no mesmo dia.
+        // Fatura e cobrança da conta fixa rodam de hora em hora e tratam cada pessoa no horário local dela (fuso da conta,
+        // 2026-11-02): fecha às 23h do dia do fechamento, atrasa às 23h30 do dia seguinte ao vencimento e cobra a conta fixa
+        // às 00h30 do dia dela (HorarioBrasil.HojeDoJob). Antes: uma vez por dia no horário de Brasília pra todo mundo.
+        recManager.AddOrUpdate<FaturaFechamentoJob>("fatura-fechamento", job => job.ExecuteAsync(), "0 * * * *", utc);
+        recManager.AddOrUpdate<FaturaAtrasoJob>("fatura-atraso", job => job.ExecuteAsync(), "30 * * * *", utc);
+        // A previsão das contas fixas (expandir) é uma vez por dia, depois da meia-noite em todo o Brasil (05h UTC = meia-noite
+        // no Acre): entre 05h e 21h UTC os quatro fusos do Brasil estão no mesmo dia.
         recManager.AddOrUpdate<ExpandirRecorrentesJob>("expandir-recorrentes", job => job.ExecuteAsync(), "0 5 * * *", utc);
-        recManager.AddOrUpdate<ExecutarRecorrentesJob>("executar-recorrentes", job => job.ExecuteAsync(), "30 5 * * *", utc);
+        recManager.AddOrUpdate<ExecutarRecorrentesJob>("executar-recorrentes", job => job.ExecuteAsync(), "30 * * * *", utc);
         recManager.AddOrUpdate<RecalcularLimitesJob>("recalcular-limites", job => job.ExecuteAsync(), "0 * * * *", utc);
         recManager.AddOrUpdate<AlertaLimitesJob>("alerta-limites", job => job.ExecuteAsync(null), "15 * * * *", utc);
         // Purga LGPD (Módulo C): 4h UTC, purga contas com carência de exclusão vencida.

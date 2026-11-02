@@ -23,8 +23,11 @@ public class RecalcularLimitesJob
             .Distinct()
             .ToListAsync();
 
+        var fusos = await FusoHorarioService.DosUsuariosAsync(_context, usuarios);
         foreach (var usuarioId in usuarios)
         {
+            // No fuso da conta da pessoa (2026-11-02): o "hoje" do cálculo é o dela.
+            using var _ = HorarioBrasil.UsarFuso(fusos.GetValueOrDefault(usuarioId));
             // LimiteCalculatorService caches calculations in memory
             // This triggers recalculation for all cards of this user
             await _limiteCalculatorService.CalcularTodosDoUsuarioAsync(usuarioId);

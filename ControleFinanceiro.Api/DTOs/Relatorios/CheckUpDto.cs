@@ -62,10 +62,26 @@ public record SemCategoriaDto(decimal Valor, decimal PercentualDoGasto, int Quan
 /// passados). <c>Meses</c> vai sempre de janeiro a dezembro: os que ainda não chegaram vêm zerados, só com o planejado. Os totais contra o planejado (a soma dos meses), os meses da linha do tempo e as categorias somadas, cada
 /// uma contra o normal (o mesmo período do ano anterior) e o limite do ano (a soma do limite vigente em cada mês).
 /// <c>PrimeiroAno</c>: o do primeiro lançamento da pessoa (o seletor de ano vai dele até o atual).
+/// Etapa 2 (2026-11-02): <c>Ritmo</c> (médias por mês e, no ano atual, quanto o ano fecha sobrando), <c>Comprometido</c>
+/// (contas fixas e parcelas do ano) e <c>Reserva</c> (o dinheiro de hoje contra o gasto médio por mês do ano).
 /// </summary>
 public record AnoDoCheckUpDto(int Ano, int AteMes, bool AnoAtual, decimal Entrou, decimal Saiu, decimal Sobrou, decimal Investido,
     decimal RendaEsperada, decimal DespesasPlanejadas, decimal InvestimentosPlanejados,
-    List<MesDoCheckUpDto> Meses, List<CategoriaDoAnoDto> Categorias, SemCategoriaDto? SemCategoria, int PrimeiroAno);
+    List<MesDoCheckUpDto> Meses, List<CategoriaDoAnoDto> Categorias, SemCategoriaDto? SemCategoria, int PrimeiroAno,
+    RitmoDoAnoDto? Ritmo = null, ComprometidoDoAnoDto? Comprometido = null, ReservaDoAnoDto? Reserva = null);
+
+/// <summary>O ritmo do ano: a média por mês dos meses FECHADOS com movimento (o mês em andamento puxaria a média pra baixo;
+/// sem mês fechado, os meses com movimento) e, só no ano atual, quanto o ano fecha sobrando se continuar assim (o que sobrou
+/// nos meses fechados + a média de sobra vezes os meses que faltam, contando o atual). Null sem movimento no ano.</summary>
+public record RitmoDoAnoDto(int MesesNaMedia, decimal EntrouPorMes, decimal SaiuPorMes, decimal SobrouPorMes, decimal? FechaOAnoCom);
+
+/// <summary>Contas fixas e parcelas no ano: o que já foi pago de conta fixa (as ocorrências efetivadas até hoje), as parcelas
+/// que caíram nos meses até hoje e, no ano atual, as que ainda caem até dezembro; e quanto isso é do que entrou (null sem renda).</summary>
+public record ComprometidoDoAnoDto(decimal ContasFixas, decimal Parcelas, decimal ParcelasAteDezembro, decimal? PercentualDoQueEntrou);
+
+/// <summary>A reserva olhando o ano: o dinheiro de hoje nas contas (sem as caixinhas das metas) dividido pelo gasto médio
+/// por mês do ano (o mesmo do ritmo). Null sem gasto no ano.</summary>
+public record ReservaDoAnoDto(decimal DinheiroGuardado, decimal GuardadoNasMetas, decimal? GastoMedioPorMes, decimal? MesesDeReserva, RespostaDto? Resposta);
 
 /// <summary>Uma categoria no ano: o que saiu, a parte do gasto, o normal (o mesmo período do ano anterior: 0 = nova no ano; null sem nada
 /// lá), a variação contra ele e o limite do ano (null sem limite).</summary>
