@@ -49,7 +49,8 @@
 .vazioSemRespiro { margin: 0; font-size: var(--v2-fs-sm); color: var(--v2-texto-3); }
 .legendaNormal { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: var(--v2-fs-xs); color: var(--v2-texto-3); padding: 0 10px; }
 .legendaNormal i { width: 2px; height: 12px; border-radius: 1px; background: var(--v2-texto); }
-.legendaNormal i[data-tipo="limite"] { width: 0; background: none; border-left: 2px dashed var(--v2-texto-2); border-radius: 0; }
+/* O orçamento: um pedacinho de barra, vivo (o gasto) e claro (o orçamento que sobra), como nas linhas. */
+.legendaNormal i[data-tipo="limite"] { width: 18px; height: 8px; border-radius: 4px; background: linear-gradient(to right, var(--v2-serie-1) 50%, color-mix(in srgb, var(--v2-serie-1) 26%, var(--v2-superficie)) 50%); }
 .legendaNormal a { color: var(--v2-acento); font-weight: 600; }
 
 /* Dá pra cortar onde */
