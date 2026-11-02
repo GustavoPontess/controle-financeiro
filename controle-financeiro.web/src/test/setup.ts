@@ -2,6 +2,7 @@
 import "@testing-library/jest-dom/vitest"
 import { afterEach, beforeEach, vi } from "vitest"
 import { cleanup, configure } from "@testing-library/react"
+import { definirFusoDaConta } from "../utils/dateTime"
 
 // Espera do findBy/waitFor: 5 s em vez de 1 s (2026-11-01). Com o PC dividido (dois runners do CI na mesma máquina)
 // a tela às vezes levava mais de 1 s pra aparecer e o teste falhava sem nada errado. Teste que passa não fica mais lento.
@@ -26,6 +27,7 @@ beforeEach(congelar)
 afterEach(() => {
   cleanup()
   vi.useRealTimers()
+  definirFusoDaConta(null) // o fuso da conta é do módulo: não vaza de um teste pro outro
 })
 
 // jsdom não implementa scrollIntoView (Selecao, faixa de meses do cartão).

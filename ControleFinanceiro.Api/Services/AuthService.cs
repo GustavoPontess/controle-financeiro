@@ -985,6 +985,7 @@ public class AuthService
             FotoEm = usuario.FotoPerfilEm,
             Status = usuario.Status,
             CriadoEm = usuario.CriadoEm,
+            FusoHorario = usuario.FusoHorario,
             IsAdmin = usuario.IsAdmin
         };
     }

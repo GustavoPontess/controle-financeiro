@@ -5,6 +5,7 @@
 // (o servidor já revogou as contas de quem usou o navegador antes); "Sair" sai de todas.
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
 import { api, codigoDoErro, definirContaDaAba, esperaDoLimite, mensagemDeErro } from "../api/cliente"
+import { definirFusoDaConta, fusoDoAparelho } from "../utils/dateTime"
 import { AuthContext, type ContaConectada, type ResultadoEntrar, type Usuario } from "./contexto"
 import SairPorInatividade from "./SairPorInatividade"
 
@@ -26,10 +27,19 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const r = await api.get<Usuario>("/auth/me", SEM_TOAST)
       definirContaDaAba(r.data.id)
-      setUsuario(r.data)
+      // O fuso da conta decide o "hoje" da tela (o mesmo do servidor). Conta ainda sem fuso: grava o do aparelho, sem
+      // perguntar (2026-11-02, Gustavo: nada de campo pra escolher o fuso).
+      let u = r.data
+      if (!u.fusoHorario) {
+        const fuso = fusoDoAparelho()
+        try { await api.put("/usuarios/me/fuso", { fuso }, SEM_TOAST); u = { ...u, fusoHorario: fuso } } catch { /* segue no do aparelho */ }
+      }
+      definirFusoDaConta(u.fusoHorario ?? fusoDoAparelho())
+      setUsuario(u)
       setContas((prev) => { const lista = comConta(prev, r.data); gravarContas(lista); return lista })
     } catch {
       definirContaDaAba(null)
+      definirFusoDaConta(null)
       setUsuario(null)
     } finally {
       setCarregando(false)

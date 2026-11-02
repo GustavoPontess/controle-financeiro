@@ -1,16 +1,18 @@
 namespace ControleFinanceiro.Api.Infrastructure;
 
 /// <summary>
-/// "Hoje" do app = o dia no Brasil, nunca o dia UTC (regra única, 2026-10-21). Com o dia UTC, das 21h à meia-noite
-/// de Brasília o servidor já estava no dia seguinte: aceitava lançamento efetivado com a data de amanhã, cobrava a
-/// conta fixa de amanhã e via vencido o que vence hoje. Carimbo de quando algo aconteceu (CriadoEm, AtualizadoEm,
-/// expiração de token) continua em UTC: isso aqui é só pra decidir QUE DIA é.
-/// Brasília é UTC−3 fixo: o Brasil não tem horário de verão desde 2019. Não usa TimeZoneInfo (a imagem alpine de
-/// produção pode vir sem a base de fusos).
+/// "Hoje" do app = o dia no fuso da PESSOA, nunca o dia UTC (regra única, 2026-10-21; fuso da conta, 2026-11-02).
+/// Com o dia UTC, das 21h à meia-noite de Brasília o servidor já estava no dia seguinte: aceitava lançamento efetivado
+/// com a data de amanhã, cobrava a conta fixa de amanhã e via vencido o que vence hoje. Carimbo de quando algo
+/// aconteceu (CriadoEm, AtualizadoEm, expiração de token) continua em UTC: isso aqui é só pra decidir QUE DIA é.
+/// O fuso é o da conta (<c>Usuario.FusoHorario</c>, nome IANA, ex. "America/Rio_Branco"), preenchido sozinho pelo
+/// aparelho; o <see cref="FusoDaPessoaMiddleware"/> põe o da pessoa logada em cada requisição (<see cref="UsarFuso"/>).
+/// Sem fuso (conta antiga, job sem pessoa, fuso desconhecido) vale Brasília, UTC−3 fixo (o Brasil não tem horário de
+/// verão desde 2019), sem depender da base de fusos do sistema.
 /// </summary>
 public static class HorarioBrasil
 {
-    /// <summary>Fuso de Brasília.</summary>
+    /// <summary>Fuso de Brasília (o padrão de quem ainda não tem fuso na conta).</summary>
     public static readonly TimeSpan Fuso = TimeSpan.FromHours(-3);
 
     // Relógio de onde sai "agora" (regra de hora, 2026-11-01): em produção, o do sistema; teste fixa com
@@ -18,6 +20,10 @@ public static class HorarioBrasil
     // teste). AsyncLocal: cada teste, e o que ele chama mesmo depois de await, vê o próprio relógio, sem vazar pros
     // testes que rodam em paralelo.
     private static readonly AsyncLocal<TimeProvider?> RelogioDoTeste = new();
+
+    // O fuso da pessoa desta requisição (ou do pedaço de job que trata dela). AsyncLocal pelo mesmo motivo: vale pro
+    // que ela chama, também depois de await, e não vaza pra requisição ao lado.
+    private static readonly AsyncLocal<TimeZoneInfo?> FusoDaPessoa = new();
 
     /// <summary>O relógio do app (o do sistema, ou o fixado pelo teste).</summary>
     public static TimeProvider Relogio => RelogioDoTeste.Value ?? TimeProvider.System;
@@ -34,6 +40,21 @@ public static class HorarioBrasil
         return new Restaurar(() => RelogioDoTeste.Value = anterior);
     }
 
+    /// <summary>
+    /// "Hoje" passa a ser o do fuso <paramref name="iana"/> até o Dispose (<c>using var _ = HorarioBrasil.UsarFuso(f)</c>).
+    /// Fuso vazio ou desconhecido = Brasília. Quem usa: o middleware (pessoa logada) e o teste.
+    /// </summary>
+    public static IDisposable UsarFuso(string? iana)
+    {
+        var anterior = FusoDaPessoa.Value;
+        FusoDaPessoa.Value = Resolver(iana);
+        return new Restaurar(() => FusoDaPessoa.Value = anterior);
+    }
+
+    /// <summary>O fuso pelo nome IANA ("America/Manaus"); null se vazio ou se o sistema não conhece.</summary>
+    public static TimeZoneInfo? Resolver(string? iana) =>
+        !string.IsNullOrWhiteSpace(iana) && TimeZoneInfo.TryFindSystemTimeZoneById(iana.Trim(), out var tz) ? tz : null;
+
     private sealed class RelogioFixo(DateTime agoraUtc) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => new(agoraUtc, TimeSpan.Zero);
@@ -44,17 +65,19 @@ public static class HorarioBrasil
         public void Dispose() => acao();
     }
 
-    /// <summary>A hora de parede em Brasília agora (Kind Unspecified, como as datas do app).</summary>
+    /// <summary>A hora de parede da pessoa agora (Kind Unspecified, como as datas do app).</summary>
     public static DateTime Agora() => DeUtc(Relogio.GetUtcNow().UtcDateTime);
 
-    /// <summary>Hoje em Brasília.</summary>
+    /// <summary>Hoje no fuso da pessoa.</summary>
     public static DateOnly Hoje() => DateOnly.FromDateTime(Agora());
 
-    /// <summary>Hoje em Brasília à meia-noite, pra quem compara com DateTime.</summary>
+    /// <summary>Hoje no fuso da pessoa à meia-noite, pra quem compara com DateTime.</summary>
     public static DateTime HojeData() => Agora().Date;
 
-    /// <summary>Um instante UTC na hora de parede de Brasília.</summary>
-    public static DateTime DeUtc(DateTime utc) => DateTime.SpecifyKind(utc + Fuso, DateTimeKind.Unspecified);
+    /// <summary>Um instante UTC na hora de parede da pessoa (Brasília sem fuso na conta).</summary>
+    public static DateTime DeUtc(DateTime utc) => FusoDaPessoa.Value is { } tz
+        ? DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), tz), DateTimeKind.Unspecified)
+        : DateTime.SpecifyKind(utc + Fuso, DateTimeKind.Unspecified);
 
     /// <summary>
     /// O dia MAIS CEDO no Brasil agora (Acre, UTC−5). Só pra checagem que não pode ser mais estrita que o formulário,

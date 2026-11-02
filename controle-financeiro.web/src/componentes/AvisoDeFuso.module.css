@@ -1,0 +1,8 @@
+/* Faixa discreta no topo do conteúdo: a pergunta à esquerda, as duas respostas à direita (embaixo, no celular). */
+.aviso { display: flex; align-items: center; gap: 12px 16px; flex-wrap: wrap; margin: 0 0 16px; padding: 12px 16px; border: 1px solid var(--v2-linha); border-radius: var(--v2-r-md); background: var(--v2-superficie); box-shadow: var(--v2-sombra); }
+.icone { flex-shrink: 0; color: var(--v2-texto-2); }
+.texto { flex: 1 1 320px; min-width: 0; margin: 0; font-size: var(--v2-fs-sm); color: var(--v2-texto); line-height: 1.45; }
+.texto b { font-weight: 600; }
+.erro { color: var(--v2-negativo); font-weight: 500; }
+.acoes { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+@media print { .aviso { display: none; } }

@@ -5,14 +5,14 @@ import { useState } from "react"
 import QRCode from "qrcode"
 import mfaService from "../services/mfaService"
 import { mensagemDeErro } from "../api/cliente"
-import { agora } from "../utils/dateTime"
+import { agora, fusoEmUso } from "../utils/dateTime"
 
 const CODIGO = /^\d{6}$/
 
 /** Arquivo .txt dos códigos de recuperação (\r\n abre bem no Bloco de Notas). */
 const arquivoRecuperacao = (codigos: string[]) => [
   "Pontes: códigos de recuperação da verificação em duas etapas",
-  `Gerados em: ${agora().toLocaleString("pt-BR")}`,
+  `Gerados em: ${agora().toLocaleString("pt-BR", { timeZone: fusoEmUso() })}`,
   "",
   "Cada código funciona uma vez, pra quando você estiver sem o app autenticador.",
   "Guarde num lugar seguro. Eles não aparecem de novo.",

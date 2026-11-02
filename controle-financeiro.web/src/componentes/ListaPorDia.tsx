@@ -5,7 +5,7 @@ import type { ReactNode } from "react"
 import { Link } from "react-router-dom"
 import { Dinheiro, type TomDinheiro } from "./Dinheiro"
 import styles from "./ListaPorDia.module.css"
-import { agora } from "../utils/dateTime"
+import { dataLocalISO } from "../utils/dateTime"
 
 export type ItemDoDia = {
   id: string
@@ -29,9 +29,11 @@ export type ItemDoDia = {
 
 /** Cabeçalho do dia: "Hoje" / "Ontem" / "Quarta-feira, 8 de outubro" (ano só quando não é o atual). */
 export function rotuloDoDia(iso: string): string {
-  const hoje = agora()
+  // Hoje no fuso da conta (dataLocalISO), comparado dia com dia, sem hora.
+  const [ha, hm, hd] = dataLocalISO().split("-").map(Number)
+  const hoje = new Date(ha, hm - 1, hd)
   const dia = new Date(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)))
-  const diff = Math.round((new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()).getTime() - dia.getTime()) / 86400000)
+  const diff = Math.round((hoje.getTime() - dia.getTime()) / 86400000)
   if (diff === 0) return "Hoje"
   if (diff === 1) return "Ontem"
   const opts: Intl.DateTimeFormatOptions = { weekday: "long", day: "numeric", month: "long", ...(dia.getFullYear() !== hoje.getFullYear() ? { year: "numeric" } : {}) }

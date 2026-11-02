@@ -49,6 +49,31 @@ public class HorarioBrasilTests
         Assert.Same(TimeProvider.System, HorarioBrasil.Relogio);
     }
 
+    [Fact]
+    public async Task UsarFuso_HojeEhODiaDaPessoa_AcreNoronhaEViagem_EODisposeVoltaPraBrasilia()
+    {
+        // 02/11 às 01h30 UTC = 22h30 de 01/11 em Brasília, 20h30 no Acre e 23h30 em Noronha; em Lisboa (UTC+0) já é 02/11.
+        using var _ = HorarioBrasil.FixarParaTeste(new DateTime(2026, 11, 2, 1, 30, 0, DateTimeKind.Utc));
+        Assert.Equal(new DateOnly(2026, 11, 1), HorarioBrasil.Hoje()); // sem fuso na conta: Brasília
+
+        using (HorarioBrasil.UsarFuso("America/Rio_Branco"))
+        {
+            Assert.Equal(new DateTime(2026, 11, 1, 20, 30, 0), HorarioBrasil.Agora());
+            await Task.Yield();
+            Assert.Equal(new DateOnly(2026, 11, 1), await Task.Run(HorarioBrasil.Hoje)); // vale depois de await
+        }
+        using (HorarioBrasil.UsarFuso("America/Noronha"))
+            Assert.Equal(new DateTime(2026, 11, 1, 23, 30, 0), HorarioBrasil.Agora());
+        using (HorarioBrasil.UsarFuso("Europe/Lisbon"))
+            Assert.Equal(new DateOnly(2026, 11, 2), HorarioBrasil.Hoje());
+
+        // Fuso vazio ou desconhecido = Brasília (nunca o dia UTC).
+        using (HorarioBrasil.UsarFuso("Marte/Olympus"))
+            Assert.Equal(new DateOnly(2026, 11, 1), HorarioBrasil.Hoje());
+        Assert.Null(HorarioBrasil.Resolver(" "));
+        Assert.Equal(new DateTime(2026, 11, 1, 22, 30, 0), HorarioBrasil.Agora()); // o Dispose devolveu Brasília
+    }
+
     // Decidir o dia (ou o mês, o ano) pelo relógio UTC ou pelo da máquina. Carimbo (DateTime.UtcNow, .AddDays de prazo)
     // continua livre: o que a trava pega é virar "que dia é".
     private static readonly Regex DiaPeloRelogioErrado = new(

@@ -42,6 +42,11 @@ public class Usuario
     /// <summary>Último login bem-sucedido — base das métricas do admin (usuários ativos/inativos).</summary>
     public DateTime? UltimoAcessoEm { get; set; }
 
+    /// <summary>Fuso da conta, nome IANA (ex. "America/Rio_Branco"): decide "que dia é hoje" pra pessoa. Vem sozinho do
+    /// aparelho (sem campo pra escolher, 2026-11-02); null = ainda não veio, vale Brasília. Ver <c>FusoHorarioService</c>.</summary>
+    [MaxLength(64)]
+    public string? FusoHorario { get; set; }
+
     /// <summary>Quando a conta foi marcada para exclusão (Módulo C — LGPD). Preenchido junto com
     /// <see cref="StatusUsuario.MarcadoParaExclusao"/>; base da janela de carência (30 dias) que o
     /// job de purga usa pra saber quando pode apagar de verdade. Null fora do fluxo de exclusão;

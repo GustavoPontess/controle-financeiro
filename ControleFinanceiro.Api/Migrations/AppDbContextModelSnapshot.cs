@@ -2339,6 +2339,10 @@ namespace ControleFinanceiro.Api.Migrations
                     b.Property<DateTime?>("FotoPerfilEm")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<string>("FusoHorario")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<bool>("IsAdmin")
                         .HasColumnType("boolean");
 

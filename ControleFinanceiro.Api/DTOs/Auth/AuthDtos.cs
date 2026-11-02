@@ -118,6 +118,10 @@ public class UsuarioDto
     public StatusUsuario Status { get; set; }
     public DateTime CriadoEm { get; set; }
 
+    /// <summary>Fuso da conta (nome IANA); null = ainda não veio de nenhum aparelho (vale Brasília). O front usa pra
+    /// "hoje" e pra mostrar horários, e grava o do aparelho quando falta.</summary>
+    public string? FusoHorario { get; set; }
+
     /// <summary>Só no <c>/auth/me</c>: minutos sem mexer até a tela fechar a sessão (<see cref="Services.SessaoInativa"/>).
     /// Null = sessão com "Manter-me conectado" (não sai por inatividade) ou resposta que não é do /me.</summary>
     public int? SairPorInatividadeMinutos { get; set; }

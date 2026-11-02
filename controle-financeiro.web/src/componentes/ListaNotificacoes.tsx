@@ -2,7 +2,7 @@
 // título + mensagem, quando. Cada linha é um botão (quem usa decide: marcar lida e abrir o assunto).
 import type { Notificacao } from "../types/Notificacao"
 import styles from "./ListaNotificacoes.module.css"
-import { agora } from "../utils/dateTime"
+import { agora, diaDeInstante } from "../utils/dateTime"
 
 /** "agora", "12 min", "3 h", "ontem", "08/10" — curto, cabe na direita da linha. */
 function quando(iso: string, agora: Date): string {
@@ -12,7 +12,7 @@ function quando(iso: string, agora: Date): string {
   if (min < 60) return `${min} min`
   if (min < 24 * 60) return `${Math.floor(min / 60)} h`
   if (min < 48 * 60) return "ontem"
-  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
+  return diaDeInstante(iso).slice(0, 5) // "15/10" no fuso da conta
 }
 
 export default function ListaNotificacoes({ itens, onAbrir, compacta }: {
