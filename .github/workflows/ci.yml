@@ -7,12 +7,14 @@ on:
   # sem nenhum teste (#285/#286 nunca tinham rodado). Os NOMES dos jobs não mudam (proteção da main).
   pull_request:
 
-# Runner: a máquina do Gustavo (self-hosted, rótulo pontes-local), pra não depender dos minutos pagos do GitHub
-# (2026-10-25, cobrança travou os jobs). O repo é privado: PR de fora não roda código lá.
+# Runner (2026-11-02): por padrão os do GitHub (ubuntu-latest). O GitHub Pro de estudante dá ~3.000 min Linux por mês
+# (zera todo dia 1º) e o PC do Gustavo não precisa ficar ligado. Pra voltar pro runner do PC (self-hosted, rótulo
+# pontes-local; ex.: se a cota acabar): variável do repositório RUNNER_CI=local (Settings > Secrets and variables >
+# Actions > Variables). O repo é privado: PR de fora não roda código em nenhum dos dois.
 #
-# Banda (2026-10-27): o runner é um container no PC e roda UM job por vez. Os caches (NuGet, npm, .NET) ficam no disco
-# do runner (/dados, volume que sobrevive a recriar o container), NUNCA no cache remoto do GitHub (actions/cache): o
-# cache do NuGet tem 1,9 GB e, baixado e subido a cada execução, consumiu 37 GB da internet de casa num dia.
+# Banda (2026-10-27): no runner do PC os caches (NuGet, npm, .NET) ficam no disco dele (/dados, volume que sobrevive a
+# recriar o container), NUNCA no cache remoto do GitHub (actions/cache): o cache do NuGet tem 1,9 GB e, baixado e
+# subido a cada execução, consumiu 37 GB da internet de casa num dia. No runner do GitHub, cada execução começa limpa.
 # Push novo na mesma branch cancela a execução anterior ainda na fila (concurrency).
 
 concurrency:
@@ -22,14 +24,18 @@ concurrency:
 jobs:
   backend:
     name: Backend (.NET 10)
-    runs-on: [self-hosted, pontes-local]
-    # Tudo no volume do runner (/dados): o .NET instalado e os pacotes do NuGet ficam de uma execução pra outra.
-    env:
-      DOTNET_INSTALL_DIR: /dados/dotnet
-      NUGET_PACKAGES: /dados/nuget
+    runs-on: ${{ vars.RUNNER_CI == 'local' && fromJSON('["self-hosted","pontes-local"]') || 'ubuntu-latest' }}
 
     steps:
       - uses: actions/checkout@v7
+
+      # No runner do PC, tudo no volume dele (/dados): o .NET instalado e os pacotes do NuGet ficam de uma execução pra
+      # outra. No runner do GitHub, os caminhos padrão.
+      - name: Caches no disco do runner do PC
+        if: vars.RUNNER_CI == 'local'
+        run: |
+          echo "DOTNET_INSTALL_DIR=/dados/dotnet" >> "$GITHUB_ENV"
+          echo "NUGET_PACKAGES=/dados/nuget" >> "$GITHUB_ENV"
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
@@ -47,17 +53,19 @@ jobs:
 
   frontend:
     name: Frontend (Node / Vite)
-    runs-on: [self-hosted, pontes-local]
+    runs-on: ${{ vars.RUNNER_CI == 'local' && fromJSON('["self-hosted","pontes-local"]') || 'ubuntu-latest' }}
 
     defaults:
       run:
         working-directory: controle-financeiro.web
-    # Cache do npm no volume do runner (/dados), não no cache remoto do GitHub.
-    env:
-      npm_config_cache: /dados/npm
 
     steps:
       - uses: actions/checkout@v7
+
+      # No runner do PC, o cache do npm no volume dele (/dados), não no cache remoto do GitHub.
+      - name: Cache do npm no disco do runner do PC
+        if: vars.RUNNER_CI == 'local'
+        run: echo "npm_config_cache=/dados/npm" >> "$GITHUB_ENV"
 
       - name: Setup Node
         uses: actions/setup-node@v7
