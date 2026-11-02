@@ -17,5 +17,7 @@ public enum TipoNotificacao
     EmprestimoConsolidacaoRespondida = 13,
     /// <summary>Cobrança de conta fixa no cartão que não passou por falta de limite (o app tenta de novo todo dia).</summary>
     CobrancaSemLimite = 14,
+    /// <summary>O admin mudou o status de uma solicitação do beta que a pessoa mandou.</summary>
+    SolicitacaoAtualizada = 15,
     Outro = 99,
 }
