@@ -206,7 +206,9 @@ npm test -- --run
 - **Soft delete** em entidades financeiras (`Transacao`, `Parcelamento`, `ParcelaTransacao`, `Recorrente`) via flag `Ativo` — nunca `_context.Remove()`.
 - **Idempotência** em endpoints transacionais via header `Idempotency-Key`.
 - **`FinancialEventLog`** registra mudanças de saldo/limite — auditoria sempre.
-- **Hangfire** para jobs recorrentes.
+- **Hangfire** para jobs recorrentes. Jobs que decidem o dia tratam cada pessoa no fuso dela (`HorarioBrasil.HojeDoJob` / `UsarFuso`).
+- **"Que dia é hoje" no fuso da conta** (2026-11-02): servidor por `HorarioBrasil.Hoje()` (o middleware põe o fuso da pessoa), front por `utils/dateTime.ts`. Nunca o dia UTC. Detalhe no CLAUDE.md.
+- **Deploy** por clique (Actions › Deploy, na main), nos runners do GitHub; `RUNNER_DEPLOY=local` volta pro runner do PC. O CI roda nos runners do PC (`pontes-local`).
 - **3 flags ortogonais** na `Fatura` (`EstadoCiclo`, `EstadoPagamento`, `EstaAtrasada`).
 - **API versioning:** rotas em `/api/v1/...` (global).
 - **Error handling:** lançar `ArgumentException` (→400), `KeyNotFoundException` (→404), `InvalidOperationException` (→409), `ForbiddenAccessException` (→403, autorização/ownership — usuário autenticado mas sem permissão), `UnauthorizedAccessException` (→401, **só** autenticação real: login/refresh/senha inválida). Sem try/catch nos controllers. O middleware do 500 nunca ecoa `Message` (genérico; detalhe só no log). O front só desloga em 401 — por isso erro de permissão é 403.

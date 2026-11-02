@@ -9,6 +9,11 @@ versionamento segue [SemVer](https://semver.org/lang/pt-BR/) **0.x (pré-lançam
 ## [Unreleased]
 
 ### Added
+- **Relatórios do ano** (2026-11-02): linha do tempo de janeiro a dezembro (receita, despesa e investimentos contra o planejado), seletores Ano e Período com "Ano completo" (ano somado contra o planejado, categorias contra o ano anterior e o limite do ano, ritmo do ano, contas fixas e parcelas do ano, reserva pelo gasto médio), "Baixar" gera o relatório em PDF, todas as categorias ("Mais N categorias" no fim da lista) e o orçamento de cada categoria em tom claro da cor dela.
+- **Fuso da conta** (2026-11-02): o "hoje" de cada pessoa no fuso dela, gravado sozinho pelo aparelho; aviso quando o aparelho está em outro horário (usar o novo ou manter); fatura, conta fixa e alertas no horário local de cada pessoa.
+
+### Fixed
+- **Datas no dia seguinte das 21h à meia-noite** no admin (cadastro, último acesso, solicitações), em contas fixas e parcelamentos ("cancelado em", "pago em"): os instantes gravados em UTC agora aparecem no dia de quem vê.
 
 ### Changed
 - **Cadastro vira "Pedir acesso"** (beta fechado): o botão do login e a tela de cadastro passam a dizer que é um pedido, que o admin aprova na tela de Admin. O fluxo é o mesmo de antes (a conta nasce aguardando aprovação); só o texto deixa claro que não se entra na hora.
