@@ -16,10 +16,12 @@ namespace ControleFinanceiro.Api.Controllers;
 public class UsuariosController : ControllerBase
 {
     private readonly FotoPerfilService _fotos;
+    private readonly FusoHorarioService _fusos;
 
-    public UsuariosController(FotoPerfilService fotos)
+    public UsuariosController(FotoPerfilService fotos, FusoHorarioService fusos)
     {
         _fotos = fotos;
+        _fusos = fusos;
     }
 
     private Guid UserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -55,6 +57,24 @@ public class UsuariosController : ControllerBase
         await using var conteudo = arquivo.OpenReadStream();
         var versao = await _fotos.SalvarAsync(UserId, conteudo, arquivo.Length);
         return Ok(new { fotoEm = versao });
+    }
+
+    /// <summary>Grava o fuso do aparelho na conta (nome IANA, ex. "America/Manaus"). O front manda sozinho no primeiro
+    /// acesso e quando a pessoa aceita o fuso de um aparelho em outro lugar; 400 pra nome desconhecido.</summary>
+    [HttpPut("me/fuso")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GravarFuso([FromBody] FusoDto dto)
+    {
+        await _fusos.SalvarAsync(UserId, dto.Fuso);
+        return NoContent();
+    }
+
+    /// <summary>O fuso do aparelho (nome IANA).</summary>
+    public class FusoDto
+    {
+        [System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.MaxLength(64)]
+        public string Fuso { get; set; } = string.Empty;
     }
 
     /// <summary>Remove a própria foto (volta a inicial).</summary>

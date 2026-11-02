@@ -38,7 +38,7 @@ import type { AnoDoCheckUp, CheckUp, Sinal } from "../types/Relatorio"
 import type { DinheiroDoMes } from "../types/DinheiroDoMes"
 import type { LimiteDoMes, LimitesDoMes } from "../types/Limite"
 import { seriesDasCategorias } from "../dominio/serieDaCategoria"
-import { agora } from "../utils/dateTime"
+import { dataBR, dataLocalISO } from "../utils/dateTime"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import Bullet from "../componentes/Bullet"
 import { Dinheiro } from "../componentes/Dinheiro"
@@ -170,7 +170,7 @@ export default function Relatorios() {
   return (
     <div className={styles.pagina}>
       {/* Só no PDF: o que é o relatório (na tela, o título e os seletores já dizem). */}
-      <p className={styles.soNoPdf}>Relatório de {doQue} · Pontes · gerado em {agora().toLocaleDateString("pt-BR")}</p>
+      <p className={styles.soNoPdf}>Relatório de {doQue} · Pontes · gerado em {dataBR(dataLocalISO())}</p>
       {anoCompleto ? (
         // O ano somado: o mesmo desenho do bloco de sempre (a resposta grande, a conta ao lado, as categorias embaixo).
         <Bloco titulo={ano === hoje.ano ? `${ano} até agora` : `Como foi ${ano}`} lado={baixar}>

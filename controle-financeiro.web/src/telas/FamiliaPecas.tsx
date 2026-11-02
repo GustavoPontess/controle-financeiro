@@ -30,16 +30,17 @@ import { AcoesFicha, DadosFicha, InicialFicha, ItemFicha } from "../componentes/
 import Selecao from "../componentes/Selecao"
 import { APROVACAO, MODOS_RATEIO, PAPEL_PERMISSAO, fraseSaldo, primeiroNome, sugerirEquilibrio } from "../dominio/familia"
 import { mesAnoCurto } from "../dominio/meta"
-import { agora, dataBR, diaDeInstante } from "../utils/dateTime"
+import { dataBR, dataLocalISO, diaDeInstante } from "../utils/dateTime"
 import { formatMoney, moneyParaCampo, parseMoney } from "../utils/money"
 import styles from "./Familia.module.css"
 
 export const diaMes = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
 export const idade = (nascimento: string) => {
   // O dia escrito, sem passar por Date: new Date("2000-10-20") é meia-noite UTC, que no Brasil ainda é dia 19.
-  const [ano, mes, dia] = nascimento.slice(0, 10).split("-").map(Number), h = agora()
-  let a = h.getFullYear() - ano
-  if (h.getMonth() + 1 < mes || (h.getMonth() + 1 === mes && h.getDate() < dia)) a--
+  const [ano, mes, dia] = nascimento.slice(0, 10).split("-").map(Number)
+  const [ha, hm, hd] = dataLocalISO().split("-").map(Number) // hoje no fuso da conta
+  let a = ha - ano
+  if (hm < mes || (hm === mes && hd < dia)) a--
   return a
 }
 

@@ -171,6 +171,8 @@ builder.Services.AddScoped<AcertoService>();
 // Renda de cada um (previsto × recebido) e o que a família vê dela
 builder.Services.AddScoped<RendaService>();
 builder.Services.AddScoped<FotoPerfilService>();
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<FusoHorarioService>();
 
 // Issue #27 — Importação de extrato OFX/CSV
 builder.Services.AddScoped<ExtratoImportService>();
@@ -643,6 +645,9 @@ app.UseAuthorization();
 // (header X-Active-Account ≠ dono do jwt). Depois do auth (precisa de User populado); no-op sem header.
 app.UseMiddleware<ActiveAccountGuardMiddleware>();
 
+// "Que dia é hoje" no fuso da conta da pessoa logada (2026-11-02). Depois do auth (precisa do User).
+app.UseMiddleware<FusoDaPessoaMiddleware>();
+
 // Hangfire (dashboard + agendamento) exige Postgres real — pulado em teste.
 if (!isTesting)
 {
@@ -663,8 +668,11 @@ if (!isTesting)
 
         recManager.AddOrUpdate<FaturaFechamentoJob>("fatura-fechamento", job => job.ExecuteAsync(), "0 2 * * *", utc);
         recManager.AddOrUpdate<FaturaAtrasoJob>("fatura-atraso", job => job.ExecuteAsync(), "30 2 * * *", utc);
-        recManager.AddOrUpdate<ExpandirRecorrentesJob>("expandir-recorrentes", job => job.ExecuteAsync(), "0 3 * * *", utc);
-        recManager.AddOrUpdate<ExecutarRecorrentesJob>("executar-recorrentes", job => job.ExecuteAsync(), "30 3 * * *", utc);
+        // As contas fixas rodam depois da meia-noite em TODO o Brasil (05h UTC = meia-noite no Acre, 2h em Brasília; fuso
+        // da conta, 2026-11-02): antes, às 00h30 de Brasília, quem mora no Acre ainda estava no dia anterior e a conta de
+        // "amanhã" já era cobrada. Entre 05h e 21h UTC os quatro fusos do Brasil estão no mesmo dia.
+        recManager.AddOrUpdate<ExpandirRecorrentesJob>("expandir-recorrentes", job => job.ExecuteAsync(), "0 5 * * *", utc);
+        recManager.AddOrUpdate<ExecutarRecorrentesJob>("executar-recorrentes", job => job.ExecuteAsync(), "30 5 * * *", utc);
         recManager.AddOrUpdate<RecalcularLimitesJob>("recalcular-limites", job => job.ExecuteAsync(), "0 * * * *", utc);
         recManager.AddOrUpdate<AlertaLimitesJob>("alerta-limites", job => job.ExecuteAsync(null), "15 * * * *", utc);
         // Purga LGPD (Módulo C): 4h UTC, purga contas com carência de exclusão vencida.

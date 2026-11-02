@@ -20,6 +20,7 @@ import { useHideBalance } from "../estado/ocultar"
 import { useNaoLidas } from "../estado/notificacoes"
 import PainelNotificacoes from "./PainelNotificacoes"
 import Apontar from "../componentes/Apontar"
+import AvisoDeFuso from "../componentes/AvisoDeFuso"
 import { abrirSolicitacao } from "../estado/apontar"
 import styles from "./V2Layout.module.css"
 
@@ -82,7 +83,7 @@ const primeiroEUltimo = (nome?: string) => {
 }
 
 export default function V2Layout() {
-  const { usuario, sair, contas, trocarConta } = useAuth()
+  const { usuario, sair, contas, trocarConta, recarregar } = useAuth()
   const navigate = useNavigate()
   const { pathname, search, state } = useLocation()
   const familiaId = familiaDaRota(pathname)
@@ -278,6 +279,8 @@ export default function V2Layout() {
           </div>
         </header>
         <main className={styles.conteudo} key={`${usuario?.id ?? ""}:${pathname}`}>
+          {/* O aparelho num horário diferente do da conta: pergunta uma vez se é pra usar o novo (2026-11-02). */}
+          {usuario && <AvisoDeFuso usuarioId={usuario.id} fusoDaConta={usuario.fusoHorario} aoMudar={recarregar} />}
           <Outlet />
         </main>
         <Apontar />

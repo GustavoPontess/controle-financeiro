@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import { agora, dataBR, dataLocalISO, diaDeInstante, mesAtual } from "../../utils/dateTime"
+import { agora, dataBR, dataLocalISO, definirFusoDaConta, diaDeInstante, fusoEmUso, horaLocalHHMM, mesAtual } from "../../utils/dateTime"
 import { idade } from "../../telas/FamiliaPecas"
 import { ParcelamentoService } from "../../services/ParcelamentoService"
 
@@ -41,5 +41,28 @@ describe("relógio do app", () => {
     expect(ParcelamentoService.obterMesProximo()).toBe("2027-02")
     vi.setSystemTime(new Date(2026, 11, 15, 12))
     expect(ParcelamentoService.obterMesProximo()).toBe("2027-01")
+  })
+})
+
+// Fuso da conta (2026-11-02): o "hoje" e os horários da tela seguem o fuso da conta, o mesmo do servidor, e não o do
+// aparelho. O setup.ts devolve o fuso do aparelho (Brasília) depois de cada teste.
+describe("fuso da conta", () => {
+  it("o dia, o mês e a hora mudam com o fuso da conta; nome desconhecido fica no do aparelho", () => {
+    vi.setSystemTime(new Date("2026-11-01T01:30:00Z")) // 22h30 de 31/10 em Brasília
+    expect(dataLocalISO()).toBe("2026-10-31")
+    expect(mesAtual()).toEqual({ ano: 2026, mes: 10 })
+
+    definirFusoDaConta("America/Rio_Branco") // Acre: 20h30 de 31/10
+    expect(horaLocalHHMM()).toBe("20:30")
+    expect(dataLocalISO()).toBe("2026-10-31")
+
+    definirFusoDaConta("Europe/Lisbon") // em Lisboa já é 01/11 e o mês virou
+    expect(dataLocalISO()).toBe("2026-11-01")
+    expect(mesAtual()).toEqual({ ano: 2026, mes: 11 })
+    expect(diaDeInstante("2026-11-01T01:30:00Z")).toBe("01/11/2026")
+
+    definirFusoDaConta("Marte/Olympus")
+    expect(fusoEmUso()).toBe("America/Sao_Paulo")
+    expect(dataLocalISO()).toBe("2026-10-31")
   })
 })

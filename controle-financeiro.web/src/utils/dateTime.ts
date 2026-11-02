@@ -5,17 +5,51 @@ export function agora(): Date {
   return new Date()
 }
 
-/** O mês de hoje no fuso de quem usa (mes de 1 a 12). */
-export function mesAtual(): { ano: number; mes: number } {
-  const h = agora()
-  return { ano: h.getFullYear(), mes: h.getMonth() + 1 }
+// O fuso da CONTA (2026-11-02): o mesmo que o servidor usa pra "que dia é hoje" (`Usuario.fusoHorario`, nome IANA).
+// O AuthProvider põe ele aqui ao carregar a pessoa; sem conta (ou sem fuso) vale o do aparelho. Assim o dia da tela e o
+// do servidor são sempre o mesmo, mesmo com o aparelho em outro fuso (viagem), até a pessoa aceitar o novo.
+let fusoDaConta: string | null = null
+
+/** O fuso do aparelho, nome IANA ("America/Rio_Branco"). */
+export function fusoDoAparelho(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone
 }
 
-// Data "YYYY-MM-DD" no fuso LOCAL de quem usa (padrão: hoje). Nunca usar
+/** Usa este fuso pro "hoje" e pros horários da tela (null = o do aparelho). Nome que o navegador não conhece é ignorado. */
+export function definirFusoDaConta(fuso: string | null | undefined): void {
+  fusoDaConta = fuso && fusoValido(fuso) ? fuso : null
+}
+
+/** O fuso que a tela usa agora: o da conta, ou o do aparelho. */
+export function fusoEmUso(): string {
+  return fusoDaConta ?? fusoDoAparelho()
+}
+
+function fusoValido(fuso: string): boolean {
+  try { new Intl.DateTimeFormat("en-US", { timeZone: fuso }); return true } catch { return false }
+}
+
+/** Ano, mês, dia, hora e minuto de um instante no fuso em uso (sem fuso da conta: os do aparelho). */
+function partes(d: Date): { a: number; m: number; d: number; h: number; min: number; s: number } {
+  if (!fusoDaConta) return { a: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate(), h: d.getHours(), min: d.getMinutes(), s: d.getSeconds() }
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
+    timeZone: fusoDaConta, year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric", hourCycle: "h23",
+  }).formatToParts(d).map((x) => [x.type, Number(x.value)]))
+  return { a: p.year, m: p.month, d: p.day, h: p.hour, min: p.minute, s: p.second }
+}
+
+/** O mês de hoje no fuso de quem usa (mes de 1 a 12). */
+export function mesAtual(): { ano: number; mes: number } {
+  const p = partes(agora())
+  return { ano: p.a, mes: p.m }
+}
+
+// Data "YYYY-MM-DD" no fuso de quem usa (o da conta; padrão: hoje). Nunca usar
 // `new Date().toISOString().split("T")[0]` pra "hoje": isso é o dia em UTC, e das
 // 21h à meia-noite (Brasília) já é amanhã — formulário abria com a data de amanhã.
 export function dataLocalISO(d: Date = agora()): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+  const p = partes(d)
+  return `${p.a}-${String(p.m).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`
 }
 
 // Converte data "YYYY-MM-DD" em ISO com hora, encodando o wall-clock LOCAL
@@ -28,8 +62,8 @@ export function dataLocalISO(d: Date = agora()): string {
 // dia+hora). Data passada/futura usa meio-dia (sem horário "real" a capturar).
 export function dataComHora(dateStr: string): string {
   if (dateStr === dataLocalISO()) {
-    const n = agora()
-    return new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate(), n.getHours(), n.getMinutes(), n.getSeconds())).toISOString()
+    const n = partes(agora())
+    return new Date(Date.UTC(n.a, n.m - 1, n.d, n.h, n.min, n.s)).toISOString()
   }
   const [y, m, d] = dateStr.split("-").map(Number)
   return new Date(Date.UTC(y, m - 1, d, 12, 0, 0)).toISOString()
@@ -38,7 +72,8 @@ export function dataComHora(dateStr: string): string {
 // Hora atual "HH:MM" no fuso LOCAL (default do campo de hora). Usa componentes locais,
 // não UTC — é a hora de parede de quem lança.
 export function horaLocalHHMM(d: Date = agora()): string {
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+  const p = partes(d)
+  return `${String(p.h).padStart(2, "0")}:${String(p.min).padStart(2, "0")}`
 }
 
 // Combina data "YYYY-MM-DD" + hora "HH:MM" (escolhidas pelo usuário) num ISO, encodando o
