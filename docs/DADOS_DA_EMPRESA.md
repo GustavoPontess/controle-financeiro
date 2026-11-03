@@ -10,7 +10,7 @@ Hoje (2026-10-27) todos mostram os **mesmos dados de exemplo** (decisão do Gust
 | Razão social | Pontes Tecnologia Ltda. |
 | CNPJ | 00.000.000/0001-00 |
 | Endereço | Rua Exemplo, 123, Sala 4 · Centro · Cidade/UF · CEP 00000-000 |
-| Contato | contato@pontes.exemplo · (00) 0000-0000 |
+| Contato | contato@pontesdev.com.br (real desde 2026-11-02; telefone quando tiver) |
 | Aviso | "Página modelo: dados fictícios." (site) / "E-mail modelo: dados fictícios." (e-mails) |
 
 ## Onde trocar
@@ -30,17 +30,18 @@ Hoje (2026-10-27) todos mostram os **mesmos dados de exemplo** (decisão do Gust
   Privacidade, `src/site/paginas/_rodape.html`).
 
 ### 3. Contato nos Termos de Uso e na Privacidade
-- Arquivo: `controle-financeiro.web/src/telas/Legal.tsx`, constantes `CONTROLADOR` e `CONTATO` no topo (um lugar só;
-  as duas páginas e a seção da transferência internacional leem dali).
+- Arquivo: `controle-financeiro.web/src/telas/Legal.tsx`, constantes `CONTROLADOR`, `PRIVACIDADE` e `CONTATO` no topo
+  (um lugar só; as duas páginas e a seção da transferência internacional leem dali).
+- **2026-11-02:** a Privacidade usa `privacidade@` (canal LGPD) e os Termos `contato@`. Nunca `pontes@` (login do admin).
 - **Feito 2026-10-31:** o contato virou o e-mail (`CONTATO`) e o controlador é Gustavo Pontes, pessoa física; sem
   encarregado (agente de pequeno porte, Resolução CD/ANPD nº 2/2022), o e-mail é o canal.
 - **Quando sair o CNPJ:** trocar `CONTROLADOR` pela razão social e CNPJ, tirar o "pessoa física, enquanto o Pontes não
   tem empresa aberta" e atualizar as datas das duas páginas (`atualizado=`).
 
 ### 4. Remetentes dos e-mails
-- Arquivo: `config/deploy.api.yml`, **linhas 65 a 67** (`SMTP_FROM`, `SMTP_FROM_SEGURANCA`, `SMTP_FROM_PRODUTO`) e o
-  segredo `SMTP_REPLY_TO_PRODUTO` (linha 80).
-- Só muda se o domínio mudar ou se `pontesdev.com.br` passar a receber e-mail (aí o contato pode ser dele).
+- Arquivo: `config/deploy.api.yml` (`SMTP_FROM`, `SMTP_FROM_SEGURANCA`, `SMTP_FROM_PRODUTO`). Sem Reply-To desde
+  2026-11-02: o domínio recebe pelo Email Routing da Cloudflare (repassa pro Gmail da PontesDev; mapa em `E:\VSCode\pontes\servidor\README.md`).
+- Endereço novo que precise receber = regra nova no Email Routing da Cloudflare (pelo chat do servidor).
 
 ### 5. Conformidade
 - `docs/CONFORMIDADE_BR.md`: registrar o controlador e o encarregado de dados.

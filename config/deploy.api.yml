@@ -57,7 +57,8 @@ env:
     APP_URL: https://app.pontesdev.com.br
     CORS_ALLOWED_ORIGINS: https://app.pontesdev.com.br
     # E-mail pelo Resend (domínio pontesdev.com.br verificado, região São Paulo). Remetentes decididos com o
-    # Gustavo (24/10/2026); o domínio não recebe e-mail, por isso naoresponda@ e o Reply-To dos avisos do produto.
+    # Gustavo (24/10/2026). O domínio recebe pelo Email Routing da Cloudflare (repassa pro Gmail da PontesDev); naoresponda@ não existe
+    # lá (é recusado), seguranca@ e pontes@ existem, então quem responde chega. Mapa: E:\VSCode\pontes\servidor\README.md.
     SMTP_HOST: smtp.resend.com
     SMTP_PORT: "587"
     SMTP_SECURITY: starttls
@@ -74,10 +75,8 @@ env:
     - MFA_ENCRYPTION_KEY
     - ADMIN_EMAILS
     - HANGFIRE_ADMIN_EMAILS
-    # A senha do SMTP do Resend é a chave da API ("Sending access", só este domínio). O Reply-To é e-mail
-    # pessoal (dado pessoal): fica fora do repo, vem do secret.
+    # A senha do SMTP do Resend é a chave da API ("Sending access", só este domínio).
     - SMTP_PASS:RESEND_API_KEY
-    - SMTP_REPLY_TO_PRODUTO
     # "Não sou robô" (Cloudflare Turnstile) do login, Pedir acesso e Esqueci a senha. Vazias = desligado.
     - TURNSTILE_SECRET
     - TURNSTILE_SITE_KEY

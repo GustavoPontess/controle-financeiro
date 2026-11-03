@@ -5,8 +5,8 @@ namespace ControleFinanceiro.Api.Tests.Infrastructure;
 
 /// <summary>
 /// De quem cada e-mail sai (decisão do Gustavo, 24/10/2026): automáticos de naoresponda@, alertas de segurança de
-/// seguranca@, avisos do produto de pontes@ com Reply-To numa caixa que recebe. Sem as variáveis novas, tudo cai
-/// no SMTP_FROM (dev com Mailpit continua igual).
+/// seguranca@, avisos do produto de pontes@. Nenhum leva Reply-To (2026-11-02: o domínio recebe pelo Email Routing da Cloudflare, a
+/// resposta vai pro remetente). Sem as variáveis novas, tudo cai no SMTP_FROM (dev com Mailpit continua igual).
 /// </summary>
 public class SmtpRemetentesTests
 {
@@ -23,7 +23,6 @@ public class SmtpRemetentesTests
         ["SMTP_FROM"] = "Pontes <naoresponda@pontesdev.com.br>",
         ["SMTP_FROM_SEGURANCA"] = "Pontes <seguranca@pontesdev.com.br>",
         ["SMTP_FROM_PRODUTO"] = "Pontes <pontes@pontesdev.com.br>",
-        ["SMTP_REPLY_TO_PRODUTO"] = "responde@exemplo.com",
     };
 
     private static readonly MensagemEmail Mensagem = new("Pontes: teste", "texto", "<p>html</p>");
@@ -38,9 +37,6 @@ public class SmtpRemetentesTests
         Assert.Equal("Pontes <naoresponda@pontesdev.com.br>", o.RemetenteDe(TipoRemetente.Automatico));
         Assert.Equal("Pontes <seguranca@pontesdev.com.br>", o.RemetenteDe(TipoRemetente.Seguranca));
         Assert.Equal("Pontes <pontes@pontesdev.com.br>", o.RemetenteDe(TipoRemetente.Produto));
-        Assert.Null(o.ResponderDe(TipoRemetente.Automatico));
-        Assert.Null(o.ResponderDe(TipoRemetente.Seguranca));
-        Assert.Equal("responde@exemplo.com", o.ResponderDe(TipoRemetente.Produto));
     }
 
     [Fact]
@@ -49,22 +45,20 @@ public class SmtpRemetentesTests
         var o = SmtpOpcoes.Ler(Env(new() { ["SMTP_HOST"] = "localhost", ["SMTP_FROM"] = "Pontes <dev@localhost>" }));
 
         Assert.All(Enum.GetValues<TipoRemetente>(), t => Assert.Equal("Pontes <dev@localhost>", o.RemetenteDe(t)));
-        Assert.Null(o.ResponderDe(TipoRemetente.Produto));
     }
 
     [Theory]
-    [InlineData(TipoRemetente.Automatico, "naoresponda@pontesdev.com.br", null)]
-    [InlineData(TipoRemetente.Seguranca, "seguranca@pontesdev.com.br", null)]
-    [InlineData(TipoRemetente.Produto, "pontes@pontesdev.com.br", "responde@exemplo.com")]
-    public void Montar_RemetenteEReplyToDoTipo(TipoRemetente tipo, string de, string? responder)
+    [InlineData(TipoRemetente.Automatico, "naoresponda@pontesdev.com.br")]
+    [InlineData(TipoRemetente.Seguranca, "seguranca@pontesdev.com.br")]
+    [InlineData(TipoRemetente.Produto, "pontes@pontesdev.com.br")]
+    public void Montar_RemetenteDoTipo_SemReplyTo(TipoRemetente tipo, string de)
     {
         var msg = SmtpEmailSender.Montar(SmtpOpcoes.Ler(Env(Producao)), "ana@teste.com", Mensagem, tipo);
 
         Assert.Equal(de, Assert.Single(msg.From.Mailboxes).Address);
         Assert.Equal("Pontes", Assert.Single(msg.From.Mailboxes).Name);
         Assert.Equal("ana@teste.com", Assert.Single(msg.To.Mailboxes).Address);
-        if (responder is null) Assert.Empty(msg.ReplyTo);
-        else Assert.Equal(responder, Assert.Single(msg.ReplyTo.Mailboxes).Address);
+        Assert.Empty(msg.ReplyTo);
         Assert.Equal("Pontes: teste", msg.Subject);
     }
 }

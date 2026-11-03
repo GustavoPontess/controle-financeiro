@@ -9,8 +9,11 @@ import MolduraSite from "../site/MolduraSite"
 import styles from "./Legal.module.css"
 
 const CONTROLADOR = "Gustavo Pontes"
-const CONTATO = "pontes@pontesdev.com.br"
-const Email = () => <a href={`mailto:${CONTATO}`}>{CONTATO}</a>
+// Canal de cada página (2026-11-02): pedido de dados vai pro privacidade@ (canal LGPD); dúvida dos termos, pro contato@.
+// Nunca o pontes@: é o login do admin.
+const PRIVACIDADE = "privacidade@pontesdev.com.br"
+const CONTATO = "contato@pontesdev.com.br"
+const Email = ({ para = PRIVACIDADE }: { para?: string }) => <a href={`mailto:${para}`}>{para}</a>
 
 // Mesmo topo e rodapé do site (MolduraSite); o texto com a fonte e as cores do site.
 function PaginaLegal({ titulo, atualizado, beta, children }: { titulo: string; atualizado: string; beta: ReactNode; children: ReactNode }) {
@@ -65,7 +68,7 @@ export function TermosDeUso() {
         <p className={styles.p}>Estes termos seguem a legislação brasileira, incluindo o Código de Defesa do Consumidor (Lei 8.078/1990) e o Marco Civil da Internet (Lei 12.965/2014).</p>
       </Secao>
       <Secao titulo="Fale com a gente">
-        <div className={styles.contato}>Dúvida sobre estes termos, ou pedido de cancelamento: escreva pra <Email />. O Pontes é mantido por {CONTROLADOR}.</div>
+        <div className={styles.contato}>Dúvida sobre estes termos, ou pedido de cancelamento: escreva pra <Email para={CONTATO} />. O Pontes é mantido por {CONTROLADOR}.</div>
       </Secao>
     </PaginaLegal>
   )
@@ -73,7 +76,7 @@ export function TermosDeUso() {
 
 export function Privacidade() {
   return (
-    <PaginaLegal titulo="Política de Privacidade" atualizado="31 de outubro de 2026"
+    <PaginaLegal titulo="Política de Privacidade" atualizado="2 de novembro de 2026"
       beta="Você foi convidado pessoalmente pra testar o produto. Dados podem ser resetados ou perdidos durante essa fase. Por enquanto, evite depender do app como único registro do seu histórico financeiro.">
       <p className={styles.p}><strong>Seus dados ficam num servidor nos Estados Unidos.</strong> Veja <a href="#onde-ficam">onde ficam e por quê</a>.</p>
       <Secao titulo="O que coletamos">
@@ -96,15 +99,15 @@ export function Privacidade() {
         <p className={styles.p}>Os dados do Pontes ficam num servidor alugado da <strong>Hostinger</strong>, nos <strong>Estados Unidos</strong>. Pela lei isso é uma transferência internacional de dados (LGPD, art. 33), e é assim que ela funciona:</p>
         <ul className={styles.lista}>
           <li><strong>Pra quê:</strong> guardar e processar o que você registra pro app funcionar (salvar lançamentos, calcular saldos, entrar na sua conta). Só isso.</li>
-          <li><strong>Pra onde:</strong> Estados Unidos, no servidor da Hostinger. A Cloudflare, que fica na frente do site, atende pela rede dela em vários países. Os e-mails do Pontes saem pelo Resend, de servidores em São Paulo.</li>
+          <li><strong>Pra onde:</strong> Estados Unidos, no servidor da Hostinger. A Cloudflare, que fica na frente do site, atende pela rede dela em vários países. Os e-mails do Pontes saem pelo Resend, de servidores em São Paulo. Os e-mails que você manda pra gente passam pela Cloudflare, que os entrega na nossa caixa do Gmail (Google).</li>
           <li><strong>Como e por quanto tempo:</strong> os dados viajam sempre criptografados (HTTPS) e ficam no servidor enquanto a sua conta existir. Quando você exclui a conta, eles são apagados de lá, e das cópias de segurança quando elas são renovadas.</li>
-          <li><strong>Por que pode:</strong> a transferência é necessária pra executar o contrato de uso do app que você aceitou (LGPD, art. 33, IX, com o art. 7º, V). Hostinger, Cloudflare e Resend tratam os dados só por nossa conta, como operadores, e não usam pra nada deles.</li>
+          <li><strong>Por que pode:</strong> a transferência é necessária pra executar o contrato de uso do app que você aceitou (LGPD, art. 33, IX, com o art. 7º, V). Hostinger, Cloudflare, Resend e Google (a nossa caixa de e-mail) tratam os dados só por nossa conta, como operadores, e não usam pra nada deles.</li>
           <li><strong>Segurança:</strong> conexão sempre criptografada, banco de dados sem acesso pela internet, servidor acessado só com chave, cópia de segurança diária e senha protegida com Argon2id.</li>
           <li><strong>Seus direitos e quem responde:</strong> os mesmos de "Seus direitos" acima, inclusive reclamar à ANPD. Quem responde pelos seus dados (controlador) é {CONTROLADOR}, pelo e-mail <Email />.</li>
         </ul>
       </Secao>
       <Secao titulo="Com quem compartilhamos">
-        <p className={styles.p}>Com ninguém, exceto: a outra pessoa de um empréstimo vinculado (ela vê o que você registrou sobre a dívida entre vocês dois) e provedores técnicos que hospedam e protegem o app (banco de dados, servidor, envio de e-mail e a Cloudflare, que fica na frente do site contra ataques e, nas telas de entrar, pedir acesso e recuperar senha, confere que quem preenche não é um robô; pra isso ela vê o endereço IP e dados do navegador; ver "Onde seus dados ficam") e o Google, que entrega as fontes do texto (vê o endereço IP e dados do navegador). Eles não usam seus dados pra nada além de manter o Pontes no ar e seguro.</p>
+        <p className={styles.p}>Com ninguém, exceto: a outra pessoa de um empréstimo vinculado (ela vê o que você registrou sobre a dívida entre vocês dois) e provedores técnicos que hospedam e protegem o app (banco de dados, servidor, envio e recebimento de e-mail e a Cloudflare, que fica na frente do site contra ataques e, nas telas de entrar, pedir acesso e recuperar senha, confere que quem preenche não é um robô; pra isso ela vê o endereço IP e dados do navegador; ver "Onde seus dados ficam") e o Google, que entrega as fontes do texto (vê o endereço IP e dados do navegador). Eles não usam seus dados pra nada além de manter o Pontes no ar e seguro.</p>
       </Secao>
       {/* Lista que precisa bater com o CookiesDoApp (API) e com as chaves de localStorage do front. Cookie ou chave nova entra aqui. */}
       <Secao titulo="Cookies e o que fica no seu navegador">

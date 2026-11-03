@@ -15,7 +15,7 @@ public static class DadosEmpresa
         RazaoSocial: "Pontes Tecnologia Ltda.",                                  // EXEMPLO: trocar pela razão social
         Cnpj: "00.000.000/0001-00",                                             // EXEMPLO: trocar pelo CNPJ
         Endereco: "Rua Exemplo, 123, Sala 4 · Centro · Cidade/UF · CEP 00000-000", // EXEMPLO: trocar pelo endereço
-        Contato: "contato@pontes.exemplo · (00) 0000-0000",                     // EXEMPLO: trocar pelo e-mail e telefone
+        Contato: "contato@pontesdev.com.br",                                    // real (recebe pelo Email Routing da Cloudflare); telefone quando tiver
         Site: "app.pontesdev.com.br",
         Aviso: "E-mail modelo: dados fictícios.");                              // APAGAR quando os dados forem reais
 

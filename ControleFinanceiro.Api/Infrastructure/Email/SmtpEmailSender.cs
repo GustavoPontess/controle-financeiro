@@ -60,13 +60,11 @@ public sealed class SmtpEmailSender : IPasswordResetEmailSender, IContaEmailSend
         return ms.ToArray();
     });
 
-    /// <summary>A mensagem pronta (remetente do tipo, Reply-To quando há, corpo com o logo inline).</summary>
+    /// <summary>A mensagem pronta (remetente do tipo, corpo com o logo inline).</summary>
     public static MimeMessage Montar(SmtpOpcoes opcoes, string para, MensagemEmail m, TipoRemetente tipo)
     {
         var msg = new MimeMessage();
         msg.From.Add(MailboxAddress.Parse(opcoes.RemetenteDe(tipo)));
-        if (opcoes.ResponderDe(tipo) is { } responder)
-            msg.ReplyTo.Add(MailboxAddress.Parse(responder));
         msg.To.Add(MailboxAddress.Parse(para));
         msg.Subject = m.Assunto;
         var corpo = new BodyBuilder { TextBody = m.Texto, HtmlBody = m.Html };
