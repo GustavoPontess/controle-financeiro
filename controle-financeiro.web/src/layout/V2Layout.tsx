@@ -109,8 +109,16 @@ export default function V2Layout() {
   // O bloco da pessoa (avatar + nome) abre o menu da conta: e-mail, Configurações, Sair. Vale com o menu
   // aberto, no trilho e na gaveta do celular. Fecha ao clicar fora, no Esc e ao trocar de tela.
   const [menuUsuario, setMenuUsuario] = useState(false)
-  const [dicaBeta, setDicaBeta] = useState(() => { try { return localStorage.getItem(CHAVE_DICA_BETA) !== "1" } catch { return false } })
-  const fecharDicaBeta = () => { setDicaBeta(false); try { localStorage.setItem(CHAVE_DICA_BETA, "1") } catch { /* sem armazenamento */ } }
+  // Dica do Beta: uma vez POR CONTA (a chave leva o id; trocar de conta no mesmo aparelho mostra pra quem não viu).
+  const chaveDicaBeta = usuario ? `${CHAVE_DICA_BETA}:${usuario.id}` : null
+  const [dicaFechadaPara, setDicaFechadaPara] = useState<string | null>(null)
+  const dicaBeta = !!chaveDicaBeta && dicaFechadaPara !== chaveDicaBeta
+    && (() => { try { return localStorage.getItem(chaveDicaBeta) !== "1" } catch { return false } })()
+  const fecharDicaBeta = () => {
+    if (!chaveDicaBeta) return
+    setDicaFechadaPara(chaveDicaBeta)
+    try { localStorage.setItem(chaveDicaBeta, "1") } catch { /* sem armazenamento */ }
+  }
   const [erroConta, setErroConta] = useState<string | null>(null)
   const [trocando, setTrocando] = useState(false)
   const usuarioRef = useRef<HTMLDivElement>(null)

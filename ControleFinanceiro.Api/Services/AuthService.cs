@@ -374,7 +374,9 @@ public class AuthService
     /// só chama isto em Development — nunca expõe em produção.</summary>
     public async Task<List<DevContaDto>> ListarContasDevAsync()
     {
+        // Só quem dá pra entrar (ativo): pedido na fila, recusado ou bloqueado não aparece no atalho.
         var usuarios = await _context.Usuarios
+            .Where(u => u.Status == StatusUsuario.Ativo)
             .OrderBy(u => u.CriadoEm)
             .Select(u => new { u.Email, u.Nome, u.PasswordHash })
             .ToListAsync();

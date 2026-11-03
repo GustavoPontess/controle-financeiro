@@ -57,37 +57,14 @@ public static class DemoSeeder
     }
 
     // ── Admin (/admin do v2): o Gabriel vira admin (SÓ aqui: Development + SEED_DEMO; em produção é ADMIN_EMAILS +
-    //    banco) e o painel ganha gente em todas as situações: três na fila (um de hoje), uma ativa que já entrou,
-    //    uma ativa que nunca entrou, uma bloqueada e uma recusada. Pessoas fictícias, e-mail .test, senha que
-    //    ninguém sabe (não entram; existem só pra tela).
+    //    banco). Sem pessoas fictícias no painel (pedido do Gustavo, 2026-11-03: só as contas essenciais no banco
+    //    local, Gabriel, Marina e a dele); quem pede acesso de verdade no dev aparece na fila.
     private static async Task AdminAsync(AppDbContext context, Guid dev)
     {
-        const string marca = "@admin-demo.test";
-        if (await context.Usuarios.AnyAsync(u => u.Email.EndsWith(marca)))
-            return;
         var gabriel = await context.Usuarios.FirstAsync(u => u.Id == dev);
+        if (gabriel.IsAdmin)
+            return;
         gabriel.IsAdmin = true;
-        var agora = DateTime.UtcNow;
-        Domain.Entities.Usuario Pessoa(string nome, string email, StatusUsuario status, int diasAtras, int? acessoDiasAtras = null) => new()
-        {
-            Id = Guid.NewGuid(),
-            Email = email + marca,
-            Nome = nome,
-            PasswordHash = Infrastructure.Identity.PasswordHasher.HashPassword(Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N")),
-            Status = status,
-            OnboardingConcluido = status == StatusUsuario.Ativo,
-            CriadoEm = agora.AddDays(-diasAtras),
-            AtualizadoEm = agora.AddDays(-diasAtras),
-            UltimoAcessoEm = acessoDiasAtras is int d ? agora.AddDays(-d) : null,
-        };
-        context.Usuarios.AddRange(
-            Pessoa("Helena Prado (teste)", "helena", StatusUsuario.AguardandoAprovacao, 0),
-            Pessoa("Rafael Lima (teste)", "rafael", StatusUsuario.AguardandoAprovacao, 2),
-            Pessoa("Sofia Mendes (teste)", "sofia", StatusUsuario.AguardandoAprovacao, 5),
-            Pessoa("Lucas Ferraz (teste)", "lucas", StatusUsuario.Ativo, 20, acessoDiasAtras: 1),
-            Pessoa("Clara Nunes (teste)", "clara", StatusUsuario.Ativo, 9),
-            Pessoa("Pedro Alves (teste)", "pedro", StatusUsuario.Bloqueado, 30, acessoDiasAtras: 12),
-            Pessoa("Igor Teles (teste)", "igor", StatusUsuario.Recusado, 15));
         await context.SaveChangesAsync();
     }
 
