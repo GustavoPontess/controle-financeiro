@@ -99,7 +99,7 @@ describe("Espaços (Pessoal | família) no menu da conta", () => {
 })
 
 describe("Dica do selo Beta", () => {
-  beforeEach(() => { localStorage.removeItem("v2:dicaBeta") })
+  beforeEach(() => { localStorage.clear() })
 
   it("aparece uma vez; o × some com ela e ela não volta", async () => {
     const { unmount } = renderizar("/dashboard")
@@ -117,6 +117,6 @@ describe("Dica do selo Beta", () => {
     await screen.findByRole("note")
     await userEvent.click(screen.getByRole("button", { name: /^Beta:/ }))
     expect(screen.queryByRole("note")).not.toBeInTheDocument()
-    expect(localStorage.getItem("v2:dicaBeta")).toBe("1")
+    expect(Object.keys(localStorage).some(k => k.startsWith("v2:dicaBeta:") && localStorage.getItem(k) === "1")).toBe(true)
   })
 })
