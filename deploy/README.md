@@ -11,7 +11,7 @@ O Pontes vai pro ar com o **Kamal 2** (v2.12.0). Contrato e plano completos: `E:
 | Segredos | só nos secrets do environment `production` do GitHub; `.kamal/secrets` lê do ambiente, sem valor no repo |
 | Admin | mini-app à parte, servido pelo Caddy do web SÓ no endereço do secret `ADMIN_PATH` (barra + 20 ou mais letras/números/-/_). Sem o secret, o admin não existe em produção. O admin precisa das duas etapas ligadas na conta |
 | Backup | na VPS: cron + antes de todo deploy da API (hook `.kamal/hooks/pre-deploy`); o dado nunca sai pro GitHub |
-| E-mail | Resend por SMTP (`smtp.resend.com:587`, STARTTLS; senha = secret `RESEND_API_KEY`). Automáticos saem de `naoresponda@`, alertas de segurança de `seguranca@`, avisos do produto de `pontes@` com Reply-To (secret `SMTP_REPLY_TO_PRODUTO`) |
+| E-mail | Resend por SMTP (`smtp.resend.com:587`, STARTTLS; senha = secret `RESEND_API_KEY`). Automáticos saem de `naoresponda@`, alertas de segurança de `seguranca@`, avisos do produto de `pontes@`. Sem Reply-To: o domínio recebe pelo Email Routing da Cloudflare (repassa pro Gmail da PontesDev). O secret `SMTP_REPLY_TO_PRODUTO` saiu em 2026-11-02 (pode apagar no GitHub) |
 
 ## Como publicar
 

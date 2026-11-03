@@ -21,7 +21,7 @@ describe("Política de Privacidade", () => {
     for (const item of ["Pra quê:", "Pra onde:", "Como e por quanto tempo:", "Por que pode:", "Segurança:", "Seus direitos e quem responde:"])
       expect(secao.getByText(item)).toBeInTheDocument()
     expect(secao.getByText(/art\. 33, IX, com o art\. 7º, V/)).toBeInTheDocument()
-    expect(secao.getByRole("link", { name: "pontes@pontesdev.com.br" })).toHaveAttribute("href", "mailto:pontes@pontesdev.com.br")
+    expect(secao.getByRole("link", { name: "privacidade@pontesdev.com.br" })).toHaveAttribute("href", "mailto:privacidade@pontesdev.com.br")
   })
 
   it("link direto pra seção (#onde-ficam) rola até ela depois que a página monta", () => {
@@ -38,12 +38,21 @@ describe("Política de Privacidade", () => {
     expect(screen.getAllByRole("link", { name: "ANPD" })[0]).toHaveAttribute("href", "https://www.gov.br/anpd")
     expect(screen.queryByText(/quem te convidou/)).toBeNull()
   })
+
+  it("pedido de dados vai pro canal da LGPD (privacidade@), nunca pro login do admin (pontes@)", () => {
+    const { container } = abrir(<Privacidade />)
+    const links = screen.getAllByRole("link", { name: /@pontesdev\.com\.br$/ })
+    expect(links.length).toBeGreaterThanOrEqual(2)
+    for (const l of links) expect(l).toHaveAttribute("href", "mailto:privacidade@pontesdev.com.br")
+    expect(container.textContent).not.toContain("pontes@pontesdev.com.br")
+  })
 })
 
 describe("Termos de Uso", () => {
-  it("o contato é o e-mail, não mais 'quem te convidou'", () => {
-    abrir(<TermosDeUso />)
-    expect(screen.getByRole("link", { name: "pontes@pontesdev.com.br" })).toBeInTheDocument()
+  it("o contato é o contato@ (nunca o pontes@, que é o login do admin)", () => {
+    const { container } = abrir(<TermosDeUso />)
+    expect(screen.getByRole("link", { name: "contato@pontesdev.com.br" })).toHaveAttribute("href", "mailto:contato@pontesdev.com.br")
+    expect(container.textContent).not.toContain("pontes@pontesdev.com.br")
     expect(screen.queryByText(/quem te convidou/)).toBeNull()
   })
 })

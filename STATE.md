@@ -15,7 +15,11 @@ foco: 'Produção NO AR em https://app.pontesdev.com.br (VPS Hostinger + Kamal 2
 
 ## Em execução
 
-### 📌 2026-11-02 (noite): avisos das Solicitações (branch `feat/solicitacoes-avisos`, sem commit)
+### 📌 2026-11-03: e-mails do domínio no lugar certo (branch `fix/emails-do-dominio`)
+
+Levantamento a pedido do Gustavo: os 8 envios do app já saíam do remetente certo (`naoresponda@` e `seguranca@`), mas o site publicava `pontes@` (login do admin) e o rodapé dos e-mails tinha contato fictício. Feito: `/privacidade` → `privacidade@` e cita o recebimento (Cloudflare + Gmail), `/termos` e rodapé → `contato@`, Reply-To pessoal removido (código, workflow, Kamal), docs. O recebimento saiu do ImprovMX pro Email Routing da Cloudflare pelo chat do servidor (testado em 03/11, ImprovMX excluído). **Depois do deploy:** Gustavo apagar o secret `SMTP_REPLY_TO_PRODUTO` no GitHub. P2 no ROADMAP: caixa é Gmail gratuito (sem DPA).
+
+### 📌 2026-11-02 (noite): avisos das Solicitações (no ar no #413)
 
 De volta ao PC de casa: `main` atualizada (#395 a #412), migrations aplicadas no Postgres local, Docker Desktop configurado pra abrir com o Windows. Feito: notificação no sino quando o admin muda o status de uma solicitação (`SolicitacaoService.AvisoDoStatus`, `TipoNotificacao.SolicitacaoAtualizada` = 15, `CriarUmaVezAsync` com chave por status) e a dica de uma vez sobre o selo Beta (`V2Layout`, `v2:dicaBeta`). Testes: `SolicitacaoServiceTests` (23) e `Espaco.test.tsx`. ROADMAP: bloco das Solicitações reescrito como no ar. **Próxima ação:** Gustavo ver a dica no navegador; commit/PR quando ele pedir.
 
