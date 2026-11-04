@@ -4,7 +4,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
-import puppeteer from 'file:///E:/VSCode/pontes/PontesDev/site-pontes-dev/node_modules/puppeteer-core/lib/esm/puppeteer/puppeteer-core.js'
+import puppeteer from 'file:///E:/VSCode/pontes/PontesDev/site-pontes-dev/node_modules/puppeteer-core/lib/puppeteer/puppeteer-core.js'
 
 const ARTE = path.resolve(import.meta.dirname, 'compartilhar.html')
 const SAIDA = path.resolve(import.meta.dirname, '..', 'public', 'compartilhar.jpg')
