@@ -1,25 +1,20 @@
 <!doctype html>
 <!-- Imagem que aparece quando alguém compartilha o link do app (WhatsApp, Instagram, LinkedIn...): 1200x630, gravada
-     em public/compartilhar.jpg por `node scripts/compartilhar.mjs`. Cores do site público (src/site/site.css).
-     Só a logo, grande, ocupando o QUADRADO do meio (630x630): a prévia do WhatsApp sai pequena e cortada em quadrado
-     pelo centro, e texto ali some. O nome e a frase já saem em texto ao lado (og:title, og:description). -->
+     em public/compartilhar.jpg por `node scripts/compartilhar.mjs`.
+     Feita pra aguentar a miniatura do WhatsApp: ele corta um QUADRADO do meio, reduz pra ~190 px e recomprime em JPEG.
+     Por isso: só a logo, ocupando o quadrado central (630x630); fundo de cor chapada (degradê vira mancha na
+     recompressão); traço grosso (os cabos finos da logo de 2,2 viram serrilhado, aqui 4). Estilo ícone de app. -->
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <style>
   html, body { margin: 0; }
-  body { width: 1200px; height: 630px; overflow: hidden; background: #fffaf6; }
-  .arte { position: relative; height: 100%; display: grid; place-items: center; overflow: hidden; }
-  /* Brilho laranja atrás da logo, como o topo do site. */
-  .arte::before { content: ''; position: absolute; left: 50%; top: 50%; width: 1000px; height: 1000px; transform: translate(-50%, -50%); border-radius: 50%;
-    background: radial-gradient(circle, rgba(255,106,31,.20) 0%, rgba(255,106,31,.07) 40%, rgba(255,106,31,0) 66%); }
-  /* O desenho da logo vai de 8 a 92 (largura) e de 14 a 86 (altura) no viewBox 100: 680px deixa ~570x490 no quadrado. */
-  .arte svg { position: relative; width: 680px; height: 680px; }
+  body { width: 1200px; height: 630px; overflow: hidden; background: #ff4f00; display: grid; place-items: center; }
+  /* O desenho vai de 8 a 92 (largura) e de 14 a 86 (altura) no viewBox 100: 660px deixa ~555x475 no quadrado. */
+  svg { width: 660px; height: 660px; }
 </style>
 </head>
 <body>
-<div class="arte">
-  <svg viewBox="0 0 100 100" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke="#ff4f00"><path d="M27 26L8 50L27 74" stroke-width="8"/><path d="M73 26L92 50L73 74" stroke-width="8"/><path d="M59 14L41 86" stroke-width="8"/><path d="M18 64H82" stroke-width="5"/><path d="M57 22L24 64M55 30L34 64M58 22L80 64M56 30L70 64" stroke-width="2.2"/></svg>
-</div>
+  <svg viewBox="0 0 100 100" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke="#fffaf6"><path d="M27 26L8 50L27 74" stroke-width="9"/><path d="M73 26L92 50L73 74" stroke-width="9"/><path d="M59 14L41 86" stroke-width="9"/><path d="M18 64H82" stroke-width="6"/><path d="M57 22L24 64M58 22L80 64" stroke-width="4"/></svg>
 </body>
 </html>
