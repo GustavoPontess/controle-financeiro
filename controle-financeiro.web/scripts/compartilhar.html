@@ -1,39 +1,25 @@
 <!doctype html>
 <!-- Imagem que aparece quando alguém compartilha o link do app (WhatsApp, Instagram, LinkedIn...): 1200x630, gravada
-     em public/compartilhar.jpg por `node scripts/compartilhar.mjs`. Cores e fonte do site público (src/site/site.css).
-     Tudo que importa fica no QUADRADO do meio (630x630): a prévia pequena do WhatsApp corta a imagem em quadrado pelo
-     centro. O título e a descrição já saem em texto ao lado, então a arte não repete frase longa. -->
+     em public/compartilhar.jpg por `node scripts/compartilhar.mjs`. Cores do site público (src/site/site.css).
+     Só a logo, grande, ocupando o QUADRADO do meio (630x630): a prévia do WhatsApp sai pequena e cortada em quadrado
+     pelo centro, e texto ali some. O nome e a frase já saem em texto ao lado (og:title, og:description). -->
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&display=block">
 <style>
   html, body { margin: 0; }
-  body { width: 1200px; height: 630px; overflow: hidden; background: #fffaf6; color: #22160f; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+  body { width: 1200px; height: 630px; overflow: hidden; background: #fffaf6; }
   .arte { position: relative; height: 100%; display: grid; place-items: center; overflow: hidden; }
-  /* Brilho laranja atrás da marca, como o topo do site. */
-  .arte::before { content: ''; position: absolute; left: 50%; top: 50%; width: 900px; height: 900px; transform: translate(-50%, -50%); border-radius: 50%;
-    background: radial-gradient(circle, rgba(255,106,31,.22) 0%, rgba(255,106,31,.08) 38%, rgba(255,106,31,0) 66%); }
-  /* A ponte: arcos finos de um lado a outro. */
-  .arco { position: absolute; left: 0; top: 0; width: 1200px; height: 630px; }
-  .centro { position: relative; display: flex; flex-direction: column; align-items: center; gap: 22px; }
-  .centro svg { width: 230px; height: 230px; }
-  .nome { font-size: 104px; line-height: 1; font-weight: 800; letter-spacing: -.035em; }
-  .frase { font-size: 30px; font-weight: 600; color: #7a6557; }
-  .frase span { color: #e8590c; }
+  /* Brilho laranja atrás da logo, como o topo do site. */
+  .arte::before { content: ''; position: absolute; left: 50%; top: 50%; width: 1000px; height: 1000px; transform: translate(-50%, -50%); border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,106,31,.20) 0%, rgba(255,106,31,.07) 40%, rgba(255,106,31,0) 66%); }
+  /* O desenho da logo vai de 8 a 92 (largura) e de 14 a 86 (altura) no viewBox 100: 680px deixa ~570x490 no quadrado. */
+  .arte svg { position: relative; width: 680px; height: 680px; }
 </style>
 </head>
 <body>
 <div class="arte">
-  <svg class="arco" viewBox="0 0 1200 630" fill="none" aria-hidden="true">
-    <path d="M-20 560 Q600 -60 1220 560" stroke="#ff6a1f" stroke-opacity=".20" stroke-width="3"/>
-    <path d="M-20 600 Q600 40 1220 600" stroke="#ff6a1f" stroke-opacity=".10" stroke-width="2"/>
-  </svg>
-  <div class="centro">
-    <svg viewBox="0 0 100 100" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke="#ff4f00"><path d="M27 26L8 50L27 74" stroke-width="8"/><path d="M73 26L92 50L73 74" stroke-width="8"/><path d="M59 14L41 86" stroke-width="8"/><path d="M18 64H82" stroke-width="5"/><path d="M57 22L24 64M55 30L34 64M58 22L80 64M56 30L70 64" stroke-width="2.2"/></svg>
-    <div class="nome">Pontes</div>
-    <div class="frase">O dinheiro da casa, <span>decidido junto.</span></div>
-  </div>
+  <svg viewBox="0 0 100 100" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke="#ff4f00"><path d="M27 26L8 50L27 74" stroke-width="8"/><path d="M73 26L92 50L73 74" stroke-width="8"/><path d="M59 14L41 86" stroke-width="8"/><path d="M18 64H82" stroke-width="5"/><path d="M57 22L24 64M55 30L34 64M58 22L80 64M56 30L70 64" stroke-width="2.2"/></svg>
 </div>
 </body>
 </html>
