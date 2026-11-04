@@ -1,4 +1,4 @@
-# Atualizações automáticas de dependência (npm do front, NuGet da API, actions do CI).
+# Atualizações automáticas de dependência (npm do front, NuGet da API, actions do CI, imagens base dos Dockerfiles).
 # Cada PR do Dependabot roda o CI no runner do PC (pontes-local), na mesma fila do deploy. Por isso (2026-10-26,
 # depois da 1ª leva de 5 PRs travar o deploy): UM PR por ecossistema, com tudo junto, e sem atualização GRANDE
 # (versão major quebra código e é feita à mão, quando a gente decidir). Correção de segurança é outro fluxo (alertas
@@ -46,4 +46,39 @@ updates:
     open-pull-requests-limit: 1
     groups:
       actions:
+        patterns: ["*"]
+
+  # Imagens base dos Dockerfiles (2026-11-04, depois da CVE-2026-111497 do Brotli, que entrou corrigida em produção
+  # só porque um deploy saiu depois do patch). Os Dockerfiles levam a versão escrita (`aspnet:10.0.14-alpine3.24`,
+  # `node:22.23.4-alpine`...): tag flutuante o Dependabot não enxerga. Patch de imagem oficial (Microsoft, Node, Caddy)
+  # é correção de segurança na maior parte das vezes, então a espera é menor (3 dias, só pra não pegar imagem
+  # retirada no mesmo dia). O PR mergeado NÃO sobe sozinho: o deploy continua por comando.
+  - package-ecosystem: docker
+    directory: /ControleFinanceiro.Api
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 1
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
+    groups:
+      docker-api:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /controle-financeiro.web
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 1
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
+    groups:
+      docker-web:
         patterns: ["*"]

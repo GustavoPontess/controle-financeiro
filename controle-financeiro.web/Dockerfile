@@ -1,6 +1,8 @@
 # Front v2 de produção: o build estático servido por um Caddy interno (porta 80, sem HTTPS), que também
 # repassa /api e /hangfire pra API. O HTTPS e o domínio ficam no proxy central da VPS (E:\VSCode\pontes\servidor).
-FROM node:22-alpine AS build
+# Imagens base com a versão FIXA (2026-11-04, depois da CVE-2026-111497 do Brotli): tag flutuante só pega o patch
+# quando por acaso sai um deploy. Com a versão escrita, o Dependabot (ecossistema docker) abre PR a cada patch.
+FROM node:22.23.4-alpine AS build
 WORKDIR /app
 
 COPY package*.json ./
@@ -9,7 +11,7 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM caddy:2-alpine AS runtime
+FROM caddy:2.11.7-alpine AS runtime
 COPY Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /app/dist /srv/app
 

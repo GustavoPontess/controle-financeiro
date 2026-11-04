@@ -1,4 +1,7 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
+# Imagens base com a versão FIXA (2026-11-04, depois da CVE-2026-111497 do Brotli): tag flutuante (`10.0-alpine`) só
+# pega o patch quando por acaso sai um deploy, e o Dependabot não enxerga. Com a versão escrita, o Dependabot
+# (`.github/dependabot.yml`, ecossistema docker) abre PR a cada patch; aí é mergear e subir.
+FROM mcr.microsoft.com/dotnet/sdk:10.0.403-alpine3.24 AS build
 WORKDIR /src
 
 COPY ControleFinanceiro.Api.csproj .
@@ -7,7 +10,7 @@ RUN dotnet restore
 COPY . .
 RUN dotnet publish -c Release -o /app/publish --no-restore
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.14-alpine3.24 AS runtime
 WORKDIR /app
 
 # Usuário não-root (hardening pré-beta, 2026-08-18).
