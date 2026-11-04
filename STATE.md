@@ -15,7 +15,11 @@ foco: 'Produção NO AR em https://app.pontesdev.com.br (VPS Hostinger + Kamal 2
 
 ## Em execução
 
-### 📌 2026-11-03: e-mails do domínio no lugar certo (branch `fix/emails-do-dominio`)
+### 📌 2026-11-03 (tarde): contas de teste essenciais + dica do Beta por conta (no ar no #415)
+
+Banco local ficou só com Gabriel Dev, Marina Dev e a conta do Gustavo (9 contas fictícias apagadas: as 7 `@admin-demo.test`, `pessoal@`, `pedido.confirmar@`). `DemoSeeder` não cria mais as pessoas do Admin (só deixa o Gabriel admin); o atalho de login do dev lista só conta ativa. A dica "Achou algo estranho? Toque em Beta." passou a ser lembrada por conta (chave `v2:dicaBeta:<id>`), não por navegador.
+
+### 📌 2026-11-03: e-mails do domínio no lugar certo (no ar no #414)
 
 Levantamento a pedido do Gustavo: os 8 envios do app já saíam do remetente certo (`naoresponda@` e `seguranca@`), mas o site publicava `pontes@` (login do admin) e o rodapé dos e-mails tinha contato fictício. Feito: `/privacidade` → `privacidade@` e cita o recebimento (Cloudflare + Gmail), `/termos` e rodapé → `contato@`, Reply-To pessoal removido (código, workflow, Kamal), docs. O recebimento saiu do ImprovMX pro Email Routing da Cloudflare pelo chat do servidor (testado em 03/11, ImprovMX excluído). **Depois do deploy:** Gustavo apagar o secret `SMTP_REPLY_TO_PRODUTO` no GitHub. P2 no ROADMAP: caixa é Gmail gratuito (sem DPA).
 

@@ -118,4 +118,35 @@ public class ImportacaoNaturezaTests
         var saldoNubank = (await RegrasFinanceiras.SaldoDaContaAsync(c.Ctx, c.Nubank, c.Usuario)).Saldo;
         Assert.Equal(500m + 2610m + 300m - 50m + 800m, saldoNubank); // o saldo continua com tudo
     }
+
+    // Achado 2026-11-03 (Nubank e Inter do Gustavo pela tela): a perna que entrou SOLTA no primeiro extrato (a outra conta
+    // ainda não tinha lançamento) era ignorada no segundo, e as duas ficavam soltas pra sempre.
+    [Fact]
+    public async Task Confirmar_SegundoExtrato_JuntaComAPernaQueEntrouSoltaNoPrimeiro()
+    {
+        var c = Montar();
+        // 1º extrato, Nubank: o Pix vindo do Itaú entra solto (o Itaú ainda não tem nada).
+        await Importar(c, await c.Svc.PreviewAsync(c.Nubank, c.Usuario, "nubank.ofx",
+            Stmt("20261005", "500.00", "N1", "Transferência recebida pelo Pix - GUSTAVO NUNES PONTES - ITAÚ")));
+        Assert.Empty(c.Ctx.Transferencias);
+
+        // 2º extrato, Itaú: a saída do mesmo Pix acha a perna solta.
+        var previa = await c.Svc.PreviewAsync(c.Itau, c.Usuario, "itau.ofx",
+            Stmt("20261005", "-500.00", "I1", "Pix enviado: Gustavo Nunes Pontes"));
+        Assert.Equal("Nubank", previa.Linhas.Single().JuntaComConta);
+        await c.Svc.ConfirmarAsync(new ConfirmarImportacaoDto(c.Itau, previa.Linhas
+            .Select(l => new LinhaImportarDto(l.Data, l.Descricao, l.Valor, l.Tipo, l.FitId, l.CategoriaSugeridaId)).ToList()), c.Usuario);
+        c.Ctx.ChangeTracker.Clear();
+
+        var transferencia = await c.Ctx.Transferencias.SingleAsync();
+        var entrada = await c.Ctx.Transacoes.SingleAsync(t => t.ImportacaoFitId == "N1");
+        var saida = await c.Ctx.Transacoes.SingleAsync(t => t.ImportacaoFitId == "I1");
+        Assert.Equal((c.Itau, c.Nubank, saida.Id, entrada.Id),
+            (transferencia.ContaOrigemId, transferencia.ContaDestinoId, transferencia.TransacaoOrigemId, transferencia.TransacaoDestinoId));
+
+        // 3º extrato com outro Pix igual: a perna já ligada não serve de par de novo.
+        var outra = await c.Svc.PreviewAsync(c.Itau, c.Usuario, "itau2.ofx",
+            Stmt("20261006", "-500.00", "I2", "Pix enviado: Gustavo Nunes Pontes"));
+        Assert.Null(outra.Linhas.Single().JuntaComConta);
+    }
 }

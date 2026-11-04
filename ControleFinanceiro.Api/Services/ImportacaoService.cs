@@ -114,7 +114,10 @@ public class ImportacaoService
         var candidatos = await _context.Transacoes.AsNoTracking()
             .Where(t => t.ContaId != null && t.ContaId != contaId && t.Conta!.UsuarioIdProprietario == usuarioId
                         && t.Conta.Tipo != TipoConta.Caixinha && t.Ativo && t.StatusTransacao == StatusTransacao.Executado
-                        && t.FamiliaId == null && !t.EhTransferencia && !t.EhPagamentoFatura && !t.EhSaldoInicial
+                        && t.FamiliaId == null && !t.EhPagamentoFatura && !t.EhSaldoInicial
+                        // Transferência SOLTA (entrou por extrato sem a outra conta no app) ainda espera o par; a que
+                        // já tem Transferencia ligando as duas pernas, não.
+                        && (!t.EhTransferencia || !_context.Transferencias.Any(tr => tr.TransacaoOrigemId == t.Id || tr.TransacaoDestinoId == t.Id))
                         && !t.EhAjusteReconciliacao && !t.EhPixNoCredito && !t.EhEmprestimo && !t.EhAcerto
                         && t.Data >= de && t.Data <= ate && valores.Contains(t.Valor))
             .Select(t => new ParCandidato(t.Id, t.Conta!.Nome, t.Data, t.Valor, t.Tipo))
