@@ -19,8 +19,8 @@
     <PackageReference Include="DotNetEnv" Version="3.2.0" />
     <PackageReference Include="Konscious.Security.Cryptography.Argon2" Version="1.3.1" />
     <PackageReference Include="MailKit" Version="4.18.2" />
-    <PackageReference Include="SkiaSharp" Version="4.153.1" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.153.1" />
+    <PackageReference Include="SkiaSharp" Version="4.154.0" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.154.0" />
     <!-- Transitivo do MailKit → MimeKit (que puxa 10.0.0). Fixado na versão corrigida dos avisos de DoS
          CVE-2026-84008 (alta) e CVE-2026-70162 (moderada): vulneráveis 10.0.0–10.0.12. Remover quando o
          MimeKit já trouxer 10.0.13+ sozinho (conferir com "dotnet list package" e as opções vulnerable e
