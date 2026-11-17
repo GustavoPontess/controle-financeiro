@@ -557,6 +557,9 @@ public class RecorrenteServiceTests
         var condominio = SeedSubcategoria(ctx, cat, u, "Condomínio");
         var dto = NovaContaFixa(SeedConta(ctx, u));
         dto.CategoriaId = cat; dto.SubcategoriaId = aluguel;
+        // Dia = dia do começo, como a tela manda: senão a edição puxa o começo pro dia 10 do mês e, passado o dia 10,
+        // nasce uma cobrança já feita que a troca seguinte (só as próximas) não alcança.
+        dto.Dia = dto.DataInicio.Day;
         var r = await svc.CriarAsync(dto, u);
 
         dto.SubcategoriaId = condominio;

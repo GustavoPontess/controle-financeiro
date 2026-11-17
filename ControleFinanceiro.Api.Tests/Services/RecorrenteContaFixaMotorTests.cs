@@ -1147,7 +1147,9 @@ public class RecorrenteContaFixaMotorTests
     {
         var ctx = CreateContext();
         var u = SeedUsuario(ctx);
-        var r = SeedRecorrente(ctx, u, SeedConta(ctx, u), dia: 5, inicio: Hoje);
+        // Dia = dia do começo, como a tela manda (na edição o começo vira o dia da cobrança no mês do cadastro;
+        // com Dia 5 e hoje depois do dia 5, o começo voltava pro dia 5 e o fim de ontem passava a valer).
+        var r = SeedRecorrente(ctx, u, SeedConta(ctx, u), dia: Hoje.Day, inicio: Hoje);
         var dto = Dto(r);
         dto.DataFim = Utc(Hoje.AddDays(-1));
         dto.Descricao = "Mudou";

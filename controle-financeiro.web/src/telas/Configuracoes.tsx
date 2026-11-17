@@ -3,10 +3,12 @@
 // confiáveis) · Perfil (nome e nascimento) · Aparência · Dados e privacidade (baixar os dados, excluir a conta).
 import { useState } from "react"
 import { useSearchParams } from "react-router-dom"
-import { ArrowUpRight, FileLock2, Moon, Palette, ShieldCheck, Sun, UserRound } from "lucide-react"
+import { ArrowUpRight, CheckCircle2, Download, FileLock2, Moon, Palette, ShieldCheck, Sun, UserRound } from "lucide-react"
 import { Link } from "react-router-dom"
 import { useTema, type Tema } from "../layout/useTema"
 import Bloco from "../componentes/Bloco"
+import Botao from "../componentes/Botao"
+import { propsDeLinkInterno, useInstalar } from "../pwa/instalar"
 import NavSecoes, { type Secao } from "../componentes/NavSecoes"
 import Segmentos from "../componentes/Segmentos"
 import SegurancaMfa from "./SegurancaMfa"
@@ -60,6 +62,7 @@ function Seguranca() {
 function Aparencia() {
   const [tema, definirTema] = useTema()
   return (
+    <>
     <Bloco titulo="Tema">
       <div className={styles.opcao}>
         <span className={styles.rotulo}>Cores do app neste aparelho</span>
@@ -67,6 +70,32 @@ function Aparencia() {
           { valor: "claro", rotulo: "Claro", icone: <Sun size={14} strokeWidth={2.25} aria-hidden="true" /> },
           { valor: "escuro", rotulo: "Escuro", icone: <Moon size={14} strokeWidth={2.25} aria-hidden="true" /> },
         ]} />
+      </div>
+    </Bloco>
+    <AppNoAparelho />
+    </>
+  )
+}
+
+// Instalar como app (PWA, 2026-11-17): abre em tela cheia, sem a barra de endereço e os menus do navegador.
+function AppNoAparelho() {
+  const [jeito, instalar] = useInstalar()
+  return (
+    <Bloco titulo="App no aparelho">
+      <div className={styles.opcao}>
+        {jeito === "instalado" && (
+          <span className={styles.rotulo}><CheckCircle2 size={16} strokeWidth={2.25} aria-hidden="true" className={styles.instalado} /> Instalado neste aparelho</span>
+        )}
+        {jeito === "botao" && <>
+          <span className={styles.rotulo}>Abrir o Pontes como app, em tela cheia</span>
+          <Botao variante="primario" icone={<Download size={16} strokeWidth={2.25} aria-hidden="true" />} onClick={() => void instalar()}>Instalar</Botao>
+        </>}
+        {jeito === "iphone" && (
+          <span className={styles.rotulo}>No Safari, toque em Compartilhar e depois em Adicionar à Tela de Início, com Abrir como App Web ligado.</span>
+        )}
+        {jeito === "menu" && (
+          <span className={styles.rotulo}>No menu do navegador, escolha Instalar app ou Adicionar à tela inicial.</span>
+        )}
       </div>
     </Bloco>
   )
@@ -77,8 +106,8 @@ function Privacidade() {
     <>
       <Bloco titulo="Documentos">
         <ul className={styles.links}>
-          <li><Link to="/privacidade" target="_blank" rel="noreferrer">Política de Privacidade <ArrowUpRight size={14} strokeWidth={2.25} aria-hidden="true" /></Link></li>
-          <li><Link to="/termos-de-uso" target="_blank" rel="noreferrer">Termos de Uso <ArrowUpRight size={14} strokeWidth={2.25} aria-hidden="true" /></Link></li>
+          <li><Link to="/privacidade" {...propsDeLinkInterno()}>Política de Privacidade <ArrowUpRight size={14} strokeWidth={2.25} aria-hidden="true" /></Link></li>
+          <li><Link to="/termos-de-uso" {...propsDeLinkInterno()}>Termos de Uso <ArrowUpRight size={14} strokeWidth={2.25} aria-hidden="true" /></Link></li>
         </ul>
       </Bloco>
       <DadosConta />

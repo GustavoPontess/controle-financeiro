@@ -50,6 +50,9 @@
 	@site path /site/*
 	header @site Cache-Control "public, max-age=604800"
 	header ?Cache-Control "no-cache"
+	# App instalável (PWA): o manifesto com o tipo certo. O /sw.js cai no "no-cache" acima (versão nova chega na hora).
+	@manifesto path /manifest.webmanifest
+	header @manifesto Content-Type "application/manifest+json"
 
 	handle {
 		try_files {path} /index.html

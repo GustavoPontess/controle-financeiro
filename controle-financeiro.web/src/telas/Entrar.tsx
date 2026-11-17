@@ -13,6 +13,7 @@ import mfaService from "../services/mfaService"
 import { api, codigoDoErro, mensagemDeErro, sessaoCaiuPorInatividade } from "../api/cliente"
 import { useAuth } from "../auth/useAuth"
 import VerificacaoHumana, { useVerificacaoHumana } from "../componentes/VerificacaoHumana"
+import { propsDeLinkInterno } from "../pwa/instalar"
 
 // Senha padrão das contas de TESTE do seeder de dev (nunca uma senha real; não existe em produção).
 const DEV_SENHA = "Dev@123456"
@@ -331,8 +332,8 @@ export default function Entrar() {
       )}
 
       <p className="rodape-a">
-        Ao entrar você concorda com os <Link to="/termos-de-uso" target="_blank" rel="noreferrer">Termos de Uso</Link> e a{" "}
-        <Link to="/privacidade" target="_blank" rel="noreferrer">Política de Privacidade</Link>.
+        Ao entrar você concorda com os <Link to="/termos-de-uso" {...propsDeLinkInterno()}>Termos de Uso</Link> e a{" "}
+        <Link to="/privacidade" {...propsDeLinkInterno()}>Política de Privacidade</Link>.
       </p>
 
       {/* DEV: painel único (estados da tela + contas de teste do banco local), nunca em produção. */}

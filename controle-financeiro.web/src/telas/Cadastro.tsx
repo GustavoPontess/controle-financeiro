@@ -14,6 +14,7 @@ import { useAuth } from "../auth/useAuth"
 import { ehErroDaSenha, SENHA_MAX, senhaValida } from "../dominio/senha"
 import VerificacaoHumana, { useVerificacaoHumana } from "../componentes/VerificacaoHumana"
 import { dataLocalISO } from "../utils/dateTime"
+import { propsDeLinkInterno } from "../pwa/instalar"
 
 const MAX_NOME = 200
 const MAX_EMAIL = 255
@@ -121,13 +122,13 @@ export default function Cadastro() {
             <label className="marcar consentimento">
               <input type="checkbox" checked={aceita} aria-invalid={erros.privacidade ? true : undefined}
                 onChange={(e) => { setAceita(e.target.checked); limpa("privacidade") }} />
-              <span>Li e aceito a <Link to="/privacidade" target="_blank" rel="noreferrer">Política de Privacidade</Link>.</span>
+              <span>Li e aceito a <Link to="/privacidade" {...propsDeLinkInterno()}>Política de Privacidade</Link>.</span>
               {erros.privacidade && <span className="erro">{erros.privacidade}</span>}
             </label>
             {verif.chave && <VerificacaoHumana chave={verif.chave} rodada={verif.rodada} aoMudar={verif.setToken} />}
             <button className="btn btn--acc btn-cheio" type="submit" disabled={enviando}>{enviando ? "Enviando…" : "Enviar pedido"}</button>
           </form>
-          <p className="rodape-a">Ao pedir acesso você concorda com os <Link to="/termos-de-uso" target="_blank" rel="noreferrer">Termos de Uso</Link>.</p>
+          <p className="rodape-a">Ao pedir acesso você concorda com os <Link to="/termos-de-uso" {...propsDeLinkInterno()}>Termos de Uso</Link>.</p>
         </section>
       )}
       {import.meta.env.DEV && <BarraDev grupos={ESTADOS_ACESSO} atual={enviado ? "enviado" : "pedir"} />}
