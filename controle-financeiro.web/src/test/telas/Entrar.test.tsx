@@ -113,7 +113,7 @@ describe("Entrar (beta fechado)", () => {
     } finally { chave.valor = null; delete window.turnstile }
   })
 
-  it("errou de novo: a caixinha renova e o envio espera o token novo (não trava em 'Confirme que você não é um robô')", async () => {
+  it("errou de novo: a caixinha renova e o Entrar fica bloqueado até o token novo chegar (sem clique repetido)", async () => {
     chave.valor = "chave-do-site"
     turnstileFalso()
     try {
@@ -131,7 +131,9 @@ describe("Entrar (beta fechado)", () => {
       expect(entrar).toHaveBeenLastCalledWith("ana@teste.com", "uma senha errada", false, "tk-1")
       expect(window.turnstile!.reset).toHaveBeenCalledWith("w1") // renova a mesma caixinha, não desenha outra
 
-      // Tenta logo de novo, antes do token novo chegar: espera ele e manda (nada de "Confirme que você não é um robô").
+      // Antes do token novo chegar o botão fica bloqueado; chegou, libera e manda o novo.
+      expect(screen.getByRole("button", { name: /Entrar/ })).toBeDisabled()
+      await waitFor(() => expect(screen.getByRole("button", { name: /Entrar/ })).toBeEnabled())
       await userEvent.click(screen.getByRole("button", { name: /Entrar/ }))
       await waitFor(() => expect(entrar).toHaveBeenCalledTimes(3))
       expect(entrar).toHaveBeenLastCalledWith("ana@teste.com", "uma senha errada", false, "tk-2")

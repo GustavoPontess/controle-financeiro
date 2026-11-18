@@ -89,7 +89,7 @@ function TelaDoLink({ textos, acao }: { textos: Textos; acao: (token: string) =>
         <section data-passo="pedir" className="ativo">
           <h1>{textos.titulo}</h1>
           <p className="sub">{textos.sub}</p>
-          {erro && <p className="erro" role="alert">{erro}</p>}
+          {erro && <p className={`erro ${css.erroTopo}`} role="alert">{erro}</p>}
           <button className="btn btn--acc btn-cheio" type="button" disabled={enviando} onClick={() => void fazer()}>
             {enviando ? textos.enviando : textos.botao}
           </button>
