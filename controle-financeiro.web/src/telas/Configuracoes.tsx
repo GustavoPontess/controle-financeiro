@@ -1,14 +1,15 @@
 // Configurações do v2 — separadas por assunto, como a Conta do Google: menu de seções à esquerda (`?s=`), o
 // conteúdo da seção à direita. No celular, primeiro só o menu; tocou numa seção, só ela (a seta do topo volta). Segurança e login (senha, verificação em duas etapas, sessões, dispositivos
-// confiáveis) · Perfil (nome e nascimento) · Aparência · Dados e privacidade (baixar os dados, excluir a conta).
+// confiáveis) · Perfil (nome e nascimento) · Aparência · App no celular (instalar) · Dados e privacidade (baixar os dados,
+// excluir a conta).
 import { useState } from "react"
 import { useSearchParams } from "react-router-dom"
-import { ArrowUpRight, CheckCircle2, Download, FileLock2, Moon, Palette, ShieldCheck, Sun, UserRound } from "lucide-react"
+import { ArrowUpRight, FileLock2, Moon, Palette, ShieldCheck, Smartphone, Sun, UserRound } from "lucide-react"
 import { Link } from "react-router-dom"
 import { useTema, type Tema } from "../layout/useTema"
 import Bloco from "../componentes/Bloco"
-import Botao from "../componentes/Botao"
-import { propsDeLinkInterno, useInstalar } from "../pwa/instalar"
+import { propsDeLinkInterno } from "../pwa/instalar"
+import AppNoCelular from "./AppNoCelular"
 import NavSecoes, { type Secao } from "../componentes/NavSecoes"
 import Segmentos from "../componentes/Segmentos"
 import SegurancaMfa from "./SegurancaMfa"
@@ -18,11 +19,12 @@ import Perfil from "./Perfil"
 import DadosConta from "./DadosConta"
 import styles from "./Configuracoes.module.css"
 
-type IdSecao = "seguranca" | "perfil" | "aparencia" | "privacidade"
+type IdSecao = "seguranca" | "perfil" | "aparencia" | "app" | "privacidade"
 const SECOES: Secao<IdSecao>[] = [
   { id: "seguranca", rotulo: "Segurança e login", icone: ShieldCheck },
   { id: "perfil", rotulo: "Perfil", icone: UserRound },
   { id: "aparencia", rotulo: "Aparência", icone: Palette },
+  { id: "app", rotulo: "App no celular", icone: Smartphone },
   { id: "privacidade", rotulo: "Dados e privacidade", icone: FileLock2 },
 ]
 
@@ -41,6 +43,7 @@ export default function Configuracoes() {
         {ativa.id === "seguranca" && <Seguranca />}
         {ativa.id === "perfil" && <Perfil />}
         {ativa.id === "aparencia" && <Aparencia />}
+        {ativa.id === "app" && <AppNoCelular />}
         {ativa.id === "privacidade" && <Privacidade />}
       </section>
     </div>
@@ -62,7 +65,6 @@ function Seguranca() {
 function Aparencia() {
   const [tema, definirTema] = useTema()
   return (
-    <>
     <Bloco titulo="Tema">
       <div className={styles.opcao}>
         <span className={styles.rotulo}>Cores do app neste aparelho</span>
@@ -70,32 +72,6 @@ function Aparencia() {
           { valor: "claro", rotulo: "Claro", icone: <Sun size={14} strokeWidth={2.25} aria-hidden="true" /> },
           { valor: "escuro", rotulo: "Escuro", icone: <Moon size={14} strokeWidth={2.25} aria-hidden="true" /> },
         ]} />
-      </div>
-    </Bloco>
-    <AppNoAparelho />
-    </>
-  )
-}
-
-// Instalar como app (PWA, 2026-11-17): abre em tela cheia, sem a barra de endereço e os menus do navegador.
-function AppNoAparelho() {
-  const [jeito, instalar] = useInstalar()
-  return (
-    <Bloco titulo="App no aparelho">
-      <div className={styles.opcao}>
-        {jeito === "instalado" && (
-          <span className={styles.rotulo}><CheckCircle2 size={16} strokeWidth={2.25} aria-hidden="true" className={styles.instalado} /> Instalado neste aparelho</span>
-        )}
-        {jeito === "botao" && <>
-          <span className={styles.rotulo}>Abrir o Pontes como app, em tela cheia</span>
-          <Botao variante="primario" icone={<Download size={16} strokeWidth={2.25} aria-hidden="true" />} onClick={() => void instalar()}>Instalar</Botao>
-        </>}
-        {jeito === "iphone" && (
-          <span className={styles.rotulo}>No Safari, toque em Compartilhar e depois em Adicionar à Tela de Início, com Abrir como App Web ligado.</span>
-        )}
-        {jeito === "menu" && (
-          <span className={styles.rotulo}>No menu do navegador, escolha Instalar app ou Adicionar à tela inicial.</span>
-        )}
       </div>
     </Bloco>
   )

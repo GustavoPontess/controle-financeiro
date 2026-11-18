@@ -6,11 +6,13 @@
 // e as ações (Configurações, convites, Sair). Cada conta tem as suas famílias.
 // Dentro de uma família (/familias/:id/...) o menu é o da família: Visão geral, Despesas compartilhadas,
 // Entre vocês · Membros, Dependentes, Regras. O que é da pessoa fica no espaço pessoal.
+// Celular (modo app, 2026-11-17): barra de atalhos embaixo (Visão geral, Transações, Nova, Orçamento, Menu; na família, os
+// dela), igual no navegador e no app instalado. Com ela, o topo perde o "abrir menu" e o "Nova transação".
 import { useEffect, useRef, useState } from "react"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import {
   ArrowLeft, ArrowLeftRight, BarChart3, Bell, Check, ChevronsUpDown, CreditCard, Handshake, Landmark, LayoutDashboard, LogOut, Mail, MessageCircleMore,
-  PanelLeftClose, PanelLeftOpen, Plus, Receipt, Repeat, Scale, Settings, SlidersHorizontal, Tags, Target, Upload, Users, Eye, EyeOff, Wallet, X,
+  Menu as IconeMenu, PanelLeftClose, PanelLeftOpen, Plus, Receipt, Repeat, Scale, Settings, SlidersHorizontal, Tags, Target, Upload, Users, Eye, EyeOff, Wallet, X,
 } from "lucide-react"
 import Avatar, { urlFoto } from "../componentes/Avatar"
 import Botao from "../componentes/Botao"
@@ -165,6 +167,15 @@ export default function V2Layout() {
     </NavLink>
   )
   const principal = familiaId ? FAMILIA(familiaId) : PRINCIPAL
+  const novaTransacao = () => navigate("/transacoes/nova", { state: { voltarPara: pathname === "/transacoes/nova" ? "/transacoes" : pathname } })
+  // Atalhos do celular: Visão geral, Transações, Nova, Orçamento (na família: Entre vocês), Menu.
+  const atalhos = familiaId ? [principal[0], principal[1], principal[3]] : [PRINCIPAL[0], PRINCIPAL[2], PRINCIPAL[1]]
+  const Atalho = ({ para, rotulo, icone: Icone, exato }: ItemMenu) => (
+    <NavLink to={para} end={exato} className={({ isActive }) => `${styles.atalho} ${isActive ? styles.atalhoAtivo : ""}`}>
+      <Icone size={22} strokeWidth={2} aria-hidden="true" />
+      <span>{rotulo}</span>
+    </NavLink>
+  )
   const gerenciar = familiaId ? FAMILIA_GERENCIAR(familiaId) : GERENCIAR
 
   return (
@@ -292,7 +303,7 @@ export default function V2Layout() {
               {naoLidas > 0 && <span className={styles.sinoContador} aria-hidden="true">{naoLidas > 99 ? "99+" : naoLidas}</span>}
               {painelNotif && <PainelNotificacoes voltarPara={pathname} aoFechar={() => setPainelNotif(false)} />}
             </span>
-            <Botao variante="primario" compactoNoCelular onClick={() => navigate("/transacoes/nova", { state: { voltarPara: pathname === "/transacoes/nova" ? "/transacoes" : pathname } })}
+            <Botao variante="primario" compactoNoCelular className={styles.novaTopo} onClick={novaTransacao}
               icone={<Plus size={16} strokeWidth={2.5} aria-hidden="true" />}>Nova transação</Botao>
           </div>
         </header>
@@ -301,6 +312,18 @@ export default function V2Layout() {
           {usuario && <AvisoDeFuso usuarioId={usuario.id} fusoDaConta={usuario.fusoHorario} aoMudar={recarregar} />}
           <Outlet />
         </main>
+        <nav className={styles.atalhos} aria-label="Atalhos" data-nao-imprime>
+            <Atalho {...atalhos[0]} />
+            <Atalho {...atalhos[1]} />
+            <button type="button" className={styles.atalhoNova} aria-label="Nova transação" onClick={novaTransacao}>
+              <span className={styles.atalhoNovaBola}><Plus size={24} strokeWidth={2.5} aria-hidden="true" /></span>
+            </button>
+            <Atalho {...atalhos[2]} />
+            <button type="button" className={styles.atalho} aria-expanded={menuAberto} onClick={() => setMenuAberto(true)}>
+              <IconeMenu size={22} strokeWidth={2} aria-hidden="true" />
+              <span>Menu</span>
+            </button>
+        </nav>
         <Apontar />
       </div>
     </div>

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="Pontes: finanças pessoais e familiares." />
     <!-- App instalável (PWA): manifesto de src/pwa/manifesto.ts (vite.config.ts), ícones em public/icones/. Abre em tela
          cheia, sem barra do navegador; a cor da barra do celular segue o tema (src/pwa/registrar.ts). -->
@@ -35,15 +35,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <title>Pontes</title>
     <script>
-      // Tema antes do 1º desenho (sem piscar claro pra quem usa escuro). Mesma regra do useTema:
-      // escolha salva, senão o sistema. O CSP do Caddyfile libera este script pelo hash (scripts/conferirCspInline.mjs).
+      // Tema antes do 1º desenho (sem piscar claro pra quem escolheu escuro). Mesma regra do useTema:
+      // escolha salva, senão claro (nunca segue o sistema, decisão do Gustavo 2026-11-17).
+      // O CSP do Caddyfile libera este script pelo hash (scripts/conferirCspInline.mjs).
       (function () {
         var t = "claro"
         try {
           var s = localStorage.getItem("v2:tema")
-          // Site público e telas de acesso abrem no claro sem escolha salva (decisão do Gustavo); o app segue o sistema.
-          var publica = /^\/($|recursos|casa|contadores|planos|seguranca|sobre|entrar|cadastro|redefinir-senha|confirmar-email|nao-fui-eu|nao-pedi-senha|proteja-sua-conta|termos-de-uso|privacidade)/.test(location.pathname)
-          t = s === "claro" || s === "escuro" ? s : (!publica && matchMedia("(prefers-color-scheme: dark)").matches ? "escuro" : "claro")
+          if (s === "escuro") t = s
         } catch (e) {}
         document.documentElement.dataset.tema = t
       })()
