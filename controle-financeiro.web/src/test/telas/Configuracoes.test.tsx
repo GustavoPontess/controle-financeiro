@@ -36,6 +36,7 @@ describe("Configuracoes — separada por assunto", () => {
   it("?s= abre direto a seção; seção que não existe cai na primeira", () => {
     renderizar("/configuracoes?s=aparencia")
     expect(screen.getByRole("radiogroup", { name: "Tema" })).toBeInTheDocument()
+    expect(screen.queryByText("Instalar")).not.toBeInTheDocument()
   })
 
   it("trocar senha: valida antes de enviar e manda 'sair dos outros' marcado", async () => {

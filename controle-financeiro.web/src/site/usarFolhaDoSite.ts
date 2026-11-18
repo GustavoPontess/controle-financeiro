@@ -2,7 +2,7 @@
 // a folha do site (site.css, carregada como arquivo pra não vazar nas telas do app logado) e a classe .js no <html>.
 // A fonte Plus Jakarta Sans e o preload desta folha já vêm no index.html (vite.config.ts, preloadDoSite), pra não
 // entrarem na fila depois do JS.
-// Sem tema escolhido, a tela pública abre no claro (decisão do Gustavo; o app logado segue o sistema). Ao sair, tudo
+// Sem tema escolhido, a tela pública abre no claro (decisão do Gustavo; desde 2026-11-17 o app logado também). Ao sair, tudo
 // volta como estava.
 import { useLayoutEffect } from "react"
 import folha from "./site.css?url"

@@ -1,4 +1,5 @@
-// Tema do front v2 (claro/escuro): lembrado por dispositivo; sem escolha, segue o sistema.
+// Tema do front v2 (claro/escuro): lembrado por dispositivo; sem escolha, CLARO. Nunca segue o sistema (decisão do
+// Gustavo 2026-11-17: o celular trocava sozinho pro escuro de noite).
 // Estado compartilhado (mesmo padrão do "olho"): a escolha mora em Configurações e o documento inteiro
 // (tokens no :root) reage na hora, de qualquer tela.
 import { useSyncExternalStore } from "react"
@@ -9,9 +10,9 @@ const CHAVE = "v2:tema"
 function inicial(): Tema {
   try {
     const salvo = localStorage.getItem(CHAVE)
-    if (salvo === "claro" || salvo === "escuro") return salvo
-  } catch { /* privado/bloqueado → segue o sistema */ }
-  return typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "escuro" : "claro"
+    if (salvo === "escuro") return salvo
+  } catch { /* privado/bloqueado → claro */ }
+  return "claro"
 }
 
 let tema: Tema = inicial()

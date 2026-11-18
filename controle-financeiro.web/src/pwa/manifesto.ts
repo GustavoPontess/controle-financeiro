@@ -1,6 +1,7 @@
 // App instalável (PWA, 2026-11-17): nome, ícone e cores que o celular e o computador mostram ao instalar o Pontes.
 // O vite.config.ts publica este JSON como /manifest.webmanifest (no dev, servido na hora; no build, arquivo no dist).
-// Ícones: public/icones/, gerados do public/icon.svg por PontesDev/base/ferramentas/icones-app.mjs (fundo #110D0B).
+// Ícones: public/icones/, gerados do public/icon.svg por PontesDev/base/ferramentas/icones-app.mjs com fundo claro
+// (#FBF7F3, pedido do Gustavo 2026-11-17); o do iPhone sai de uma cópia do SVG com folga (viewBox -12 -12 124 124).
 //
 // Pra abrir SEM a barra de endereço e os menus do navegador (o que incomodava no CRM):
 //  - display "standalone" e scope "/": toda tela do app fica dentro do app instalado;
@@ -26,8 +27,9 @@ export function manifesto() {
     scope: "/",
     display: "standalone",
     display_override: ["standalone"],
-    background_color: COR_DA_BARRA.escuro,
-    theme_color: COR_DA_BARRA.escuro,
+    // Tela de abertura do app (Android) no claro, igual ao ícone; a barra do celular segue o tema pelo theme-color.
+    background_color: COR_DA_BARRA.claro,
+    theme_color: COR_DA_BARRA.claro,
     categories: ["finance"],
     icons: [
       { src: "/icones/icone-192.png", sizes: "192x192", type: "image/png", purpose: "any" },

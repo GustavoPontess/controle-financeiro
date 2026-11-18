@@ -7,8 +7,6 @@
 .opcao { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .rotulo { font-size: var(--v2-fs-md); font-weight: 500; }
 
-.instalado { vertical-align: -3px; margin-right: 6px; color: var(--v2-positivo); }
-
 .links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .links li + li { border-top: 1px solid var(--v2-linha); }
 .links a { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; font-size: var(--v2-fs-md); font-weight: 500; color: var(--v2-texto); text-decoration: none; }

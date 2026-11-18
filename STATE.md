@@ -15,7 +15,10 @@ foco: 'Produção NO AR em https://app.pontesdev.com.br (VPS Hostinger + Kamal 2
 
 ## Em execução
 
-### 📌 2026-11-17: app instalável (PWA) (branch `feat/app-instalavel`)
+### 📌 2026-11-17 (noite): modo app no celular (branch `feat/app-celular`)
+Pedidos do Gustavo depois de instalar no iPhone: ícone de fundo claro (`#FBF7F3`, o do iPhone com folga), Configurações › **App no celular** (seção própria: passo a passo do Safari com os botões como aparecem lá, botão Instalar no Android, "Instalado"), **barra de atalhos embaixo no celular** (Visão geral, Transações, Nova, Orçamento, Menu; na família, os dela), igual no navegador e no app instalado, com o topo sem ☰ e sem "Nova transação"; margens da ilha/barra de gestos (`viewport-fit=cover` + `env(safe-area-inset-*)`). **Tema: sem escolha salva é sempre claro, nunca segue o sistema** ("trocando sozinho me dá ódio"); hash novo no CSP do Caddyfile. Logo `<P>` antiga (`Logo.tsx`/`LogoMark.tsx`, sem uso) apagada. Separado da branch do Importar; o painel DEV em toda tela ficou lá (depende do "sem sair por inatividade"). Falta: conferir no iPhone instalado.
+
+### 📌 2026-11-17: app instalável (PWA) (branch `feat/app-instalavel`) (no ar no #424)
 Pedido do Gustavo: "adicionar à tela inicial e rodar como app igual o CRM, mas sem a barra do navegador ao navegar". `src/pwa/` (manifesto, `sw.js` que nunca guarda `/api`, registrar, instalar), ícones em `public/icones/`, plugin `appInstalavel` no `vite.config.ts`, metas do iPhone no `index.html`, Caddy com o tipo do manifesto. Configurações › Aparência ganhou "App no aparelho" (botão Instalar no Android, instrução do iPhone com "Abrir como App Web" ligado). Links internos não abrem aba nova quando instalado (aba nova no app = navegador com barra). Separado da branch do Importar pra subir sozinho. Falta: instalar no celular e conferir.
 
 ### 📌 2026-11-03: e-mails do domínio no lugar certo (branch `fix/emails-do-dominio`)
