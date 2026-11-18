@@ -255,7 +255,7 @@ export default function Entrar() {
           <p className="sub">Ainda não tem acesso? <Link to="/cadastro">Pedir acesso</Link></p>
           {avisoExcluida}
           <form className="form-a" onSubmit={enviar} noValidate>
-            {erro && <p className="erro" role="alert">{erro}</p>}
+            {erro && <p className={`erro ${css.erroTopo}`} role="alert">{erro}</p>}
             {!contaSelecionada && (
               <CampoAcesso rotulo="E-mail" erro={erros.email} type="email" name="email" autoComplete="email" value={email}
                 onChange={(e) => { setEmail(e.target.value); setErros((p) => ({ ...p, email: undefined })) }} />
@@ -267,7 +267,7 @@ export default function Entrar() {
               <button type="button" className="link-a" onClick={() => { setEsqueci(true); limparErros() }}>Esqueci a senha</button>
             </div>
             {pedirVerificacao && verif.chave && <VerificacaoHumana chave={verif.chave} rodada={verif.rodada} aoMudar={verif.setToken} />}
-            <button className="btn btn--acc btn-cheio" type="submit" disabled={enviando || espera > 0}>
+            <button className="btn btn--acc btn-cheio" type="submit" disabled={enviando || espera > 0 || (pedirVerificacao && !!verif.chave && !verif.token)}>
               {espera > 0 ? `Tente de novo em ${Math.floor(espera / 60)}:${String(espera % 60).padStart(2, "0")}` : enviando ? "Entrando…" : <>Entrar <Seta /></>}
             </button>
           </form>
@@ -296,11 +296,11 @@ export default function Entrar() {
           <h1>Recuperar senha</h1>
           <p className="sub">Informe seu e-mail. Se existir uma conta, enviamos um link pra criar uma senha nova.</p>
           <form className="form-a" onSubmit={enviarEsqueci} noValidate>
-            {erro && <p className="erro" role="alert">{erro}</p>}
+            {erro && <p className={`erro ${css.erroTopo}`} role="alert">{erro}</p>}
             <CampoAcesso rotulo="E-mail" erro={erros.email} type="email" name="email" autoComplete="email" autoFocus value={email}
               onChange={(e) => { setEmail(e.target.value); setErros((p) => ({ ...p, email: undefined })) }} />
             {verif.chave && <VerificacaoHumana chave={verif.chave} rodada={verif.rodada} aoMudar={verif.setToken} />}
-            <button className="btn btn--acc btn-cheio" type="submit" disabled={enviando}>{enviando ? "Enviando…" : "Enviar link"}</button>
+            <button className="btn btn--acc btn-cheio" type="submit" disabled={enviando || (!!verif.chave && !verif.token)}>{enviando ? "Enviando…" : "Enviar link"}</button>
           </form>
         </section>
       )}
@@ -320,7 +320,7 @@ export default function Entrar() {
           <h1>Reativar conta</h1>
           <p className="sub">Sua conta está marcada pra exclusão. Você ainda pode reativá-la.</p>
           <div className="form-a">
-            {reativarErro && <p className="erro" role="alert">{reativarErro}</p>}
+            {reativarErro && <p className={`erro ${css.erroTopo}`} role="alert">{reativarErro}</p>}
             <p className="aviso-a">
               {marcada?.dias != null
                 ? `Faltam ${marcada.dias} ${marcada.dias === 1 ? "dia" : "dias"} pra remoção permanente. Reative pra voltar a usar a sua conta.`

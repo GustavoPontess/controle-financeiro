@@ -103,7 +103,7 @@ export default function Cadastro() {
           <h1>Pedir acesso</h1>
           <p className="sub">O Pontes está em beta fechado: você recebe acesso assim que o pedido for aprovado. Já tem conta? <Link to="/entrar">Entrar</Link></p>
           <form className="form-a" onSubmit={enviar} noValidate>
-            {erro && <p className="erro" role="alert">{erro}</p>}
+            {erro && <p className={`erro ${css.erroTopo}`} role="alert">{erro}</p>}
             <CampoAcesso rotulo="Nome completo" erro={erros.nome} name="nome" autoComplete="name" maxLength={MAX_NOME} value={nome} autoFocus
               onChange={(e) => { setNome(e.target.value); limpa("nome") }} />
             <CampoAcesso rotulo="E-mail" erro={erros.email} type="email" name="email" autoComplete="email" maxLength={MAX_EMAIL} value={email}
@@ -126,7 +126,7 @@ export default function Cadastro() {
               {erros.privacidade && <span className="erro">{erros.privacidade}</span>}
             </label>
             {verif.chave && <VerificacaoHumana chave={verif.chave} rodada={verif.rodada} aoMudar={verif.setToken} />}
-            <button className="btn btn--acc btn-cheio" type="submit" disabled={enviando}>{enviando ? "Enviando…" : "Enviar pedido"}</button>
+            <button className="btn btn--acc btn-cheio" type="submit" disabled={enviando || (!!verif.chave && !verif.token)}>{enviando ? "Enviando…" : "Enviar pedido"}</button>
           </form>
           <p className="rodape-a">Ao pedir acesso você concorda com os <Link to="/termos-de-uso" {...propsDeLinkInterno()}>Termos de Uso</Link>.</p>
         </section>
