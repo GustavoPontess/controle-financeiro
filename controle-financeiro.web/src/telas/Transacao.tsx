@@ -16,7 +16,11 @@ import { getContas } from "../services/contaService"
 import { getCartoes } from "../services/cartaoCreditoService"
 import { getTransferenciaDaTransacao } from "../services/transferenciaService"
 import { mensagemDeErro } from "../api/cliente"
-import type { Transaction } from "../types/Transaction"
+import type { AnexoTransacao, Transaction } from "../types/Transaction"
+import { listarAnexos, urlDoAnexo } from "../services/anexoService"
+import Anexos from "../componentes/Anexos"
+import Cupom, { LinhaCupom } from "../componentes/Cupom"
+import Localizacao from "../componentes/Localizacao"
 import type { Transferencia } from "../types/Transferencia"
 import type { Category } from "../types/Category"
 import type { Subcategory } from "../types/Subcategory"
@@ -112,6 +116,14 @@ function Ver({ t, categorias, subcategorias, editavel, aoEditar, aoSair, aoMudar
   const [estornando, setEstornando] = useState(false)
   const [ocupado, setOcupado] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  // Nota e local (2026-11-07): só aparece quando tem localização ou anexo. Sem a lista, a tela segue sem ela.
+  const [anexos, setAnexos] = useState<AnexoTransacao[]>([])
+  useEffect(() => {
+    let vivo = true
+    listarAnexos(t.id).then((a) => { if (vivo) setAnexos(a) }).catch(() => { /* sem anexos à vista */ })
+    return () => { vivo = false }
+  }, [t.id])
+  const ponto = t.latitude != null && t.longitude != null ? { latitude: t.latitude, longitude: t.longitude } : null
   // Idempotency-Key do estorno: nasce quando a confirmação ABRE e vale pra toda tentativa dela — se a rede
   // cair depois de o servidor estornar, confirmar de novo devolve o mesmo estorno em vez de estornar 2x.
   const chaveEstorno = useRef("")
@@ -180,12 +192,23 @@ function Ver({ t, categorias, subcategorias, editavel, aoEditar, aoSair, aoMudar
         </dl>
       </Bloco>
 
+      {(ponto || anexos.length > 0) && (
+        <Cupom rotulo="Nota e local">
+          {ponto && <LinhaCupom rotulo="Localização"><Localizacao valor={ponto} /></LinhaCupom>}
+          {anexos.length > 0 && (
+            <LinhaCupom rotulo="Anexos" empilhado>
+              <Anexos itens={anexos.map((a) => ({ chave: a.id, nome: a.nome, tipo: a.tipoConteudo, url: urlDoAnexo(t.id, a.id) }))} />
+            </LinhaCupom>
+          )}
+        </Cupom>
+      )}
+
       {/* Só despesa entra no equilíbrio da família (receita, transferência, pagamento de fatura e empréstimo não). */}
       {t.tipo !== 2 && !neutro && !t.ehEmprestimo && <TransacaoFamilia t={t} aoMudar={aoMudar} />}
 
       {/* Ações no pé, à direita — o mesmo lugar dos botões de Nova e Editar (destrutiva à esquerda, principal à direita). */}
       <RodapeFormulario>
-        {t.ehAcerto ? null : t.ehPagamentoFatura ? (
+        {t.ehAcerto ? null : t.ehPagamentoFatura && t.faturaPagaId ? (
           <Botao onClick={abrirEstorno} icone={<Undo2 size={15} strokeWidth={2.25} aria-hidden="true" />}>Estornar pagamento</Botao>
         ) : (
           <Botao perigo onClick={() => { setErro(null); setExcluindo(true) }}

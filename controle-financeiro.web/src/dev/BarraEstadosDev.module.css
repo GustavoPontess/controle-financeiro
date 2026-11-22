@@ -20,3 +20,7 @@
 .abrir { padding: 4px 8px; }
 .abrir b { color: #ff8a55; letter-spacing: .08em; }
 .abrir span { color: #ddd; }
+
+/* Chave "Sem sair por inatividade" (vale em todas as telas). */
+.chave { display: flex; align-items: center; gap: 8px; color: #ddd; cursor: pointer; }
+.chave input { width: 16px; height: 16px; margin: 0; accent-color: #ff5a1f; cursor: pointer; }

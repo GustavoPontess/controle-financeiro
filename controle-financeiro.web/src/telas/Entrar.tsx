@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import MolduraAcesso, { CampoAcesso, Seta, VoltarA } from "../site/MolduraAcesso"
 import css from "../site/Acesso.module.css"
-import { BarraDev, useEstadoDev } from "../dev/BarraDev"
+import { BarraDev, useEstadoDev, useSemInatividadeDev } from "../dev/BarraDev"
 import { CONTAS_EXEMPLO, ESTADOS_ACESSO } from "../dev/estadosAcesso"
 import rosterService, { type ContaLembrada } from "../services/rosterService"
 import mfaService from "../services/mfaService"
@@ -35,6 +35,9 @@ export default function Entrar() {
   const [email, setEmail] = useState("")
   const [senha, setSenha] = useState("")
   const [manter, setManter] = useState(false)
+  // DEV: "Sem sair por inatividade" ligado no painel marca o "Manter-me conectado" (no build é sempre false).
+  const semInatividadeDev = useSemInatividadeDev()
+  useEffect(() => { if (semInatividadeDev) setManter(true) }, [semInatividadeDev])
   const [erros, setErros] = useState<{ email?: string; senha?: string }>({})
   const [erro, setErro] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)

@@ -54,6 +54,45 @@ public static class DemoSeeder
         await EmprestimosAsync(sp, context, dev.Id, corrente.Id, Cat, hoje);
         await AdminAsync(context, dev.Id);
         await SolicitacoesAsync(sp, context, dev.Id);
+        await ImportacoesAsync(context, dev.Id, corrente.Id, poupanca.Id, hoje);
+        await PendentesAsync(sp, dev.Id, corrente.Id, hoje);
+    }
+
+    // ── Pendentes (/pendentes, a fila de lançamentos sem categoria): cinco lançamentos que entram pela importação SEM
+    //    categoria, em quatro lugares (a padaria com dois, uma receita), pra fila e o número do menu terem o que mostrar.
+    //    Pelo service de verdade (o mesmo caminho de quem importa); o código do banco (FITID) faz o boot seguinte pular.
+    private static async Task PendentesAsync(IServiceProvider sp, Guid dev, Guid corrente, DateTime hoje)
+    {
+        var importacao = sp.GetRequiredService<Services.ImportacaoService>();
+        DTOs.Importacao.LinhaImportarDto Linha(int n, int diasAtras, string descricao, decimal valor, Domain.Enums.TipoTransacao tipo) =>
+            new(hoje.AddDays(-diasAtras), descricao, valor, tipo, $"DEMO-PENDENTE-{n}", null);
+        await importacao.ConfirmarAsync(new DTOs.Importacao.ConfirmarImportacaoDto(corrente,
+        [
+            Linha(1, 2, "COMPRA CARTAO DEB PADARIA EXEMPLO", 23.50m, Domain.Enums.TipoTransacao.Despesa),
+            Linha(2, 6, "COMPRA CARTAO DEB PADARIA EXEMPLO", 18.90m, Domain.Enums.TipoTransacao.Despesa),
+            Linha(3, 3, "COMPRA CARTAO DEB FARMACIA EXEMPLO", 64.20m, Domain.Enums.TipoTransacao.Despesa),
+            Linha(4, 4, "PIX ENVIADO FULANO EXEMPLO", 150m, Domain.Enums.TipoTransacao.Despesa),
+            Linha(5, 5, "PIX RECEBIDO CICLANA EXEMPLO", 320m, Domain.Enums.TipoTransacao.Receita),
+        ]), dev, "demo-pendentes");
+    }
+
+    // ── Importações anteriores (primeira tela de Importar extrato): três registros, em duas contas, pra lista ter o
+    //    que mostrar (a mais nova de 5 dias atrás, com um mês inteiro; uma de um dia só). É só o registro da
+    //    importação; os lançamentos de exemplo da conta já vêm do DevDataSeeder.
+    private static async Task ImportacoesAsync(AppDbContext context, Guid dev, Guid corrente, Guid poupanca, DateTime hoje)
+    {
+        if (await context.ImportacoesExtrato.AnyAsync(i => i.UsuarioId == dev))
+            return;
+        var mes = new DateOnly(hoje.Year, hoje.Month, 1);
+        Domain.Entities.ImportacaoExtrato De(Guid conta, int diasAtras, DateOnly de, DateOnly ate, int quantos) => new()
+        {
+            Id = Guid.NewGuid(), UsuarioId = dev, ContaId = conta, CriadoEm = DateTime.UtcNow.AddDays(-diasAtras), De = de, Ate = ate, Quantidade = quantos,
+        };
+        context.ImportacoesExtrato.AddRange(
+            De(corrente, 5, mes.AddMonths(-1), mes.AddDays(-1), 42),
+            De(poupanca, 20, mes.AddMonths(-1).AddDays(9), mes.AddMonths(-1).AddDays(9), 1),
+            De(corrente, 36, mes.AddMonths(-2), mes.AddMonths(-1).AddDays(-1), 37));
+        await context.SaveChangesAsync();
     }
 
     // ── Admin (/admin do v2): o Gabriel vira admin (SÓ aqui: Development + SEED_DEMO; em produção é ADMIN_EMAILS +

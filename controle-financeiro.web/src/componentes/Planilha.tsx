@@ -11,13 +11,16 @@ import styles from "./Planilha.module.css"
 /** As colunas opcionais da planilha: a linha sempre ocupa as duas (vazias quando não têm nada), senão desalinha. */
 const Colunas = createContext({ barra: false, acao: false, valores: 0 })
 
-export function Planilha({ rotulo, rotuloNome, colunas, barra, acao, larguraAcao, semCabecalho, children }: {
+export function Planilha({ rotulo, rotuloNome, colunas, larguras, barra, acao, larguraAcao, semCabecalho, children }: {
   rotulo: string
   /** Sem a linha dos nomes das colunas (tabela só com o rodapé). */
   semCabecalho?: boolean
   /** Nome da primeira coluna (ex.: "Categoria"). */
   rotuloNome?: string
   colunas: string[]
+  /** Largura de cada coluna de valor quando a padrão (128px) não serve (ex.: uma coluna com `Selecao` dentro pede
+   *  220px). Na ordem de `colunas`; `undefined` mantém a padrão. */
+  larguras?: (string | undefined)[]
   /** Tem coluna de barra (progresso). */
   barra?: boolean
   /** Tem coluna de ação no fim (botão pequeno). */
@@ -28,10 +31,10 @@ export function Planilha({ rotulo, rotuloNome, colunas, barra, acao, larguraAcao
   children: ReactNode
 }) {
   // Tela larga: colunas de valor com folga. Tela estreita (até 1200px, o laptop com o menu aberto): as colunas de valor
-  // ficam no mínimo e o nome fica com o resto, pra categoria não sumir atrás das reticências.
+  // ficam no mínimo e o nome fica com o resto, pro nome não sumir atrás das reticências.
   const colAcao = acao ? (larguraAcao ?? "32px") : null
-  const molde = ["minmax(0, 1fr)", ...colunas.map(() => "128px"), barra ? "140px" : null, colAcao].filter(Boolean).join(" ")
-  const moldeEstreito = ["minmax(0, 1fr)", ...colunas.map(() => "88px"), barra ? "72px" : null, colAcao].filter(Boolean).join(" ")
+  const molde = ["minmax(0, 1fr)", ...colunas.map((_, i) => larguras?.[i] ?? "128px"), barra ? "140px" : null, colAcao].filter(Boolean).join(" ")
+  const moldeEstreito = ["minmax(0, 1fr)", ...colunas.map((_, i) => larguras?.[i] ?? "88px"), barra ? "72px" : null, colAcao].filter(Boolean).join(" ")
   return (
     <div className={styles.planilha} data-acao-larga={larguraAcao ? "true" : undefined}
       style={{ "--planilha-colunas": molde, "--planilha-colunas-estreita": moldeEstreito } as CSSProperties}>
@@ -48,7 +51,7 @@ export function Planilha({ rotulo, rotuloNome, colunas, barra, acao, larguraAcao
   )
 }
 
-/** A última linha da planilha, com o botão de planejar (pedido do Gustavo 2026-10-22: o botão no fim, não em cima). */
+/** A última linha da planilha, com o botão de pôr item novo (pedido do Gustavo 2026-10-22: o botão no fim, não em cima). */
 export function LinhaBotaoPlanilha({ children }: { children: ReactNode }) {
   return <li className={styles.rodape}>{children}</li>
 }
@@ -86,14 +89,18 @@ export function LinhaPlanilha({ marca, nome, detalhe, children, barra, acao }: {
 }
 
 /** Um valor da linha. `rotulo` = o nome da coluna (aparece em cima do valor no celular). */
-export function CelulaPlanilha({ rotulo, children, tom }: { rotulo: string; children?: ReactNode; tom?: "negativo" | "positivo" | "mudo" }) {
-  return <span className={styles.valor} data-rotulo={rotulo} data-tom={tom}>{children}</span>
+export function CelulaPlanilha({ rotulo, children, tom, className }: {
+  rotulo: string; children?: ReactNode; tom?: "negativo" | "positivo" | "mudo"
+  /** Só posição (ex.: a célula que leva um campo e ocupa a coluna inteira). */
+  className?: string
+}) {
+  return <span className={className ? `${styles.valor} ${className}` : styles.valor} data-rotulo={rotulo} data-tom={tom}>{children}</span>
 }
 
 /**
- * A linha de planejar, aberta no fim da tabela ("Planejar categoria"; pedido do Gustavo 2026-10-22: nada de outra
- * tela, nem botão de salvar/cancelar). Abre com o foco na categoria; escolheu, o foco vai pro valor. Enter salva.
- * Saiu da linha (clicou fora, Tab): com categoria e valor, salva; sem, a linha some. Esc também some.
+ * A linha de item novo, aberta no fim da tabela (pedido do Gustavo 2026-10-22: nada de outra
+ * tela, nem botão de salvar/cancelar). Abre com o foco na escolha; escolheu, o foco vai pro valor. Enter salva.
+ * Saiu da linha (clicou fora, Tab): com escolha e valor, salva; sem, a linha some. Esc também some.
  */
 export function LinhaNovaPlanilha({ opcoes, rotuloCategoria = "Categoria", rotuloValor, ocupado, aoSalvar, aoCancelar }: {
   opcoes: OpcaoSelecao[]
@@ -108,7 +115,7 @@ export function LinhaNovaPlanilha({ opcoes, rotuloCategoria = "Categoria", rotul
   const linha = useRef<HTMLLIElement>(null)
   const [id, setId] = useState("")
   const [valor, setValor] = useState("")
-  // Abriu: a linha aparece na tela (mesmo com a tabela comprida) e o foco vai pra escolha da categoria.
+  // Abriu: a linha aparece na tela (mesmo com a tabela comprida) e o foco vai pra escolha.
   useEffect(() => {
     linha.current?.scrollIntoView?.({ block: "nearest" })
     linha.current?.querySelector<HTMLElement>("button, input")?.focus()

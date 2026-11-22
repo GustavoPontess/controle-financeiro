@@ -36,8 +36,8 @@ public static class RegrasFinanceiras
     /// O que entra no RESULTADO — receita/despesa de verdade (Entrou/Saiu, relatórios, dashboard,
     /// orçamento). Fica de fora o que só move dinheiro sem ser ganho nem gasto: transferência entre
     /// contas, pagamento de fatura (o gasto é a compra no cartão), saldo inicial, ajuste de reconciliação
-    /// (corrige o saldo), as pernas do Pix no Crédito (o cartão põe na conta e o Pix tira; o gasto é do
-    /// cartão) e o dinheiro de empréstimo (vai e volta, como transferência). Tudo isso CONTINUA no saldo (<see cref="CompoeSaldoReal"/>). Não filtra Ativo/Status —
+    /// (corrige o saldo), a entrada do Pix no Crédito (o cartão põe na conta; o gasto é o Pix que ela paga)
+    /// e o dinheiro de empréstimo (vai e volta, como transferência). Tudo isso CONTINUA no saldo (<see cref="CompoeSaldoReal"/>). Não filtra Ativo/Status —
     /// cada chamador combina com o recorte dele. Antes a lista estava copiada em cada service, e nenhuma
     /// cópia tirava o ajuste de reconciliação.
     /// </summary>

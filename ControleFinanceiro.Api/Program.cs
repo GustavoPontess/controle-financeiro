@@ -171,6 +171,7 @@ builder.Services.AddScoped<AcertoService>();
 // Renda de cada um (previsto × recebido) e o que a família vê dela
 builder.Services.AddScoped<RendaService>();
 builder.Services.AddScoped<FotoPerfilService>();
+builder.Services.AddScoped<AnexoTransacaoService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<FusoHorarioService>();
 
@@ -286,6 +287,17 @@ builder.Services.AddRateLimiter(options =>
             {
                 PermitLimit = isDev ? 100 : 5,
                 Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0,
+            }));
+
+    // Anexo de lançamento: redesenhar foto/conferir PDF custa CPU; por pessoa.
+    options.AddPolicy("anexo-transacao", ctx =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? PartitionByIp(ctx), _ =>
+            new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = isDev ? 200 : 30,
+                Window = TimeSpan.FromMinutes(10),
                 QueueLimit = 0,
             }));
 

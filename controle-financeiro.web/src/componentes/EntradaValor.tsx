@@ -10,7 +10,9 @@ import styles from "./EntradaValor.module.css"
 
 const MAX_DIGITOS = 12
 
-export default function EntradaValor({ valor, onChange, autoFocus, tom, compacto, tamanho, invalido, rotulo }: {
+export default function EntradaValor({ valor, onChange, autoFocus, tom, compacto, tamanho, invalido, rotulo, fixo }: {
+  /** Só mostra o valor, no mesmo tamanho e cor do campo grande (o que veio pronto e não se edita). */
+  fixo?: boolean
   /** Texto já mascarado ("1.234,56") ou "" */
   valor: string
   onChange: (valor: string) => void
@@ -33,6 +35,14 @@ export default function EntradaValor({ valor, onChange, autoFocus, tom, compacto
       <Entrada prefixo="R$" inputMode="numeric" autoComplete="off" placeholder="0,00" value={valor} autoFocus={autoFocus}
         tamanho={tamanho} invalido={invalido} aria-label={rotulo}
         onChange={(e) => onChange(maskMoney(e.target.value.replace(/\D/g, "").slice(0, MAX_DIGITOS), valor))} />
+    )
+  }
+  if (fixo) {
+    return (
+      <span className={styles.moldura} data-fixo data-tom={tom}>
+        <em aria-hidden="true">R$</em>
+        <strong>{valor}</strong>
+      </span>
     )
   }
   return (

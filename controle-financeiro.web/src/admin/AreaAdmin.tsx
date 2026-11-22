@@ -98,7 +98,7 @@ function LigarDuasEtapas() {
 }
 
 /** O bloco da pessoa no pé do menu, igual ao do app (avatar + nome), com o menu da conta: a conta, Voltar ao app,
- *  Configurações e Sair. Sem trocar de família nem de conta (não é assunto do admin). O app mora fora deste mini-app:
+ *  Configurações e Sair. Sem trocar de espaço nem de conta (não é assunto do admin). O app mora fora deste mini-app:
  *  os links saem com irPara (página inteira), não pelo roteador. */
 function ContaAdmin() {
   const { usuario, sair } = useAuth()
@@ -163,7 +163,7 @@ function Numero({ rotulo, valor, alerta }: { rotulo: string; valor?: number; ale
 }
 
 /** O lado de dentro do admin: menu lateral só do admin, topo com o título e o olho, e as páginas. Mesmo visual do app
- *  (as classes do V2Layout), mas nada daqui aparece no app: sem "Nova transação", sem sino, sem o menu financeiro. */
+ *  (as classes do V2Layout), mas nada daqui aparece no app: sem a ação principal, sem sino, sem o menu do app. */
 function Casca({ meuId }: { meuId: string }) {
   const { pathname } = useLocation()
   const [oculto, alternarOculto] = useHideBalance()

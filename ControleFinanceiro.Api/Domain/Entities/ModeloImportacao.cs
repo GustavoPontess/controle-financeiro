@@ -26,6 +26,8 @@ public class ModeloImportacao
     public int? ColunaEntrada { get; set; }
     public int? ColunaSaida { get; set; }
     public int? ColunaId { get; set; }
+    /// <summary>Coluna com o tipo do lançamento, quando o banco separa tipo e nome (2026-11-21).</summary>
+    public int? ColunaTipo { get; set; }
     public bool InverterSinal { get; set; }
 
     public DateTime AtualizadoEm { get; set; } = DateTime.UtcNow;

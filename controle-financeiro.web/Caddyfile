@@ -17,7 +17,8 @@
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		X-Frame-Options "DENY"
-		Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+		# geolocation=(self): o "Usar onde estou" do lançamento (2026-11-07); só o próprio app pede, iframe nenhum.
+		Permissions-Policy "accelerometer=(), camera=(), geolocation=(self), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
 		# CSP: só o próprio domínio + a fonte do Google (index.html) + o Turnstile da Cloudflare ("não sou robô" do login, do
 		# Pedir acesso e do Esqueci a senha: script e a caixinha num iframe de challenges.cloudflare.com). O hash libera o script inline do tema do index.html
 		# (scripts/conferirCspInline.mjs confere no build; mudou o script, ele diz o hash novo).

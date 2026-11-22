@@ -80,6 +80,8 @@ Mais do que parece. **A Família já é um "espaço" com membros, papéis e regr
 | **Empresa** | por espaço empresa | **R$ 99 a 199 por mês** + taxa por cobrança emitida |
 | Escritório | contador | por cliente atendido |
 
+**Parâmetro de preço (2026-11-03, `docs/concorrentes/nivelon/README.md`):** a NivelOn (escritório com app, contador CRC) cobra MEI R$ 49,90 com nota, DAS e suporte; Simples desde R$ 149,90; comércio R$ 349,90. Pra MEI, plataforma sem contador acima de R$ 49,90 não vende; os R$ 99 a 199 valem pra pequena.
+
 Uma empresa vale dez famílias. A família continua sendo o fosso e a porta de entrada.
 
 ## 6. Ordem (cada passo vende sozinho)

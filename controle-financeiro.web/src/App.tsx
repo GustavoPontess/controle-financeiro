@@ -8,6 +8,7 @@ import RedefinirSenha from "./telas/RedefinirSenha"
 import { Privacidade, TermosDeUso } from "./telas/Legal"
 import { ConfirmarEmail, NaoFuiEu, NaoPediSenha } from "./telas/LinkDoPedido"
 import ProtejaConta from "./telas/ProtejaConta"
+import { PainelDevDeTodaTela } from "./dev/BarraDev"
 
 // Dois pacotes à parte, cada um baixado só quando precisa (2026-10-26, pro site abrir rápido no celular):
 // o site público (HTML das 7 páginas) e o app logado inteiro (menu + telas, RotasApp.tsx).
@@ -23,6 +24,9 @@ function RotaProteja() {
 
 export default function App() {
   return (
+    <>
+    {/* DEV: o painel de dev em toda tela (a que tem estados põe o próprio). No build some. */}
+    {import.meta.env.DEV && <PainelDevDeTodaTela />}
     <Routes>
       {/* Site público: idêntico ao rascunho aprovado (hub Pontes Dev). "/" logado vai pra Visão geral. */}
       <Route path="/" element={<PaginaSite nome="home" />} />
@@ -44,5 +48,6 @@ export default function App() {
       {/* Todo o resto é o app logado (RotasApp.tsx): tela nova entra lá. */}
       <Route path="/*" element={<Suspense fallback={null}><RotasApp /></Suspense>} />
     </Routes>
+    </>
   )
 }

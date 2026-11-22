@@ -3,11 +3,14 @@
 // Multi-conta: a API parqueia um cookie `rt_<conta>` por conta conectada e troca a ativa em /auth/switch;
 // como o cookie é httpOnly, a LISTA (nome, e-mail) mora no navegador. Login frio começa a lista do zero
 // (o servidor já revogou as contas de quem usou o navegador antes); "Sair" sai de todas.
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
 import { api, codigoDoErro, definirContaDaAba, esperaDoLimite, mensagemDeErro } from "../api/cliente"
 import { definirFusoDaConta, fusoDoAparelho } from "../utils/dateTime"
 import { AuthContext, type ContaConectada, type ResultadoEntrar, type Usuario } from "./contexto"
 import SairPorInatividade from "./SairPorInatividade"
+
+// DEV: "Sem sair por inatividade" do painel de dev (dev/ManterVivoDev); no build vira null e some.
+const ManterVivoDev = import.meta.env.DEV ? lazy(() => import("../dev/ManterVivoDev")) : null
 
 const SEM_TOAST = { skipErrorToast: true } as const
 const CHAVE_CONTAS = "v2:contas"
@@ -127,7 +130,9 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider value={valor}>
       {children}
       {usuario?.sairPorInatividadeMinutos
-        ? <SairPorInatividade minutos={usuario.sairPorInatividadeMinutos} aoSair={() => void sairPorInatividade()} />
+        ? (ManterVivoDev
+          ? <Suspense fallback={null}><ManterVivoDev><SairPorInatividade minutos={usuario.sairPorInatividadeMinutos} aoSair={() => void sairPorInatividade()} /></ManterVivoDev></Suspense>
+          : <SairPorInatividade minutos={usuario.sairPorInatividadeMinutos} aoSair={() => void sairPorInatividade()} />)
         : null}
     </AuthContext.Provider>
   )

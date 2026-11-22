@@ -8,7 +8,7 @@ const dist = path.resolve(import.meta.dirname, "..", "dist")
 // Marcas só do painel de dev: o rótulo de acessibilidade, a chave dele, o componente, os estados e os exemplos.
 const MARCAS = [
   /Painel de dev \(só em desenvolvimento\)/, /Contas de teste \(preenche o login\)/, /dev:barraEstados/, /BarraEstadosDev/, /Contas salvas/, /Link vencido/,
-  /Pedido enviado"/, /Ativar 2 etapas/, /Ana Souza/, /4F7K-92QA/, /JBSWY3DPEHPK3PXP/, /redefinir-senha\?token=dev/,
+  /Pedido enviado"/, /Ativar 2 etapas/, /Ana Souza/, /4F7K-92QA/, /JBSWY3DPEHPK3PXP/, /redefinir-senha\?token=dev/, /Sem sair por inatividade/, /ManterVivoDev/, /Desenho do Importar/, /CONSTRUTORA ALVORADA/, /Extrato-Banco-Exemplo/, /PADARIA PAO DOURADO/, /Tipo em coluna própria/, /Mapa do Importar/, /Leva pra outra tela/,
 ]
 
 const arquivos = []

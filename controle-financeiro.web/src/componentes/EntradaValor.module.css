@@ -11,3 +11,10 @@
 @media (max-width: 900px) {
   .moldura input { font-size: var(--v2-fs-3xl); }
 }
+/* Só mostrar (`fixo`): o mesmo número grande, sem a linha de campo. */
+.moldura[data-fixo] { border-bottom-color: transparent; padding-bottom: 0; }
+.moldura strong { font-size: var(--v2-fs-4xl); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.15; color: var(--v2-texto); }
+.moldura[data-tom="positivo"] strong { color: var(--v2-positivo); }
+.moldura[data-tom="negativo"] strong { color: var(--v2-negativo); }
+.moldura[data-tom="neutro"] strong { color: var(--v2-texto-2); }
+@media (max-width: 900px) { .moldura strong { font-size: var(--v2-fs-3xl); } }

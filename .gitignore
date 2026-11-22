@@ -448,6 +448,7 @@ docs/features/redesign-ux/monarch-session/
 # Referencias visuais de concorrentes (Despezzas, Monarch, etc).
 # PNGs pesados; cada dev captura local. Nao comitar.
 docs/referencias/
+docs/design-home/site/referencias/
 
 # Claude Code — worktrees temporarios de tarefas spawnadas
 .claude/worktrees/

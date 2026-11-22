@@ -85,6 +85,87 @@ public class ImportacaoNaturezaTests
         Assert.Equal(c.RendaFixa, previa.Linhas[2].CategoriaSugeridaId);
         Assert.Null(previa.Linhas[0].CategoriaSugeridaId);
         Assert.Null(previa.Linhas[1].CategoriaSugeridaId);
+        // Entre suas contas é só registro (sem lugar pra categorizar); empréstimo tem categoria (2026-11-04).
+        Assert.Null(previa.Linhas[0].Chave);
+        Assert.NotNull(previa.Linhas[1].Chave);
+    }
+
+    [Fact]
+    public async Task Confirmar_Emprestimo_GuardaACategoriaEscolhida_ESegueForaDaRendaEDoGasto()
+    {
+        var c = Montar();
+        var outros = new Categoria { Id = Guid.NewGuid(), Descricao = "Outros", Finalidade = Finalidade.Ambas };
+        c.Ctx.Add(outros);
+        c.Ctx.SaveChanges();
+        var previa = await c.Svc.PreviewAsync(c.Nubank, c.Usuario, "nubank.ofx",
+            Stmt("20261006", "2610.00", "E1", "Depósito de empréstimo") + Stmt("20261020", "-549.45", "E2", "Resgate de empréstimo"));
+
+        await c.Svc.ConfirmarAsync(new ConfirmarImportacaoDto(c.Nubank, previa.Linhas
+            .Select(l => new LinhaImportarDto(l.Data, l.Descricao, l.Valor, l.Tipo, l.FitId, outros.Id)).ToList()), c.Usuario);
+
+        var lancamentos = await c.Ctx.Transacoes.Where(t => t.ImportacaoFitId != null).ToListAsync();
+        Assert.Equal(2, lancamentos.Count);
+        Assert.All(lancamentos, t =>
+        {
+            Assert.True(t.EhEmprestimo);
+            Assert.Equal(outros.Id, t.CategoriaId);
+            Assert.False(RegrasFinanceiras.EntraNoResultadoEmMemoria(t)); // o dinheiro vai e volta: nem renda, nem gasto
+        });
+    }
+
+    // "Essa tela deveria ser quase como uma nova transação" (Gustavo, 2026-11-05): a ficha vem preenchida e a pessoa
+    // confere descrição, forma de pagamento, hora e subcategoria. Data, valor e tipo são os do banco.
+    [Fact]
+    public async Task Previa_SugereAFormaDePagamentoPeloTexto_EConfirmarGuardaOQueAPessoaConferiu()
+    {
+        var c = Montar();
+        var alimentacao = new Categoria { Id = Guid.NewGuid(), Descricao = "Alimentação", Finalidade = Finalidade.Despesa };
+        var padaria = new Subcategoria { Id = Guid.NewGuid(), Nome = "Padaria", CategoriaId = alimentacao.Id };
+        c.Ctx.AddRange(alimentacao, padaria);
+        c.Ctx.SaveChanges();
+        var previa = await c.Svc.PreviewAsync(c.Nubank, c.Usuario, "nubank.ofx",
+            Stmt("20261006", "-12.00", "M1", "Transferência enviada pelo Pix - Padaria Pao Dourado")
+            + Stmt("20261007", "-30.00", "M2", "Compra no débito - Mercado Bom")
+            + Stmt("20261008", "-90.00", "M3", "Pagamento de boleto efetuado - Escola")
+            + Stmt("20261009", "-5.00", "M4", "Tarifa mensal"));
+
+        Assert.Equal(new MeioPagamento?[] { MeioPagamento.Pix, MeioPagamento.Debito, MeioPagamento.Boleto, null },
+            previa.Linhas.OrderBy(l => l.FitId).Select(l => l.MeioSugerido));
+
+        var pix = previa.Linhas.Single(l => l.FitId == "M1");
+        await c.Svc.ConfirmarAsync(new ConfirmarImportacaoDto(c.Nubank, new List<LinhaImportarDto>
+        {
+            new(pix.Data, pix.Descricao, pix.Valor, pix.Tipo, pix.FitId, alimentacao.Id,
+                DescricaoEditada: "  Pão da manhã ", SubcategoriaId: padaria.Id, MeioPagamento: (int)MeioPagamento.Pix, Hora: new TimeOnly(7, 30)),
+        }), c.Usuario);
+
+        var gravado = await c.Ctx.Transacoes.SingleAsync(t => t.ImportacaoFitId == "M1");
+        Assert.Equal(("Pão da manhã", padaria.Id, MeioPagamento.Pix, new TimeOnly(7, 30), 12m, new DateOnly(2026, 10, 6)),
+            (gravado.Descricao, gravado.SubcategoriaId, gravado.MeioPagamento, gravado.Hora, gravado.Valor, gravado.Data));
+        // A regra do lugar nasce do texto do banco, não do nome que a pessoa deu.
+        Assert.Contains(await c.Ctx.RegrasCategoria.ToListAsync(), r => r.CategoriaId == alimentacao.Id);
+    }
+
+    [Fact]
+    public async Task Confirmar_RecusaCreditoNaConta_ESubcategoriaDeOutraCategoria()
+    {
+        var c = Montar();
+        var alimentacao = new Categoria { Id = Guid.NewGuid(), Descricao = "Alimentação", Finalidade = Finalidade.Despesa };
+        var lazer = new Categoria { Id = Guid.NewGuid(), Descricao = "Lazer", Finalidade = Finalidade.Despesa };
+        var cinema = new Subcategoria { Id = Guid.NewGuid(), Nome = "Cinema", CategoriaId = lazer.Id };
+        c.Ctx.AddRange(alimentacao, lazer, cinema);
+        c.Ctx.SaveChanges();
+        var linha = (await c.Svc.PreviewAsync(c.Nubank, c.Usuario, "nubank.ofx", Stmt("20261006", "-12.00", "M1", "Compra no débito - Padaria"))).Linhas[0];
+        LinhaImportarDto Com(Guid? sub = null, int? meio = null) =>
+            new(linha.Data, linha.Descricao, linha.Valor, linha.Tipo, linha.FitId, alimentacao.Id, SubcategoriaId: sub, MeioPagamento: meio);
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            c.Svc.ConfirmarAsync(new ConfirmarImportacaoDto(c.Nubank, new() { Com(meio: (int)MeioPagamento.Credito) }), c.Usuario));
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            c.Svc.ConfirmarAsync(new ConfirmarImportacaoDto(c.Nubank, new() { Com(meio: 99) }), c.Usuario));
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            c.Svc.ConfirmarAsync(new ConfirmarImportacaoDto(c.Nubank, new() { Com(sub: cinema.Id) }), c.Usuario));
+        Assert.False(await c.Ctx.Transacoes.AnyAsync(t => t.ImportacaoFitId == "M1"));
     }
 
     [Fact]
@@ -117,5 +198,36 @@ public class ImportacaoNaturezaTests
         Assert.Equal((0m, 50m), (stats.Entradas, stats.Saidas)); // só o mercado é gasto; nada disso é renda
         var saldoNubank = (await RegrasFinanceiras.SaldoDaContaAsync(c.Ctx, c.Nubank, c.Usuario)).Saldo;
         Assert.Equal(500m + 2610m + 300m - 50m + 800m, saldoNubank); // o saldo continua com tudo
+    }
+
+    // Achado 2026-11-03 (Nubank e Inter do Gustavo pela tela): a perna que entrou SOLTA no primeiro extrato (a outra conta
+    // ainda não tinha lançamento) era ignorada no segundo, e as duas ficavam soltas pra sempre.
+    [Fact]
+    public async Task Confirmar_SegundoExtrato_JuntaComAPernaQueEntrouSoltaNoPrimeiro()
+    {
+        var c = Montar();
+        // 1º extrato, Nubank: o Pix vindo do Itaú entra solto (o Itaú ainda não tem nada).
+        await Importar(c, await c.Svc.PreviewAsync(c.Nubank, c.Usuario, "nubank.ofx",
+            Stmt("20261005", "500.00", "N1", "Transferência recebida pelo Pix - GUSTAVO NUNES PONTES - ITAÚ")));
+        Assert.Empty(c.Ctx.Transferencias);
+
+        // 2º extrato, Itaú: a saída do mesmo Pix acha a perna solta.
+        var previa = await c.Svc.PreviewAsync(c.Itau, c.Usuario, "itau.ofx",
+            Stmt("20261005", "-500.00", "I1", "Pix enviado: Gustavo Nunes Pontes"));
+        Assert.Equal("Nubank", previa.Linhas.Single().JuntaComConta);
+        await c.Svc.ConfirmarAsync(new ConfirmarImportacaoDto(c.Itau, previa.Linhas
+            .Select(l => new LinhaImportarDto(l.Data, l.Descricao, l.Valor, l.Tipo, l.FitId, l.CategoriaSugeridaId)).ToList()), c.Usuario);
+        c.Ctx.ChangeTracker.Clear();
+
+        var transferencia = await c.Ctx.Transferencias.SingleAsync();
+        var entrada = await c.Ctx.Transacoes.SingleAsync(t => t.ImportacaoFitId == "N1");
+        var saida = await c.Ctx.Transacoes.SingleAsync(t => t.ImportacaoFitId == "I1");
+        Assert.Equal((c.Itau, c.Nubank, saida.Id, entrada.Id),
+            (transferencia.ContaOrigemId, transferencia.ContaDestinoId, transferencia.TransacaoOrigemId, transferencia.TransacaoDestinoId));
+
+        // 3º extrato com outro Pix igual: a perna já ligada não serve de par de novo.
+        var outra = await c.Svc.PreviewAsync(c.Itau, c.Usuario, "itau2.ofx",
+            Stmt("20261006", "-500.00", "I2", "Pix enviado: Gustavo Nunes Pontes"));
+        Assert.Null(outra.Linhas.Single().JuntaComConta);
     }
 }

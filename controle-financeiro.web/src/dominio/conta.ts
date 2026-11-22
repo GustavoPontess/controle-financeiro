@@ -40,3 +40,8 @@ export function descreverConta(c: Pick<Conta, "tipo" | "agencia" | "numeroConta"
   return [rotuloTipo(c), c.agencia ? `ag ${c.agencia}` : null, c.numeroConta ? `cc ${c.numeroConta}` : null]
     .filter(Boolean).join(" · ")
 }
+
+/** O que desenhar como marca de uma conta (`<LogoMarca {...marcaDaConta(c)} />`): a logo do banco, ou as iniciais na
+ *  cor dele; a carteira (dinheiro em mãos, sem banco) leva a marca do Pontes. */
+export const marcaDaConta = (c: Pick<Conta, "nome" | "isCarteira" | "bancoNome" | "bancoLogoUrl" | "bancoCor">) =>
+  ({ nome: c.bancoNome || c.nome, logoUrl: c.bancoLogoUrl, cor: c.bancoCor, daCasa: c.isCarteira && !c.bancoLogoUrl })

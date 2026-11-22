@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type PointerEvent as EventoPonteiro } from
 import { useLocation, useNavigate } from "react-router-dom"
 import { ChevronDown, GripVertical } from "lucide-react"
 import type { ExtrasDev, GruposEstadosDev } from "./tipos"
+import { definirSemInatividade, useSemInatividade } from "./semInatividade"
 import css from "./BarraEstadosDev.module.css"
 
 type Lembrado = { pos: { x: number; y: number } | null; escondida: boolean }
@@ -28,6 +29,7 @@ export default function BarraEstadosDev({ grupos, atual, extras }: { grupos: Gru
   const [{ pos, escondida }, setLembrado] = useState(ler)
   const mudar = (v: Partial<Lembrado>) => setLembrado((a) => { const n = { ...a, ...v }; gravar(n); return n })
   const painel = useRef<HTMLDivElement>(null)
+  const semInat = useSemInatividade()
 
   const ativo = (para: string) => {
     const [caminho, estado] = para.split("#")
@@ -88,7 +90,7 @@ export default function BarraEstadosDev({ grupos, atual, extras }: { grupos: Gru
           <ChevronDown size={16} strokeWidth={2.4} />
         </button>
       </div>
-      <label className={css.rotulo}>
+      {grupos.length > 0 && <label className={css.rotulo}>
         Estado da tela
         <select className={css.seletor} value={estadoAtivo?.para ?? ""} onChange={(e) => navigate(e.target.value)}>
           {!estadoAtivo && <option value="" disabled>Escolha…</option>}
@@ -98,7 +100,7 @@ export default function BarraEstadosDev({ grupos, atual, extras }: { grupos: Gru
             </optgroup>
           ))}
         </select>
-      </label>
+      </label>}
       {extras && extras.itens.length > 0 && (
         <label className={css.rotulo}>
           {extras.titulo}
@@ -111,6 +113,10 @@ export default function BarraEstadosDev({ grupos, atual, extras }: { grupos: Gru
           </select>
         </label>
       )}
+      <label className={css.chave} title="Login já com Manter-me conectado e a sessão aberta não cai por ficar parado">
+        <input type="checkbox" checked={semInat} onChange={(e) => definirSemInatividade(e.target.checked)} />
+        Sem sair por inatividade
+      </label>
     </div>
   )
 }

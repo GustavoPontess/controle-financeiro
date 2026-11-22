@@ -14,12 +14,19 @@
 // descrição) pelo mesmo formulário e pela mesma conferência do servidor; não vira despesa/receita.
 // Despesa nova: antes de salvar, o servidor diz se a compra tira o dinheiro das contas fixas dos próximos 30 dias
 // (limite no cartão, saldo na conta) e a resposta aparece embaixo da prévia. Só avisa (decisão do Gustavo 2026-10-19).
+// "Nota e local" (2026-11-07): onde foi ("Usar onde estou", o ponto do aparelho) e os anexos (print da nota, foto, PDF).
+// Criar e editar exigem o mesmo: nos dois, o que a pessoa mexe ali só vai pro servidor ao salvar, depois do lançamento.
+// Não aparece em transferência nem em compra parcelada (não é UM lançamento).
 import { useEffect, useMemo, useState } from "react"
 import { avisoDeCompra, createTransaction, updateTransaction, type EdicaoLancamentoResultado } from "../services/transactionService"
 import { createTransferencia, editarTransferencia } from "../services/transferenciaService"
 import { getFamilia, getFamilias } from "../services/familiaService"
 import { mensagemDeErro } from "../api/cliente"
-import type { Transaction } from "../types/Transaction"
+import type { AnexoTransacao, Ponto, Transaction } from "../types/Transaction"
+import { definirLocalizacao, enviarAnexo, listarAnexos, removerAnexo, urlDoAnexo } from "../services/anexoService"
+import Anexos from "../componentes/Anexos"
+import Cupom, { LinhaCupom } from "../componentes/Cupom"
+import Localizacao from "../componentes/Localizacao"
 import type { Familia, FamiliaDetalhe } from "../types/Familia"
 import type { Conta } from "../types/Conta"
 import type { CartaoCredito } from "../types/CartaoCredito"
@@ -28,9 +35,8 @@ import type { Subcategory } from "../types/Subcategory"
 import Bloco from "../componentes/Bloco"
 import Botao from "../componentes/Botao"
 import Campo from "../componentes/Campo"
-import Entrada from "../componentes/Entrada"
-import EntradaValor from "../componentes/EntradaValor"
 import Etiqueta from "../componentes/Etiqueta"
+import { CampoDescricao, CampoMeio, CampoValor, CamposCategoria, CamposDataHora } from "./CamposLancamento"
 import Formulario, { Campos, Lado, LinhaCampos, RodapeFormulario } from "../componentes/Formulario"
 import Interruptor from "../componentes/Interruptor"
 import ListaAindaVem from "../componentes/ListaAindaVem"
@@ -38,12 +44,12 @@ import PreviaLancamento from "../componentes/PreviaLancamento"
 import Resposta from "../componentes/Resposta"
 import Segmentos from "../componentes/Segmentos"
 import Selecao from "../componentes/Selecao"
-import SeletorData, { formatarData } from "../componentes/SeletorData"
-import { MAX_DESCRICAO, MEIO, MEIOS_PAGAMENTO, MEIOS_RECEBIMENTO, PARCELAS, TIPO, horaValida } from "../dominio/transacao"
+import { formatarData } from "../componentes/SeletorData"
+import { MEIO, MEIOS_PAGAMENTO, MEIOS_RECEBIMENTO, PARCELAS, TIPO, horaValida } from "../dominio/transacao"
 import { aceitaTipo } from "../dominio/categoria"
 import { PAPEL_PERMISSAO, primeiroNome } from "../dominio/familia"
 import { formatMoney, moneyParaCampo, parseMoney } from "../utils/money"
-import { dataLocalISO, horaLocalHHMM, mascararHora, somaDias } from "../utils/dateTime"
+import { dataLocalISO, horaLocalHHMM, somaDias } from "../utils/dateTime"
 import { useAtrasado } from "../utils/useAtrasado"
 import type { AvisoDeCompra } from "../types/DinheiroDoMes"
 import styles from "./FormularioTransacao.module.css"
@@ -94,6 +100,20 @@ export default function FormularioTransacao({ transacao, transferenciaEditada, c
   const [salvando, setSalvando] = useState(false)
   // Idempotency-Key: uma por abertura da tela, reusada em toda tentativa (criar e editar).
   const [chaveEnvio] = useState(() => crypto.randomUUID())
+  // Nota e local: o que está no servidor (edição) e o que a pessoa mudou, gravado só ao salvar.
+  const idEditado = t && !tf ? t.id : null
+  const pontoSalvo: Ponto | null = t?.latitude != null && t?.longitude != null ? { latitude: t.latitude, longitude: t.longitude } : null
+  const [ponto, setPonto] = useState<Ponto | null>(pontoSalvo)
+  const [anexosSalvos, setAnexosSalvos] = useState<AnexoTransacao[]>([])
+  const [anexosNovos, setAnexosNovos] = useState<File[]>([])
+  const [anexosTirados, setAnexosTirados] = useState<string[]>([])
+  const [pontoGravado, setPontoGravado] = useState(false)
+  useEffect(() => {
+    if (!idEditado) return
+    let vivo = true
+    listarAnexos(idEditado).then((a) => { if (vivo) setAnexosSalvos(a) }).catch(() => { /* sem a lista, só não mostra os já anexados */ })
+    return () => { vivo = false }
+  }, [idEditado])
   // Despesa nova: dividir com a família já ao salvar (a parte de cada um é gravada pela regra da família).
   const [familias, setFamilias] = useState<Familia[]>([])
   const [familiaId, setFamiliaId] = useState("")
@@ -109,6 +129,8 @@ export default function FormularioTransacao({ transacao, transferenciaEditada, c
   const podeConverter = !t || (!t.parcelamentoId && !t.recorrenteOrigemId)
   // Na edição, isto vira outro registro no servidor (o lançamento antigo é cancelado). Transferência editada continua a mesma.
   const viraOutroRegistro = !!t && !tf && (transferencia || parcelado)
+  /** "Nota e local" é de UM lançamento: fora em transferência e em compra parcelada. */
+  const comNotaELocal = !transferencia && !parcelado
   const comHora = !parcelado
   const hoje = dataLocalISO()
   const ontem = somaDias(hoje, -1)
@@ -176,6 +198,7 @@ export default function FormularioTransacao({ transacao, transferenciaEditada, c
     const desc = descricao.trim()
     const horaEnvio = comHora && hora ? `${hora}:00` : null
     let resultado: EdicaoLancamentoResultado | undefined
+    let idDoLancamento: string | null = null
     try {
       if (tf) {
         // Mesmo corpo de criar; a transação (perna) continua existindo, então a tela fica nela.
@@ -196,10 +219,11 @@ export default function FormularioTransacao({ transacao, transferenciaEditada, c
           transferencia: transferencia ? { contaOrigemId: origemId, contaDestinoId: destinoId } : null,
           contaFixa: null,
         }, chaveEnvio)
+        idDoLancamento = resultado?.tipo === "transacao" ? resultado.id : null
       } else if (transferencia) {
         await createTransferencia({ contaOrigemId: origemId, contaDestinoId: destinoId, valor: v, data, hora: horaEnvio, descricao: desc }, chaveEnvio)
       } else {
-        await createTransaction({
+        const criada = await createTransaction({
           descricao: desc, valor: v, tipo,
           categoriaId,
           subcategoriaId: subcategoriaId || null,
@@ -214,13 +238,48 @@ export default function FormularioTransacao({ transacao, transferenciaEditada, c
           hora: horaEnvio,
           familiaId: podeDividir && !daCasa && dividir && familiaId ? familiaId : undefined,
         }, chaveEnvio)
+        idDoLancamento = parcelado ? null : (criada as Transaction | null)?.id ?? null
       }
     } catch (e) {
       setErro(mensagemDeErro(e))
       setSalvando(false)
       return
     }
+    // Nota e local, depois do lançamento salvo. Se algo não sobe, a tela fica com o que faltou e o aviso; salvar de
+    // novo repete só isso (o lançamento não duplica: mesma Idempotency-Key).
+    if (idDoLancamento && comNotaELocal) {
+      const falhas = await gravarNotaELocal(idDoLancamento)
+      if (falhas > 0) {
+        setErro(falhas === 1 ? "O lançamento foi salvo, mas 1 anexo não subiu. Tente salvar de novo." : `O lançamento foi salvo, mas ${falhas} anexos não subiram. Tente salvar de novo.`)
+        setSalvando(false)
+        return
+      }
+    }
     aoSalvo(resultado)
+  }
+
+  /** Grava o que mudou em "Nota e local". Devolve quantas coisas falharam (as que deram certo saem da fila). */
+  const gravarNotaELocal = async (id: string) => {
+    let falhas = 0
+    const mudouPonto = (ponto?.latitude ?? null) !== (pontoSalvo?.latitude ?? null) || (ponto?.longitude ?? null) !== (pontoSalvo?.longitude ?? null)
+    if (mudouPonto && !pontoGravado) {
+      try { await definirLocalizacao(id, ponto); setPontoGravado(true) } catch { falhas++ }
+    }
+    for (const anexoId of anexosTirados) {
+      try {
+        await removerAnexo(id, anexoId)
+        setAnexosTirados((v) => v.filter((x) => x !== anexoId))
+        setAnexosSalvos((v) => v.filter((a) => a.id !== anexoId))
+      } catch { falhas++ }
+    }
+    for (const arquivo of anexosNovos) {
+      try {
+        const salvo = await enviarAnexo(id, arquivo)
+        setAnexosNovos((v) => v.filter((x) => x !== arquivo))
+        setAnexosSalvos((v) => [...v, salvo])
+      } catch { falhas++ }
+    }
+    return falhas
   }
 
   // ── Prévia: como vai aparecer na lista + o que acontece ao salvar ───────────────────────────────
@@ -299,30 +358,12 @@ export default function FormularioTransacao({ transacao, transferenciaEditada, c
         {/* Transferência existente não vira despesa/receita: sem a escolha do tipo. */}
         {!tf && <Segmentos ariaLabel="Tipo de lançamento" cheio valor={natureza} onChange={trocarNatureza} opcoes={NATUREZAS} />}
 
-        <Campo rotulo="Valor" erro={erros.valor}>
-          <EntradaValor valor={valor} tom={tom} autoFocus={!editando} onChange={(x) => { setValor(x); limpa("valor") }} />
-        </Campo>
-        <Campo rotulo="Descrição" erro={erros.descricao}>
-          <Entrada value={descricao} maxLength={MAX_DESCRICAO} placeholder={transferencia ? "Reserva de emergência" : "Mercado"}
-            onChange={(e) => { setDescricao(e.target.value); limpa("descricao") }} />
-        </Campo>
-
-        {/* Data e hora: lado a lado quando cabe; se o formulário estreita, a hora desce (nunca se sobrepõem). */}
-        <div className={styles.dataHora}>
-          <Campo rotulo={parcelado ? "Data da compra" : "Data"} erro={erros.data}>
-            <div className={styles.dataRapida}>
-              <Botao tamanho="lg" ativo={data === hoje} onClick={() => escolherData(hoje)}>Hoje</Botao>
-              <Botao tamanho="lg" ativo={data === ontem} onClick={() => escolherData(ontem)}>Ontem</Botao>
-              <SeletorData valor={data} max={dataMax} onChange={escolherData} />
-            </div>
-          </Campo>
-          {comHora && (
-            <Campo rotulo="Hora (opcional)" erro={erros.hora}>
-              <Entrada inputMode="numeric" placeholder="HH:MM" maxLength={5} value={hora}
-                onChange={(e) => { setHora(mascararHora(e.target.value)); limpa("hora") }} />
-            </Campo>
-          )}
-        </div>
+        {/* Os campos do lançamento são as peças de CamposLancamento (as mesmas da fila do Importar extrato). */}
+        <CampoValor valor={valor} tom={tom} erro={erros.valor} autoFocus={!editando} onChange={(x) => { setValor(x); limpa("valor") }} />
+        <CampoDescricao valor={descricao} erro={erros.descricao} placeholder={transferencia ? "Reserva de emergência" : "Mercado"}
+          onChange={(x) => { setDescricao(x); limpa("descricao") }} />
+        <CamposDataHora data={data} hora={hora} erroData={erros.data} erroHora={erros.hora} rotuloData={parcelado ? "Data da compra" : "Data"}
+          dataMax={dataMax} comHora={comHora} aoData={escolherData} aoHora={(x) => { setHora(x); limpa("hora") }} />
 
         {transferencia ? (
           <LinhaCampos>
@@ -338,10 +379,8 @@ export default function FormularioTransacao({ transacao, transferenciaEditada, c
         ) : (
           <>
             <LinhaCampos>
-              <Campo rotulo={receita ? "Recebido por" : "Pago com"}>
-                <Selecao valor={String(meio)} onChange={(x) => trocarMeio(Number(x))}
-                  opcoes={(receita ? MEIOS_RECEBIMENTO : MEIOS_PAGAMENTO).map((m) => ({ valor: String(m.valor), rotulo: m.rotulo }))} />
-              </Campo>
+              <CampoMeio rotulo={receita ? "Recebido por" : "Pago com"} valor={String(meio)} onChange={(x) => trocarMeio(Number(x))}
+                opcoes={(receita ? MEIOS_RECEBIMENTO : MEIOS_PAGAMENTO).map((m) => ({ valor: String(m.valor), rotulo: m.rotulo }))} />
               {credito ? (
                 <Campo rotulo="Cartão" erro={erros.cartao}>
                   <Selecao valor={cartaoId} desabilitado={cartoesCredito.length === 0}
@@ -363,18 +402,9 @@ export default function FormularioTransacao({ transacao, transferenciaEditada, c
                 </Campo>
               )}
             </LinhaCampos>
-            <LinhaCampos>
-              <Campo rotulo="Categoria" erro={erros.categoria}>
-                <Selecao valor={categoriaId} placeholder="Escolha a categoria"
-                  onChange={(x) => { setCategoriaId(x); setSubcategoriaId(""); limpa("categoria") }}
-                  opcoes={cats.map((c) => ({ valor: c.id, rotulo: c.descricao }))} />
-              </Campo>
-              <Campo rotulo="Subcategoria">
-                <Selecao valor={subcategoriaId} desabilitado={subs.length === 0}
-                  placeholder={subs.length === 0 ? "Nenhuma" : "Opcional"} onChange={setSubcategoriaId}
-                  opcoes={subs.length === 0 ? [] : [{ valor: "", rotulo: "Sem subcategoria" }, ...subs.map((s) => ({ valor: s.id, rotulo: s.nome }))]} />
-              </Campo>
-            </LinhaCampos>
+            <CamposCategoria categoriaId={categoriaId} subcategoriaId={subcategoriaId} erro={erros.categoria}
+              categorias={cats.map((c) => ({ valor: c.id, rotulo: c.descricao }))} subcategorias={subs.map((s) => ({ valor: s.id, rotulo: s.nome }))}
+              aoCategoria={(x) => { setCategoriaId(x); setSubcategoriaId(""); limpa("categoria") }} aoSubcategoria={setSubcategoriaId} />
           </>
         )}
       </Campos>
@@ -418,6 +448,24 @@ export default function FormularioTransacao({ transacao, transferenciaEditada, c
               </div>
             )}
           </Bloco>
+        )}
+
+        {comNotaELocal && (
+          <Cupom rotulo="Nota e local">
+            <LinhaCupom rotulo="Localização"><Localizacao valor={ponto} onChange={setPonto} desabilitado={salvando} /></LinhaCupom>
+            <LinhaCupom rotulo="Anexos" empilhado>
+              <Anexos desabilitado={salvando}
+                itens={[
+                  ...anexosSalvos.filter((a) => !anexosTirados.includes(a.id))
+                    .map((a) => ({ chave: a.id, nome: a.nome, tipo: a.tipoConteudo, url: idEditado ? urlDoAnexo(idEditado, a.id) : undefined })),
+                  ...anexosNovos.map((f, k) => ({ chave: `novo-${k}`, nome: f.name, tipo: f.type, arquivo: f })),
+                ]}
+                onAdicionar={(novos) => setAnexosNovos((v) => [...v, ...novos])}
+                onRemover={(chave) => (chave.startsWith("novo-")
+                  ? setAnexosNovos((v) => v.filter((_, k) => `novo-${k}` !== chave))
+                  : setAnexosTirados((v) => [...v, chave]))} />
+            </LinhaCupom>
+          </Cupom>
         )}
 
         <RodapeFormulario>

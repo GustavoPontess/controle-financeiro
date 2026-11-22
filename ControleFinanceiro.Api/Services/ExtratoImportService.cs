@@ -26,7 +26,9 @@ public class ExtratoImportService
 
     /// <summary>Qual coluna (índice) é o quê. Valor assinado OU Entrada + Saída. Id vira o FITID quando é
     /// único no arquivo. <c>InverterSinal</c>: banco que mostra saída positiva.</summary>
-    public record MapeamentoCsv(int Data, int Descricao, int? Valor, int? Entrada, int? Saida, int? Id, bool InverterSinal);
+    /// <summary><c>Tipo</c>: coluna com o tipo do lançamento ("Pix enviado"), em banco que separa tipo e nome (Inter);
+    /// entra na frente da descrição pra o leitor do lugar separar os dois.</summary>
+    public record MapeamentoCsv(int Data, int Descricao, int? Valor, int? Entrada, int? Saida, int? Id, bool InverterSinal, int? Tipo = null);
 
     /// <summary>Resultado da leitura. CSV sem mapeamento confiável volta <c>PrecisaMapear</c> (sem linhas) e a
     /// tela pergunta qual coluna é o quê.</summary>
@@ -207,6 +209,8 @@ public class ExtratoImportService
         ["entrada"] = new[] { "entrada", "credito", "credit", "recebido" },
         ["saida"] = new[] { "saida", "debito", "debit", "pago" },
         ["id"] = new[] { "identificador", "id", "codigo", "documento", "doc" },
+        // Só quando sobra uma segunda coluna de texto além da descrição (Inter: Histórico + Descrição).
+        ["tipo"] = new[] { "tipo", "historico", "lancamento", "operacao", "transacao" },
     };
 
     /// <summary>
@@ -260,11 +264,36 @@ public class ExtratoImportService
         usadas.Add(descricao.Value);
 
         var id = PorNome("id");
-        var mapa = new MapeamentoCsv(data.Value, descricao.Value, valor, entrada, saida, id, false);
+        var tipo = PorNome("tipo", i => Fracao(i, c => !string.IsNullOrWhiteSpace(c) && !TryParseValor(c, out _) && !TryParseData(c, out _)) >= 0.5);
+        var mapa = new MapeamentoCsv(data.Value, descricao.Value, valor, entrada, saida, id, false, tipo);
 
         var comData = t.Linhas.Count(l => TryParseData(l[data.Value], out _));
         var lidas = Aplicar(t, mapa, contarSaldo: true).Count;
         return comData > 0 && lidas >= comData * 0.9 ? mapa : null;
+    }
+
+    /// <summary>
+    /// Por que cada coluna é o que é (2026-11-21: a escolha fica à vista, não escondida). <paramref name="origem"/>:
+    /// "lembrado" (o que a pessoa escolheu antes pra esta conta), "escolhido" (agora) ou null (o app sugeriu: pelo
+    /// nome da coluna, quando casa com um <see cref="Sinonimos"/> do papel, senão pelo conteúdo).
+    /// </summary>
+    public static string[] Motivos(TabelaCsv t, MapeamentoCsv? m, string? origem)
+    {
+        var motivos = new string[t.Colunas.Length];
+        for (var i = 0; i < motivos.Length; i++)
+        {
+            var papel = m is null ? null
+                : i == m.Data ? "data" : i == m.Descricao ? "descricao" : i == m.Valor ? "valor"
+                : i == m.Entrada ? "entrada" : i == m.Saida ? "saida" : i == m.Id ? "id" : i == m.Tipo ? "tipo" : null;
+            var nome = Normalizar(t.Colunas[i]) + " ";
+            motivos[i] = papel is null
+                ? (nome.Contains("saldo") ? "é o saldo" : "não usada")
+                : origem == "lembrado" ? "lembrado desta conta"
+                : origem == "escolhido" ? "você escolheu"
+                : t.TemCabecalho && Sinonimos[papel].Any(s => s.EndsWith(' ') ? nome.StartsWith(s) : nome.Contains(s)) ? "pelo nome da coluna"
+                : "pelo conteúdo";
+        }
+        return motivos;
     }
 
     private static int? MelhorColuna(TabelaCsv t, HashSet<int> usadas, Func<string, bool> ok, bool preferirNegativo = false)
@@ -297,14 +326,25 @@ public class ExtratoImportService
         return melhor;
     }
 
+    // A descrição, com o tipo na frente quando o banco manda numa coluna à parte ("Pix enviado" + "Fulano"). Tipo que
+    // já está no começo da descrição não repete.
+    private static string ComTipo(string[] l, MapeamentoCsv m)
+    {
+        var descricao = l[m.Descricao].Trim();
+        if (m.Tipo is not { } ct) return descricao;
+        var tipo = l[ct].Trim();
+        if (tipo.Length == 0 || descricao.StartsWith(tipo, StringComparison.OrdinalIgnoreCase)) return descricao;
+        return descricao.Length == 0 ? tipo : $"{tipo} {descricao}";
+    }
+
     private static void ValidarMapeamento(MapeamentoCsv m, TabelaCsv t)
     {
         bool Ok(int? i) => i is null || (i >= 0 && i < t.Colunas.Length);
-        if (!Ok(m.Data) || !Ok(m.Descricao) || !Ok(m.Valor) || !Ok(m.Entrada) || !Ok(m.Saida) || !Ok(m.Id))
+        if (!Ok(m.Data) || !Ok(m.Descricao) || !Ok(m.Valor) || !Ok(m.Entrada) || !Ok(m.Saida) || !Ok(m.Id) || !Ok(m.Tipo))
             throw new ArgumentException("Coluna fora do arquivo.");
         if (m.Valor is null && (m.Entrada is null || m.Saida is null))
             throw new ArgumentException("Diga a coluna do valor, ou as de entrada e de saída.");
-        var principais = new[] { (int?)m.Data, m.Descricao, m.Valor, m.Entrada, m.Saida }.Where(i => i.HasValue).ToList();
+        var principais = new[] { (int?)m.Data, m.Descricao, m.Valor, m.Entrada, m.Saida, m.Tipo }.Where(i => i.HasValue).ToList();
         if (principais.Distinct().Count() != principais.Count)
             throw new ArgumentException("Cada papel precisa de uma coluna diferente.");
     }
@@ -327,7 +367,7 @@ public class ExtratoImportService
         foreach (var l in t.Linhas)
         {
             if (!TryParseData(l[m.Data], out var data, formato)) continue;
-            var descricao = l[m.Descricao].Trim();
+            var descricao = ComTipo(l, m);
             if (EhSaldo(descricao))
             {
                 // Na sugestão, linha de saldo conta como lida (senão um extrato com saldo diário nunca é confiável).

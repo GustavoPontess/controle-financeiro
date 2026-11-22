@@ -124,6 +124,7 @@ namespace ControleFinanceiro.Api.Controllers
             ParcelamentoId = t.ParcelamentoId,
             ParcelaTransacaoId = t.ParcelaTransacaoId,
             EhPagamentoFatura = t.EhPagamentoFatura,
+            FaturaPagaId = t.FaturaPagaId,
             EhTransferencia = t.EhTransferencia,
             EhEmprestimo = t.EhEmprestimo,
             ValorJuros = t.ValorJuros,
@@ -135,6 +136,8 @@ namespace ControleFinanceiro.Api.Controllers
             StatusTransacao = (int)t.StatusTransacao,
             Data = t.Data,
             Hora = t.Hora,
+            Latitude = t.Latitude,
+            Longitude = t.Longitude,
         };
 
         // Compra parcelada na visão Gastos: uma linha só, na data da compra, com o total (com juros, se tiver).

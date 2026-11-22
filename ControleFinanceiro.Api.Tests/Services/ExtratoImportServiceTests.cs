@@ -205,4 +205,56 @@ public class ExtratoImportServiceTests
         Assert.Equal("data|historico|valor", t.Assinatura);
         Assert.True(t.TemCabecalho);
     }
+
+    // A tela mostra por que cada coluna é o que é (2026-11-21).
+    [Fact]
+    public void Motivos_DizemPorQueCadaColunaEOQueE()
+    {
+        var t = _svc.LerTabela("Data;Histórico;Docto.;Crédito (R$);Débito (R$);Saldo (R$)\n03/11/2026;PIX RECEBIDO FULANO;102233;1.200,00;;3.410,55\n04/11/2026;COMPRA LOJA;102240;;187,32;3.223,23\n");
+        var m = _svc.SugerirMapeamento(t);
+        Assert.NotNull(m);
+        Assert.Equal(new[] { "pelo nome da coluna", "pelo nome da coluna", "pelo nome da coluna", "pelo nome da coluna", "pelo nome da coluna", "é o saldo" },
+            ExtratoImportService.Motivos(t, m, null));
+        var lembrado = ExtratoImportService.Motivos(t, m, "lembrado");
+        Assert.Equal("lembrado desta conta", lembrado[0]);
+        Assert.Equal("é o saldo", lembrado[5]);
+    }
+
+    [Fact]
+    public void Motivos_SemCabecalhoEPeloConteudo()
+    {
+        var t = _svc.LerTabela("05/05/2026;Mercado do bairro;-10,00\n06/05/2026;Padaria;-5,50\n07/05/2026;Salario;3000,00\n");
+        var m = _svc.SugerirMapeamento(t);
+        Assert.NotNull(m);
+        Assert.All(ExtratoImportService.Motivos(t, m, null), x => Assert.Equal("pelo conteúdo", x));
+    }
+
+    // Inter (cabeçalho do CSV real, nomes inventados): o tipo vem em "Histórico" e o nome em "Descrição". A coluna do
+    // tipo entra na frente da descrição pra o leitor do lugar separar Pix e nome.
+    [Fact]
+    public void Csv_TipoEmColunaPropria_EntraNaFrenteDaDescricao()
+    {
+        var csv = " Extrato Conta Corrente \nConta ;123456789\nPeríodo ;06/01/2026 a 03/11/2026\nSaldo ;0,00\n\n" +
+                  "Data Lançamento;Histórico;Descrição;Valor;Saldo\n" +
+                  "06/10/2026;Recebimento de proventos;Pagamento De Proventos Empresa Exemplo Ltda;2.123,01;0,00\n" +
+                  "06/10/2026;Pix enviado ;Fulano de Tal;-2.759,23;-2.123,01\n" +
+                  "06/08/2026;Deb Pag Seguro Pix;Seguro Pix/plano Standard;-3,50;-3,50\n";
+
+        var leitura = _svc.Ler("extrato.csv", csv, null);
+
+        Assert.False(leitura.PrecisaMapear);
+        Assert.Equal(1, leitura.Mapeamento!.Tipo);
+        Assert.Equal(2, leitura.Mapeamento.Descricao);
+        Assert.Equal("Pix enviado Fulano de Tal", leitura.Linhas[1].Descricao);
+        Assert.Equal("Fulano de Tal", Estabelecimento.Nome(leitura.Linhas[1].Descricao));
+        Assert.Equal("Pix", Estabelecimento.Ler(leitura.Linhas[1].Descricao).Tipo);
+        Assert.Equal("pelo nome da coluna", ExtratoImportService.Motivos(leitura.Tabela!, leitura.Mapeamento, null)[1]);
+    }
+
+    [Fact]
+    public void Csv_SoUmaColunaDeTexto_SemTipo()
+    {
+        var t = _svc.LerTabela("Data;Histórico;Valor\n05/05/2026;Mercado;-10,00\n");
+        Assert.Null(_svc.SugerirMapeamento(t)!.Tipo);
+    }
 }

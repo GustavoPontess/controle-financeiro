@@ -5,7 +5,8 @@ import { ChevronLeft, ChevronRight, X } from "lucide-react"
 import Etiqueta from "./Etiqueta"
 import styles from "./VerAnexos.module.css"
 
-export type AnexoParaVer = { url: string; nome: string; texto: string | null; mostrarValores: boolean }
+/** `mostrarValores` só nos anexos do selo Beta (sem ele, a etiqueta não aparece). */
+export type AnexoParaVer = { url: string; nome: string; texto: string | null; mostrarValores?: boolean }
 
 export default function VerAnexos({ anexos, indice, aoMudar, aoFechar }: {
   anexos: AnexoParaVer[]
@@ -51,7 +52,7 @@ export default function VerAnexos({ anexos, indice, aoMudar, aoFechar }: {
         <div className={styles.legenda}>
           <span className={styles.contador}>{indice + 1} de {total}</span>
           <span className={styles.nome}>{a.nome}</span>
-          <Etiqueta tom={a.mostrarValores ? "alerta" : undefined}>{a.mostrarValores ? "Com valores" : "Valores escondidos"}</Etiqueta>
+          {a.mostrarValores !== undefined && <Etiqueta tom={a.mostrarValores ? "alerta" : undefined}>{a.mostrarValores ? "Com valores" : "Valores escondidos"}</Etiqueta>}
         </div>
         {a.texto && <p className={styles.texto}>{a.texto}</p>}
       </div>

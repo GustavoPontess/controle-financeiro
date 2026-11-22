@@ -11,7 +11,7 @@
 import { useEffect, useRef, useState } from "react"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import {
-  ArrowLeft, ArrowLeftRight, BarChart3, Bell, Check, ChevronsUpDown, CreditCard, Handshake, Landmark, LayoutDashboard, LogOut, Mail, MessageCircleMore,
+  ArrowLeft, ArrowLeftRight, BarChart3, Bell, Check, ChevronsUpDown, CreditCard, Handshake, Landmark, LayoutDashboard, ListChecks, LogOut, Mail, MessageCircleMore,
   Menu as IconeMenu, PanelLeftClose, PanelLeftOpen, Plus, Receipt, Repeat, Scale, Settings, SlidersHorizontal, Tags, Target, Upload, Users, Eye, EyeOff, Wallet, X,
 } from "lucide-react"
 import Avatar, { urlFoto } from "../componentes/Avatar"
@@ -20,6 +20,7 @@ import { useAuth } from "../auth/useAuth"
 import { familiaDaRota, useEspacos } from "../estado/espaco"
 import { useHideBalance } from "../estado/ocultar"
 import { useNaoLidas } from "../estado/notificacoes"
+import { usePendentes } from "../estado/pendentes"
 import PainelNotificacoes from "./PainelNotificacoes"
 import Apontar from "../componentes/Apontar"
 import AvisoDeFuso from "../componentes/AvisoDeFuso"
@@ -27,6 +28,8 @@ import { abrirSolicitacao } from "../estado/apontar"
 import styles from "./V2Layout.module.css"
 
 type ItemMenu = { para: string; rotulo: string; icone: typeof LayoutDashboard; exato?: boolean }
+/** A fila de pendentes: o item do menu leva o número de lançamentos sem categoria. */
+const ROTA_PENDENTES = "/pendentes"
 type Secao = { para: string; rotulo: string; raiz?: string; semMenu?: boolean }
 
 const PRINCIPAL: ItemMenu[] = [
@@ -39,6 +42,7 @@ const PRINCIPAL: ItemMenu[] = [
   { para: "/reconciliacao", rotulo: "Reconciliação", icone: Scale },
   { para: "/emprestimos", rotulo: "Empréstimos", icone: Handshake },
   { para: "/importar", rotulo: "Importar extrato", icone: Upload },
+  { para: ROTA_PENDENTES, rotulo: "Pendentes", icone: ListChecks },
 ]
 const GERENCIAR: ItemMenu[] = [
   { para: "/bancos", rotulo: "Bancos", icone: Landmark },
@@ -104,6 +108,7 @@ export default function V2Layout() {
   const naSecaoDaPagina = new URLSearchParams(search).has("s")
   const voltar = () => navigate(naSecaoDaPagina && window.matchMedia("(max-width: 900px)").matches ? pathname : voltarPara)
   const naoLidas = useNaoLidas(`${usuario?.id ?? ""}:${pathname}`)
+  const pendentes = usePendentes(`${usuario?.id ?? ""}:${pathname}`)
   const [oculto, alternarOculto] = useHideBalance()
   const [menuAberto, setMenuAberto] = useState(false)
   // Trilho: só ícones (o nome aparece ao passar o mouse). Lembrado por dispositivo.
@@ -164,6 +169,9 @@ export default function V2Layout() {
     <NavLink to={para} end={exato} title={recolhido ? rotulo : undefined} className={({ isActive }) => `${styles.item} ${isActive ? styles.itemAtivo : ""}`}>
       <Icone size={18} strokeWidth={2} aria-hidden="true" />
       <span className={styles.itemRotulo}>{rotulo}</span>
+      {para === ROTA_PENDENTES && pendentes > 0 && (
+        <span className={styles.itemContador} aria-label={pendentes === 1 ? "1 pendente" : `${pendentes} pendentes`}>{pendentes > 99 ? "99+" : pendentes}</span>
+      )}
     </NavLink>
   )
   const principal = familiaId ? FAMILIA(familiaId) : PRINCIPAL
