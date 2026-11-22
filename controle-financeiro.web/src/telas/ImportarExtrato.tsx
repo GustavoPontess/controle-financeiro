@@ -43,7 +43,7 @@ import Entrada from "../componentes/Entrada"
 import SoltarArquivos from "../componentes/SoltarArquivos"
 import { Dinheiro } from "../componentes/Dinheiro"
 import Formulario, { LinhaCampos, RodapeFormulario } from "../componentes/Formulario"
-import { CampoDescricao, CampoFixo, CampoMeio, CampoValor, CamposCategoria } from "./CamposLancamento"
+import { CampoDescricao, CampoFixo, CampoMeio, CamposCategoria, TituloLancamento } from "./CamposLancamento"
 import { moneyParaCampo } from "../utils/money"
 import ColunasDoArquivo from "./ColunasDoArquivo"
 import { GrupoFicha, InicialFicha, LinhaFicha, ListaFicha } from "../componentes/ListaFicha"
@@ -52,7 +52,7 @@ import { rotuloMesFatura } from "../dominio/fatura"
 import { marcaDaConta } from "../dominio/conta"
 import { nomeLegivel } from "../dominio/lugar"
 import { recarregarPendentes } from "../estado/pendentes"
-import { aceitaTipo, ehOutros } from "../dominio/categoria"
+import { aceitaTipo, ehOutros, sugestoesDeCategoria } from "../dominio/categoria"
 import { MEIOS_CONTA, MEIOS_RECEBIMENTO, TIPO, horaValida } from "../dominio/transacao"
 import { diaDeInstante, mascararHora } from "../utils/dateTime"
 import styles from "./ImportarExtrato.module.css"
@@ -636,7 +636,9 @@ function montarGrupos(base: Grupo[], linhas: ExtratoLinha[], separados: Record<n
   const lugares = base.flatMap((g) => {
     if (g.especial) return []
     const ix = g.indices.filter((i) => separados[i] === undefined)
-    return ix.length === g.indices.length ? [g] : ix.length > 0 ? [{ ...g, indices: ix, total: soma(ix) }] : []
+    // O nome que a pessoa deu ("Qual é o nome?" sem guardar o padrão) vale pro lugar também.
+    const nome = nomes[g.chave] ?? g.nome
+    return ix.length === g.indices.length ? [{ ...g, nome }] : ix.length > 0 ? [{ ...g, nome, indices: ix, total: soma(ix) }] : []
   })
   const porChave = new Map<string, number[]>()
   Object.entries(separados).forEach(([i, k]) => porChave.set(k, [...(porChave.get(k) ?? []), Number(i)]))
@@ -757,15 +759,9 @@ function RevisarLugares({ grupos, linhas, categorias, subcategorias, cats, marca
   const subsDaEscolhida = escolhida ? subcategorias.filter((s) => s.categoriaId === escolhida) : []
   const candidatas = (() => {
     if (!atual || atual.especial) return []
-    const ids: string[] = []
-    // "Outros" nunca vira botão (Gustavo, 2026-11-05: é a última opção; se tudo cai lá, a categoria não diz nada).
-    // Fica só no fim do "Outra…".
-    const por = (id: string | null | undefined) => { if (id && !ids.includes(id) && categorias.some((c) => c.id === id && aceitaTipo(c, atual.tipo) && !ehOutros(c))) ids.push(id) }
-    por(atual.sugestao)
     const prefixo = `${atual.tipo}:`
-    ;[...maisUsadas.entries()].filter(([k]) => k.startsWith(prefixo)).sort((a, b) => b[1] - a[1]).forEach(([k]) => por(k.slice(prefixo.length)))
-    opcoesPorTipo[atual.tipo]?.forEach((o) => por(o.valor))
-    const top = ids.slice(0, 4)
+    const usadas = [...maisUsadas.entries()].filter(([k]) => k.startsWith(prefixo)).sort((a, b) => b[1] - a[1]).map(([k]) => k.slice(prefixo.length))
+    const top = sugestoesDeCategoria(categorias, atual.tipo, [atual.sugestao, ...usadas, ...(opcoesPorTipo[atual.tipo] ?? []).map((o) => o.valor)])
     if (escolhida && !top.includes(escolhida)) top[top.length - 1] = escolhida
     return top
   })()
@@ -944,20 +940,22 @@ function RevisarLugares({ grupos, linhas, categorias, subcategorias, cats, marca
     // O nome do lugar é o título do cartão (Gustavo, 2026-11-22: fora do cartão sobrava um vão em cima do cupom).
     return (
       <Bloco>
-        <div className={styles.oficinaTitulo}>
-          <div className={styles.resumoTitulo}>
-            {g.separado === "juntos"
-              ? <input className={styles.fichaNomeEditar} value={g.nome} aria-label="Nome do grupo" maxLength={60} onChange={(e) => aoRenomear(g.chave, e.target.value)} />
-              : <h2>{nomeNaTela(g.nome)}</h2>}
-            <span className={styles.mudo}>{n === 1 ? "1 lançamento" : `${n} lançamentos, ${periodoDe(g)}`}</span>
-          </div>
-          <button type="button" className={styles.fichaSeparar} onClick={() => setMarcandoNome((v) => !v)}>
-            <TextCursorInput size={14} strokeWidth={2.25} aria-hidden="true" />Qual é o nome?
-          </button>
-        </div>
-        {marcandoNome && (
+        <TituloLancamento valor={moneyParaCampo(l.valor)} tom={receita ? "positivo" : "negativo"}
+          titulo={g.separado === "juntos"
+            ? <input className={styles.fichaNomeEditar} value={g.nome} aria-label="Nome do grupo" maxLength={60} onChange={(e) => aoRenomear(g.chave, e.target.value)} />
+            : nomeNaTela(g.nome)}
+          meta={<>
+            <span>{n === 1 ? "1 lançamento" : `${n} lançamentos, ${periodoDe(g)}`}</span>
+            {g.separado !== "juntos" && (
+              <button type="button" className={styles.fichaSeparar} data-ativo={marcandoNome || undefined} aria-expanded={marcandoNome}
+                onClick={() => setMarcandoNome((v) => !v)}>
+                <TextCursorInput size={14} strokeWidth={2.25} aria-hidden="true" />Qual é o nome?
+              </button>
+            )}
+          </>} />
+        {marcandoNome && g.separado !== "juntos" && (
           <div className={styles.oficinaNome}>
-            <MarcarNome descricao={l.descricao} pedacos={l.pedacos ?? undefined}
+            <MarcarNome key={g.chave} descricao={l.descricao} pedacos={l.pedacos ?? undefined}
               onFechar={() => setMarcandoNome(false)}
               aoSalvar={(nome, lembrar) => aoEnsinarNome(l.descricao, nome, g.chave, lembrar)} />
           </div>
@@ -972,7 +970,6 @@ function RevisarLugares({ grupos, linhas, categorias, subcategorias, cats, marca
               {/* Esquerda: os campos, na ordem de Nova transação (valor, descrição, forma de pagamento e conta, categoria e
                   subcategoria). O valor e a conta vieram prontos: ficam no lugar deles, como texto. */}
               <div className={styles.lancPrincipal}>
-                <CampoValor valor={moneyParaCampo(l.valor)} tom={receita ? "positivo" : "negativo"} fixo />
                 <CampoDescricao valor={d.descricao} placeholder={l.descricao} onChange={(x) => aoDetalhe(i, { descricao: x })} />
                 {mudouDescricao && <span className={styles.noExtrato}>No extrato: {l.descricao}</span>}
                 <LinhaCampos>

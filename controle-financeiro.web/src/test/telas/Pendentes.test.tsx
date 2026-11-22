@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { render, screen, within } from "@testing-library/react"
+import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
 
@@ -12,9 +12,9 @@ vi.mock("../../services/categoryService", () => ({
 }))
 vi.mock("../../services/subcategoryService", () => ({ getSubcategories: vi.fn(async () => []) }))
 vi.mock("../../services/importacaoService", () => ({
-  getPendentes: vi.fn(), getQuantidadePendentes: vi.fn(async () => 0), categorizarPendentes: vi.fn(),
+  getPendentes: vi.fn(), getQuantidadePendentes: vi.fn(async () => 0), categorizarPendentes: vi.fn(), ensinarNome: vi.fn(),
 }))
-import { categorizarPendentes, getPendentes } from "../../services/importacaoService"
+import { categorizarPendentes, ensinarNome, getPendentes } from "../../services/importacaoService"
 vi.mock("../../services/anexoService", () => ({
   listarAnexos: vi.fn(async () => []), enviarAnexo: vi.fn(async () => ({})), definirLocalizacao: vi.fn(async () => undefined),
   urlDoAnexo: (t: string, a: string) => `/api/v1/transacoes/${t}/anexos/${a}`,
@@ -39,7 +39,44 @@ const renderizar = () => render(
 )
 
 describe("Pendentes (fila de lançamentos sem categoria)", () => {
-  beforeEach(() => { vi.mocked(getPendentes).mockReset(); vi.mocked(categorizarPendentes).mockReset() })
+  beforeEach(() => { vi.mocked(getPendentes).mockReset(); vi.mocked(categorizarPendentes).mockReset(); vi.mocked(ensinarNome).mockReset() })
+
+  // "Tô sentindo falta do qual é o nome... e das sugestões" (Gustavo, 2026-11-22).
+  it("mostra nome e valor no topo e sugere categorias mesmo sem sugestão do lugar (sem Outros)", async () => {
+    vi.mocked(getPendentes).mockResolvedValue({ total: 1, itens: [pendente("f1", "FARMACIA EXEMPLO", 60)] })
+    renderizar()
+    expect(await screen.findByRole("heading", { name: "Farmacia Exemplo" })).toBeInTheDocument()
+    expect(screen.getByText("60,00")).toBeInTheDocument()
+    const sugestoes = screen.getByRole("group", { name: "Sugestões de categoria pra FARMACIA EXEMPLO" })
+    expect(within(sugestoes).getAllByRole("button").map((b) => b.textContent)).toEqual(["Alimentação", "Saúde"])
+  })
+
+  // A MESMA peça do Importar: as palavras da descrição, já com o nome que o app leu marcado.
+  it("qual é o nome: marca as palavras; sem Usar nas próximas só renomeia, com ele ensina e relê", async () => {
+    const pedacos = [{ texto: "COMPRA CARTAO DEB ", parte: "tipo" }, { texto: "FARMACIA EXEMPLO", parte: "nome" }]
+    vi.mocked(getPendentes).mockResolvedValue({ total: 1, itens: [pendente("f1", "FARMACIA EXEMPLO", 60, { pedacos })] })
+    vi.mocked(ensinarNome).mockResolvedValue({ nome: "FARMACIA" })
+    renderizar()
+    await userEvent.click(await screen.findByRole("button", { name: "Qual é o nome?" }))
+    const trecho = screen.getByRole("region", { name: "Qual parte é o nome?" })
+    const palavra = (w: string) => within(trecho).getByRole("button", { name: w })
+    expect(palavra("FARMACIA")).toHaveAttribute("aria-pressed", "true")
+    expect(palavra("EXEMPLO")).toHaveAttribute("aria-pressed", "true")
+
+    // Tira a ponta e salva sem guardar o padrão: só o lugar muda aqui.
+    await userEvent.click(palavra("EXEMPLO"))
+    await userEvent.click(within(trecho).getByRole("checkbox"))
+    await userEvent.click(within(trecho).getByRole("button", { name: "Salvar nome" }))
+    expect(ensinarNome).not.toHaveBeenCalled()
+    expect(await screen.findByRole("heading", { name: "Farmacia" })).toBeInTheDocument()
+
+    // Com Usar nas próximas: guarda o padrão e a fila vem de novo.
+    await userEvent.click(screen.getByRole("button", { name: "Qual é o nome?" }))
+    const deNovo = screen.getByRole("region", { name: "Qual parte é o nome?" })
+    await userEvent.click(within(deNovo).getByRole("button", { name: "Salvar nome" }))
+    expect(ensinarNome).toHaveBeenCalledWith("COMPRA CARTAO DEB FARMACIA EXEMPLO", "FARMACIA EXEMPLO")
+    await waitFor(() => expect(getPendentes).toHaveBeenCalledTimes(2))
+  })
 
   it("sem nada pendente, diz que está tudo com categoria", async () => {
     vi.mocked(getPendentes).mockResolvedValue({ total: 0, itens: [] })
