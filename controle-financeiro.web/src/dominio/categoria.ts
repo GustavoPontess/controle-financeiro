@@ -28,6 +28,9 @@ export const abaDaFinalidade = (finalidade: number) =>
 export const aceitaTipo = (c: Category, tipo: number) =>
   c.finalidade === tipo || c.finalidade === FINALIDADE.ambas || c.finalidade === FINALIDADE.investimento
 
+/** A categoria "Outros" (a de sobra): nunca é atalho nem sugestão de botão, e vai pro fim das listas. */
+export const ehOutros = (c: Category) => c.descricao.trim().toLocaleLowerCase("pt-BR") === "outros"
+
 /**
  * Pra onde dá pra mover o que está numa categoria que vai sair: as outras que aceitam o mesmo tipo. Uma "as duas"
  * pode ter só despesa: aí todas entram e o servidor confere (recusa o destino que não serve, com mensagem).
@@ -57,3 +60,6 @@ export const verboMover = (u: Partial<UsoCategoria>) =>
 /** Precisa escolher destino pra excluir? Quem decide é o servidor (conta até o que já foi excluído). */
 export const emUso = (u: UsoCategoria) =>
   u.precisaDestino ?? u.lancamentos + u.contasFixas + u.parcelamentos + u.limites + u.metas + u.subcategorias > 0
+
+/** O "id" que a lista de transações entende como "sem categoria" (filtro). */
+export const SEM_CATEGORIA = "00000000-0000-0000-0000-000000000000"

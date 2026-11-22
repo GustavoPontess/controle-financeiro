@@ -70,7 +70,7 @@
 .menuItem { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-sm); font-weight: 600; cursor: pointer; text-align: left; text-decoration: none; }
 .menuItem:hover { background: var(--v2-superficie-2); }
 
-/* Espaços no menu da conta (modelo Notion): Pessoal e cada família como linha com marca de 22px; separadores
+/* Espaços no menu da conta (modelo Notion): Pessoal e cada espaço como linha com marca de 22px; separadores
    entre a conta, os espaços e as ações. */
 .menuSeparador { height: 1px; margin: 6px 2px; background: var(--v2-linha); }
 .menuItemNome { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -118,6 +118,9 @@
 
 /* Celular: menu vira gaveta (sempre completa; o trilho é só no computador) */
 .veu { position: fixed; inset: 0; z-index: 9; border: 0; background: rgba(0, 0, 0, 0.35); }
+/* Barra de atalhos do celular (modo app, 2026-11-17): só no celular, no navegador e no app instalado. */
+.atalhos { display: none; }
+
 @media (max-width: 900px) {
   .raiz, .raiz[data-menu="trilho"] { grid-template-columns: minmax(0, 1fr); }
   .lateral { position: fixed; left: 0; top: 0; z-index: 10; width: 272px; padding: 22px 14px 18px; transform: translateX(-100%); transition: transform 0.2s ease; box-shadow: var(--v2-sombra-palco); }
@@ -130,7 +133,26 @@
   .recolher { display: none; }
   .abrirMenu, .fecharMenu { display: inline-flex; }
   .fecharMenu { margin-left: auto; }
-  .topo { padding: 0 16px; gap: 8px; }
+  .topo { gap: 8px; }
   .tituloPagina { font-size: var(--v2-fs-lg); }
   .conteudo { padding: 4px 16px 40px; }
+  /* App no celular: o topo e a gaveta respeitam o entalhe/ilha do iPhone (viewport-fit=cover no index.html). */
+  .topo { height: calc(64px + env(safe-area-inset-top, 0px)); padding-top: env(safe-area-inset-top, 0px); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .lateral { padding-top: max(22px, env(safe-area-inset-top, 0px)); padding-bottom: max(18px, env(safe-area-inset-bottom, 0px)); }
+  /* Com os atalhos: o menu e a ação principal moram embaixo; o conteúdo termina acima da barra. --v2-atalhos é a altura
+     da barra sem a área da barra de gestos (o Apontar sobe junto). */
+  .raiz { --v2-atalhos: 64px; }
+  .topo .abrirMenu, .topo .novaTopo { display: none; }
+  .conteudo { padding-bottom: calc(40px + var(--v2-atalhos) + env(safe-area-inset-bottom, 0px)); }
+  .atalhos { position: fixed; left: 0; right: 0; bottom: 0; z-index: 8; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; height: calc(var(--v2-atalhos) + env(safe-area-inset-bottom, 0px)); padding: 0 max(4px, env(safe-area-inset-left, 0px)) env(safe-area-inset-bottom, 0px) max(4px, env(safe-area-inset-right, 0px)); border-top: 1px solid var(--v2-linha); background: color-mix(in srgb, var(--v2-bg) 92%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+  .atalho { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; height: 100%; min-width: 0; padding: 0; border: 0; background: transparent; color: var(--v2-texto-3); font: inherit; font-size: var(--v2-fs-xs); font-weight: 600; text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .atalho span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .atalhoAtivo { color: var(--v2-acento); }
+  .atalho:focus-visible, .atalhoNova:focus-visible { outline: none; box-shadow: var(--v2-anel-foco); border-radius: var(--v2-r-sm); }
+  .atalhoNova { display: flex; align-items: center; justify-content: center; height: 100%; padding: 0; border: 0; background: transparent; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .atalhoNovaBola { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 999px; background: var(--v2-acento); color: var(--v2-sobre-tinta); box-shadow: var(--v2-sombra); }
+  .atalhoNova:active .atalhoNovaBola { transform: scale(0.95); }
 }
+/* O número ao lado de um item do menu (Pendentes): quantos faltam resolver. Some no menu recolhido. */
+.itemContador { margin-left: auto; display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--v2-acento); color: var(--v2-sobre-tinta); font-size: var(--v2-fs-xs); font-weight: 700; font-variant-numeric: tabular-nums; }
+.raiz[data-menu="trilho"] .itemContador { display: none; }

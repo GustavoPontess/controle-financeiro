@@ -268,6 +268,9 @@ namespace ControleFinanceiro.Api.Services
             }
             foreach (var m in await _context.Metas.IgnoreQueryFilters().Where(m => m.CategoriaId == de).ToListAsync())
                 m.CategoriaId = para;
+            // O que o app aprendeu na importação ("daqui é esta categoria") segue pra categoria que fica.
+            foreach (var r in await _context.RegrasCategoria.Where(r => r.CategoriaId == de).ToListAsync())
+                r.CategoriaId = para;
 
             // Limite vale todo mês até mudar (cada linha = "deste mês em diante"): juntar as duas categorias é somar
             // o que valia em cada mês, de cada pessoa. Só somar as linhas do mesmo mês dava errado no mês seguinte.

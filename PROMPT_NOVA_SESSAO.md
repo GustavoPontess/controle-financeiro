@@ -158,7 +158,7 @@ Decisão do Gustavo (2026-09-19): usar multi-agente **só pra tarefa grande** �
 
 **Pipeline típico de feature grande:** investigar/mapear → [Claude: plano] → **builder** implementa → **escritor-de-teste** → **code-reviewer** + **auditor-seguranca** (em paralelo) → [Claude: build/lint/test verde + commit].
 
-**Regras:** (1) implementar em paralelo (2+ builders) só com **worktree isolado** por builder e só em frentes independentes — senão conflitam; serial-delegado é o padrão. (2) O Claude continua dono do ponto verde, do commit e do julgamento em código sensível (auth/dinheiro) — revisa com lupa mesmo delegando. (3) Mais agentes = mais tokens: vale pela velocidade quando a tarefa é grande, não pra fix trivial.
+**Regras:** (1) implementar em paralelo (2+ builders) só com **worktree isolado** por builder e só em frentes independentes — senão conflitam (worktree sempre em `.claude/worktrees/<nome>` dentro do projeto, nunca na raiz `E:\VSCode\pontes`; apagar quando o PR mergear); serial-delegado é o padrão. (2) O Claude continua dono do ponto verde, do commit e do julgamento em código sensível (auth/dinheiro) — revisa com lupa mesmo delegando. (3) Mais agentes = mais tokens: vale pela velocidade quando a tarefa é grande, não pra fix trivial.
 
 ---
 

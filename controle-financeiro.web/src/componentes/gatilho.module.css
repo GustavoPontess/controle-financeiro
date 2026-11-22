@@ -7,6 +7,15 @@
 .gatilho:focus-visible, .gatilho[aria-expanded="true"] { border-color: var(--v2-texto); box-shadow: var(--v2-anel-foco); }
 .gatilho[data-invalido="true"] { border-color: var(--v2-negativo); }
 .gatilho:disabled { opacity: 0.6; cursor: default; }
+/* Variante texto: o valor escrito, como numa nota; a seta pequena diz que dá pra trocar. */
+/* Variante "texto": escrito como o nome editável da ficha do Importar (texto + lápis; a caixa só aparece no hover e no
+   foco). Pra fichas que se leem como nota/cupom. */
+.gatilho[data-variante="texto"] { width: auto; max-width: calc(100% + 12px); height: auto; min-height: 30px; padding: 2px 6px; margin: 0 -6px; gap: 10px; border: 1px solid transparent; border-radius: var(--v2-r-sm); background: transparent; font-size: var(--v2-fs-md); font-weight: 500; cursor: pointer; }
+.gatilho[data-variante="texto"]:hover:not(:disabled) { border-color: var(--v2-linha); background: var(--v2-superficie); }
+.gatilho[data-variante="texto"]:focus-visible, .gatilho[data-variante="texto"][aria-expanded="true"] { border-color: var(--v2-acento); box-shadow: none; outline: none; }
+.gatilho[data-variante="texto"] .texto { flex: 0 1 auto; }
+.gatilho[data-variante="texto"] .icone { color: var(--v2-texto-2); }
+.gatilho[data-variante="texto"]:hover .icone { color: var(--v2-texto); }
 .texto { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gatilho[data-vazio="true"] .texto { color: var(--v2-texto-3); }
 .icone { flex-shrink: 0; color: var(--v2-texto-3); transition: transform 0.15s; }

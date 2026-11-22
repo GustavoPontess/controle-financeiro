@@ -23,6 +23,12 @@ public class ExportacaoUsuarioDto
     public List<EmprestimoExportadoDto> Emprestimos { get; set; } = new();
     public List<RendaEsperadaExportadaDto> RendaEsperada { get; set; } = new();
     public List<CategoriaExportadaDto> CategoriasProprias { get; set; } = new();
+    /// <summary>O que o app aprendeu ao importar extrato: "daqui é esta categoria" (estabelecimento ou pessoa do Pix).</summary>
+    public List<RegraCategoriaExportadaDto> CategoriasAprendidas { get; set; } = new();
+    /// <summary>As importações de extrato que a pessoa confirmou (conta, período dos lançamentos, quantos, quando).</summary>
+    public List<ImportacaoExportadaDto> ImportacoesDeExtrato { get; set; } = new();
+    /// <summary>Arquivos anexados aos lançamentos (print da nota, foto, PDF), com o conteúdo (data URL).</summary>
+    public List<AnexoExportadoDto> Anexos { get; set; } = new();
     public List<ConferenciaExportadaDto> ConferenciasDeSaldo { get; set; } = new();
     public List<NotificacaoExportadaDto> Notificacoes { get; set; } = new();
     public List<SolicitacaoExportadaDto> Solicitacoes { get; set; } = new();
@@ -83,6 +89,19 @@ public class TransacaoExportadaDto
     public string Situacao { get; set; } = string.Empty;
     /// <summary>A pessoa excluiu o lançamento (fica no histórico, fora do saldo).</summary>
     public bool Excluido { get; set; }
+    /// <summary>Onde aconteceu (o ponto do aparelho, arredondado a ~11 m); null = sem localização.</summary>
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+}
+
+public class AnexoExportadoDto
+{
+    public Guid TransacaoId { get; set; }
+    public string Nome { get; set; } = string.Empty;
+    public string Tipo { get; set; } = string.Empty;
+    public DateTime CriadoEm { get; set; }
+    /// <summary>O arquivo guardado (data URL, base64).</summary>
+    public string Conteudo { get; set; } = string.Empty;
 }
 
 public class MetaExportadaDto
@@ -168,6 +187,23 @@ public class EmprestimoExportadoDto
     public DateTime? DataVencimento { get; set; }
     public bool Quitado { get; set; }
     public string? Observacao { get; set; }
+}
+
+public class ImportacaoExportadaDto
+{
+    public string? Conta { get; set; }
+    public DateOnly De { get; set; }
+    public DateOnly Ate { get; set; }
+    public int Quantidade { get; set; }
+    public DateTime CriadoEm { get; set; }
+}
+
+public class RegraCategoriaExportadaDto
+{
+    public string Estabelecimento { get; set; } = string.Empty;
+    public string Tipo { get; set; } = string.Empty;
+    public string? Categoria { get; set; }
+    public DateTime AtualizadoEm { get; set; }
 }
 
 public class RendaEsperadaExportadaDto

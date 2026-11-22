@@ -140,7 +140,7 @@ public class FotoPerfilService
     }
 
     /// <summary>Gira/espelha conforme a orientação EXIF (foto de celular deitada vira de pé).</summary>
-    private static SKBitmap Orientar(SKBitmap origem, SKEncodedOrigin orientacao)
+    internal static SKBitmap Orientar(SKBitmap origem, SKEncodedOrigin orientacao)
     {
         int w = origem.Width, h = origem.Height;
         var troca = orientacao is SKEncodedOrigin.LeftTop or SKEncodedOrigin.RightTop or SKEncodedOrigin.RightBottom or SKEncodedOrigin.LeftBottom;

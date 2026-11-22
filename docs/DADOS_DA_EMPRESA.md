@@ -23,7 +23,7 @@ Hoje (2026-10-27) todos mostram os **mesmos dados de exemplo** (decisão do Gust
 
 ### 2. Rodapé do site (todas as páginas públicas, Termos e Privacidade)
 - O site vem do rascunho do hub. Trocar **lá**, nunca nas cópias daqui (`controle-financeiro.web/src/site/paginas/`).
-- Arquivo: `E:\VSCode\pontes\PontesDev\clientes\pontes-financas\site\fonte\_base.html`, **linhas 71 a 74**
+- Arquivo: `docs/design-home/site/fonte/_base.html`, **linhas 71 a 74**
   (71 razão social e CNPJ, 72 endereço, 73 contato, 74 aviso: apagar a linha 74).
 - Depois: rodar `fonte/montar.py` no hub (gera os 7 rascunhos: home, recursos, casa, contadores, planos, segurança,
   sobre) e aqui `controle-financeiro.web/scripts/importarSite.py` (copia pro app, inclusive o rodapé de Termos e

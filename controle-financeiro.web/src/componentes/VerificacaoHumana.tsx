@@ -4,7 +4,8 @@
 // Depois de cada envio o token já foi gasto: a caixinha é RENOVADA (turnstile.reset), não apagada e desenhada de novo,
 // e quem envia espera o token novo (aguardarToken) em vez de travar com "Confirme que você não é um robô": com a chave
 // de produção a Cloudflare leva uns segundos pra entregar o próximo (2026-10-29: a pessoa errava, tentava de novo e
-// ficava presa nessa mensagem sem a caixinha pedir nada).
+// ficava presa nessa mensagem sem a caixinha pedir nada). O botão de enviar fica bloqueado enquanto não há token
+// (2026-11-18, pedido do Gustavo: senão a pessoa fica clicando com a caixinha ainda rodando).
 import { useCallback, useEffect, useRef, useState } from "react"
 import { chaveDaVerificacao } from "../services/verificacaoService"
 import css from "./VerificacaoHumana.module.css"

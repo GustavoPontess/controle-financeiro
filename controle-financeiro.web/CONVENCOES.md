@@ -78,6 +78,7 @@ Peça que aparece em mais de uma tela vira componente aqui. A tela escolhe **var
 - Ações da página (salvar, editar, excluir, estornar) ficam **no pé, à direita**, no `RodapeFormulario` — nunca no cabeçalho. Destrutiva à esquerda, principal à direita.
 - Página de formulário/detalhe **não** tem `max-width`: o conteúdo termina na mesma linha dos botões do topo (fresta à direita parece erro de alinhamento).
 - Formulário de dinheiro = layout lateral com `PreviaLancamento` à direita. Criar e editar usam **o mesmo** componente (`telas/FormularioTransacao.tsx`, com ou sem `transacao`; `telas/FormularioContaFixa.tsx`, com ou sem `recorrente`) — nunca dois formulários parecidos que divergem.
+- **Os campos de um lançamento são uma peça só** (2026-11-22, Gustavo: "onde é exibido o detalhamento da transação tinha que ser da mesma forma em Nova transação; se não é, fica destoante"): valor, descrição, data e hora, forma de pagamento e categoria/subcategoria vêm de `telas/CamposLancamento.tsx`, na mesma ordem, em toda tela que preenche um lançamento (Nova transação, editar, fila do Importar). Campo novo de lançamento nasce lá. O que a tela não deixa mudar passa `fixo` e aparece como texto no mesmo lugar (`ValorTexto` do `Campo`, `fixo` do `EntradaValor`), nunca como campo travado.
 - Filtro de período: o back trata `to` como exclusivo (`Data < to`) — mande `diaSeguinte(ate)` pra o "até" incluir o dia.
 
 ## Data e hora (regra de hora, 2026-11-01)
@@ -93,6 +94,7 @@ Peça que aparece em mais de uma tela vira componente aqui. A tela escolhe **var
 
 Toda tela com **mais de um jeito de ser vista** (passos de fluxo, vazio × com dados, erro, carregando, casos como os da /casa, modais) aparece no **painel de dev**, só em desenvolvimento: um cartão pequeno no canto com o seletor "Estado da tela" e, se a tela tiver, um segundo seletor de atalhos (ex.: "Contas de teste" do login). Cada estado põe a tela nele sem passar pelo fluxo real (sem login, sem API: dados de exemplo).
 
+- **Em toda tela (2026-11-17):** a tela sem estados também mostra o painel, só com os atalhos gerais ("Sem sair por inatividade"), pelo `<PainelDevDeTodaTela>` do `App.tsx`; quando a tela põe o próprio `<BarraDev>`, o geral sai.
 - Pra não tampar a tela: arrasta pelo topo (duplo clique volta pro canto) e recolhe numa pílula com o estado de agora; posição e "recolhido" ficam no navegador (`dev:barraEstados`), valendo pra todas as telas.
 - Peças em `src/dev/`: `BarraDev` (carrega o painel só com `import.meta.env.DEV`) e `useEstadoDev` (lê o `#estado` do endereço e chama a função da tela). Nunca importar `BarraEstadosDev` direto.
 - Na tela, **sempre** dentro de `import.meta.env.DEV`, pro build apagar tudo:
@@ -100,4 +102,4 @@ Toda tela com **mais de um jeito de ser vista** (passos de fluxo, vazio × com d
   `{import.meta.env.DEV && <BarraDev atual={estadoDeAgora} grupos={[{ grupo: "Lista", estados: [{ rotulo: "Vazio", para: "/x#vazio" }, …] }]} extras={…} />}`.
 - Exemplos (contas, códigos…) moram em `src/dev/` e só são usados dentro desses ramos. Atalho de dev novo entra em `extras` (vira o segundo seletor), nunca num painel solto na tela.
 - Trava: `scripts/conferirDevFora.mjs` roda no `npm run build` e falha se achar marcas do painel no `dist`. Estado novo com rótulo próprio entra na lista de marcas dela.
-- Já tem: telas de acesso (`/entrar`, `/cadastro`, `/redefinir-senha`, `/proteja-sua-conta`, grupos em `dev/estadosAcesso.ts`, com as contas de teste do login) e a `/casa`.
+- Já tem: telas de acesso (`/entrar`, `/cadastro`, `/redefinir-senha`, `/proteja-sua-conta`, grupos em `dev/estadosAcesso.ts`, com as contas de teste do login), a `/casa` e o `/importar` (colunas, lugares, "Qual é o nome?", escolher a conta, fim; exemplos em `dev/estadosImportar.ts`, montados dentro de funções: valor no nível do módulo feito por chamada não sai do build).

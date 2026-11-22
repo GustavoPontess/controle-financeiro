@@ -1,0 +1,41 @@
+/* Mapa do Importar (só dev). */
+.pagina { display: flex; flex-direction: column; gap: 12px; }
+.barra { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.legenda { display: inline-flex; align-items: center; gap: 8px; font-size: var(--v2-fs-sm); color: var(--v2-texto-2); }
+.legenda i { width: 12px; height: 12px; border-radius: 4px; margin-left: 12px; }
+.legenda i:first-child { margin-left: 0; }
+.legenda i[data-tipo="vai"] { background: var(--v2-acento); }
+.legenda i[data-tipo="muda"] { background: var(--v2-texto); }
+.zoom { display: inline-flex; gap: 6px; }
+.zoom button { height: 32px; min-width: 32px; padding: 0 12px; border: 1px solid var(--v2-linha-forte); border-radius: var(--v2-r-sm);
+  background: var(--v2-superficie); color: var(--v2-texto); font: inherit; font-size: var(--v2-fs-sm); font-weight: 600; cursor: pointer; }
+.zoom button:hover { background: var(--v2-superficie-2); }
+
+.rolagem[data-arrastando] { cursor: grabbing; user-select: none; }
+.rolagem { cursor: grab; overflow: auto; height: calc(100vh - 170px); border: 1px solid var(--v2-linha); border-radius: var(--v2-r-md); background: var(--v2-superficie-2); }
+.palco { position: relative; transform-origin: 0 0; display: flex; flex-direction: column; gap: 140px; width: max-content; padding: 40px 320px 80px 40px; }
+.linha { display: flex; align-items: flex-start; gap: 340px; }
+.coluna { width: 682px; }
+.coluna { display: flex; flex-direction: column; gap: 110px; }
+.cabeca { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.recarregar { width: 34px; height: 34px; border: 1px solid var(--v2-linha-forte); border-radius: 50%; background: var(--v2-superficie); color: var(--v2-texto-2); font: inherit; font-size: 18px; cursor: pointer; }
+.recarregar:hover { background: var(--v2-acento-suave); color: var(--v2-acento); }
+.titulo { display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 700; color: var(--v2-texto); text-decoration: none; }
+.titulo b { display: inline-flex; align-items: center; justify-content: center; min-width: 34px; height: 34px; padding: 0 8px; box-sizing: border-box; border-radius: 17px;
+  background: var(--v2-acento); color: var(--v2-sobre-tinta); font-size: 17px; }
+.moldura { width: 680px; overflow: hidden; border: 1px solid var(--v2-linha-forte); border-radius: var(--v2-r-md); background: var(--v2-superficie); box-shadow: var(--v2-sombra); }
+.moldura iframe { display: block; border: 0; transform-origin: top left; pointer-events: none; }
+
+.setas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.setas path { fill: none; stroke: var(--v2-acento); stroke-width: 3; }
+.setas marker path { fill: var(--v2-acento); stroke: none; }
+.setas path.fio { stroke-width: 1.5; stroke: var(--v2-texto); }
+.setas path.fio[data-tipo="vai"] { stroke: var(--v2-acento); }
+
+/* O contorno fica em cima do botão (fino, não tapa); o balão dele mora na margem da tela. */
+.ponto { position: absolute; border: 1.5px solid var(--v2-texto); border-radius: 8px; pointer-events: none; }
+.ponto[data-tipo="vai"] { border-color: var(--v2-acento); }
+.etiqueta { position: absolute; box-sizing: border-box; display: flex; align-items: center; flex-wrap: wrap; padding: 5px 10px; border-radius: 8px; pointer-events: none;
+  background: var(--v2-texto); color: var(--v2-superficie); font-size: var(--v2-fs-xs); font-weight: 600; line-height: 1.35; }
+.etiqueta[data-tipo="vai"] { background: var(--v2-acento); color: var(--v2-sobre-tinta); }
+.etiqueta b { margin-left: 6px; white-space: nowrap; }

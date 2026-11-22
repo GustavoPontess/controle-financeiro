@@ -5,13 +5,15 @@ import styles from "./Segmentos.module.css"
 
 export type OpcaoSegmento<T extends string> = { valor: T; rotulo: string; icone?: ReactNode }
 
-export default function Segmentos<T extends string>({ valor, onChange, opcoes, ariaLabel, cheio }: {
+export default function Segmentos<T extends string>({ valor, onChange, opcoes, ariaLabel, cheio, travado }: {
   valor: T
   onChange: (valor: T) => void
   opcoes: OpcaoSegmento<T>[]
   ariaLabel: string
   /** Ocupa a largura toda, segmentos iguais. */
   cheio?: boolean
+  /** Só mostra a escolha (ex.: o tipo que veio do banco na importação): as outras ficam apagadas e não trocam. */
+  travado?: boolean
 }) {
   const botoes = useRef<(HTMLButtonElement | null)[]>([])
   const indiceAtivo = Math.max(0, opcoes.findIndex((o) => o.valor === valor))
@@ -26,13 +28,15 @@ export default function Segmentos<T extends string>({ valor, onChange, opcoes, a
   }
 
   return (
-    <div role="radiogroup" aria-label={ariaLabel} className={styles.segmentos} data-cheio={cheio || undefined}>
+    <div role="radiogroup" aria-label={ariaLabel} aria-disabled={travado || undefined} className={styles.segmentos}
+      data-cheio={cheio || undefined} data-travado={travado || undefined}>
       {opcoes.map((o, i) => {
         const ativo = o.valor === valor
         return (
           <button key={o.valor} ref={(el) => { botoes.current[i] = el }} type="button" role="radio" aria-checked={ativo}
             tabIndex={i === indiceAtivo ? 0 : -1} className={styles.segmento} data-ativo={ativo || undefined}
-            onClick={() => onChange(o.valor)} onKeyDown={(e) => tecla(e, i)}>
+            disabled={travado && !ativo}
+            onClick={() => { if (!travado) onChange(o.valor) }} onKeyDown={(e) => { if (!travado) tecla(e, i) }}>
             {o.icone}{o.rotulo}
           </button>
         )

@@ -1,0 +1,13 @@
+/* Qual parte é o nome: as palavras da descrição como botões; as marcadas no tom do acento. */
+.frase { margin: 0 0 14px; font-size: var(--v2-fs-sm); color: var(--v2-texto-2); }
+.palavras { display: flex; flex-wrap: wrap; gap: 6px; }
+.palavra { padding: 6px 10px; border: 1px solid var(--v2-linha); border-radius: var(--v2-r-sm); background: var(--v2-superficie);
+  color: var(--v2-texto-3); font: inherit; font-size: var(--v2-fs-sm); cursor: pointer; }
+.palavra:hover:not(:disabled) { border-color: var(--v2-linha-forte); }
+.palavra:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--v2-anel-foco); }
+.palavra[aria-pressed="true"] { background: var(--v2-acento-suave); border-color: var(--v2-acento); color: var(--v2-acento); font-weight: 600; }
+.resultado { display: flex; flex-direction: column; gap: 4px; margin: 16px 0; padding: 12px 16px; border-radius: var(--v2-r-sm); background: var(--v2-superficie-2); }
+.rotulo { font-size: var(--v2-fs-xs); font-weight: 600; color: var(--v2-texto-2); }
+.erro { margin: 0 0 12px; font-size: var(--v2-fs-sm); color: var(--v2-negativo); }
+.marcar { margin-right: auto; display: inline-flex; align-items: center; }
+.emLinha { padding: 16px 18px; border: 1px solid var(--v2-linha-forte); border-radius: var(--v2-r-md); }

@@ -1,13 +1,19 @@
 import { api } from "../api/cliente"
-import type { LinhaImportar, MapeamentoCsv, PreviewImportacao, ResultadoImportacao } from "../types/Importacao"
+import type { ImportacaoAnterior, LinhaImportar, MapeamentoCsv, PreviewImportacao, ResultadoImportacao, Pendentes, AjustePendente } from "../types/Importacao"
 
-/** Lê o extrato (nada é salvo). CSV com `mapeamento`: as colunas que a pessoa escolheu. */
+/** As importações que a pessoa já fez, da mais nova pra mais antiga (o servidor manda as últimas 20). */
+export const getImportacoesAnteriores = async (): Promise<ImportacaoAnterior[]> => (await api.get("/importacao/anteriores")).data
+
+/** Lê o extrato (nada é salvo). CSV com `mapeamento`: as colunas que a pessoa escolheu. Vários arquivos da mesma
+ *  conta viram uma prévia só; quando os CSV têm o mesmo cabeçalho (os meses do mesmo banco), o mapeamento vale pra todos. */
 export const previewImportacao = async (
-  contaId: string, arquivo: File, mapeamento?: MapeamentoCsv,
+  contaId: string | null, arquivo: File | File[], mapeamento?: MapeamentoCsv,
 ): Promise<PreviewImportacao> => {
   const form = new FormData()
-  form.append("arquivo", arquivo)
-  form.append("contaId", contaId)
+  const arquivos = Array.isArray(arquivo) ? arquivo : [arquivo]
+  if (arquivos.length === 1) form.append("arquivo", arquivos[0])
+  else arquivos.forEach((a) => form.append("arquivos", a))
+  if (contaId) form.append("contaId", contaId) // sem conta: lê igual, só não marca o que já está no app
   if (mapeamento) form.append("mapeamento", JSON.stringify(mapeamento))
   const res = await api.post("/importacao/preview", form)
   return res.data
@@ -26,3 +32,21 @@ export const confirmarImportacao = async (
     { headers: { "Idempotency-Key": chave } })
   return res.data
 }
+
+/** "Qual parte é o nome?": o servidor guarda só a forma do que vem antes e depois do nome (nunca as palavras) e
+ *  usa nas próximas leituras. Devolve o nome como ele leu. */
+export const ensinarNome = async (descricao: string, nome: string): Promise<{ nome: string }> =>
+  (await api.post("/importacao/padroes-nome", { descricao, nome })).data
+
+/** Fila de pendentes: os lançamentos da pessoa que estão na conta sem categoria (os mais recentes) e o total. */
+export const getPendentes = async (): Promise<Pendentes> => (await api.get("/importacao/pendentes")).data
+
+/** Quantos pendentes a pessoa tem (o número do menu). */
+export const getQuantidadePendentes = async (): Promise<number> => (await api.get("/importacao/pendentes/quantidade")).data
+
+/** Dá a categoria aos lançamentos pendentes de um lugar. `lembrar`: vira a regra do lugar. `ajustes`: o que a pessoa
+ *  acertou em cada um ali mesmo (descrição, hora, forma de pagamento). Devolve quantos restam. */
+export const categorizarPendentes = async (
+  transacaoIds: string[], categoriaId: string, subcategoriaId: string | null, lembrar: boolean, ajustes: AjustePendente[] = [],
+): Promise<{ categorizados: number; restam: number }> =>
+  (await api.post("/importacao/pendentes/categorizar", { transacaoIds, categoriaId, subcategoriaId, lembrar, ajustes })).data

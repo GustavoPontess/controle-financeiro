@@ -1,6 +1,6 @@
 /* Painel de dev (só em desenvolvimento): cartão pequeno no canto, preto como a barra do rascunho.
    Cores cruas de propósito: é ferramenta de dev, igual em qualquer tema, e nunca vai pro build. */
-.painel { position: fixed; z-index: 90; right: 16px; bottom: 16px; width: 248px; display: flex; flex-direction: column; gap: 10px; padding: 8px 10px 10px; border-radius: 16px; background: #111; color: #ddd; box-shadow: 0 10px 30px rgba(0, 0, 0, .3); font: 600 12px system-ui, sans-serif; }
+.painel { position: fixed; z-index: 90; right: 16px; bottom: calc(16px + var(--v2-atalhos, 0px)); width: 248px; display: flex; flex-direction: column; gap: 10px; padding: 8px 10px 10px; border-radius: 16px; background: #111; color: #ddd; box-shadow: 0 10px 30px rgba(0, 0, 0, .3); font: 600 12px system-ui, sans-serif; }
 
 .topo { display: flex; align-items: center; gap: 6px; cursor: grab; touch-action: none; user-select: none; }
 .topo:active { cursor: grabbing; }
@@ -20,3 +20,7 @@
 .abrir { padding: 4px 8px; }
 .abrir b { color: #ff8a55; letter-spacing: .08em; }
 .abrir span { color: #ddd; }
+
+/* Chave "Sem sair por inatividade" (vale em todas as telas). */
+.chave { display: flex; align-items: center; gap: 8px; color: #ddd; cursor: pointer; }
+.chave input { width: 16px; height: 16px; margin: 0; accent-color: #ff5a1f; cursor: pointer; }

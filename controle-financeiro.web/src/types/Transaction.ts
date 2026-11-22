@@ -25,6 +25,8 @@ export interface Transaction {
   parcelamentoId?: string | null
   parcelaTransacaoId?: string | null
   ehPagamentoFatura?: boolean
+  /** A fatura que o pagamento quitou. Sem ela, é pagamento que veio do extrato sem a fatura no app: só o registro (exclui aqui). */
+  faturaPagaId?: string | null
   // Perna de transferência entre contas próprias — neutra no extrato.
   ehTransferencia?: boolean
   // Dinheiro de empréstimo (emprestei, peguei, voltou, devolvi): mexe no saldo, fora do resultado do mês.
@@ -50,4 +52,20 @@ export interface Transaction {
   dependenteId?: string | null
   /** Quem cuida dessa conta na família (só rótulo/filtro; não muda a divisão). */
   responsavelUsuarioId?: string | null
+  /** Onde aconteceu: o ponto do aparelho ("Usar onde estou"), arredondado no servidor a ~11 m. Só o dono recebe. */
+  latitude?: number | null
+  longitude?: number | null
 }
+
+/** Anexo do lançamento (print da nota, foto, PDF). O arquivo sai por `urlDoAnexo`. */
+export interface AnexoTransacao {
+  id: string
+  nome: string
+  /** "image/webp" (foto, redesenhada pelo servidor) ou "application/pdf". */
+  tipoConteudo: string
+  tamanho: number
+  criadoEm: string
+}
+
+/** Um ponto (graus decimais). */
+export interface Ponto { latitude: number; longitude: number }

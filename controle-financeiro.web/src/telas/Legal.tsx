@@ -76,11 +76,12 @@ export function TermosDeUso() {
 
 export function Privacidade() {
   return (
-    <PaginaLegal titulo="Política de Privacidade" atualizado="2 de novembro de 2026"
+    <PaginaLegal titulo="Política de Privacidade" atualizado="7 de novembro de 2026"
       beta="Você foi convidado pessoalmente pra testar o produto. Dados podem ser resetados ou perdidos durante essa fase. Por enquanto, evite depender do app como único registro do seu histórico financeiro.">
       <p className={styles.p}><strong>Seus dados ficam num servidor nos Estados Unidos.</strong> Veja <a href="#onde-ficam">onde ficam e por quê</a>.</p>
       <Secao titulo="O que coletamos">
         <p className={styles.p}>Pra funcionar, o Pontes guarda os dados que você mesmo digita: nome, e-mail, foto de perfil (se você puser uma; só quem está nas suas famílias vê), transações (valor, data, descrição, categoria), contas e cartões que você cadastra (só um nome e uma cor; não conectamos a nenhum banco de verdade) e, na função de empréstimos, o nome e valor de pessoas com quem você tem uma dívida ou crédito, mesmo que essa pessoa não tenha conta no Pontes.</p>
+        <p className={styles.p}><strong>Anexos e localização de um lançamento</strong> (só se você puser): fotos e PDFs que você anexa (a nota, o comprovante) e o ponto onde você estava, pego do aparelho só quando você toca em "Usar onde estou" (o navegador pergunta antes). A foto é redesenhada e guardamos só a imagem, sem os dados escondidos do arquivo (como o GPS de onde ela foi tirada). O ponto é arredondado (uns 11 metros). Só você vê os dois; "ver no mapa" abre o OpenStreetMap numa aba nova, e só aí ele recebe o ponto. Saem junto na exportação dos seus dados e são apagados quando você tira o anexo ou a localização, ou quando exclui a conta.</p>
         <p className={styles.p}>Se você mandar algo pelo selo <strong>Beta</strong> (um problema ou uma melhoria), guardamos o que você escreveu, a tela de onde mandou e, se você anexar, imagens da tela. Nas imagens e no texto dos blocos apontados, os seus valores vão escondidos, a não ser que você escolha mostrar. Só a equipe do Pontes vê, e as imagens são apagadas 30 dias depois que a solicitação é encerrada.</p>
         <p className={styles.p}>O Pontes <strong>não</strong> se conecta à sua conta bancária real, não movimenta dinheiro, não processa pagamento e não tem custódia de nenhum valor seu. É um registro manual, mais parecido com uma planilha do que com um banco digital.</p>
       </Secao>
@@ -105,6 +106,11 @@ export function Privacidade() {
           <li><strong>Segurança:</strong> conexão sempre criptografada, banco de dados sem acesso pela internet, servidor acessado só com chave, cópia de segurança diária e senha protegida com Argon2id.</li>
           <li><strong>Seus direitos e quem responde:</strong> os mesmos de "Seus direitos" acima, inclusive reclamar à ANPD. Quem responde pelos seus dados (controlador) é {CONTROLADOR}, pelo e-mail <Email />.</li>
         </ul>
+      </Secao>
+      {/* Sugestão coletiva na importação (2026-11-04): regra em ImportacaoService.SugestorAsync e RegraCategoria.Compartilhavel;
+          base legal e teste de balanceamento em docs/CONFORMIDADE_BR.md. Mudou a regra lá, muda o texto aqui. */}
+      <Secao titulo="Categorias que o app sugere">
+        <p className={styles.p}>Quando você importa um extrato, ou resolve depois um lançamento que ficou sem categoria, e escolhe a categoria de um lugar (uma padaria, um posto), o Pontes guarda essa escolha na sua conta pra já vir pronta da próxima vez. Só isso sai da sua conta: quando três ou mais pessoas diferentes dão a mesma categoria padrão à mesma <strong>loja</strong> (compra no cartão), ela passa a ser sugerida pra todo mundo. Ninguém vê quem escolheu, nem valor, nem data, nem quantas vezes: só "esta loja costuma ser Alimentação". Pix, transferência e boleto nunca entram nisso, porque do outro lado pode estar uma pessoa. É sugestão: você troca no menu antes de importar. A base é o legítimo interesse (Art. 7º, IX da LGPD) de poupar você de categorizar o óbvio.</p>
       </Secao>
       <Secao titulo="Com quem compartilhamos">
         <p className={styles.p}>Com ninguém, exceto: a outra pessoa de um empréstimo vinculado (ela vê o que você registrou sobre a dívida entre vocês dois) e provedores técnicos que hospedam e protegem o app (banco de dados, servidor, envio e recebimento de e-mail e a Cloudflare, que fica na frente do site contra ataques e, nas telas de entrar, pedir acesso e recuperar senha, confere que quem preenche não é um robô; pra isso ela vê o endereço IP e dados do navegador; ver "Onde seus dados ficam") e o Google, que entrega as fontes do texto (vê o endereço IP e dados do navegador). Eles não usam seus dados pra nada além de manter o Pontes no ar e seguro.</p>

@@ -37,3 +37,9 @@ export default function Campo({ rotulo, erro, grupo, estatico, children, classNa
 export function ValorFixo({ children, title }: { children: ReactNode; title?: string }) {
   return <span className={styles.fixo} title={title}>{children}</span>
 }
+
+/** Valor que a tela não deixa mudar, escrito como TEXTO no lugar do controle (mesma altura, sem fundo): pra dado que
+ *  veio pronto e não é um campo travado (ex.: a data e a conta de um lançamento do extrato). */
+export function ValorTexto({ children, title }: { children: ReactNode; title?: string }) {
+  return <span className={styles.texto} title={title}>{children}</span>
+}

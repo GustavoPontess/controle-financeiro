@@ -37,8 +37,9 @@ namespace ControleFinanceiro.Api.Services
         internal static void ExigirEditavel(Transacao transacao)
         {
             if (transacao.EhPagamentoFatura)
-                throw new InvalidOperationException(
-                    "Pagamento de fatura não pode ser editado nem excluído por aqui: ele está ligado ao que a fatura já recebeu. Para desfazer, use Estornar pagamento.");
+                throw new InvalidOperationException(transacao.FaturaPagaId != null
+                    ? "Pagamento de fatura não pode ser editado nem excluído por aqui: ele está ligado ao que a fatura já recebeu. Para desfazer, use Estornar pagamento."
+                    : "Pagamento de fatura não se edita por aqui. Exclua e lance de novo.");
             if (transacao.EhTransferencia)
                 throw new InvalidOperationException(
                     "Transferência não se edita por aqui. Exclua e lance de novo.");
@@ -691,7 +692,8 @@ namespace ControleFinanceiro.Api.Services
 
             if (transacao is null) return false;
 
-            if (transacao.EhPagamentoFatura || transacao.EhAcerto)
+            // Pagamento de fatura que veio do extrato sem fatura no app não tem o que desemparelhar: pode excluir.
+            if ((transacao.EhPagamentoFatura && transacao.FaturaPagaId != null) || transacao.EhAcerto)
                 ExigirEditavel(transacao); // recusa (409) — ver ExigirEditavel
 
             // Perna de transferência: exclui a transferência inteira (as DUAS pernas), não só a clicada.

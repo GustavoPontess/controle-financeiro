@@ -6,11 +6,13 @@
 // e as ações (Configurações, convites, Sair). Cada conta tem as suas famílias.
 // Dentro de uma família (/familias/:id/...) o menu é o da família: Visão geral, Despesas compartilhadas,
 // Entre vocês · Membros, Dependentes, Regras. O que é da pessoa fica no espaço pessoal.
+// Celular (modo app, 2026-11-17): barra de atalhos embaixo (Visão geral, Transações, Nova, Orçamento, Menu; na família, os
+// dela), igual no navegador e no app instalado. Com ela, o topo perde o "abrir menu" e o "Nova transação".
 import { useEffect, useRef, useState } from "react"
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import {
-  ArrowLeft, ArrowLeftRight, BarChart3, Bell, Check, ChevronsUpDown, CreditCard, Handshake, Landmark, LayoutDashboard, LogOut, Mail, MessageCircleMore,
-  PanelLeftClose, PanelLeftOpen, Plus, Receipt, Repeat, Scale, Settings, SlidersHorizontal, Tags, Target, Upload, Users, Eye, EyeOff, Wallet, X,
+  ArrowLeft, ArrowLeftRight, BarChart3, Bell, Check, ChevronsUpDown, CreditCard, Handshake, Landmark, LayoutDashboard, ListChecks, LogOut, Mail, MessageCircleMore,
+  Menu as IconeMenu, PanelLeftClose, PanelLeftOpen, Plus, Receipt, Repeat, Scale, Settings, SlidersHorizontal, Tags, Target, Upload, Users, Eye, EyeOff, Wallet, X,
 } from "lucide-react"
 import Avatar, { urlFoto } from "../componentes/Avatar"
 import Botao from "../componentes/Botao"
@@ -18,6 +20,7 @@ import { useAuth } from "../auth/useAuth"
 import { familiaDaRota, useEspacos } from "../estado/espaco"
 import { useHideBalance } from "../estado/ocultar"
 import { useNaoLidas } from "../estado/notificacoes"
+import { usePendentes } from "../estado/pendentes"
 import PainelNotificacoes from "./PainelNotificacoes"
 import Apontar from "../componentes/Apontar"
 import AvisoDeFuso from "../componentes/AvisoDeFuso"
@@ -25,6 +28,8 @@ import { abrirSolicitacao } from "../estado/apontar"
 import styles from "./V2Layout.module.css"
 
 type ItemMenu = { para: string; rotulo: string; icone: typeof LayoutDashboard; exato?: boolean }
+/** A fila de pendentes: o item do menu leva o número de lançamentos sem categoria. */
+const ROTA_PENDENTES = "/pendentes"
 type Secao = { para: string; rotulo: string; raiz?: string; semMenu?: boolean }
 
 const PRINCIPAL: ItemMenu[] = [
@@ -37,6 +42,7 @@ const PRINCIPAL: ItemMenu[] = [
   { para: "/reconciliacao", rotulo: "Reconciliação", icone: Scale },
   { para: "/emprestimos", rotulo: "Empréstimos", icone: Handshake },
   { para: "/importar", rotulo: "Importar extrato", icone: Upload },
+  { para: ROTA_PENDENTES, rotulo: "Pendentes", icone: ListChecks },
 ]
 const GERENCIAR: ItemMenu[] = [
   { para: "/bancos", rotulo: "Bancos", icone: Landmark },
@@ -102,6 +108,7 @@ export default function V2Layout() {
   const naSecaoDaPagina = new URLSearchParams(search).has("s")
   const voltar = () => navigate(naSecaoDaPagina && window.matchMedia("(max-width: 900px)").matches ? pathname : voltarPara)
   const naoLidas = useNaoLidas(`${usuario?.id ?? ""}:${pathname}`)
+  const pendentes = usePendentes(`${usuario?.id ?? ""}:${pathname}`)
   const [oculto, alternarOculto] = useHideBalance()
   const [menuAberto, setMenuAberto] = useState(false)
   // Trilho: só ícones (o nome aparece ao passar o mouse). Lembrado por dispositivo.
@@ -162,9 +169,21 @@ export default function V2Layout() {
     <NavLink to={para} end={exato} title={recolhido ? rotulo : undefined} className={({ isActive }) => `${styles.item} ${isActive ? styles.itemAtivo : ""}`}>
       <Icone size={18} strokeWidth={2} aria-hidden="true" />
       <span className={styles.itemRotulo}>{rotulo}</span>
+      {para === ROTA_PENDENTES && pendentes > 0 && (
+        <span className={styles.itemContador} aria-label={pendentes === 1 ? "1 pendente" : `${pendentes} pendentes`}>{pendentes > 99 ? "99+" : pendentes}</span>
+      )}
     </NavLink>
   )
   const principal = familiaId ? FAMILIA(familiaId) : PRINCIPAL
+  const novaTransacao = () => navigate("/transacoes/nova", { state: { voltarPara: pathname === "/transacoes/nova" ? "/transacoes" : pathname } })
+  // Atalhos do celular: Visão geral, Transações, Nova, Orçamento (na família: Entre vocês), Menu.
+  const atalhos = familiaId ? [principal[0], principal[1], principal[3]] : [PRINCIPAL[0], PRINCIPAL[2], PRINCIPAL[1]]
+  const Atalho = ({ para, rotulo, icone: Icone, exato }: ItemMenu) => (
+    <NavLink to={para} end={exato} className={({ isActive }) => `${styles.atalho} ${isActive ? styles.atalhoAtivo : ""}`}>
+      <Icone size={22} strokeWidth={2} aria-hidden="true" />
+      <span>{rotulo}</span>
+    </NavLink>
+  )
   const gerenciar = familiaId ? FAMILIA_GERENCIAR(familiaId) : GERENCIAR
 
   return (
@@ -292,7 +311,7 @@ export default function V2Layout() {
               {naoLidas > 0 && <span className={styles.sinoContador} aria-hidden="true">{naoLidas > 99 ? "99+" : naoLidas}</span>}
               {painelNotif && <PainelNotificacoes voltarPara={pathname} aoFechar={() => setPainelNotif(false)} />}
             </span>
-            <Botao variante="primario" compactoNoCelular onClick={() => navigate("/transacoes/nova", { state: { voltarPara: pathname === "/transacoes/nova" ? "/transacoes" : pathname } })}
+            <Botao variante="primario" compactoNoCelular className={styles.novaTopo} onClick={novaTransacao}
               icone={<Plus size={16} strokeWidth={2.5} aria-hidden="true" />}>Nova transação</Botao>
           </div>
         </header>
@@ -301,6 +320,18 @@ export default function V2Layout() {
           {usuario && <AvisoDeFuso usuarioId={usuario.id} fusoDaConta={usuario.fusoHorario} aoMudar={recarregar} />}
           <Outlet />
         </main>
+        <nav className={styles.atalhos} aria-label="Atalhos" data-nao-imprime>
+            <Atalho {...atalhos[0]} />
+            <Atalho {...atalhos[1]} />
+            <button type="button" className={styles.atalhoNova} aria-label="Nova transação" onClick={novaTransacao}>
+              <span className={styles.atalhoNovaBola}><Plus size={24} strokeWidth={2.5} aria-hidden="true" /></span>
+            </button>
+            <Atalho {...atalhos[2]} />
+            <button type="button" className={styles.atalho} aria-expanded={menuAberto} onClick={() => setMenuAberto(true)}>
+              <IconeMenu size={22} strokeWidth={2} aria-hidden="true" />
+              <span>Menu</span>
+            </button>
+        </nav>
         <Apontar />
       </div>
     </div>

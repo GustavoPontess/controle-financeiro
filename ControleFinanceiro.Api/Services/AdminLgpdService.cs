@@ -138,6 +138,8 @@ public class AdminLgpdService
                     t.MeioPagamento,
                     t.StatusTransacao,
                     t.Ativo,
+                    t.Latitude,
+                    t.Longitude,
                 })
                 .ToListAsync())
                 .Select(t => new TransacaoExportadaDto
@@ -154,6 +156,8 @@ public class AdminLgpdService
                     FormaDePagamento = t.MeioPagamento.Descricao(),
                     Situacao = t.StatusTransacao.ToString(),
                     Excluido = !t.Ativo,
+                    Latitude = t.Latitude,
+                    Longitude = t.Longitude,
                 })
                 .ToList(),
             Metas = metas
@@ -216,6 +220,40 @@ public class AdminLgpdService
                 .Select(r => new RendaEsperadaExportadaDto { Ano = r.Ano, Mes = r.Mes, FixaEsperada = r.FixaEsperada, VariavelEsperada = r.VariavelEsperada })
                 .ToListAsync(),
             CategoriasProprias = await CategoriasDaPessoaAsync(usuarioId),
+            CategoriasAprendidas = (await _context.RegrasCategoria
+                .Where(r => r.UsuarioId == usuarioId)
+                .OrderBy(r => r.Nome)
+                .Select(r => new
+                {
+                    r.Nome, r.Tipo, r.AtualizadoEm,
+                    Categoria = _context.Categorias.Where(c => c.Id == r.CategoriaId).Select(c => c.Descricao).FirstOrDefault(),
+                })
+                .ToListAsync())
+                .Select(r => new RegraCategoriaExportadaDto
+                {
+                    Estabelecimento = r.Nome, Tipo = r.Tipo.ToString(), Categoria = r.Categoria, AtualizadoEm = r.AtualizadoEm,
+                })
+                .ToList(),
+            ImportacoesDeExtrato = await _context.ImportacoesExtrato
+                .Where(i => i.UsuarioId == usuarioId)
+                .OrderBy(i => i.CriadoEm)
+                .Select(i => new ImportacaoExportadaDto
+                {
+                    Conta = _context.Contas.Where(c => c.Id == i.ContaId).Select(c => c.Nome).FirstOrDefault(),
+                    De = i.De, Ate = i.Ate, Quantidade = i.Quantidade, CriadoEm = i.CriadoEm,
+                })
+                .ToListAsync(),
+            Anexos = (await _context.AnexosTransacao.AsNoTracking()
+                .Where(a => a.UsuarioId == usuarioId)
+                .OrderBy(a => a.CriadoEm)
+                .Select(a => new { a.TransacaoId, a.Nome, a.TipoConteudo, a.CriadoEm, a.Dados })
+                .ToListAsync())
+                .Select(a => new AnexoExportadoDto
+                {
+                    TransacaoId = a.TransacaoId, Nome = a.Nome, Tipo = a.TipoConteudo, CriadoEm = a.CriadoEm,
+                    Conteudo = $"data:{a.TipoConteudo};base64,{Convert.ToBase64String(a.Dados)}",
+                })
+                .ToList(),
             ConferenciasDeSaldo = await _context.ReconciliacoesSaldo
                 .Where(r => r.UsuarioId == usuarioId && r.Ativo)
                 .OrderBy(r => r.DataHora)
@@ -479,6 +517,10 @@ public class AdminLgpdService
             _context.Transferencias.RemoveRange(transfs);
             await _context.SaveChangesAsync();
         }
+
+        // 1b. Anexos dos lançamentos (o cascade do banco também apaga; explícito pra não depender dele).
+        _context.AnexosTransacao.RemoveRange(await _context.AnexosTransacao.Where(a => a.UsuarioId == id).ToListAsync());
+        await _context.SaveChangesAsync();
 
         // 2. Transações do usuário (inclui canceladas). Some antes das Faturas (Transacao.FaturaPagaId é Restrict).
         var transacoes = await _context.Transacoes.IgnoreQueryFilters().Where(t => t.CriadoPor == id).ToListAsync();

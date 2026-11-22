@@ -1,12 +1,15 @@
 // Configurações do v2 — separadas por assunto, como a Conta do Google: menu de seções à esquerda (`?s=`), o
 // conteúdo da seção à direita. No celular, primeiro só o menu; tocou numa seção, só ela (a seta do topo volta). Segurança e login (senha, verificação em duas etapas, sessões, dispositivos
-// confiáveis) · Perfil (nome e nascimento) · Aparência · Dados e privacidade (baixar os dados, excluir a conta).
+// confiáveis) · Perfil (nome e nascimento) · Aparência · App no celular (instalar) · Dados e privacidade (baixar os dados,
+// excluir a conta).
 import { useState } from "react"
 import { useSearchParams } from "react-router-dom"
-import { ArrowUpRight, FileLock2, Moon, Palette, ShieldCheck, Sun, UserRound } from "lucide-react"
+import { ArrowUpRight, FileLock2, Moon, Palette, ShieldCheck, Smartphone, Sun, UserRound } from "lucide-react"
 import { Link } from "react-router-dom"
 import { useTema, type Tema } from "../layout/useTema"
 import Bloco from "../componentes/Bloco"
+import { propsDeLinkInterno } from "../pwa/instalar"
+import AppNoCelular from "./AppNoCelular"
 import NavSecoes, { type Secao } from "../componentes/NavSecoes"
 import Segmentos from "../componentes/Segmentos"
 import SegurancaMfa from "./SegurancaMfa"
@@ -16,11 +19,12 @@ import Perfil from "./Perfil"
 import DadosConta from "./DadosConta"
 import styles from "./Configuracoes.module.css"
 
-type IdSecao = "seguranca" | "perfil" | "aparencia" | "privacidade"
+type IdSecao = "seguranca" | "perfil" | "aparencia" | "app" | "privacidade"
 const SECOES: Secao<IdSecao>[] = [
   { id: "seguranca", rotulo: "Segurança e login", icone: ShieldCheck },
   { id: "perfil", rotulo: "Perfil", icone: UserRound },
   { id: "aparencia", rotulo: "Aparência", icone: Palette },
+  { id: "app", rotulo: "App no celular", icone: Smartphone },
   { id: "privacidade", rotulo: "Dados e privacidade", icone: FileLock2 },
 ]
 
@@ -39,6 +43,7 @@ export default function Configuracoes() {
         {ativa.id === "seguranca" && <Seguranca />}
         {ativa.id === "perfil" && <Perfil />}
         {ativa.id === "aparencia" && <Aparencia />}
+        {ativa.id === "app" && <AppNoCelular />}
         {ativa.id === "privacidade" && <Privacidade />}
       </section>
     </div>
@@ -77,8 +82,8 @@ function Privacidade() {
     <>
       <Bloco titulo="Documentos">
         <ul className={styles.links}>
-          <li><Link to="/privacidade" target="_blank" rel="noreferrer">Política de Privacidade <ArrowUpRight size={14} strokeWidth={2.25} aria-hidden="true" /></Link></li>
-          <li><Link to="/termos-de-uso" target="_blank" rel="noreferrer">Termos de Uso <ArrowUpRight size={14} strokeWidth={2.25} aria-hidden="true" /></Link></li>
+          <li><Link to="/privacidade" {...propsDeLinkInterno()}>Política de Privacidade <ArrowUpRight size={14} strokeWidth={2.25} aria-hidden="true" /></Link></li>
+          <li><Link to="/termos-de-uso" {...propsDeLinkInterno()}>Termos de Uso <ArrowUpRight size={14} strokeWidth={2.25} aria-hidden="true" /></Link></li>
         </ul>
       </Bloco>
       <DadosConta />

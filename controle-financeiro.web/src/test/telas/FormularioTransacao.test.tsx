@@ -6,6 +6,11 @@ import userEvent from "@testing-library/user-event"
 vi.mock("../../services/transactionService", () => ({ createTransaction: vi.fn(), updateTransaction: vi.fn(), avisoDeCompra: vi.fn(async () => null) }))
 vi.mock("../../services/transferenciaService", () => ({ createTransferencia: vi.fn(), editarTransferencia: vi.fn() }))
 vi.mock("../../services/familiaService", () => ({ getFamilias: vi.fn(async () => []), getFamilia: vi.fn() }))
+vi.mock("../../services/anexoService", () => ({
+  listarAnexos: vi.fn(async () => []), enviarAnexo: vi.fn(), removerAnexo: vi.fn(), definirLocalizacao: vi.fn(),
+  urlDoAnexo: (t: string, a: string) => `/api/v1/transacoes/${t}/anexos/${a}`,
+}))
+import { definirLocalizacao, enviarAnexo, listarAnexos, removerAnexo } from "../../services/anexoService"
 import { getFamilia, getFamilias } from "../../services/familiaService"
 import { avisoDeCompra, createTransaction, updateTransaction } from "../../services/transactionService"
 import { createTransferencia, editarTransferencia } from "../../services/transferenciaService"
@@ -131,7 +136,7 @@ describe("FormularioTransacao", () => {
 
     expect(await screen.findByText("Se fizer essa compra, falta saldo na conta Nubank pra:")).toBeInTheDocument()
     // As contas uma por linha (sem link: sair do formulário perderia o que foi digitado) e o saldo de hoje no fim.
-    const linhas = screen.getAllByRole("listitem").map((li) => li.textContent?.replace(/ /g, " "))
+    const linhas = screen.getAllByRole("listitem").filter((li) => !li.closest("[aria-label='Anexos']")).map((li) => li.textContent?.replace(/ /g, " "))
     expect(linhas).toEqual(["Internet · 20/1R$ 99,90", "Aluguel · 5/2R$ 1.500,00"])
     expect(screen.queryByRole("link", { name: /Internet/ })).toBeNull()
     expect(screen.getByText(/^Saldo da conta hoje: R\$\s200,00\.$/)).toBeInTheDocument()
@@ -170,5 +175,62 @@ describe("FormularioTransacao", () => {
     renderizar()
     await waitFor(() => expect(getFamilias).toHaveBeenCalled())
     expect(screen.queryByRole("switch", { name: /Dividir/ })).not.toBeInTheDocument()
+  })
+
+  // Nota e local (2026-11-07): criar e editar exigem o mesmo; nos dois, só vai pro servidor ao salvar.
+  it("nota e local: despesa nova grava a localização e sobe o anexo no lançamento criado", async () => {
+    vi.mocked(createTransaction).mockResolvedValue({ id: "novo1" } as never)
+    vi.mocked(enviarAnexo).mockResolvedValue({ id: "a1", nome: "nota.webp", tipoConteudo: "image/webp", tamanho: 10, criadoEm: "" })
+    vi.mocked(definirLocalizacao).mockResolvedValue(undefined)
+    const aoSalvo = vi.fn()
+    Object.defineProperty(navigator, "geolocation", { configurable: true, value: {
+      getCurrentPosition: (ok: PositionCallback) => ok({ coords: { latitude: -19.923471, longitude: -43.945712 } } as GeolocationPosition),
+    } })
+    render(<MemoryRouter><FormularioTransacao contas={contas as never} cartoes={[]} categorias={categorias as never} subcategorias={[]} aoSair={vi.fn()} aoSalvo={aoSalvo} /></MemoryRouter>)
+
+    await userEvent.type(screen.getByPlaceholderText("0,00"), "1200")
+    await userEvent.type(screen.getByPlaceholderText("Mercado"), "Padaria")
+    await userEvent.click(screen.getByRole("combobox", { name: "Conta" }))
+    await userEvent.click(screen.getByRole("option", { name: "Nubank" }))
+    await userEvent.click(screen.getByRole("combobox", { name: "Categoria" }))
+    await userEvent.click(screen.getByRole("option", { name: "Alimentação" }))
+    await userEvent.click(screen.getByRole("button", { name: "Usar onde estou" }))
+    expect(await screen.findByText("-19,9235, -43,9457")).toBeInTheDocument()
+    const nota = new File(["x"], "nota.png", { type: "image/png" })
+    await userEvent.upload(screen.getByLabelText("Escolher arquivo"), nota)
+    expect(screen.getByText("nota.png")).toBeInTheDocument()
+    expect(enviarAnexo).not.toHaveBeenCalled()
+
+    await userEvent.click(screen.getByRole("button", { name: "Adicionar" }))
+    await waitFor(() => expect(aoSalvo).toHaveBeenCalled())
+    expect(definirLocalizacao).toHaveBeenCalledWith("novo1", { latitude: -19.9235, longitude: -43.9457 })
+    expect(enviarAnexo).toHaveBeenCalledWith("novo1", nota)
+  })
+
+  it("nota e local: arquivo que não é foto nem PDF é recusado na tela", async () => {
+    renderizar()
+    await userEvent.upload(screen.getByLabelText("Escolher arquivo"), new File(["<svg/>"], "x.svg", { type: "image/svg+xml" }), { applyAccept: false })
+    expect(screen.getByRole("alert")).toHaveTextContent("Anexe uma foto (JPG, PNG ou WebP) ou um PDF.")
+    expect(screen.queryByText("x.svg")).not.toBeInTheDocument()
+  })
+
+  it("nota e local: ao editar, tirar um anexo só vale ao salvar", async () => {
+    vi.mocked(definirLocalizacao).mockClear()
+    vi.mocked(removerAnexo).mockClear()
+    vi.mocked(listarAnexos).mockResolvedValue([{ id: "a9", nome: "cupom.webp", tipoConteudo: "image/webp", tamanho: 10, criadoEm: "" }])
+    vi.mocked(updateTransaction).mockResolvedValue({ tipo: "transacao", id: "t1" })
+    vi.mocked(removerAnexo).mockResolvedValue(undefined)
+    const aoSalvo = vi.fn()
+    render(<FormularioTransacao transacao={despesaComHora as never} contas={contas as never} cartoes={[]} categorias={categorias as never} subcategorias={[]} aoSair={vi.fn()} aoSalvo={aoSalvo} />)
+
+    expect(await screen.findByRole("img", { name: "cupom.webp" })).toHaveAttribute("src", "/api/v1/transacoes/t1/anexos/a9")
+    await userEvent.click(screen.getByRole("button", { name: "Tirar cupom.webp" }))
+    expect(screen.queryByText("cupom.webp")).not.toBeInTheDocument()
+    expect(removerAnexo).not.toHaveBeenCalled()
+
+    await userEvent.click(screen.getByRole("button", { name: "Salvar" }))
+    await waitFor(() => expect(aoSalvo).toHaveBeenCalled())
+    expect(removerAnexo).toHaveBeenCalledWith("t1", "a9")
+    expect(definirLocalizacao).not.toHaveBeenCalled()
   })
 })

@@ -1,0 +1,7 @@
+.cupom { display: flex; flex-direction: column; padding: 6px 20px; border: 1px solid var(--v2-linha); border-radius: var(--v2-r-md); background: var(--v2-superficie); }
+.linha { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 16px; min-height: 48px; padding: 6px 0; }
+.linha + .linha { border-top: 1px dashed var(--v2-linha-forte); }
+.rotulo { font-size: var(--v2-fs-sm); color: var(--v2-texto-2); white-space: nowrap; }
+.valor { display: flex; justify-content: flex-end; min-width: 0; max-width: 100%; font-size: var(--v2-fs-md); font-weight: 500; font-variant-numeric: tabular-nums; }
+.linha[data-empilhado] { grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 12px 0 14px; }
+.linha[data-empilhado] .valor { justify-content: flex-start; }

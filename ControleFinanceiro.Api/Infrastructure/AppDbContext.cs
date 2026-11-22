@@ -189,8 +189,12 @@ public class AppDbContext : DbContext
     public DbSet<FinancialEventLog> FinancialEventLogs => Set<FinancialEventLog>();
     public DbSet<RegistroIdempotencia> RegistrosIdempotencia => Set<RegistroIdempotencia>();
     public DbSet<ModeloImportacao> ModelosImportacao => Set<ModeloImportacao>();
+    public DbSet<PadraoNomeImportacao> PadroesNomeImportacao => Set<PadraoNomeImportacao>();
+    public DbSet<ImportacaoExtrato> ImportacoesExtrato => Set<ImportacaoExtrato>();
+    public DbSet<RegraCategoria> RegrasCategoria => Set<RegraCategoria>();
     public DbSet<RendaPrevista> RendasPrevistas => Set<RendaPrevista>();
     public DbSet<FotoPerfil> FotosPerfil => Set<FotoPerfil>();
+    public DbSet<AnexoTransacao> AnexosTransacao => Set<AnexoTransacao>();
     public DbSet<ReconciliacaoSaldo> ReconciliacoesSaldo => Set<ReconciliacaoSaldo>();
 
     // ── Issue #5 Autenticação Robusta ──
@@ -422,6 +426,51 @@ public class AppDbContext : DbContext
             .HasForeignKey(m => m.UsuarioId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // PadraoNomeImportacao: o nome que a pessoa ensinou (só a forma da descrição). Um por começo; some com a pessoa.
+        modelBuilder.Entity<PadraoNomeImportacao>()
+            .HasIndex(p => new { p.UsuarioId, p.Antes })
+            .IsUnique();
+        modelBuilder.Entity<PadraoNomeImportacao>()
+            .HasOne<Usuario>()
+            .WithMany()
+            .HasForeignKey(p => p.UsuarioId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // ImportacaoExtrato: o registro de cada importação confirmada; a lista é da pessoa, da mais nova pra mais
+        // antiga. Some com a conta e com o usuário (é só o registro; os lançamentos são da conta).
+        modelBuilder.Entity<ImportacaoExtrato>()
+            .HasIndex(i => new { i.UsuarioId, i.CriadoEm });
+        modelBuilder.Entity<ImportacaoExtrato>()
+            .HasOne<Conta>()
+            .WithMany()
+            .HasForeignKey(i => i.ContaId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ImportacaoExtrato>()
+            .HasOne<Usuario>()
+            .WithMany()
+            .HasForeignKey(i => i.UsuarioId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // RegraCategoria: uma por pessoa e estabelecimento; some com a pessoa. Excluir categoria move as regras
+        // (CategoriaService); o cascade aqui só garante que nenhuma fica apontando pro nada.
+        modelBuilder.Entity<RegraCategoria>()
+            .HasIndex(r => new { r.UsuarioId, r.Chave })
+            .IsUnique();
+        // Sugestão coletiva: a prévia busca pelas chaves do extrato só entre as regras compartilháveis.
+        modelBuilder.Entity<RegraCategoria>()
+            .HasIndex(r => r.Chave)
+            .HasFilter("\"Compartilhavel\"");
+        modelBuilder.Entity<RegraCategoria>()
+            .HasOne<Usuario>()
+            .WithMany()
+            .HasForeignKey(r => r.UsuarioId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<RegraCategoria>()
+            .HasOne<Categoria>()
+            .WithMany()
+            .HasForeignKey(r => r.CategoriaId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // Meta → Conta-caixinha (1:1). Restrict: a caixinha tem lançamentos (as transferências); a meta se exclui
         // por soft delete e a caixinha é encerrada, nunca apagada.
         modelBuilder.Entity<Meta>()
@@ -436,6 +485,14 @@ public class AppDbContext : DbContext
             .WithOne()
             .HasForeignKey<FotoPerfil>(f => f.UsuarioId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // AnexoTransacao → Transacao e → Usuario (Cascade nos dois: dado pessoal, some com o lançamento e com a pessoa).
+        modelBuilder.Entity<AnexoTransacao>()
+            .HasOne(a => a.Transacao).WithMany().HasForeignKey(a => a.TransacaoId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AnexoTransacao>()
+            .HasOne<Usuario>().WithMany().HasForeignKey(a => a.UsuarioId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AnexoTransacao>().HasIndex(a => new { a.TransacaoId, a.CriadoEm });
+        modelBuilder.Entity<AnexoTransacao>().HasIndex(a => a.UsuarioId);
 
         // RendaPrevista → Usuario (Cascade: dado pessoal, some com a pessoa). Uma linha por mês.
         modelBuilder.Entity<RendaPrevista>()

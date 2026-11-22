@@ -2,3 +2,6 @@
 .marca img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .marca[data-iniciais="true"] { color: #fff; font-size: var(--v2-fs-xs); font-weight: 700; letter-spacing: 0.02em; }
 .marca[data-iniciais="true"]:not([style*="background"]) { color: var(--v2-texto-2); }
+/* A marca do Pontes (carteira): a logo inteira dentro do círculo, com respiro, sobre o tom suave do acento. */
+.marca[data-da-casa="true"] { background: var(--v2-acento-suave); }
+.marca[data-da-casa="true"] img { width: 64%; height: 64%; object-fit: contain; }

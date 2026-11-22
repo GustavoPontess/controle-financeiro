@@ -27,6 +27,8 @@ namespace ControleFinanceiro.Api.DTOs.Transacao
         public int? Parcelas { get; set; }
         public decimal? ValorParcela { get; set; }
         public bool EhPagamentoFatura { get; set; }
+        /// <summary>A fatura que este pagamento quitou. Null num pagamento de fatura = veio do extrato sem a fatura no app (só o registro; exclui por Transações).</summary>
+        public Guid? FaturaPagaId { get; set; }
         // Família: dividida com qual, situação da aprovação (0 não precisa · 1 esperando · 2 aprovada · 3 recusada),
         // pra quem (dependente) e quem cuida (responsável). O bloco "Família" da página da transação lê daqui.
         public Guid? FamiliaId { get; set; }
@@ -48,5 +50,8 @@ namespace ControleFinanceiro.Api.DTOs.Transacao
         public DateOnly Data { get; set; }
         /// <summary>Hora do lançamento ("HH:mm:ss") — time puro, sem fuso. Null = sem hora.</summary>
         public TimeOnly? Hora { get; set; }
+        /// <summary>Onde aconteceu (o ponto do aparelho, ~11 m). Só vai pro dono: esta resposta é da lista dele.</summary>
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
     }
 }

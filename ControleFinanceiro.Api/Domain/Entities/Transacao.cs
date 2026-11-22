@@ -110,7 +110,8 @@ public class Transacao
     /// <summary>true se esta Transacao representa o pagamento de uma Fatura (rota especial — ponte conta↔cartão).</summary>
     public bool EhPagamentoFatura { get; set; }
 
-    /// <summary>Quando EhPagamentoFatura=true, qual Fatura foi quitada.</summary>
+    /// <summary>Quando EhPagamentoFatura=true, qual Fatura foi quitada. Null = pagamento que veio do extrato sem a
+    /// fatura no app (2026-11-04): só o registro da saída, pode ser excluído por Transações.</summary>
     public Guid? FaturaPagaId { get; set; }
     public Fatura? FaturaPaga { get; set; }
 
@@ -127,10 +128,10 @@ public class Transacao
     /// NÃO é receita/despesa real — fora de relatórios de P&amp;L. Ver ReconciliacaoSaldo.</summary>
     public bool EhAjusteReconciliacao { get; set; }
 
-    /// <summary>true se esta Transacao é uma das pernas do Pix no Crédito na conta: o cartão põe o valor na
-    /// conta ("Valor adicionado… Pix no Crédito") e o Pix tira na mesma hora. Mexe no saldo (as duas se
-    /// anulam), mas NÃO é receita/despesa — o gasto é do cartão (a compra na fatura, ou o pagamento dela no
-    /// extrato importado sem a fatura). Marcado pela importação. Fora de relatórios de P&amp;L.</summary>
+    /// <summary>true se esta Transacao é a ENTRADA do Pix no Crédito na conta: o cartão põe o valor na conta
+    /// ("Valor adicionado… Pix no Crédito") e o Pix tira na mesma hora. Mexe no saldo, mas NÃO é receita. Desde
+    /// 2026-11-04 o Pix que ela pagou é despesa comum, com categoria (antes as duas pernas levavam a marca; as
+    /// importadas antes disso seguem marcadas nas duas). Marcado pela importação. Fora de relatórios de P&amp;L.</summary>
     public bool EhPixNoCredito { get; set; }
 
     /// <summary>true se esta Transacao é dinheiro de EMPRÉSTIMO: o que saiu ao emprestar, o que entrou ao pegar, e o
@@ -168,6 +169,12 @@ public class Transacao
 
     /// <summary>Timestamp de criação (auditoria).</summary>
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
+
+    /// <summary>Onde o lançamento aconteceu (2026-11-07): o ponto que o APARELHO da pessoa deu ("Usar onde estou"),
+    /// arredondado a 4 casas (~11 m) pra não guardar mais precisão que o necessário. Os dois juntos ou nenhum. Só o
+    /// dono vê (não sai pra família); entra na exportação LGPD. Null = sem localização.</summary>
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
 
     /// <summary>Issue #27 — FITID do OFX quando a transação veio de importação
     /// de extrato. Usado para deduplicar reimportações. Null = lançamento manual.</summary>

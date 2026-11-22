@@ -7,8 +7,19 @@ function iniciais(nome: string) {
   return (p.length === 1 ? p[0].slice(0, 2) : p[0][0] + p[p.length - 1][0]).toUpperCase()
 }
 
-export default function LogoMarca({ nome, logoUrl, cor, tamanho = 36 }: { nome: string; logoUrl?: string | null; cor?: string | null; tamanho?: number }) {
+export default function LogoMarca({ nome, logoUrl, cor, tamanho = 36, daCasa }: {
+  nome: string; logoUrl?: string | null; cor?: string | null; tamanho?: number
+  /** Sem banco por trás (a carteira, o dinheiro em mãos): a marca é a do Pontes (o arquivo da logo, como ele é). */
+  daCasa?: boolean
+}) {
   const [quebrou, setQuebrou] = useState(false)
+  if (daCasa && !logoUrl) {
+    return (
+      <span className={styles.marca} data-da-casa="true" style={{ width: tamanho, height: tamanho }}>
+        <img src="/site/estaiada-laranja.svg" alt="" />
+      </span>
+    )
+  }
   const fundo = cor && /^#?[0-9a-f]{3,8}$/i.test(cor) ? (cor.startsWith("#") ? cor : `#${cor}`) : undefined
   return (
     <span className={styles.marca} style={{ width: tamanho, height: tamanho, background: logoUrl && !quebrou ? undefined : fundo }} data-iniciais={!logoUrl || quebrou ? "true" : undefined}>

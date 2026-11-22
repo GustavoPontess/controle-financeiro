@@ -1,15 +1,5 @@
 .alerta { margin: 0; padding: 10px 14px; border-radius: var(--v2-r-sm); background: var(--v2-negativo-suave); color: var(--v2-negativo); font-size: var(--v2-fs-sm); font-weight: 500; }
 
-/* Data (Hoje / Ontem / calendário) + Hora: lado a lado enquanto a data tem ~340px; abaixo disso a hora desce
-   pra linha de baixo. Antes era grade 2fr/1fr e o calendário invadia a hora quando o formulário estreitava. */
-.dataHora { display: flex; flex-wrap: wrap; gap: 16px; }
-.dataHora > :first-child { flex: 2 1 340px; }
-.dataHora > :nth-child(2) { flex: 1 1 120px; }
-.dataRapida { display: flex; flex-wrap: wrap; gap: 6px; }
-.dataRapida > button { flex-shrink: 0; }
-/* A data precisa caber inteira ("21/10/2026"): sem espaço ao lado de Hoje/Ontem (celular), desce pra linha de baixo. */
-.dataRapida > :last-child { flex: 1 1 150px; min-width: 0; }
-
 /* Opções: "Já paguei" */
 .opcoes { gap: 12px; }
 .dividir { display: flex; flex-direction: column; gap: 8px; }

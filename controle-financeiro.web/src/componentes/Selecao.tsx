@@ -2,7 +2,7 @@
 // gatilho com a mesma cara dos campos, lista arredondada com sombra, marca no escolhido, teclado
 // (↑ ↓ Home End Enter Esc Tab) e busca quando a lista é longa. Abre pra cima se não couber embaixo.
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
-import { Check, ChevronDown, Search } from "lucide-react"
+import { Check, ChevronDown, Pencil, Search } from "lucide-react"
 import { useCampo } from "./campoContexto"
 import g from "./gatilho.module.css"
 import styles from "./Selecao.module.css"
@@ -12,7 +12,7 @@ export type OpcaoSelecao = { valor: string; rotulo: string; detalhe?: string }
 
 const BUSCA_A_PARTIR_DE = 9
 
-export default function Selecao({ valor, onChange, opcoes, placeholder = "Escolha…", invalido, desabilitado, tamanho = "md", ariaLabel, id, semBusca }: {
+export default function Selecao({ valor, onChange, opcoes, placeholder = "Escolha…", invalido, desabilitado, tamanho = "md", variante = "campo", ariaLabel, id, semBusca }: {
   valor: string
   onChange: (valor: string) => void
   opcoes: OpcaoSelecao[]
@@ -21,6 +21,9 @@ export default function Selecao({ valor, onChange, opcoes, placeholder = "Escolh
   desabilitado?: boolean
   /** md = 44px (formulário) · sm = 40px (painel) · xs = 32px (paginação) */
   tamanho?: "md" | "sm" | "xs"
+  /** campo = a moldura de sempre · texto = parece o valor escrito (sem borda, largura do texto, seta pequena), pra ficha
+   *  que se lê como uma nota (2026-11-07). A lista que abre é a mesma. */
+  variante?: "campo" | "texto"
   ariaLabel?: string
   id?: string
   /** Sem a busca mesmo com a lista longa (ex.: os meses, que a pessoa já sabe onde estão). */
@@ -67,9 +70,13 @@ export default function Selecao({ valor, onChange, opcoes, placeholder = "Escolh
     if (r) {
       const cima = window.innerHeight - r.bottom < 300 && r.top > window.innerHeight - r.bottom
       setParaCima(cima)
+      // O painel tem no mínimo 180px: gatilho estreito perto da borda direita (alinhado à direita) puxa o painel pra
+      // esquerda, pra não sair da janela.
+      const largura = Math.max(r.width, 180)
+      const left = Math.max(8, Math.min(r.left, window.innerWidth - largura - 8))
       setPos(cima
-        ? { bottom: window.innerHeight - r.top + 6, left: r.left, width: r.width }
-        : { top: r.bottom + 6, left: r.left, width: r.width })
+        ? { bottom: window.innerHeight - r.top + 6, left, width: r.width }
+        : { top: r.bottom + 6, left, width: r.width })
     }
     // preventScroll: com o painel fixo, focar rolaria os pais (e fecharia o painel pelo "rolou, fecha").
     if (comBusca) campoBusca.current?.focus({ preventScroll: true })
@@ -124,13 +131,15 @@ export default function Selecao({ valor, onChange, opcoes, placeholder = "Escolh
 
   return (
     <div className={styles.raiz} ref={raiz}>
-      <button ref={gatilho} id={idGatilho} type="button" className={g.gatilho} data-tamanho={tamanho} role="combobox"
+      <button ref={gatilho} id={idGatilho} type="button" className={g.gatilho} data-tamanho={tamanho} data-variante={variante} role="combobox"
         aria-haspopup="listbox" aria-expanded={aberto} aria-controls={idLista} aria-label={ariaLabel} aria-invalid={inv || undefined}
         aria-describedby={inv && campo ? campo.erroId : undefined}
         data-invalido={inv ? "true" : undefined} data-vazio={escolhida ? undefined : "true"} disabled={desabilitado}
         onClick={() => (aberto ? fechar() : abrir())} onKeyDown={teclaNoGatilho}>
         <span className={g.texto}>{escolhida?.rotulo ?? placeholder}{escolhida?.detalhe && <>{" "}<span className={styles.detalhe}>· {escolhida.detalhe}</span></>}</span>
-        <ChevronDown size={16} strokeWidth={2.25} aria-hidden="true" className={`${g.icone} ${styles.seta}`} data-aberto={aberto ? "true" : undefined} />
+        {variante === "texto"
+          ? <Pencil size={16} strokeWidth={2.25} aria-hidden="true" className={g.icone} />
+          : <ChevronDown size={16} strokeWidth={2.25} aria-hidden="true" className={`${g.icone} ${styles.seta}`} data-aberto={aberto ? "true" : undefined} />}
       </button>
 
       {aberto && (

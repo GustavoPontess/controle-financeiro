@@ -1,6 +1,7 @@
 // Rotas do app LOGADO (menu lateral + todas as telas). Fica num pacote à parte, carregado só quando alguém entra:
 // o site público e as telas de acesso não baixam nada daqui (2026-10-26: antes o site esperava 245 KB do app pra
 // começar a aparecer no celular). Tela nova do app entra AQUI, não no App.tsx.
+import { lazy } from "react"
 import { Navigate, Route, Routes, useParams } from "react-router-dom"
 import Protegido from "./auth/Protegido"
 import V2Layout from "./layout/V2Layout"
@@ -25,6 +26,7 @@ import EditarCategoria from "./telas/EditarCategoria"
 import EditarSubcategoria from "./telas/EditarSubcategoria"
 import ExcluirCategoria from "./telas/ExcluirCategoria"
 import ImportarExtrato from "./telas/ImportarExtrato"
+import Pendentes from "./telas/Pendentes"
 import Reconciliacao from "./telas/Reconciliacao"
 import Orcamento from "./telas/Orcamento"
 import Familias from "./telas/Familias"
@@ -58,6 +60,9 @@ import RegistrarEmprestimo from "./telas/RegistrarEmprestimo"
 import ConvidarEmprestimo from "./telas/ConvidarEmprestimo"
 import ConfirmarPagamentoEmprestimo from "./telas/ConfirmarPagamentoEmprestimo"
 
+// DEV: mapa das telas do Importar (2026-11-21). Carregado sob demanda e só no dev: no build some (trava conferirDevFora).
+const MapaImportar = import.meta.env.DEV ? lazy(() => import("./dev/MapaImportar")) : null
+
 export default function RotasApp() {
   return (
     <Routes>
@@ -76,6 +81,8 @@ export default function RotasApp() {
         <Route path="/bancos" element={<Bancos />} />
         <Route path="/categorias" element={<Categorias />} />
         <Route path="/importar" element={<ImportarExtrato />} />
+        <Route path="/pendentes" element={<Pendentes />} />
+        {MapaImportar && <Route path="/dev/mapa-importar" element={<MapaImportar />} />}
         <Route path="/reconciliacao" element={<Reconciliacao />} />
         <Route path="/orcamento" element={<Orcamento />} />
         <Route path="/orcamento/*" element={<Navigate to="/orcamento" replace />} />

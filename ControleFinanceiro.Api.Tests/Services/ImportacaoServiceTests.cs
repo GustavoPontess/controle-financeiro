@@ -183,7 +183,7 @@ public class ImportacaoServiceTests
         Stmt("20260418", "16.00", "F7", "Transferência recebida pelo Pix - CICLANA"));
 
     [Fact]
-    public async Task PreviewAsync_PixNoCredito_MarcaAEntradaEOPixDoMesmoDiaEValor_SoUmPorEntrada()
+    public async Task PreviewAsync_PixNoCredito_AEntradaEhSoRegistro_EOPixDoMesmoDiaEValorEhOGasto_SoUmPorEntrada()
     {
         var ctx = CreateContext();
         var usuario = Guid.NewGuid();
@@ -191,7 +191,13 @@ public class ImportacaoServiceTests
 
         var preview = await CreateService(ctx).PreviewAsync(contaId, usuario, "nubank.ofx", OfxComPixNoCredito);
 
-        Assert.Equal(new[] { false, true, true, true, true, false, false }, preview.Linhas.Select(l => l.PixNoCredito));
+        Assert.Equal(new[] { false, true, false, true, false, false, false }, preview.Linhas.Select(l => l.PixNoCredito));
+        Assert.Equal(new[] { false, false, true, false, true, false, false }, preview.Linhas.Select(l => l.PagoNoCredito));
+        // Cada perna diz onde está a outra (a tela mostra a entrada junto do gasto dela).
+        Assert.Equal(new int?[] { null, 2, 1, 4, 3, null, null }, preview.Linhas.Select(l => l.ParPixNoCredito));
+        // A entrada do cartão não tem lugar pra categorizar; o Pix que ela pagou tem (é o gasto).
+        Assert.Null(preview.Linhas[1].Chave);
+        Assert.NotNull(preview.Linhas[2].Chave);
     }
 
     [Fact]
@@ -228,33 +234,43 @@ public class ImportacaoServiceTests
     }
 
     [Fact]
-    public async Task ConfirmarAsync_PixNoCredito_DetectaNoServidor_SaldoIntacto_ForaDoEntrouSaiu()
+    public async Task ConfirmarAsync_PixNoCredito_DetectaNoServidor_AEntradaFicaFora_EOPixEhGastoComCategoria()
     {
         var ctx = CreateContext();
         var usuario = Guid.NewGuid();
         var contaId = SeedConta(ctx, usuario);
+        var transporte = new Categoria { Id = Guid.NewGuid(), Descricao = "Transporte", Finalidade = Finalidade.Despesa };
+        ctx.Categorias.Add(transporte);
+        ctx.SaveChanges();
         var svc = CreateService(ctx);
         var preview = await svc.PreviewAsync(contaId, usuario, "nubank.ofx", OfxComPixNoCredito);
 
-        // A confirmação não leva a flag da prévia: o servidor detecta de novo pelas linhas.
+        // A confirmação não leva a flag da prévia: o servidor detecta de novo pelas linhas. A categoria vai em todas:
+        // a entrada do cartão ignora (é só registro), o Pix guarda.
         await svc.ConfirmarAsync(new ConfirmarImportacaoDto(contaId, preview.Linhas
-            .Select(l => new LinhaImportarDto(l.Data, l.Descricao, l.Valor, l.Tipo, l.FitId, null))
+            .Select(l => new LinhaImportarDto(l.Data, l.Descricao, l.Valor, l.Tipo, l.FitId, l.Tipo == TipoTransacao.Despesa ? transporte.Id : null))
             .ToList()), usuario);
 
+        // Só a entrada do cartão leva a marca (fora do resultado, sem categoria).
         var marcadas = ctx.Transacoes.Where(t => t.EhPixNoCredito).Select(t => t.ImportacaoFitId).OrderBy(f => f).ToList();
-        Assert.Equal(new[] { "F2", "F3", "F4", "F5" }, marcadas);
+        Assert.Equal(new[] { "F2", "F4" }, marcadas);
+        Assert.All(ctx.Transacoes.Where(t => t.EhPixNoCredito), t => Assert.Null(t.CategoriaId));
+        // O Pix que ela pagou é gasto do dia, com a categoria que a pessoa deu.
+        var pix = ctx.Transacoes.Single(t => t.ImportacaoFitId == "F3");
+        Assert.Equal((transporte.Id, false), (pix.CategoriaId, pix.EhPixNoCredito));
 
         var stats = await new TransacaoService(ctx, new FaturaService(ctx), new FinancialEventLogService(ctx))
             .ObterStatsAsync(usuario);
-        Assert.Equal(16.00m, stats.Entradas);              // só o Pix recebido de verdade
-        Assert.Equal(41.86m + 132.50m, stats.Saidas);      // o mercado e o Pix sem par
+        Assert.Equal(16.00m, stats.Entradas);                    // só o Pix recebido de verdade
+        Assert.Equal(41.86m + 3 * 132.50m, stats.Saidas);        // o mercado, os dois Pix pagos pelo cartão e o Pix sem par
         var saldo = ctx.Transacoes.Sum(t => t.Tipo == TipoTransacao.Receita ? t.Valor : -t.Valor);
-        Assert.Equal(16.00m - 41.86m - 132.50m, saldo);    // as pernas do Pix no Crédito se anulam no saldo
+        Assert.Equal(16.00m - 41.86m - 132.50m, saldo);          // a entrada e o Pix se anulam no saldo
     }
 
     // ══ "Pagamento de fatura" no extrato (decisão do Gustavo, 2026-10-12) ═══════════════════
     // Fatura no app → a linha vira o PAGAMENTO dela (fatura paga, limite volta, fora das despesas — o gasto já
-    // está nas compras). Fatura que não está no app (histórico) → continua despesa, único registro do gasto.
+    // está nas compras). Fatura que não está no app (histórico) → desde 2026-11-04 fica SÓ O REGISTRO (sai da conta,
+    // não é gasto): o Gustavo pediu categoria no Pix no crédito, e com o pagamento também como despesa ele contava 2x.
     // Cartão como o Nubank: fecha dia 1, vence dia 8, ligado à conta.
 
     private sealed record Cenario(AppDbContext Ctx, Guid Usuario, Guid ContaId, Guid CartaoId, ImportacaoService Svc);
@@ -324,20 +340,25 @@ public class ImportacaoServiceTests
     }
 
     [Fact]
-    public async Task PagamentoDeFatura_DeFaturaQueNaoEstaNoApp_ContinuaDespesa()
+    public async Task PagamentoDeFatura_DeFaturaQueNaoEstaNoApp_FicaSoORegistro_ForaDoGasto_EDaPraExcluir()
     {
         // 07/10: paga a fatura que fechou 01/10 e vence 08/10 — de antes do app. A de novembro (no app) não é dela.
         var c = await CenarioNovembroAsync();
 
         var preview = await c.Svc.PreviewAsync(c.ContaId, c.Usuario, "nu.ofx", Stmt("20251007", "-696.87", "PG-OUT", "Pagamento de fatura"));
-        Assert.Null(preview.Linhas.Single().PagaFaturaFechamento);
+        var naPrevia = preview.Linhas.Single();
+        Assert.Equal((null, "pagamento-fatura", null), (naPrevia.PagaFaturaFechamento, naPrevia.Natureza, naPrevia.Chave));
 
         await ImportarTudoAsync(c, preview);
 
         Assert.Equal(0m, (await FaturaQueFechaEm(c, new DateTime(2025, 11, 1))).ValorPago);
         var linha = await c.Ctx.Transacoes.SingleAsync(t => t.ImportacaoFitId == "PG-OUT");
-        Assert.False(linha.EhPagamentoFatura);
+        Assert.Equal((true, null, null), (linha.EhPagamentoFatura, linha.FaturaPagaId, linha.CategoriaId));
         Assert.Equal(TipoTransacao.Despesa, linha.Tipo);
+        Assert.False(RegrasFinanceiras.EntraNoResultadoEmMemoria(linha));
+
+        // Sem fatura ligada não há o que desemparelhar: sai por Transações (o que quita fatura do app só por Estornar).
+        Assert.True(await TransacoesDe(c.Ctx).DeletarAsync(linha.Id, c.Usuario));
     }
 
     [Fact]
@@ -356,15 +377,15 @@ public class ImportacaoServiceTests
     }
 
     [Fact]
-    public async Task PagamentoDeFatura_MaiorQueORestante_OuCartaoSemConta_ContinuaDespesa()
+    public async Task PagamentoDeFatura_MaiorQueORestante_OuCartaoSemConta_FicaSoORegistro()
     {
         var maior = await CenarioNovembroAsync();
         var previewMaior = await maior.Svc.PreviewAsync(maior.ContaId, maior.Usuario, "nu.ofx", Stmt("20251109", "-3000.00", "PG", "Pagamento de fatura"));
-        Assert.Null(previewMaior.Linhas.Single().PagaFaturaFechamento);
+        Assert.Equal((null, "pagamento-fatura"), (previewMaior.Linhas.Single().PagaFaturaFechamento, previewMaior.Linhas.Single().Natureza));
 
         var semConta = await CenarioNovembroAsync(ligadoAConta: false);
         var previewSemConta = await semConta.Svc.PreviewAsync(semConta.ContaId, semConta.Usuario, "nu.ofx", Stmt("20251109", "-2239.87", "PG", "Pagamento de fatura"));
-        Assert.Null(previewSemConta.Linhas.Single().PagaFaturaFechamento);
+        Assert.Equal((null, "pagamento-fatura"), (previewSemConta.Linhas.Single().PagaFaturaFechamento, previewSemConta.Linhas.Single().Natureza));
     }
 
     [Fact]
@@ -527,5 +548,46 @@ public class ImportacaoServiceTests
         await Assert.ThrowsAsync<ArgumentException>(() =>
             CreateService(ctx).ConfirmarAsync(new ConfirmarImportacaoDto(contaId, linhas), usuario, "chave-z"));
         Assert.Equal(0, ctx.Transacoes.Count());
+    }
+
+    // Ensinar o nome (2026-11-21): a pessoa marca o nome numa descrição; o padrão (só a forma) vale nas próximas leituras.
+    [Fact]
+    public async Task EnsinarNomeAsync_GuardaAFormaEAPreviaPassaAUsar()
+    {
+        var ctx = CreateContext();
+        var usuario = Guid.NewGuid();
+        var contaId = SeedConta(ctx, usuario);
+        var svc = CreateService(ctx);
+        const string ofx =
+            "<STMTTRN><DTPOSTED>20260510<TRNAMT>-50.00<FITID>F1<MEMO>XPTO REC 237 0099 11223-0 PADARIA BOM DIA ME 98.765.432/0001-10</STMTTRN>";
+
+        var r = await svc.EnsinarNomeAsync(usuario,
+            new EnsinarNomeDto("XPTO REC 341 0412 98765-4 CONSTRUTORA ALVORADA LTDA 12.345.678/0001-90", "CONSTRUTORA ALVORADA LTDA"));
+        Assert.Equal("CONSTRUTORA ALVORADA LTDA", r.Nome);
+
+        var salvo = Assert.Single(ctx.PadroesNomeImportacao);
+        Assert.DoesNotContain("CONSTRUTORA", salvo.Antes + salvo.Depois, StringComparison.OrdinalIgnoreCase);
+
+        var preview = await svc.PreviewAsync(contaId, usuario, "e.ofx", ofx);
+        Assert.Equal("PADARIA BOM DIA ME", preview.Linhas[0].Estabelecimento);
+
+        // Ensinar de novo a mesma forma atualiza, não duplica; outra pessoa não herda.
+        await svc.EnsinarNomeAsync(usuario,
+            new EnsinarNomeDto("XPTO REC 341 0412 98765-4 CONSTRUTORA ALVORADA LTDA 12.345.678/0001-90", "CONSTRUTORA ALVORADA LTDA"));
+        Assert.Single(ctx.PadroesNomeImportacao);
+        var outro = Guid.NewGuid();
+        var outraConta = SeedConta(ctx, outro);
+        var dele = await svc.PreviewAsync(outraConta, outro, "e.ofx", ofx);
+        Assert.NotEqual("PADARIA BOM DIA ME", dele.Linhas[0].Estabelecimento);
+    }
+
+    [Fact]
+    public async Task EnsinarNomeAsync_NomeNoComeco_Recusa()
+    {
+        var ctx = CreateContext();
+        var svc = CreateService(ctx);
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            svc.EnsinarNomeAsync(Guid.NewGuid(), new EnsinarNomeDto("MERCADO CENTRAL 03/11", "MERCADO CENTRAL")));
+        Assert.Empty(ctx.PadroesNomeImportacao);
     }
 }

@@ -55,7 +55,7 @@ export default function ProtejaConta() {
             <li><span className="ic-b"><svg><use href="#i-escudo" /></svg></span>Neste aparelho dá pra pular o código por 30 dias.</li>
           </ul>
           <div className="form-a">
-            {at.erro && <p className="erro" role="alert">{at.erro}</p>}
+            {at.erro && <p className={`erro ${css.erroTopo}`} role="alert">{at.erro}</p>}
             <button className="btn btn--acc btn-cheio" type="button" disabled={at.ocupado} onClick={() => { void ativar() }}>Ativar agora</button>
             <button className="btn btn--linha btn-cheio" type="button" disabled={enviando} onClick={() => { void agoraNao() }}>{enviando ? "Um instante…" : "Agora não"}</button>
             <label className="marcar"><input type="checkbox" checked={nuncaMais} onChange={(e) => setNuncaMais(e.target.checked)} /> Não perguntar mais</label>

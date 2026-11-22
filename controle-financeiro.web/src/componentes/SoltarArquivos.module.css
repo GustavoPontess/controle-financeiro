@@ -1,0 +1,31 @@
+.area {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  min-height: 132px; padding: 20px 16px; text-align: center; cursor: pointer;
+  border: 1.5px dashed var(--v2-linha-forte); border-radius: var(--v2-r-md);
+  background: var(--v2-superficie-2); color: var(--v2-texto-2);
+  transition: border-color 0.15s, background 0.15s;
+}
+.area:hover, .area:focus-visible { border-color: var(--v2-acento); outline: none; }
+.area[data-sobre] { border-color: var(--v2-acento); background: var(--v2-acento-suave); }
+.area[data-escolhido] .icone { color: var(--v2-acento); }
+.area[aria-invalid] { border-color: var(--v2-negativo); }
+.area[aria-disabled] { cursor: default; opacity: 0.6; }
+/* Compacto: uma linha da altura de um campo (ícone e convite lado a lado), pra somar mais um ao lado dos que já estão.
+   Fundo claro e ícone no acento, como o convite: é uma ação, não um campo travado. */
+.area[data-compacto] { flex-direction: row; gap: 8px; min-height: 44px; padding: 0 14px; border-radius: var(--v2-r-sm); background: var(--v2-superficie); }
+.area[data-compacto]:hover, .area[data-compacto]:focus-visible, .area[data-compacto][data-sobre] { background: var(--v2-acento-suave); }
+.area[data-compacto] .icone { margin-bottom: 0; color: var(--v2-acento); }
+.area[data-compacto] .titulo { font-size: var(--v2-fs-sm); font-weight: 600; color: var(--v2-texto); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.icone { display: inline-flex; color: var(--v2-texto-3); margin-bottom: 2px; }
+.titulo { font-size: var(--v2-fs-md); font-weight: 600; color: var(--v2-texto); overflow-wrap: anywhere; }
+.detalhe { font-size: var(--v2-fs-xs); color: var(--v2-texto-3); }
+
+/* Convite: a área é o assunto da tela. Fundo claro (não parece campo travado), ícone no acento e o botão escrito. */
+.area[data-convite] { flex: 1; min-height: 240px; gap: 6px; padding: 28px 20px; background: var(--v2-superficie); }
+.area[data-convite]:hover, .area[data-convite]:focus-visible, .area[data-convite][data-sobre] { background: var(--v2-acento-suave); }
+.area[data-convite] .icone { align-items: center; justify-content: center; width: 56px; height: 56px; margin-bottom: 10px; border-radius: 50%; background: var(--v2-acento-suave); color: var(--v2-acento); }
+.area[data-convite]:hover .icone, .area[data-convite][data-sobre] .icone { background: var(--v2-superficie); }
+.area[data-convite] .titulo { font-size: var(--v2-fs-lg); }
+.area[data-convite] .detalhe { font-size: var(--v2-fs-sm); color: var(--v2-texto-2); }
+/* Do tamanho do Botao comum (36px), pra não destoar dos outros botões da tela. */
+.botao { display: inline-flex; align-items: center; height: 36px; margin-top: 14px; padding: 0 14px; border-radius: var(--v2-r-sm); background: var(--v2-tinta); color: var(--v2-sobre-tinta); font-size: var(--v2-fs-sm); font-weight: 600; line-height: 1; }

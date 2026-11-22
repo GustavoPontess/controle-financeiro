@@ -29,6 +29,7 @@ import { maskMoney, parseMoney } from "../utils/money"
 import { dataLocalISO, diaSeguinte } from "../utils/dateTime"
 import { useAtrasado } from "../utils/useAtrasado"
 import { linhaDoLancamento } from "../dominio/linhaLancamento"
+import { SEM_CATEGORIA } from "../dominio/categoria"
 import styles from "./Transacoes.module.css"
 
 // Linhas por página: lembra a escolha neste navegador (conveniência; volta pra 25 se não der pra ler).
@@ -58,7 +59,6 @@ const NATUREZAS: { valor: Natureza; rotulo: string }[] = [
  *  chega pela URL (Relatórios › tocar numa categoria ou "Classificar"; o id vazio é "sem categoria") e aparece no painel. */
 type Filtros = { natureza: Natureza; contaId: string; status: string; valorMin: string; valorMax: string; de: string; ate: string; categoriaId: string }
 const SEM_FILTRO: Filtros = { natureza: "", contaId: "", status: "", valorMin: "", valorMax: "", de: "", ate: "", categoriaId: "" }
-const SEM_CATEGORIA = "00000000-0000-0000-0000-000000000000"
 
 /** `?categoriaId=…&mes=2026-10` (vindo de Relatórios) vira filtro: a categoria e o mês inteiro. */
 function filtrosDaUrl(p: URLSearchParams): Partial<Filtros> {

@@ -7,6 +7,10 @@
 /* Contorno igual nos 4 lados: a sombra de cartão (--v2-sombra) caía só pra baixo e o vão de baixo parecia menor. */
 .segmento[data-ativo="true"] { background: var(--v2-superficie); color: var(--v2-texto); box-shadow: 0 0 0 1px var(--v2-linha-forte); }
 .segmento svg { flex-shrink: 0; }
+/* Travado: só mostra a escolha. A outra opção fica apagada e nenhuma parece clicável. */
+.segmentos[data-travado] .segmento { cursor: default; }
+.segmentos[data-travado] .segmento:disabled { color: var(--v2-texto-3); opacity: 0.6; }
+.segmentos[data-travado] .segmento:disabled:hover { color: var(--v2-texto-3); }
 /* Opção demais pra largura (celular): quebra em mais de uma linha, com todas à vista, sem empurrar a página. */
 @media (max-width: 900px) {
   .segmentos { flex-wrap: wrap; }

@@ -1,6 +1,6 @@
 """Traz o site público do Pontes do rascunho aprovado (hub Pontes Dev) pro app, sem redesenhar.
 
-Fonte da verdade: E:\\VSCode\\pontes\\PontesDev\\clientes\\pontes-financas\\site (só leitura). Gera:
+Fonte da verdade: docs/design-home/site (o rascunho, trazido do hub Pontes Dev em 2026-11-18). Gera:
   - src/site/paginas/<rota>.html : o <body> de cada página do rascunho, com os links trocados pelas rotas do app,
     as imagens apontando pra /site/ e sem o que é só do rascunho (barra "Telas internas", <script>);
   - src/site/site.css            : o comum.css inteiro, com o tema do app ([data-tema="escuro"] no lugar de .escuro);
@@ -11,7 +11,7 @@ import os, re, shutil, sys
 from io import BytesIO
 from PIL import Image, ImageOps
 
-ORIGEM = r'E:\VSCode\pontes\PontesDev\clientes\pontes-financas\site'
+ORIGEM = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'docs', 'design-home', 'site'))
 AQUI = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.dirname(AQUI)
 PAGINAS = os.path.join(WEB, 'src', 'site', 'paginas')

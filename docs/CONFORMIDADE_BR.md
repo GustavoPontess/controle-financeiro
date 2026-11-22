@@ -103,6 +103,32 @@ reabrir essa pesquisa só se o item de roadmap "Conexão com Open Finance" sair 
   - **Saída estrutural:** trazer o servidor pra São Paulo antes do lançamento público, se abrir vaga (elimina a
     transferência principal; reinstalar apaga tudo; trabalho do chat do servidor).
   - Fontes: Resolução CD/ANPD nº 19/2024 (gov.br/anpd, atos normativos) e LGPD arts. 7º, 9º e 33.
+- **Registro das importações de extrato (2026-11-05, `ImportacaoExtrato`):** cada importação confirmada guarda só a
+  conta, o período dos lançamentos que entraram, quantos foram e quando (pra pessoa ver "até onde já importei").
+  Não guarda o arquivo, o nome dele nem o conteúdo. É dado da pessoa: só ela lista (`GET /importacao/anteriores`),
+  entra na exportação (`ImportacoesDeExtrato`) e some com a conta e com a pessoa (cascade no banco).
+- **Sugestão coletiva de categoria na importação (2026-11-04, `ImportacaoService.SugestorAsync`, `RegraCategoria.Compartilhavel`):**
+  quando a pessoa importa um extrato e dá categoria a um estabelecimento (ou resolve depois, na fila de pendentes
+  `/pendentes`, um lançamento que entrou sem categoria: `ImportacaoService.CategorizarPendentesAsync`, 2026-11-22, o
+  mesmo aprendizado e os mesmos limites), isso vira regra DELA (`RegraCategoria`,
+  dado pessoal: entra na exportação e some com a conta). O que pode atravessar pra outras contas é só o
+  **agregado** "estabelecimento → categoria padrão", e só quando: (1) o lançamento era **compra em loja** no cartão
+  (`Estabelecimento.EhCompra`; Pix, TED, boleto e débito automático nunca, porque do outro lado pode estar uma pessoa
+  e o nome dela é dado pessoal); (2) a categoria é **padrão** (a criada pela pessoa é dela); (3) **3 ou mais pessoas
+  diferentes** disseram o mesmo e 6 em 10 concordam. Nenhuma conta vê quem disse, quanto, quando nem quantas vezes:
+  a consulta devolve só a categoria vencedora por chave. **Base legal:** legítimo interesse (Art. 7º, IX) com teste
+  de balanceamento: finalidade legítima (poupar a pessoa de categorizar o óbvio), dado mínimo (nome de loja, que o
+  próprio extrato já traz, sem valor nem data), expectativa razoável (é como o app já sugere "iFood = Alimentação")
+  e sem risco ao titular (nada identificável sai). Transparência: parágrafo na `/privacidade` ("Categorias que o app
+  sugere"). Não é decisão automatizada (Art. 20): é sugestão, a pessoa troca no menu antes de importar.
+- **Anexos e localização do lançamento (2026-11-07, `AnexoTransacaoService`):** a pessoa pode anexar foto ou PDF
+  (nota, comprovante) e o ponto onde estava ("Usar onde estou", pedido ao aparelho só no clique, com a pergunta do
+  navegador). **Base:** execução do contrato (Art. 7º, V): é o registro que ela mesma pediu. Minimização (Art. 6º III):
+  a foto é redesenhada sem EXIF/GPS, o ponto é arredondado (~11 m), nada de rastrear em segundo plano. Localização é
+  dado pessoal, não sensível (Art. 5º II), mas revela rotina: **só o dono vê** (nem a família), o mapa só recebe o
+  ponto se a pessoa clicar em "ver no mapa" (OpenStreetMap, aba nova). Direitos: entra na exportação (anexo em data
+  URL + coordenadas) e sai na purga; tirar o anexo ou a localização apaga na hora. Transparência: parágrafo na
+  `/privacidade` ("Anexos e localização de um lançamento").
 - **Solicitações do beta (selo Beta, 2026-10-30):** texto, tela e até 5 anexos (print ou bloco apontado).
   Base: execução do pedido do titular (Art. 7º, V); valores à mostra só com **consentimento por envio**
   (Art. 7º, I; escolha "Mostrar meus valores nos anexos", desligada por padrão, gravada em
