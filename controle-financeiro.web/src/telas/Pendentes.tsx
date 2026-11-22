@@ -9,10 +9,10 @@
 // (ImportacaoService.PendentesDe / CategorizarPendentesAsync).
 import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { CheckCircle2, Pencil, Search } from "lucide-react"
+import { CheckCircle2, Pencil, Search, TextCursorInput } from "lucide-react"
 import { getCategories } from "../services/categoryService"
 import { getSubcategories } from "../services/subcategoryService"
-import { categorizarPendentes, getPendentes } from "../services/importacaoService"
+import { categorizarPendentes, ensinarNome, getPendentes } from "../services/importacaoService"
 import { getContas } from "../services/contaService"
 import { juntarComoTransferencia } from "../services/transferenciaService"
 import type { Conta } from "../types/Conta"
@@ -35,8 +35,9 @@ import Entrada from "../componentes/Entrada"
 import Formulario, { LinhaCampos, RodapeFormulario } from "../componentes/Formulario"
 import Marcar from "../componentes/Marcar"
 import { formatarData } from "../componentes/SeletorData"
-import { CampoDescricao, CampoFixo, CampoMeio, CampoValor, CamposCategoria } from "./CamposLancamento"
-import { aceitaTipo, ehOutros } from "../dominio/categoria"
+import { CampoDescricao, CampoFixo, CampoMeio, CamposCategoria, TituloLancamento } from "./CamposLancamento"
+import MarcarNome from "./MarcarNome"
+import { aceitaTipo, ehOutros, maisRepetidos, sugestoesDeCategoria } from "../dominio/categoria"
 import { nomeLegivel } from "../dominio/lugar"
 import { MEIO, MEIOS_CONTA, MEIOS_RECEBIMENTO, TIPO, horaValida } from "../dominio/transacao"
 import { mascararHora } from "../utils/dateTime"
@@ -49,13 +50,14 @@ type Lugar = { chave: string; nome: string; tipo: number; itens: Pendente[] }
 /** O que a pessoa mexeu num lançamento da fila e ainda não gravou (vai junto com a categoria). */
 type Edicao = { descricao?: string; hora?: string; meio?: number; ponto?: Ponto | null; anexos?: File[] }
 
-/** Junta os pendentes por lugar (a chave já vem do servidor, com o tipo na frente), na ordem em que chegaram. */
-function porLugar(pendentes: Pendente[]): Lugar[] {
+/** Junta os pendentes por lugar (a chave já vem do servidor, com o tipo na frente), na ordem em que chegaram. `nomes`:
+ *  o nome que a pessoa deu ao lugar nesta visita ("Qual é o nome?" sem "Usar nas próximas"). */
+function porLugar(pendentes: Pendente[], nomes: Record<string, string>): Lugar[] {
   const mapa = new Map<string, Lugar>()
   for (const p of pendentes) {
     const g = mapa.get(p.chave)
     if (g) g.itens.push(p)
-    else mapa.set(p.chave, { chave: p.chave, nome: p.lugar || p.descricao, tipo: p.tipo, itens: [p] })
+    else mapa.set(p.chave, { chave: p.chave, nome: nomes[p.chave] ?? (p.lugar || p.descricao), tipo: p.tipo, itens: [p] })
   }
   return [...mapa.values()]
 }
@@ -88,6 +90,9 @@ export default function Pendentes() {
   const [entreContas, setEntreContas] = useState<{ chave: string; contaId: string; erro?: string } | null>(null)
   const [contas, setContas] = useState<Conta[]>([])
   const [chaves] = useState(() => new Map<string, string>())
+  // "Qual é o nome?": aberto no lugar à vista, e os nomes que a pessoa deu sem guardar o padrão.
+  const [marcandoNome, setMarcandoNome] = useState(false)
+  const [nomes, setNomes] = useState<Record<string, string>>({})
 
   const carregar = async () => {
     try {
@@ -101,13 +106,23 @@ export default function Pendentes() {
     getSubcategories().then(setSubcategorias).catch(() => { /* segue sem */ })
   }, [])
 
-  const lugares = useMemo(() => porLugar(pendentes ?? []), [pendentes])
+  const lugares = useMemo(() => porLugar(pendentes ?? [], nomes), [pendentes, nomes])
+  // As sugestões que o app tem pros pendentes, por tipo (as mais repetidas primeiro): entram depois das do lugar.
+  const usadasPorTipo = useMemo(() => {
+    const porTipo = new Map<number, string[]>()
+    for (const tipo of new Set((pendentes ?? []).map((p) => p.tipo)))
+      porTipo.set(tipo, maisRepetidos((pendentes ?? []).filter((p) => p.tipo === tipo).map((p) => p.categoriaSugeridaId)))
+    return porTipo
+  }, [pendentes])
   const visiveis = useMemo(() => {
     const q = busca.trim().toLocaleLowerCase("pt-BR")
     return q ? lugares.filter((g) => g.nome.toLocaleLowerCase("pt-BR").includes(q) || g.itens.some((p) => p.descricao.toLocaleLowerCase("pt-BR").includes(q))) : lugares
   }, [lugares, busca])
   const atual = lugares.find((g) => g.chave === chaveAtual) ?? lugares[0] ?? null
   const aVista = atual ? atual.itens.find((p) => p.id === mostrado) ?? atual.itens[0] : null
+  // Trocou de lugar: o "Qual é o nome?" fecha.
+  const chaveAberta = atual?.chave ?? null
+  useEffect(() => { setMarcandoNome(false) }, [chaveAberta])
   // Os anexos que o lançamento à vista já tem (ele existe na conta): só pra mostrar; tirar é pela transação.
   const idAVista = aVista?.id ?? null
   useEffect(() => {
@@ -146,9 +161,10 @@ export default function Pendentes() {
       .sort((x, y) => Number(ehOutros(x)) - Number(ehOutros(y)))
       .map((c) => ({ valor: c.id, rotulo: c.descricao }))
     const subs = subcategorias.filter((x) => x.categoriaId === escolha.categoriaId).map((x) => ({ valor: x.id, rotulo: x.nome }))
-    // As sugestões do app pra esse lugar (a mais repetida primeiro).
-    const sugestoes = escolha.categoriaId ? [] : [...new Set(g.itens.map((x) => x.categoriaSugeridaId).filter((id): id is string => !!id))]
-      .filter((id) => opcoes.some((o) => o.valor === id)).slice(0, 4)
+    // Os botões de sugestão (a mesma regra do Importar): o que o app sugere pro lugar, os mais sugeridos da fila, depois
+    // as categorias do tipo.
+    const sugestoes = escolha.categoriaId ? [] : sugestoesDeCategoria(categorias, g.tipo,
+      [...maisRepetidos(g.itens.map((x) => x.categoriaSugeridaId)), ...(usadasPorTipo.get(g.tipo) ?? []), ...opcoes.map((o) => o.valor)])
     const escolher = (categoriaId: string) => { setErro(null); setEscolhas((v) => ({ ...v, [g.chave]: { categoriaId, subcategoriaId: "" } })) }
 
     // O lançamento à vista, com o que a pessoa já mexeu nele.
@@ -243,19 +259,37 @@ export default function Pendentes() {
 
     return (
       <Bloco>
-        <div className={styles.oficinaTitulo}>
-          <div className={styles.resumoTitulo}>
-            <h2>{nomeLegivel(g.nome)}</h2>
-            <span className={styles.mudo}>{n === 1 ? "1 lançamento" : `${n} lançamentos, ${periodo(g.itens)}`}</span>
+        <TituloLancamento titulo={nomeLegivel(g.nome)} valor={moneyParaCampo(p.valor)} tom={receita ? "positivo" : "negativo"}
+          meta={<>
+            <span>{n === 1 ? "1 lançamento" : `${n} lançamentos, ${periodo(g.itens)}`}</span>
+            <button type="button" className={styles.fichaSeparar} data-ativo={marcandoNome || undefined} aria-expanded={marcandoNome}
+              onClick={() => setMarcandoNome((v) => !v)}>
+              <TextCursorInput size={14} strokeWidth={2.25} aria-hidden="true" />Qual é o nome?
+            </button>
+          </>} />
+        {marcandoNome && (
+          <div className={styles.oficinaNome}>
+            <MarcarNome key={p.id} descricao={p.descricao} pedacos={p.pedacos ?? undefined}
+              onFechar={() => setMarcandoNome(false)}
+              aoSalvar={async (nome, lembrar) => {
+                if (!lembrar) { setNomes((v) => ({ ...v, [g.chave]: nome })); return }
+                // Guardou o padrão: a fila vem de novo do servidor (os lançamentos com a mesma forma se juntam) e o
+                // cartão continua no lançamento que estava aberto.
+                await ensinarNome(p.descricao, nome)
+                const fila = await getPendentes()
+                setNomes((v) => { const { [g.chave]: _, ...resto } = v; return resto })
+                setPendentes(fila.itens); setTotal(fila.total); definirPendentes(fila.total)
+                const k = fila.itens.find((x) => x.id === p.id)?.chave
+                if (k) setChaveAtual(k)
+              }} />
           </div>
-        </div>
+        )}
           <Formulario onSubmit={() => { void confirmar() }}>
             {erro && <p className={styles.alerta} role="alert">{erro}</p>}
             <div className={styles.lancGrade}>
               {/* Esquerda: os campos, na ordem de Nova transação (as peças de CamposLancamento). O valor e a conta são
                   do lançamento que já existe: ficam no lugar deles, como texto. */}
               <div className={styles.lancPrincipal}>
-                <CampoValor valor={moneyParaCampo(p.valor)} tom={receita ? "positivo" : "negativo"} fixo />
                 <CampoDescricao valor={descricao} placeholder={p.descricao} onChange={(x) => mexer({ descricao: x })} />
                 <LinhaCampos>
                   {noCartao

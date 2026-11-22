@@ -9,3 +9,11 @@
 .dataRapida > :last-child { flex: 1 1 150px; min-width: 0; }
 /* Data que só aparece (veio do banco): não precisa do espaço do calendário, a hora fica ao lado. */
 .dataHora[data-fixa] > :first-child { flex: 1 1 140px; }
+/* O topo do cartão de um lançamento que já veio pronto (Importar, Pendentes): o nome à esquerda e o valor grande à
+   direita, na mesma linha. Sem espaço, o valor desce. */
+.titulo { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px 24px; flex-wrap: wrap; }
+.tituloTexto { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 260px; }
+.tituloTexto h2 { margin: 0; font-size: var(--v2-fs-xl); font-weight: 600; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.tituloMeta { display: flex; align-items: center; gap: 4px 10px; flex-wrap: wrap; font-size: var(--v2-fs-xs); color: var(--v2-texto-3); }
+.tituloValor { flex-shrink: 0; }
+.titulo + form { margin-top: 20px; }

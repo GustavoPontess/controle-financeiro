@@ -32,6 +32,27 @@ export const aceitaTipo = (c: Category, tipo: number) =>
 export const ehOutros = (c: Category) => c.descricao.trim().toLocaleLowerCase("pt-BR") === "outros"
 
 /**
+ * Os botões de sugestão de categoria de um lançamento (Importar extrato e Pendentes, a mesma regra): os ids na ordem de
+ * preferência (o que o app sugere pro lugar, os mais usados, depois as do tipo), só os que servem no tipo, sem repetir e
+ * sem "Outros" (Gustavo, 2026-11-05: é a última opção; se tudo cai lá, a categoria não diz nada). Até `limite`.
+ */
+export function sugestoesDeCategoria(categorias: Category[], tipo: number, preferidas: (string | null | undefined)[], limite = 4): string[] {
+  const ids: string[] = []
+  for (const id of [...preferidas, ...categorias.map((c) => c.id)]) {
+    if (ids.length >= limite) break
+    if (id && !ids.includes(id) && categorias.some((c) => c.id === id && aceitaTipo(c, tipo) && !ehOutros(c))) ids.push(id)
+  }
+  return ids
+}
+
+/** Os ids mais repetidos primeiro (a contagem de quantas vezes cada um aparece). */
+export function maisRepetidos(ids: (string | null | undefined)[]): string[] {
+  const conta = new Map<string, number>()
+  for (const id of ids) if (id) conta.set(id, (conta.get(id) ?? 0) + 1)
+  return [...conta.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id)
+}
+
+/**
  * Pra onde dá pra mover o que está numa categoria que vai sair: as outras que aceitam o mesmo tipo. Uma "as duas"
  * pode ter só despesa: aí todas entram e o servidor confere (recusa o destino que não serve, com mensagem).
  */

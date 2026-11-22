@@ -52,7 +52,13 @@ arquivado em [`docs/history/ROADMAP_CONCLUIDO.md`](docs/history/ROADMAP_CONCLUID
 
 ## 🎯 Fila — o que fazer, na ordem
 
-> 🔨 **P1 — Transferência entre contas que o extrato não diz que é sua (2026-11-22, branch `feat/transferencia-entre-contas-pela-conta`, sem commit):** reconhecer pelo número da outra conta + botão "Foi entre minhas contas" nos Pendentes. Detalhe no STATE. Falta: ele ver e pedir o PR; aplicar nas 4 da Swile em produção. Depois (P3): o mesmo botão na tela da transação; extrato da Swile (renda bruta + tarifa).
+> ✅ **P1 — Transferência entre contas que o extrato não diz que é sua (2026-11-22, #429 na main):** reconhecer pelo número da outra conta + botão "Foi entre minhas contas" nos Pendentes. Falta: aplicar nas 4 da Swile em produção (depois do deploy). Depois (P3): o mesmo botão na tela da transação; extrato da Swile (renda bruta + tarifa).
+>
+> ✅ **P1 — Pendentes: "Qual é o nome?", sugestões e nome+valor na mesma linha (2026-11-22, PR aberto):** detalhe no STATE.
+>
+> 📝 **P2 — Nome do lugar digitado como apelido (ideia do Gustavo, 2026-11-22, "outro momento"):** hoje o "Qual é o nome?" só marca palavras da descrição. Se deixar digitar, guardar o par "nome que veio no extrato → nome que a pessoa deu" no servidor e mostrar o apelido nas próximas; o agrupamento continua pelo do extrato (digitar livre sem isso estraga o aprendizado). Tabela nova → entra na exportação e na purga LGPD.
+>
+> 🐛 **P2 — Testes de conta fixa/limite dependem da hora do CI (2026-11-22):** `LimiteCartaoRegraUnicaTests` e `ContaFixaJobsTests` esperavam Executado e veio Previsao quando o CI rodou 00:22 de Brasília (antes da cobrança das 00:30). Fixar o relógio com `HorarioBrasil.FixarParaTeste`.
 
 > ✅ **P1 — Caminho novo do Importar virou a tela oficial (2026-11-22, sem commit; Gustavo: "ficou bom assim", "pode seguir"):** uma moldura só (faixa em cima, lista à esquerda, conteúdo à direita): Começo (só as contas; escolheu, o arquivo entra ao lado e já lê) → **Fila** com os MESMOS campos de Nova transação (`telas/CamposLancamento`; pode importar com pendente; números e Importar na faixa, sem tela de resumo) → volta pro Começo com a faixa do que entrou. O fluxo antigo, os modelos de ficha (A, F, 1 a 4) e a chave `FLUXO_NOVO` saíram; 28 testes do Importar reescritos; celular conferido; mapa `/dev/mapa-importar` só com o caminho novo. Detalhe no STATE. **Falta:** o Gustavo usar com extrato de verdade e pedir o commit.
 >   - ✅ **Fila de pendentes de verdade (2026-11-22, sem commit):** `/pendentes` com o número no menu; categoriza por lugar, grava na hora e aprende a regra. Detalhe no STATE e no CLAUDE.md.

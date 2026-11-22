@@ -30,6 +30,27 @@ export function CampoValor({ valor, tom, erro, autoFocus, fixo, onChange }: {
   )
 }
 
+/**
+ * O topo do cartão de um lançamento que veio pronto (Importar extrato, Pendentes): o nome à esquerda, com a linha de
+ * baixo (quantos, período, ações), e o valor grande à direita, na mesma linha (Gustavo, 2026-11-22). O valor é fixo:
+ * quem mostra este topo não tem o campo Valor embaixo.
+ */
+export function TituloLancamento({ titulo, meta, valor, tom }: {
+  titulo: ReactNode; meta?: ReactNode; valor: string; tom: Tom
+}) {
+  return (
+    <div className={styles.titulo}>
+      <div className={styles.tituloTexto}>
+        {typeof titulo === "string" ? <h2>{titulo}</h2> : titulo}
+        {meta && <div className={styles.tituloMeta}>{meta}</div>}
+      </div>
+      <div className={styles.tituloValor}>
+        <EntradaValor valor={valor} tom={tom} fixo onChange={() => { /* fixo */ }} />
+      </div>
+    </div>
+  )
+}
+
 export function CampoDescricao({ valor, erro, placeholder, onChange }: {
   valor: string; erro?: string | null; placeholder?: string; onChange: (valor: string) => void
 }) {
