@@ -77,6 +77,23 @@ public class TransferenciasController : ControllerBase
     public async Task<IActionResult> Editar(Guid id, [FromBody] CriarTransferenciaDto dto) =>
         Ok(await _service.EditarAsync(id, dto, GetUserId()));
 
+    /// <summary>
+    /// "Isso foi entre minhas contas": o lançamento vira uma perna de transferência com a outra conta (junta com a
+    /// perna que já estiver lá ou cria). Exige Idempotency-Key.
+    /// </summary>
+    [HttpPost("da-transacao/{transacaoId}")]
+    [ProducesResponseType(typeof(TransferenciaDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> DeLancamento(Guid transacaoId, [FromBody] LancamentoViraTransferenciaDto dto,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey)
+    {
+        if (string.IsNullOrWhiteSpace(idempotencyKey))
+            throw new ArgumentException("O header Idempotency-Key é obrigatório para juntar numa transferência.");
+        return Ok(await _service.DeLancamentoAsync(transacaoId, dto.OutraContaId, GetUserId(), idempotencyKey));
+    }
+
     /// <summary>A transferência de uma perna (a tela da transação abre a edição por ela).</summary>
     [HttpGet("da-transacao/{transacaoId}")]
     [ProducesResponseType(typeof(TransferenciaDto), StatusCodes.Status200OK)]

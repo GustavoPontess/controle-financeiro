@@ -20,6 +20,11 @@ vi.mock("../../services/anexoService", () => ({
   urlDoAnexo: (t: string, a: string) => `/api/v1/transacoes/${t}/anexos/${a}`,
 }))
 import { enviarAnexo } from "../../services/anexoService"
+vi.mock("../../services/contaService", () => ({
+  getContas: vi.fn(async () => [{ id: "c1", nome: "Conta de teste" }, { id: "c2", nome: "Carteira de vale" }]),
+}))
+vi.mock("../../services/transferenciaService", () => ({ juntarComoTransferencia: vi.fn(async () => ({})) }))
+import { juntarComoTransferencia } from "../../services/transferenciaService"
 import Pendentes from "../../telas/Pendentes"
 
 const pendente = (id: string, lugar: string, valor: number, extra: Record<string, unknown> = {}) => ({
@@ -71,6 +76,31 @@ describe("Pendentes (fila de lançamentos sem categoria)", () => {
     // A padaria saiu; sobra a farmácia, já aberta.
     expect(await screen.findByRole("heading", { name: "Farmacia Exemplo" })).toBeInTheDocument()
     expect(within(screen.getByRole("list", { name: "Lugares pendentes" })).getAllByRole("listitem")).toHaveLength(1)
+    expect(screen.getByText("Falta 1")).toBeInTheDocument()
+  })
+
+  it("foi entre minhas contas: sem conta não junta; com a conta, cada lançamento vira transferência e o lugar sai", async () => {
+    vi.mocked(getPendentes).mockResolvedValue({ total: 3, itens: [
+      pendente("v1", "VALE EXEMPLO", 1144, { tipo: 2, meioPagamento: null }),
+      pendente("v2", "VALE EXEMPLO", 1144, { tipo: 2, meioPagamento: null }),
+      pendente("f1", "FARMACIA EXEMPLO", 60),
+    ] })
+    renderizar()
+
+    await screen.findByRole("heading", { name: "Vale Exemplo" })
+    await userEvent.click(screen.getByRole("button", { name: "Foi entre minhas contas" }))
+    await userEvent.click(screen.getByRole("button", { name: "Juntar os 2" }))
+    expect(await screen.findByText("Escolha a conta")).toBeInTheDocument()
+    expect(juntarComoTransferencia).not.toHaveBeenCalled()
+
+    await userEvent.click(screen.getByRole("combobox", { name: "Veio da conta" }))
+    // A própria conta do lançamento não aparece.
+    expect(within(screen.getByRole("listbox")).queryByRole("option", { name: "Conta de teste" })).not.toBeInTheDocument()
+    await userEvent.click(within(screen.getByRole("listbox")).getByRole("option", { name: "Carteira de vale" }))
+    await userEvent.click(screen.getByRole("button", { name: "Juntar os 2" }))
+
+    expect(vi.mocked(juntarComoTransferencia).mock.calls.map((c) => [c[0], c[1]])).toEqual([["v1", "c2"], ["v2", "c2"]])
+    expect(await screen.findByRole("heading", { name: "Farmacia Exemplo" })).toBeInTheDocument()
     expect(screen.getByText("Falta 1")).toBeInTheDocument()
   })
 

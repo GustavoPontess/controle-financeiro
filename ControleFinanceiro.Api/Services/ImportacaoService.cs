@@ -49,20 +49,52 @@ public class ImportacaoService
     /// <summary>A outra perna de uma transferência entre suas contas fica até estes dias de distância.</summary>
     public const int DiasDoPar = 5;
 
+    /// <summary>Agência e número de uma OUTRA conta da pessoa (pra reconhecer a transferência pelo que o banco escreve).</summary>
+    public sealed record ContaSua(string? Agencia, string? Numero);
+
+    private static readonly Regex Numeros = new(@"\d[\d.\-/]*\d|\d", RegexOptions.Compiled);
+
     /// <summary>
     /// A natureza pela descrição. Empréstimo: a palavra "empréstimo". Entre suas contas: Pix, TED ou transferência com o
-    /// nome do titular (todas as partes do nome com 3+ letras, e pelo menos duas: "GUSTAVO NUNES PONTES").
+    /// nome do titular (todas as partes do nome com 3+ letras, e pelo menos duas: "GUSTAVO NUNES PONTES") ou com o
+    /// número de uma outra conta da pessoa (e a agência, quando ela guardou): "Swile ... Agência: 1 Conta: 12345-6".
     /// Investimento: RDB, CDB, caixinha, aplicação, resgate, Tesouro…
     /// </summary>
-    public static NaturezaExtrato NaturezaDaLinha(string descricao, string? nomeDoTitular)
+    public static NaturezaExtrato NaturezaDaLinha(string descricao, string? nomeDoTitular, IReadOnlyCollection<ContaSua>? outrasContas = null)
     {
         var d = Simples(descricao);
         if (PalavraEmprestimo.IsMatch(d)) return NaturezaExtrato.Emprestimo;
         var partes = Simples(nomeDoTitular ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(p => p.Length >= 3).ToList();
-        if (partes.Count >= 2 && PalavraTransferencia.IsMatch(d) && partes.All(d.Contains)) return NaturezaExtrato.EntreSuasContas;
+        if (PalavraTransferencia.IsMatch(d)
+            && ((partes.Count >= 2 && partes.All(d.Contains)) || CitaUmaContaSua(descricao, outrasContas)))
+            return NaturezaExtrato.EntreSuasContas;
         if (PalavraInvestimento.IsMatch(d)) return NaturezaExtrato.Investimento;
         return NaturezaExtrato.Comum;
     }
+
+    // O número da conta (4+ dígitos, sem zero à esquerda, com ou sem o dígito separado) aparece inteiro na descrição;
+    // com agência guardada, ela também. Número curto não conta: "3" casaria com qualquer coisa.
+    private static bool CitaUmaContaSua(string descricao, IReadOnlyCollection<ContaSua>? contas)
+    {
+        if (contas is null || contas.Count == 0) return false;
+        static string SoDigitos(string? s) => new string((s ?? "").Where(char.IsAsciiDigit).ToArray()).TrimStart('0');
+        var numeros = Numeros.Matches(descricao).Select(m => SoDigitos(m.Value)).Where(n => n.Length > 0).ToHashSet();
+        foreach (var conta in contas)
+        {
+            var numero = SoDigitos(conta.Numero);
+            if (numero.Length < 4 || !numeros.Contains(numero)) continue;
+            var agencia = SoDigitos(conta.Agencia);
+            if (agencia.Length > 0 && !numeros.Contains(agencia)) continue;
+            return true;
+        }
+        return false;
+    }
+
+    private async Task<List<ContaSua>> OutrasContasAsync(Guid usuarioId, Guid? contaId) =>
+        await _context.Contas.AsNoTracking()
+            .Where(c => c.UsuarioIdProprietario == usuarioId && c.Id != contaId && c.Tipo != TipoConta.Caixinha && c.NumeroConta != null)
+            .Select(c => new ContaSua(c.Agencia, c.NumeroConta))
+            .ToListAsync();
 
     private static string? NaturezaParaTela(NaturezaExtrato n) => n switch
     {
@@ -337,7 +369,8 @@ public class ImportacaoService
         var pixNoCredito = paresPix.Select(p => p >= 0).ToArray();
         var faturasPagas = contaId is { } c1 ? await ResolverPagamentosDeFaturaAsync(c1, usuarioId, paraRegra) : new Dictionary<int, Fatura>();
         var titular = await NomeDoTitularAsync(usuarioId);
-        var naturezas = paraRegra.Select(l => NaturezaDaLinha(l.Descricao, titular)).ToList();
+        var outrasContas = await OutrasContasAsync(usuarioId, contaId);
+        var naturezas = paraRegra.Select(l => NaturezaDaLinha(l.Descricao, titular, outrasContas)).ToList();
         var pares = contaId is { } c2 ? await ParesEntreContasAsync(c2, usuarioId, paraRegra, naturezas) : new Dictionary<int, ParCandidato>();
         // Aplicação/resgate vai pra uma categoria de investimento (o que marca EhInvestimento e tira do resultado).
         var deInvestimento = categorias.Where(c => c.Finalidade == Finalidade.Investimento)
@@ -604,7 +637,8 @@ public class ImportacaoService
         var pixNoCredito = PernasDePixNoCredito(paraRegra.Select(l => (l.Data, l.Valor, l.Tipo, l.Descricao)).ToList());
         var faturasPagas = await ResolverPagamentosDeFaturaAsync(dto.ContaId, usuarioId, paraRegra);
         var titular = await NomeDoTitularAsync(usuarioId);
-        var naturezas = paraRegra.Select(l => NaturezaDaLinha(l.Descricao, titular)).ToList();
+        var outrasContas = await OutrasContasAsync(usuarioId, dto.ContaId);
+        var naturezas = paraRegra.Select(l => NaturezaDaLinha(l.Descricao, titular, outrasContas)).ToList();
         var pares = await ParesEntreContasAsync(dto.ContaId, usuarioId, paraRegra, naturezas);
 
         var importadas = 0;

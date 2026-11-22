@@ -16,6 +16,12 @@ public class CriarTransferenciaDto
     public string Descricao { get; set; } = string.Empty;
 }
 
+/// <summary>"Isso foi entre minhas contas": a outra conta da transferência.</summary>
+public class LancamentoViraTransferenciaDto
+{
+    public Guid OutraContaId { get; set; }
+}
+
 public class TransferenciaDto
 {
     public Guid Id { get; set; }

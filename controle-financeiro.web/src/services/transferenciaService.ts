@@ -23,6 +23,12 @@ export const getTransferenciaDaTransacao = async (transacaoId: string): Promise<
   return res.data
 }
 
+/** "Foi entre minhas contas": o lançamento vira transferência com a outra conta (junta com a perna de lá ou cria). */
+export const juntarComoTransferencia = async (transacaoId: string, outraContaId: string, idempotencyKey: string): Promise<Transferencia> => {
+  const res = await api.post(`/transferencias/da-transacao/${transacaoId}`, { outraContaId }, { headers: { "Idempotency-Key": idempotencyKey } })
+  return res.data
+}
+
 export const deleteTransferencia = async (id: string): Promise<void> => {
   await api.delete(`/transferencias/${id}`)
 }

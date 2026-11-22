@@ -52,6 +52,8 @@ arquivado em [`docs/history/ROADMAP_CONCLUIDO.md`](docs/history/ROADMAP_CONCLUID
 
 ## 🎯 Fila — o que fazer, na ordem
 
+> 🔨 **P1 — Transferência entre contas que o extrato não diz que é sua (2026-11-22, branch `feat/transferencia-entre-contas-pela-conta`, sem commit):** reconhecer pelo número da outra conta + botão "Foi entre minhas contas" nos Pendentes. Detalhe no STATE. Falta: ele ver e pedir o PR; aplicar nas 4 da Swile em produção. Depois (P3): o mesmo botão na tela da transação; extrato da Swile (renda bruta + tarifa).
+
 > ✅ **P1 — Caminho novo do Importar virou a tela oficial (2026-11-22, sem commit; Gustavo: "ficou bom assim", "pode seguir"):** uma moldura só (faixa em cima, lista à esquerda, conteúdo à direita): Começo (só as contas; escolheu, o arquivo entra ao lado e já lê) → **Fila** com os MESMOS campos de Nova transação (`telas/CamposLancamento`; pode importar com pendente; números e Importar na faixa, sem tela de resumo) → volta pro Começo com a faixa do que entrou. O fluxo antigo, os modelos de ficha (A, F, 1 a 4) e a chave `FLUXO_NOVO` saíram; 28 testes do Importar reescritos; celular conferido; mapa `/dev/mapa-importar` só com o caminho novo. Detalhe no STATE. **Falta:** o Gustavo usar com extrato de verdade e pedir o commit.
 >   - ✅ **Fila de pendentes de verdade (2026-11-22, sem commit):** `/pendentes` com o número no menu; categoriza por lugar, grava na hora e aprende a regra. Detalhe no STATE e no CLAUDE.md.
 >   - 💡 **P2 — Pendente mais largo:** contar "Outros" e "sem forma de pagamento" como pendente (ele quer evitar que a pessoa fuja da fila); "Deixar de fora" virar "Não importar", discreto. Proposto, ele ainda não confirmou.
