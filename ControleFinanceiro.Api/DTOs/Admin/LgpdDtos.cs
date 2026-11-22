@@ -27,6 +27,7 @@ public class ExportacaoUsuarioDto
     public List<RegraCategoriaExportadaDto> CategoriasAprendidas { get; set; } = new();
     /// <summary>As importações de extrato que a pessoa confirmou (conta, período dos lançamentos, quantos, quando).</summary>
     public List<ImportacaoExportadaDto> ImportacoesDeExtrato { get; set; } = new();
+    public List<SugestaoDispensadaExportadaDto> SugestoesDeContaFixaDispensadas { get; set; } = new();
     /// <summary>Arquivos anexados aos lançamentos (print da nota, foto, PDF), com o conteúdo (data URL).</summary>
     public List<AnexoExportadoDto> Anexos { get; set; } = new();
     public List<ConferenciaExportadaDto> ConferenciasDeSaldo { get; set; } = new();
@@ -187,6 +188,14 @@ public class EmprestimoExportadoDto
     public DateTime? DataVencimento { get; set; }
     public bool Quitado { get; set; }
     public string? Observacao { get; set; }
+}
+
+/// <summary>Sugestão de conta fixa que a pessoa dispensou: o cartão e o lugar.</summary>
+public class SugestaoDispensadaExportadaDto
+{
+    public string? Cartao { get; set; }
+    public string Lugar { get; set; } = string.Empty;
+    public DateTime CriadoEm { get; set; }
 }
 
 public class ImportacaoExportadaDto

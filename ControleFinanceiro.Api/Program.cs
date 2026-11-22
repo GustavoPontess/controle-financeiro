@@ -178,6 +178,8 @@ builder.Services.AddScoped<FusoHorarioService>();
 // Issue #27 — Importação de extrato OFX/CSV
 builder.Services.AddScoped<ExtratoImportService>();
 builder.Services.AddScoped<ImportacaoService>();
+builder.Services.AddScoped<ImportacaoCartaoService>();
+builder.Services.AddScoped<ContaFixaDoCartaoService>();
 
 // Issue #29 — Onboarding guiado
 builder.Services.AddScoped<OnboardingService>();

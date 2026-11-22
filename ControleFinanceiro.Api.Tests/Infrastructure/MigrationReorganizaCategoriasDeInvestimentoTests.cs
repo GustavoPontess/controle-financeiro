@@ -19,15 +19,17 @@ public class MigrationReorganizaCategoriasDeInvestimentoTests
     {
         using var ctx = ContextoNpgsqlSemBanco();
         var ids = ctx.Database.GetMigrations().ToList();
-        // Logo depois de AddCategoriaInvestimento (as mais recentes agora: as do Importar, de 2026-11-03 a 2026-11-21).
+        // Logo depois de AddCategoriaInvestimento (as mais recentes agora: as do Importar, de 2026-11-03 a 2026-11-21, e a
+        // das sugestões de conta fixa do cartão, 2026-11-22).
         var i = ids.FindIndex(id => id.EndsWith("_ReorganizaCategoriasDeInvestimento"));
         Assert.True(i > 0 && ids[i - 1].EndsWith("_AddCategoriaInvestimento"));
-        Assert.EndsWith("_RegraCategoria", ids[^6]);
-        Assert.EndsWith("_RegraCategoriaCompartilhavel", ids[^5]);
-        Assert.EndsWith("_ImportacaoExtrato", ids[^4]);
-        Assert.EndsWith("_AnexosELocalizacaoDaTransacao", ids[^3]);
-        Assert.EndsWith("_PadraoNomeImportacao", ids[^2]);
-        Assert.EndsWith("_ColunaTipoDoModeloImportacao", ids[^1]); // nada gerado por cima sem querer
+        Assert.EndsWith("_RegraCategoria", ids[^7]);
+        Assert.EndsWith("_RegraCategoriaCompartilhavel", ids[^6]);
+        Assert.EndsWith("_ImportacaoExtrato", ids[^5]);
+        Assert.EndsWith("_AnexosELocalizacaoDaTransacao", ids[^4]);
+        Assert.EndsWith("_PadraoNomeImportacao", ids[^3]);
+        Assert.EndsWith("_ColunaTipoDoModeloImportacao", ids[^2]);
+        Assert.EndsWith("_SugestaoContaFixaDispensada", ids[^1]); // nada gerado por cima sem querer
     }
 
     [Fact]

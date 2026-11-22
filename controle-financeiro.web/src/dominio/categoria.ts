@@ -84,3 +84,12 @@ export const emUso = (u: UsoCategoria) =>
 
 /** O "id" que a lista de transações entende como "sem categoria" (filtro). */
 export const SEM_CATEGORIA = "00000000-0000-0000-0000-000000000000"
+
+/** "Cartão (a detalhar)" nos relatórios: o pagamento de fatura sem as compras no app (RegrasFinanceiras.CartaoADetalhar). */
+export const CARTAO_A_DETALHAR = "00000000-0000-0000-0000-00000000ca7d"
+
+/** Pra onde leva tocar numa categoria dos relatórios: Transações filtrada (o "a detalhar" abre os pagamentos de fatura). */
+export const linkDaCategoria = (chave: string, mes?: string) =>
+  chave === CARTAO_A_DETALHAR
+    ? `/transacoes?natureza=fatura${mes ? `&mes=${mes}` : ""}`
+    : `/transacoes?categoriaId=${chave}${mes ? `&mes=${mes}` : ""}`

@@ -40,6 +40,18 @@
 .faturaValor { display: block; font-size: var(--v2-fs-4xl); font-weight: 600; letter-spacing: -0.03em; line-height: 1.05; font-variant-numeric: tabular-nums; }
 .faturaValor[data-tom="negativo"] { color: var(--v2-negativo); }
 .faturaValor[data-tom="neutro"] { color: var(--v2-texto); }
+/* Cobranças que parecem conta fixa (lado direito). */
+.sugestoes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.sugestao { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--v2-linha); }
+.sugestao:last-child { border-bottom: 0; padding-bottom: 0; }
+.sugestao:first-child { padding-top: 0; }
+.sugestaoTexto { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: var(--v2-fs-sm); }
+.sugestaoAcoes { display: flex; justify-content: flex-end; gap: 6px; }
+/* Pago / Detalhado / Falta detalhar: a fatura paga com compras que ainda não estão no app. */
+.aDetalhar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 28px; padding-top: 12px; border-top: 1px solid var(--v2-linha); }
+.aDetalhar > div { display: flex; flex-direction: column; gap: 2px; font-variant-numeric: tabular-nums; font-weight: 600; }
+.aDetalhar > div > span:last-child[data-tom="negativo"] { color: var(--v2-negativo); }
+.aDetalhar > :last-child { margin-left: auto; }
 
 @media (max-width: 1100px) {
   .grade { grid-template-columns: minmax(0, 1fr) 280px; }

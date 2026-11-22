@@ -52,6 +52,16 @@ arquivado em [`docs/history/ROADMAP_CONCLUIDO.md`](docs/history/ROADMAP_CONCLUID
 
 ## 🎯 Fila — o que fazer, na ordem
 
+> 🔄 **P1 — Fatura a detalhar (2026-11-22):** pagamento de fatura do extrato conta como gasto até as compras do cartão chegarem. Passos 1 a 5 feitos na branch (sem commit). Plano e o que foi feito: `docs/features/cartao-credito/fatura-a-detalhar.md`. Sobra (catalogado):
+> - **P2** Estorno/crédito da fatura do cartão fica de fora na importação (hoje só avisa).
+> - **P2** CSV de cartão sem "Colunas do arquivo": colunas que não reconhecemos são recusadas (o extrato de conta já tem).
+> - **P2** Pix no Crédito: juros do parcelado no crédito não entram como gasto; e sem o extrato da conta importado o PIX não aparece como gasto em lugar nenhum.
+> - **P2** "Foi pagamento de cartão" não aprende a regra do lugar (o próximo igual volta pra fila).
+> - **P3** Sugestão de conta fixa perde o lugar quando o banco muda o texto ("Wellhub" → "Wellhub Fulano") ou o valor muda de plano.
+> - **P3** Decidir: fatura antiga que nunca vai ser importada fica "a detalhar" pra sempre, ou ganha "não vou detalhar"?
+>
+> 🔧 **P3 — Comentário errado no `ImportacaoService` (~linha 932):** diz que o pagamento de fatura sem cartão "fica despesa"; o código grava só registro. Acertar o texto.
+>
 > ✅ **P1 — Transferência entre contas que o extrato não diz que é sua (2026-11-22, #429 na main):** reconhecer pelo número da outra conta + botão "Foi entre minhas contas" nos Pendentes. Falta: aplicar nas 4 da Swile em produção (depois do deploy). Depois (P3): o mesmo botão na tela da transação; extrato da Swile (renda bruta + tarifa).
 >
 > ✅ **P1 — Pendentes: "Qual é o nome?", sugestões e nome+valor na mesma linha (2026-11-22, PR aberto):** detalhe no STATE.

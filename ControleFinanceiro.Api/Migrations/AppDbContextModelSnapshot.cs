@@ -2143,6 +2143,36 @@ namespace ControleFinanceiro.Api.Migrations
                     b.ToTable("Subcategorias");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.SugestaoContaFixaDispensada", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CartaoCreditoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Chave")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CartaoCreditoId");
+
+                    b.HasIndex("UsuarioId", "CartaoCreditoId", "Chave")
+                        .IsUnique();
+
+                    b.ToTable("SugestoesContaFixaDispensadas");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.TentativaLogin", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3255,6 +3285,21 @@ namespace ControleFinanceiro.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Categoria");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.SugestaoContaFixaDispensada", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.CartaoCredito", null)
+                        .WithMany()
+                        .HasForeignKey("CartaoCreditoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ControleFinanceiro.Api.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Api.Domain.Entities.TokenCadastro", b =>

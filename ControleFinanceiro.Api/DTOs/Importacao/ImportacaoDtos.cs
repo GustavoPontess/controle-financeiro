@@ -161,6 +161,10 @@ public record AjustePendenteDto(
 
 public record CategorizarPendentesResultadoDto(int Categorizados, int Restam);
 
+/// <summary>"Foi pagamento de cartão": saídas da conta, pendentes, que pagaram a fatura de um cartão (o banco escreveu
+/// de um jeito que o app não reconheceu). Viram registro de pagamento de fatura, sem categoria.</summary>
+public record PagamentoDeCartaoDto([Required, MinLength(1), MaxLength(500)] List<Guid> TransacaoIds);
+
 /// <summary>Uma importação já feita, pra lista "Importações anteriores": a conta, de que dia a que dia iam os
 /// lançamentos que entraram, quantos foram e quando a pessoa confirmou (instante UTC).</summary>
 public record ImportacaoAnteriorDto(Guid Id, Guid ContaId, string ContaNome, DateTime CriadoEm, DateOnly De, DateOnly Ate, int Quantidade);

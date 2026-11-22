@@ -22,6 +22,14 @@ public class PreviewUploadForm
     public string? Mapeamento { get; set; }
 }
 
+public class FaturaUploadForm
+{
+    /// <summary>O cartão da fatura.</summary>
+    public Guid CartaoId { get; set; }
+    /// <summary>Os arquivos da fatura (um por mês, OFX ou CSV).</summary>
+    public List<IFormFile>? Arquivos { get; set; }
+}
+
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
@@ -32,11 +40,48 @@ public class ImportacaoController : ControllerBase
     private static readonly string[] ExtensoesAceitas = { ".ofx", ".csv" };
 
     private readonly ImportacaoService _importacaoService;
+    private readonly ImportacaoCartaoService _cartaoService;
 
-    public ImportacaoController(ImportacaoService importacaoService)
+    public ImportacaoController(ImportacaoService importacaoService, ImportacaoCartaoService cartaoService)
     {
         _importacaoService = importacaoService;
+        _cartaoService = cartaoService;
     }
+
+    private List<(string, string)> ArquivosDaFatura(FaturaUploadForm form)
+    {
+        var arquivos = form.Arquivos ?? new();
+        if (arquivos.Count == 0) throw new ArgumentException("Envie o arquivo da fatura.");
+        if (arquivos.Count > ImportacaoService.MaxArquivos)
+            throw new ArgumentException($"Envie no máximo {ImportacaoService.MaxArquivos} arquivos por vez.");
+        return arquivos.Select(a => (a.FileName, a.Length == 0 ? "" : LerArquivo(a))).ToList();
+    }
+
+    /// <summary>
+    /// Lê a fatura do cartão (OFX/CSV, um ou vários meses) e diz o que vai entrar, sem salvar: compras, parcelamentos,
+    /// o que já está no app e como cada fatura fica (paga pela conta, paga antes ou a pagar).
+    /// </summary>
+    [HttpPost("cartao/preview")]
+    [EnableRateLimiting(LimitesDeUso.PoliticaPesada)]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(PreviewFaturaDto), StatusCodes.Status200OK)]
+    [RequestSizeLimit(TamanhoMaximoDoEnvio)]
+    [RequestFormLimits(MultipartBodyLengthLimit = TamanhoMaximoDoEnvio)]
+    public async Task<IActionResult> PreviewFatura([FromForm] FaturaUploadForm form) =>
+        Ok(await _cartaoService.PreviewAsync(form.CartaoId, GetUserId(), ArquivosDaFatura(form)));
+
+    /// <summary>
+    /// Importa a fatura do cartão numa transação só (os arquivos são lidos de novo aqui). Exige Idempotency-Key.
+    /// </summary>
+    [HttpPost("cartao/confirmar")]
+    [EnableRateLimiting(LimitesDeUso.PoliticaPesada)]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(ResultadoFaturaDto), StatusCodes.Status200OK)]
+    [RequestSizeLimit(TamanhoMaximoDoEnvio)]
+    [RequestFormLimits(MultipartBodyLengthLimit = TamanhoMaximoDoEnvio)]
+    public async Task<IActionResult> ConfirmarFatura([FromForm] FaturaUploadForm form,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey) =>
+        Ok(await _cartaoService.ImportarAsync(form.CartaoId, GetUserId(), ArquivosDaFatura(form), idempotencyKey));
 
     private Guid GetUserId()
     {
@@ -130,6 +175,15 @@ public class ImportacaoController : ControllerBase
     [ProducesResponseType(typeof(CategorizarPendentesResultadoDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> CategorizarPendentes([FromBody] CategorizarPendentesDto dto) =>
         Ok(await _importacaoService.CategorizarPendentesAsync(GetUserId(), dto));
+
+    /// <summary>
+    /// "Foi pagamento de cartão": saídas da conta pendentes que pagaram uma fatura viram registro de pagamento de fatura
+    /// (sem categoria; contam como "Cartão (a detalhar)" até a fatura entrar). Saldo não muda.
+    /// </summary>
+    [HttpPost("pendentes/pagamento-de-cartao")]
+    [ProducesResponseType(typeof(CategorizarPendentesResultadoDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> PagamentoDeCartao([FromBody] PagamentoDeCartaoDto dto) =>
+        Ok(await _importacaoService.MarcarPagamentoDeCartaoAsync(GetUserId(), dto));
 
     private static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true };
 

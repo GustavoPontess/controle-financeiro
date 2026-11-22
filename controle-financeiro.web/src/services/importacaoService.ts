@@ -1,5 +1,5 @@
 import { api } from "../api/cliente"
-import type { ImportacaoAnterior, LinhaImportar, MapeamentoCsv, PreviewImportacao, ResultadoImportacao, Pendentes, AjustePendente } from "../types/Importacao"
+import type { ImportacaoAnterior, LinhaImportar, MapeamentoCsv, PreviewImportacao, ResultadoImportacao, Pendentes, AjustePendente, PreviewFatura, ResultadoFatura } from "../types/Importacao"
 
 /** As importações que a pessoa já fez, da mais nova pra mais antiga (o servidor manda as últimas 20). */
 export const getImportacoesAnteriores = async (): Promise<ImportacaoAnterior[]> => (await api.get("/importacao/anteriores")).data
@@ -50,3 +50,22 @@ export const categorizarPendentes = async (
   transacaoIds: string[], categoriaId: string, subcategoriaId: string | null, lembrar: boolean, ajustes: AjustePendente[] = [],
 ): Promise<{ categorizados: number; restam: number }> =>
   (await api.post("/importacao/pendentes/categorizar", { transacaoIds, categoriaId, subcategoriaId, lembrar, ajustes })).data
+
+/** "Foi pagamento de cartão": as saídas pendentes viram registro de pagamento de fatura. Devolve quantos restam. */
+export const marcarPagamentoDeCartao = async (transacaoIds: string[]): Promise<{ categorizados: number; restam: number }> =>
+  (await api.post("/importacao/pendentes/pagamento-de-cartao", { transacaoIds })).data
+
+const formDaFatura =(cartaoId: string, arquivos: File[]) => {
+  const form = new FormData()
+  form.append("cartaoId", cartaoId)
+  arquivos.forEach((a) => form.append("arquivos", a))
+  return form
+}
+
+/** Lê a fatura do cartão (um ou vários meses) e diz o que vai entrar; nada é salvo. */
+export const previewFatura = async (cartaoId: string, arquivos: File[]): Promise<PreviewFatura> =>
+  (await api.post("/importacao/cartao/preview", formDaFatura(cartaoId, arquivos))).data
+
+/** Importa a fatura numa transação só. `chave` (Idempotency-Key) nasce com a leitura: repetir não grava de novo. */
+export const confirmarFatura = async (cartaoId: string, arquivos: File[], chave: string): Promise<ResultadoFatura> =>
+  (await api.post("/importacao/cartao/confirmar", formDaFatura(cartaoId, arquivos), { headers: { "Idempotency-Key": chave } })).data

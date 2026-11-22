@@ -3,7 +3,9 @@ import { useState } from "react"
 import styles from "./LogoMarca.module.css"
 
 function iniciais(nome: string) {
-  const p = nome.trim().split(/\s+/)
+  // Só as palavras com letra ("Nubank (teste)" → NT, nunca "N(").
+  const p = nome.split(/\s+/).map(w => w.replace(/[^\p{L}\p{N}]/gu, "")).filter(Boolean)
+  if (p.length === 0) return "?"
   return (p.length === 1 ? p[0].slice(0, 2) : p[0][0] + p[p.length - 1][0]).toUpperCase()
 }
 

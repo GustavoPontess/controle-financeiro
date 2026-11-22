@@ -45,3 +45,5 @@ export function descreverConta(c: Pick<Conta, "tipo" | "agencia" | "numeroConta"
  *  cor dele; a carteira (dinheiro em mãos, sem banco) leva a marca do Pontes. */
 export const marcaDaConta = (c: Pick<Conta, "nome" | "isCarteira" | "bancoNome" | "bancoLogoUrl" | "bancoCor">) =>
   ({ nome: c.bancoNome || c.nome, logoUrl: c.bancoLogoUrl, cor: c.bancoCor, daCasa: c.isCarteira && !c.bancoLogoUrl })
+/** A marca do cartão: a do banco dele, como a da conta. */
+export const marcaDoCartao = (c: Pick<Conta, "nome" | "bancoNome" | "bancoLogoUrl" | "bancoCor">) => marcaDaConta({ ...c, isCarteira: false })

@@ -12,7 +12,7 @@ import { Link, useNavigate } from "react-router-dom"
 import { CheckCircle2, Pencil, Search, TextCursorInput } from "lucide-react"
 import { getCategories } from "../services/categoryService"
 import { getSubcategories } from "../services/subcategoryService"
-import { categorizarPendentes, ensinarNome, getPendentes } from "../services/importacaoService"
+import { categorizarPendentes, ensinarNome, getPendentes, marcarPagamentoDeCartao } from "../services/importacaoService"
 import { getContas } from "../services/contaService"
 import { juntarComoTransferencia } from "../services/transferenciaService"
 import type { Conta } from "../types/Conta"
@@ -224,6 +224,26 @@ export default function Pendentes() {
       }
     }
 
+    // "Foi pagamento de cartão" (fatura-a-detalhar.md, passo 2): a saída pagou a fatura e o banco escreveu de um jeito
+    // que o app não reconheceu. Vira registro de pagamento de fatura (sem categoria; conta como "Cartão (a detalhar)").
+    const foiPagamentoDeCartao = async () => {
+      if (salvando || marcados.length === 0) return
+      setErro(null); setSalvando(true)
+      try {
+        const r = await marcarPagamentoDeCartao(marcados.map((x) => x.id))
+        const feitos = new Set(marcados.map((x) => x.id))
+        setPendentes((v) => (v ?? []).filter((x) => !feitos.has(x.id)))
+        setTotal(r.restam); definirPendentes(r.restam)
+        setFora((v) => { const novo = new Set(v); g.itens.forEach((x) => novo.delete(x.id)); return novo })
+        setMostrado(null)
+        if (marcados.length === n) setChaveAtual(proximo(g.chave))
+      } catch (falha) {
+        setErro(mensagemDeErro(falha))
+      } finally {
+        setSalvando(false)
+      }
+    }
+
     const abrindoEntreContas = entreContas?.chave === g.chave
     const abrirEntreContas = () => {
       setErro(null); setEntreContas({ chave: g.chave, contaId: "" })
@@ -374,6 +394,7 @@ export default function Pendentes() {
               <span className={styles.rodapeEsquerda}>
                 {n === 1 && <Botao variante="texto" onClick={() => navigate(`/transacoes/${p.id}`, { state: { voltarPara: "/pendentes" } })}>Abrir a transação</Botao>}
                 {!noCartao && !abrindoEntreContas && <Botao variante="texto" disabled={salvando} onClick={abrirEntreContas}>Foi entre minhas contas</Botao>}
+                {!noCartao && !receita && !abrindoEntreContas && <Botao variante="texto" disabled={salvando} onClick={() => { void foiPagamentoDeCartao() }}>Foi pagamento de cartão</Botao>}
               </span>
               {lugares.length > 1 && <Botao disabled={salvando} onClick={() => { setErro(null); setEditandoHora(false); setMostrado(null); setChaveAtual(proximo(g.chave)) }}>Pular</Botao>}
               <Botao variante="primario" type="submit" disabled={salvando || !escolha.categoriaId || marcados.length === 0}>

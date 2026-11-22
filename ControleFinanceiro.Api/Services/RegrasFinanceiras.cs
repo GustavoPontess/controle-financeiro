@@ -221,6 +221,13 @@ public static class RegrasFinanceiras
     public static decimal ValorRestanteFatura(Fatura fatura) =>
         ValorRestanteFatura(ValorTotalFatura(fatura), fatura.ValorPago);
 
+    /// <summary>
+    /// O que foi pago e ainda não tem compra no app (o "Cartão (a detalhar)" daquela fatura, fatura-a-detalhar.md):
+    /// pago acima do total. Nunca negativo. A tela Cartões mostra "Detalhado" (o total) e "Falta detalhar" (isto).
+    /// </summary>
+    public static decimal ValorADetalharFatura(decimal valorTotal, decimal valorPago) =>
+        Math.Max(0m, valorPago - valorTotal);
+
     // ── Parcela quitada pela fatura ───────────────────────────────────────────
 
     /// <summary>
@@ -591,6 +598,20 @@ public static class RegrasFinanceiras
     public static readonly Guid SemCategoria = Guid.Empty;
 
     /// <summary>
+    /// Chave de "Cartão (a detalhar)" no dicionário de <see cref="GastosPorCategoriaDoMesAsync"/>: o que saiu da conta
+    /// pra pagar fatura e ainda não tem as compras no app (docs/features/cartao-credito/fatura-a-detalhar.md). Não é
+    /// categoria do banco: ninguém planeja, edita nem filtra por ela.
+    /// </summary>
+    public static readonly Guid CartaoADetalhar = new("00000000-0000-0000-0000-00000000ca7d");
+
+    /// <summary>Chave que não é categoria de verdade (<see cref="SemCategoria"/> ou <see cref="CartaoADetalhar"/>).</summary>
+    public static bool EhChaveVirtual(Guid id) => id == SemCategoria || id == CartaoADetalhar;
+
+    /// <summary>O nome de uma chave virtual; null pra categoria de verdade (o nome vem do banco).</summary>
+    public static string? NomeDaChaveVirtual(Guid id) =>
+        id == SemCategoria ? "Sem categoria" : id == CartaoADetalhar ? "Cartão (a detalhar)" : null;
+
+    /// <summary>
     /// Gasto do mês de uma pessoa por categoria (Limites; depois Relatórios). Regra única:
     /// <list type="bullet">
     /// <item>despesa que entra no resultado (<see cref="EntraNoResultado"/>), em conta ou à vista no cartão, pela
@@ -690,7 +711,61 @@ public static class RegrasFinanceiras
             Soma(l.Year, l.Month, l.CategoriaId, l.Efetivado ? l.Total : 0m, l.Efetivado ? 0m : l.Total);
         foreach (var p in parcelas)
             Soma(p.Year, p.Month, p.CategoriaId, p.Total, 0m);
+        foreach (var (data, valor) in await ADetalharAsync(context, usuarioId, inicio, fim))
+            Soma(data.Year, data.Month, CartaoADetalhar, valor, 0m);
         return resultado;
+    }
+
+    /// <summary>
+    /// "Cartão (a detalhar)" (decisão do Gustavo 2026-11-22: o que saiu da conta pro cartão JÁ é gasto, detalhar é
+    /// opcional). Pra cada pagamento de fatura efetivado no período: o valor pago menos as compras da fatura que ele pagou
+    /// e que já estão no app (essas já contaram como gasto no dia da compra). Pagamento sem fatura ligada (veio do
+    /// extrato, cartão não cadastrado) conta inteiro. Vários pagamentos na mesma fatura: as compras cobrem primeiro o mais
+    /// antigo. Nunca negativo. Calculado, não gravado: detalhar não apaga nem edita nada.
+    /// </summary>
+    private static async Task<List<(DateOnly Data, decimal Valor)>> ADetalharAsync(AppDbContext context, Guid usuarioId, DateOnly inicio, DateOnly fim)
+    {
+        var pagamentos = await context.Transacoes.AsNoTracking()
+            .Where(t => t.CriadoPor == usuarioId && t.EhPagamentoFatura && t.Tipo == TipoTransacao.Despesa && t.Ativo
+                        && t.StatusTransacao == StatusTransacao.Executado && t.Data >= inicio && t.Data < fim)
+            .Select(t => new { t.Id, t.Data, t.Valor, t.FaturaPagaId })
+            .ToListAsync();
+        if (pagamentos.Count == 0) return [];
+
+        var faturaIds = pagamentos.Where(p => p.FaturaPagaId != null).Select(p => p.FaturaPagaId!.Value).Distinct().ToList();
+        var cobertoPorPagamento = new Dictionary<Guid, decimal>();
+        if (faturaIds.Count > 0)
+        {
+            var compras = await context.Faturas.AsNoTracking()
+                .Where(f => faturaIds.Contains(f.Id))
+                .Select(f => new
+                {
+                    f.Id,
+                    Total = f.Transacoes.Where(t => t.UsadoComoCredito && t.Ativo).Sum(t => t.Valor)
+                            + f.ParcelasTransacao.Where(p => p.Status != StatusParcela.Cancelada).Sum(p => p.ValorComJuros ?? p.Valor),
+                })
+                .ToDictionaryAsync(f => f.Id, f => f.Total);
+            // Todos os pagamentos dessas faturas (inclusive fora do período), pra repartir as compras na ordem certa.
+            var daFatura = await context.Transacoes.AsNoTracking()
+                .Where(t => t.EhPagamentoFatura && t.Ativo && t.StatusTransacao == StatusTransacao.Executado
+                            && t.FaturaPagaId != null && faturaIds.Contains(t.FaturaPagaId.Value))
+                .Select(t => new { t.Id, t.Data, t.CriadoEm, t.Valor, FaturaId = t.FaturaPagaId!.Value })
+                .ToListAsync();
+            foreach (var grupo in daFatura.GroupBy(p => p.FaturaId))
+            {
+                var sobra = compras.GetValueOrDefault(grupo.Key);
+                foreach (var p in grupo.OrderBy(p => p.Data).ThenBy(p => p.CriadoEm).ThenBy(p => p.Id))
+                {
+                    var coberto = Math.Min(p.Valor, Math.Max(0m, sobra));
+                    cobertoPorPagamento[p.Id] = coberto;
+                    sobra -= coberto;
+                }
+            }
+        }
+        return pagamentos
+            .Select(p => (p.Data, Valor: p.Valor - cobertoPorPagamento.GetValueOrDefault(p.Id)))
+            .Where(p => p.Valor > 0)
+            .ToList();
     }
 
     /// <summary>

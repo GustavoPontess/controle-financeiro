@@ -43,9 +43,14 @@ const NATUREZAS: { valor: Natureza; rotulo: string }[] = [
   { valor: "receita", rotulo: "Receita" },
 ]
 
-export default function FormularioContaFixa({ recorrente, contas = [], cartoes = [], categorias, subcategorias = [], familiaInicial, aoSair, aoSalvo }: {
+/** Nova conta fixa já preenchida (a cobrança que se repete no cartão, passo 5 de fatura-a-detalhar.md). */
+export type ContaFixaInicial = { descricao: string; valor: number; cartaoCreditoId?: string; categoriaId?: string; subcategoriaId?: string; dataInicio?: string }
+
+export default function FormularioContaFixa({ recorrente, inicial, contas = [], cartoes = [], categorias, subcategorias = [], familiaInicial, aoSair, aoSalvo }: {
   /** Com conta fixa = editar a regra dela; sem = nova. */
   recorrente?: Recorrente
+  /** Só na nova: o que já vem preenchido (a pessoa confere e salva). */
+  inicial?: ContaFixaInicial
   /** Nova conta fixa aberta pela aba Contas fixas da família: já nasce dividida com ela. */
   familiaInicial?: string
   contas?: Conta[]
@@ -62,22 +67,23 @@ export default function FormularioContaFixa({ recorrente, contas = [], cartoes =
   const naturezaInicial: Natureza = r?.tipo === TIPO.receita ? "receita" : "despesa"
   // O meio gravado só vale se está na lista do tipo (ex.: receita em "Débito", de antes): senão começa vazio
   // e a pessoa escolhe, em vez de um valor escondido passar na validação.
+  const pre = r ? null : inicial ?? null
   const meioInicial = (): number | "" => {
-    const m = r ? (r.cartaoCreditoId ? MEIO.credito : r.meioPagamento) : null
+    const m = r ? (r.cartaoCreditoId ? MEIO.credito : r.meioPagamento) : pre?.cartaoCreditoId ? MEIO.credito : null
     const lista = naturezaInicial === "receita" ? MEIOS_RECEBIMENTO_FIXO : MEIOS_CONTA_FIXA
     return m != null && lista.some((x) => x.valor === m) ? m : ""
   }
 
   const [natureza, setNatureza] = useState<Natureza>(naturezaInicial)
-  const [valor, setValor] = useState(r ? moneyParaCampo(r.valor) : "")
-  const [descricao, setDescricao] = useState(r?.descricao ?? "")
+  const [valor, setValor] = useState(r ? moneyParaCampo(r.valor) : pre ? moneyParaCampo(pre.valor) : "")
+  const [descricao, setDescricao] = useState(r?.descricao ?? pre?.descricao ?? "")
   const [meio, setMeio] = useState<number | "">(meioInicial)
   const [contaId, setContaId] = useState(r?.contaId ?? "")
-  const [cartaoId, setCartaoId] = useState(r?.cartaoCreditoId ?? "")
-  const [categoriaId, setCategoriaId] = useState(r?.categoriaId ?? "")
-  const [subcategoriaId, setSubcategoriaId] = useState(r?.subcategoriaId ?? "")
+  const [cartaoId, setCartaoId] = useState(r?.cartaoCreditoId ?? pre?.cartaoCreditoId ?? "")
+  const [categoriaId, setCategoriaId] = useState(r?.categoriaId ?? pre?.categoriaId ?? "")
+  const [subcategoriaId, setSubcategoriaId] = useState(r?.subcategoriaId ?? pre?.subcategoriaId ?? "")
   const [frequencia, setFrequencia] = useState<number>(r?.frequencia ?? FREQUENCIA.mensal)
-  const [data, setData] = useState(() => r?.dataInicio.slice(0, 10) ?? dataLocalISO())
+  const [data, setData] = useState(() => r?.dataInicio.slice(0, 10) ?? pre?.dataInicio ?? dataLocalISO())
   const [dataFim, setDataFim] = useState(r?.dataFim?.slice(0, 10) ?? "")
   const [erros, setErros] = useState<Record<string, string>>({})
   const [erro, setErro] = useState<string | null>(null)

@@ -65,6 +65,8 @@ function filtrosDaUrl(p: URLSearchParams): Partial<Filtros> {
   const f: Partial<Filtros> = {}
   const cat = p.get("categoriaId")
   if (cat && /^[0-9a-f-]{36}$/i.test(cat)) f.categoriaId = cat
+  // Relatórios › "Cartão (a detalhar)": os pagamentos de fatura do mês.
+  if (p.get("natureza") === "fatura") f.natureza = "fatura"
   const mes = p.get("mes")
   if (mes && /^\d{4}-\d{2}$/.test(mes)) {
     const [a, m] = mes.split("-").map(Number)
@@ -87,8 +89,10 @@ export default function Transacoes() {
   }
   const [erro, setErro] = useState(false)
   const [url, setUrl] = useSearchParams()
-  // Chegou filtrado por categoria (Relatórios): a visão é Gastos, a mesma base do "Pra onde foi".
-  const [visao, setVisao] = useState<Visao>(() => (url.get("categoriaId") ? "gastos" : visaoSalva()))
+  // Chegou filtrado por categoria (Relatórios): a visão é Gastos, a mesma base do "Pra onde foi". Pagamento de fatura
+  // só existe na visão Saldo.
+  const [visao, setVisao] = useState<Visao>(() =>
+    (url.get("natureza") === "fatura" ? "saldo" : url.get("categoriaId") ? "gastos" : visaoSalva()))
   const gastos = visao === "gastos"
   const [stats, setStats] = useState<{ entradas: number; saidas: number } | null>(null)
   const [contas, setContas] = useState<Conta[]>([])

@@ -16,6 +16,8 @@ export interface Fatura {
   valorTotal: number
   valorPago: number
   valorRestante: number
+  /** Pago acima das compras que estão no app: o que falta detalhar (importar a fatura). */
+  valorADetalhar?: number
   vencida: boolean
 }
 

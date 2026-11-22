@@ -13,10 +13,12 @@ import type { Subcategory } from "../types/Subcategory"
 import { PaginaFormulario } from "../componentes/Formulario"
 import FormularioContaFixa from "./FormularioContaFixa"
 
+import type { ContaFixaInicial } from "./FormularioContaFixa"
+
 export default function NovaContaFixa() {
   const navigate = useNavigate()
   const location = useLocation()
-  const estado = location.state as { voltarPara?: string; familiaId?: string } | null
+  const estado = location.state as { voltarPara?: string; familiaId?: string; sugestao?: ContaFixaInicial } | null
   const voltarPara = estado?.voltarPara ?? "/contas-fixas"
 
   const [contas, setContas] = useState<Conta[]>([])
@@ -39,7 +41,7 @@ export default function NovaContaFixa() {
     <PaginaFormulario titulo="Nova conta fixa" carregando={carregando}
       erroCarga={erroCarga ? "Não foi possível carregar suas contas e categorias. Recarregue a página." : null}>
       <FormularioContaFixa contas={contas} cartoes={cartoes} categorias={categorias} subcategorias={subcategorias}
-        familiaInicial={estado?.familiaId}
+        familiaInicial={estado?.familiaId} inicial={estado?.sugestao}
         aoSair={() => navigate(voltarPara, { replace: true })} aoSalvo={() => navigate(voltarPara, { replace: true })} />
     </PaginaFormulario>
   )
