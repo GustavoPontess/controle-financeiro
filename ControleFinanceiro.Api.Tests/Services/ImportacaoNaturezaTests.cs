@@ -35,6 +35,22 @@ public class ImportacaoNaturezaTests
     public void NaturezaDaLinha_NomeDeUmaPalavraSo_NaoBastaPraDizerQueEhEntreContas() =>
         Assert.Equal(NaturezaExtrato.Comum, NaturezaDaLinha("Transferência recebida pelo Pix - GUSTAVO", "Gustavo"));
 
+    // Achado 2026-11-22 (Swile do Gustavo): o Nubank escreve a agência e a conta de origem, não o nome do titular.
+    private static readonly ContaSua[] Swile = { new("0001", "12345-6") };
+
+    [Theory]
+    [InlineData("Transferência Recebida - Swile - 11.222.333/0001-44 - EMPRESA IP S.A. (0999) Agência: 1 Conta: 12345-6", NaturezaExtrato.EntreSuasContas)]
+    [InlineData("Transferência Recebida - Swile - EMPRESA IP S.A. Agência: 1 Conta: 123456", NaturezaExtrato.EntreSuasContas)]
+    [InlineData("Transferência Recebida - Fulano - EMPRESA IP S.A. Agência: 2 Conta: 12345-6", NaturezaExtrato.Comum)] // outra agência
+    [InlineData("Transferência Recebida - Fulano - Agência: 1 Conta: 99999-1", NaturezaExtrato.Comum)]
+    [InlineData("Compra no débito - LOJA 12345-6", NaturezaExtrato.Comum)] // sem palavra de transferência
+    public void NaturezaDaLinha_PeloNumeroDeOutraContaSua(string descricao, NaturezaExtrato esperada) =>
+        Assert.Equal(esperada, NaturezaDaLinha(descricao, Titular, Swile));
+
+    [Fact]
+    public void NaturezaDaLinha_NumeroCurtoNaoConta() =>
+        Assert.Equal(NaturezaExtrato.Comum, NaturezaDaLinha("Transferência recebida - Conta: 12", Titular, new[] { new ContaSua(null, "12") }));
+
     // ── Prévia e confirmação ──────────────────────────────────────────────────────────────────
 
     private sealed record Cenario(AppDbContext Ctx, Guid Usuario, Guid Nubank, Guid Itau, Guid RendaFixa, ImportacaoService Svc);

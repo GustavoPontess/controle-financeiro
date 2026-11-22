@@ -215,6 +215,126 @@ public class TransferenciaService
         await context.SaveChangesAsync();
     }
 
+    public const string OperacaoLancamentoViraTransferencia = "LancamentoViraTransferencia";
+
+    /// <summary>
+    /// "Isso foi entre minhas contas": um lançamento que já está na conta (veio do extrato como receita ou despesa) vira
+    /// uma perna de transferência com <paramref name="outraContaId"/>. A outra perna é a que já estiver lá (mesmo valor,
+    /// sinal oposto, até <see cref="ImportacaoService.DiasDoPar"/> dias, solta) ou nasce agora com a mesma data e hora.
+    /// O lançamento perde a categoria e sai do resultado; o saldo dele não muda, só o da outra conta quando a perna
+    /// nasce. Tudo num SaveChanges, com Idempotency-Key.
+    /// </summary>
+    public async Task<TransferenciaDto> DeLancamentoAsync(Guid transacaoId, Guid outraContaId, Guid usuarioId, string? idempotencyKey)
+    {
+        Idempotencia.ExigirTamanho(idempotencyKey);
+        if (!string.IsNullOrWhiteSpace(idempotencyKey))
+        {
+            var registro = await Idempotencia.BuscarAsync(_context, usuarioId, OperacaoLancamentoViraTransferencia, idempotencyKey);
+            if (registro != null)
+            {
+                var original = await _context.Transferencias.AsNoTracking().Include(t => t.ContaOrigem).Include(t => t.ContaDestino)
+                    .FirstOrDefaultAsync(t => t.Id == registro.ReferenciaId && t.CriadoPor == usuarioId)
+                    ?? throw new InvalidOperationException(Idempotencia.MensagemChaveConsumida);
+                if ((original.TransacaoOrigemId != transacaoId && original.TransacaoDestinoId != transacaoId)
+                    || (original.ContaOrigemId != outraContaId && original.ContaDestinoId != outraContaId))
+                    throw new InvalidOperationException(Idempotencia.MensagemChaveComOutrosDados);
+                return MapToDto(original, original.ContaOrigem?.Nome ?? "", original.ContaDestino?.Nome ?? "");
+            }
+        }
+
+        // Só o lançamento da PRÓPRIA pessoa, numa conta dela (cartão não: compra no cartão não é transferência).
+        var lancamento = await _context.Transacoes.Include(t => t.Conta)
+            .FirstOrDefaultAsync(t => t.Id == transacaoId && t.Ativo && t.ContaId != null && t.Conta!.UsuarioIdProprietario == usuarioId)
+            ?? throw new KeyNotFoundException("Lançamento não encontrado.");
+        if (lancamento.StatusTransacao != StatusTransacao.Executado)
+            throw new InvalidOperationException("Só um lançamento que já aconteceu vira transferência.");
+        if (lancamento.EhTransferencia || lancamento.EhPagamentoFatura || lancamento.EhSaldoInicial || lancamento.EhAjusteReconciliacao
+            || lancamento.EhPixNoCredito || lancamento.EhEmprestimo || lancamento.EhAcerto || lancamento.FamiliaId != null
+            || lancamento.RecorrenteOrigemId != null || lancamento.ParcelamentoId != null)
+            throw new InvalidOperationException("Esse lançamento não pode virar transferência.");
+        if (lancamento.ContaId == outraContaId)
+            throw new ArgumentException("Escolha outra conta.");
+
+        var conta = lancamento.Conta!;
+        var outra = await _context.Contas.FirstOrDefaultAsync(c => c.Id == outraContaId && c.UsuarioIdProprietario == usuarioId)
+            ?? throw new KeyNotFoundException("Conta não encontrada.");
+        if (outra.Tipo == TipoConta.Caixinha)
+            throw new InvalidOperationException(Conta.MensagemCaixinha);
+        if (outra.EncerradaEm != null)
+            throw new InvalidOperationException(DonoRecursos.MensagemContaEncerrada(outra.Nome));
+
+        var tipoDoPar = lancamento.Tipo == TipoTransacao.Receita ? TipoTransacao.Despesa : TipoTransacao.Receita;
+        var de = lancamento.Data.AddDays(-ImportacaoService.DiasDoPar);
+        var ate = lancamento.Data.AddDays(ImportacaoService.DiasDoPar);
+        var par = (await _context.Transacoes
+                .Where(t => t.ContaId == outraContaId && t.Ativo && t.StatusTransacao == StatusTransacao.Executado
+                            && t.Tipo == tipoDoPar && t.Valor == lancamento.Valor && t.Data >= de && t.Data <= ate
+                            && t.FamiliaId == null && !t.EhPagamentoFatura && !t.EhSaldoInicial && !t.EhAjusteReconciliacao
+                            && !t.EhPixNoCredito && !t.EhEmprestimo && !t.EhAcerto
+                            && !_context.Transferencias.Any(tr => tr.TransacaoOrigemId == t.Id || tr.TransacaoDestinoId == t.Id))
+                .ToListAsync())
+            .OrderBy(t => Math.Abs(t.Data.DayNumber - lancamento.Data.DayNumber))
+            .FirstOrDefault();
+
+        var efeitos = new Dictionary<Guid, decimal> { [conta.Id] = 0m, [outra.Id] = 0m };
+        if (par is null)
+        {
+            par = new Transacao
+            {
+                Id = Guid.NewGuid(),
+                Valor = lancamento.Valor,
+                Tipo = tipoDoPar,
+                ContaId = outra.Id,
+                CriadoPor = usuarioId,
+                Data = lancamento.Data,
+                Hora = lancamento.Hora,
+                StatusTransacao = StatusTransacao.Executado,
+            };
+            _context.Transacoes.Add(par);
+            efeitos[outra.Id] = tipoDoPar == TipoTransacao.Receita ? lancamento.Valor : -lancamento.Valor;
+        }
+
+        var saida = lancamento.Tipo == TipoTransacao.Despesa ? lancamento : par;
+        var entrada = lancamento.Tipo == TipoTransacao.Receita ? lancamento : par;
+        var nomeOrigem = saida == lancamento ? conta.Nome : outra.Nome;
+        var nomeDestino = entrada == lancamento ? conta.Nome : outra.Nome;
+        var descricao = $"Transferência: {nomeOrigem} → {nomeDestino}";
+        par.Descricao = string.IsNullOrWhiteSpace(par.Descricao) ? descricao : par.Descricao;
+        foreach (var perna in new[] { lancamento, par })
+        {
+            perna.EhTransferencia = true;
+            perna.CategoriaId = null;
+            perna.SubcategoriaId = null;
+        }
+
+        var transferencia = new Transferencia
+        {
+            Id = Guid.NewGuid(),
+            ContaOrigemId = saida.ContaId!.Value,
+            ContaDestinoId = entrada.ContaId!.Value,
+            Valor = lancamento.Valor,
+            Data = lancamento.Data.ToDateTime(lancamento.Hora ?? TimeOnly.MinValue),
+            Descricao = descricao,
+            CriadoPor = usuarioId,
+            TransacaoOrigemId = saida.Id,
+            TransacaoDestinoId = entrada.Id,
+        };
+        _context.Transferencias.Add(transferencia);
+        await RegistrarNoLogAsync(_context, FinancialEventType.TransferenciaCriada, usuarioId, transferencia.Id, efeitos, Dados(transferencia));
+        if (!string.IsNullOrWhiteSpace(idempotencyKey))
+            _context.RegistrosIdempotencia.Add(Idempotencia.Novo(usuarioId, OperacaoLancamentoViraTransferencia, idempotencyKey, transferencia.Id));
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (!string.IsNullOrWhiteSpace(idempotencyKey) && Idempotencia.EhViolacaoDeUnicidade(ex))
+        {
+            _context.ChangeTracker.Clear();
+            return await DeLancamentoAsync(transacaoId, outraContaId, usuarioId, idempotencyKey);
+        }
+        return MapToDto(transferencia, nomeOrigem, nomeDestino);
+    }
+
     /// <summary>A transferência de que esta transação é uma perna (origem ou destino). 404 se não for, ou de outra pessoa.</summary>
     public async Task<TransferenciaDto> ObterPelaPernaAsync(Guid transacaoId, Guid usuarioId)
     {

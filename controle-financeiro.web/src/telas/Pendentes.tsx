@@ -13,6 +13,11 @@ import { CheckCircle2, Pencil, Search } from "lucide-react"
 import { getCategories } from "../services/categoryService"
 import { getSubcategories } from "../services/subcategoryService"
 import { categorizarPendentes, getPendentes } from "../services/importacaoService"
+import { getContas } from "../services/contaService"
+import { juntarComoTransferencia } from "../services/transferenciaService"
+import type { Conta } from "../types/Conta"
+import Campo from "../componentes/Campo"
+import Selecao from "../componentes/Selecao"
 import { definirLocalizacao, enviarAnexo, listarAnexos, urlDoAnexo } from "../services/anexoService"
 import { mensagemDeErro } from "../api/cliente"
 import { definirPendentes } from "../estado/pendentes"
@@ -78,6 +83,11 @@ export default function Pendentes() {
   const [edicoes, setEdicoes] = useState<Record<string, Edicao>>({})
   const [editandoHora, setEditandoHora] = useState(false)
   const [jaAnexados, setJaAnexados] = useState<{ id: string; itens: AnexoTransacao[] } | null>(null)
+  // "Foi entre minhas contas" (2026-11-22, a Swile mandando pro Nubank): o lugar aberto vira transferência com a conta
+  // escolhida. Uma chave por lançamento e conta, guardada: repetir o clique não cria a perna duas vezes.
+  const [entreContas, setEntreContas] = useState<{ chave: string; contaId: string; erro?: string } | null>(null)
+  const [contas, setContas] = useState<Conta[]>([])
+  const [chaves] = useState(() => new Map<string, string>())
 
   const carregar = async () => {
     try {
@@ -198,6 +208,39 @@ export default function Pendentes() {
       }
     }
 
+    const abrindoEntreContas = entreContas?.chave === g.chave
+    const abrirEntreContas = () => {
+      setErro(null); setEntreContas({ chave: g.chave, contaId: "" })
+      if (contas.length === 0) getContas().then(setContas).catch(() => setEntreContas((v) => v && { ...v, erro: "Não foi possível carregar as contas." }))
+    }
+    const outrasContas = contas.filter((c) => c.nome !== p.origem).map((c) => ({ valor: c.id, rotulo: c.nome }))
+    const juntar = async () => {
+      if (!entreContas || salvando) return
+      if (!entreContas.contaId) { setEntreContas({ ...entreContas, erro: "Escolha a conta" }); return }
+      setSalvando(true)
+      const feitos = new Set<string>()
+      try {
+        for (const x of marcados) {
+          const k = `${x.id}:${entreContas.contaId}`
+          if (!chaves.has(k)) chaves.set(k, crypto.randomUUID())
+          await juntarComoTransferencia(x.id, entreContas.contaId, chaves.get(k)!)
+          feitos.add(x.id)
+        }
+        setEntreContas(null)
+      } catch (falha) {
+        setErro(mensagemDeErro(falha))
+      } finally {
+        if (feitos.size > 0) {
+          const restam = Math.max(0, total - feitos.size)
+          setPendentes((v) => (v ?? []).filter((x) => !feitos.has(x.id)))
+          setTotal(restam); definirPendentes(restam)
+          setMostrado(null)
+          if (feitos.size === n) setChaveAtual(proximo(g.chave))
+        }
+        setSalvando(false)
+      }
+    }
+
     return (
       <Bloco>
         <div className={styles.oficinaTitulo}>
@@ -280,9 +323,23 @@ export default function Pendentes() {
                 ))}
               </Cupom>
             </>}
+            {abrindoEntreContas && (
+              <LinhaCampos>
+                <Campo rotulo={receita ? "Veio da conta" : "Foi pra conta"} erro={entreContas?.erro}>
+                  <Selecao valor={entreContas?.contaId ?? ""} opcoes={outrasContas} placeholder="Escolha" semBusca
+                    onChange={(v) => setEntreContas({ chave: g.chave, contaId: v })} />
+                </Campo>
+                <div className={styles.rodapeEsquerda}>
+                  <Botao disabled={salvando} onClick={() => setEntreContas(null)}>Cancelar</Botao>
+                  <Botao variante="primario" disabled={salvando} onClick={() => { void juntar() }}>
+                    {salvando ? "Salvando…" : marcados.length > 1 ? `Juntar os ${marcados.length}` : "Juntar"}</Botao>
+                </div>
+              </LinhaCampos>
+            )}
             <RodapeFormulario>
               <span className={styles.rodapeEsquerda}>
                 {n === 1 && <Botao variante="texto" onClick={() => navigate(`/transacoes/${p.id}`, { state: { voltarPara: "/pendentes" } })}>Abrir a transação</Botao>}
+                {!noCartao && !abrindoEntreContas && <Botao variante="texto" disabled={salvando} onClick={abrirEntreContas}>Foi entre minhas contas</Botao>}
               </span>
               {lugares.length > 1 && <Botao disabled={salvando} onClick={() => { setErro(null); setEditandoHora(false); setMostrado(null); setChaveAtual(proximo(g.chave)) }}>Pular</Botao>}
               <Botao variante="primario" type="submit" disabled={salvando || !escolha.categoriaId || marcados.length === 0}>
