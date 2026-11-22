@@ -9,8 +9,12 @@ const VERSAO = "__VERSAO__"
 const CASCA = `casca-${VERSAO}`
 const ARQUIVOS = "arquivos"
 const MAX_ARQUIVOS = 120
+// No dev a versão é sempre "dev": a casca guardada nunca seria trocada e, no servidor reiniciando, a página velha
+// voltava (2026-11-22: ficou presa uma com marcas de conflito do git). No dev o worker só existe pra instalar.
+const DEV = VERSAO === "dev"
 
 self.addEventListener("install", (e) => {
+  if (DEV) { e.waitUntil(caches.delete(CASCA).then(() => self.skipWaiting())); return }
   e.waitUntil(caches.open(CASCA).then((c) => c.add(new Request("/", { cache: "reload" }))).then(() => self.skipWaiting()))
 })
 
@@ -26,7 +30,7 @@ self.addEventListener("fetch", (e) => {
   const req = e.request
   if (req.method !== "GET") return
   const url = new URL(req.url)
-  if (url.origin !== self.location.origin || url.pathname.startsWith("/api")) return
+  if (DEV || url.origin !== self.location.origin || url.pathname.startsWith("/api")) return
 
   if (req.mode === "navigate") {
     e.respondWith(fetch(req).catch(() => caches.open(CASCA).then((c) => c.match("/")).then((r) => r || Response.error())))
