@@ -103,7 +103,7 @@ public class CheckUpService
             .Select(kv =>
             {
                 var normal = NormalDa(kv.Key);
-                return new CategoriaDoCheckUpDto(kv.Key, nomes.GetValueOrDefault(kv.Key, "Categoria"), kv.Value.Gasto, PctDoGasto(kv.Value.Gasto),
+                return new CategoriaDoCheckUpDto(kv.Key, RegrasFinanceiras.NomeDaChaveVirtual(kv.Key) ?? nomes.GetValueOrDefault(kv.Key, "Categoria"), kv.Value.Gasto, PctDoGasto(kv.Value.Gasto),
                     normal, Variacao(kv.Value.Gasto, normal), kv.Value.Previsto);
             })
             .ToList();
@@ -209,7 +209,7 @@ public class CheckUpService
                 var valor = doAno.GetValueOrDefault(id);
                 decimal? normal = temAnoAnterior ? antes.GetValueOrDefault(id) : null;
                 decimal? variacao = normal is > 0 ? Math.Round((valor - normal.Value) * 100m / normal.Value, 0) : null;
-                return new CategoriaDoAnoDto(id, nomes.GetValueOrDefault(id, "Categoria"), valor, Pct(valor), normal, variacao,
+                return new CategoriaDoAnoDto(id, RegrasFinanceiras.NomeDaChaveVirtual(id) ?? nomes.GetValueOrDefault(id, "Categoria"), valor, Pct(valor), normal, variacao,
                     limites.TryGetValue(id, out var l) ? l : null);
             })
             .OrderByDescending(c => c.Valor).ThenByDescending(c => c.Limite ?? 0m).ToList();
@@ -348,7 +348,7 @@ public class CheckUpService
     private async Task<CorteDto> CorteAsync(Guid usuarioId, int ano, int mes, string nomeMes, decimal sobrou, List<CategoriaDoCheckUpDto> praOndeFoi)
     {
         var categorias = praOndeFoi
-            .Where(c => c.CategoriaId is not null && c.Normal is { } n && c.VariacaoPercentual >= AcimaPct && c.Valor - n >= AcimaReais)
+            .Where(c => c.CategoriaId is { } id && !RegrasFinanceiras.EhChaveVirtual(id) && c.Normal is { } n && c.VariacaoPercentual >= AcimaPct && c.Valor - n >= AcimaReais)
             .OrderByDescending(c => c.Valor - c.Normal!.Value).Take(MaxCortes)
             .Select(c => new ItemDeCorteDto("categoria", c.CategoriaId, c.Nome, c.Valor, c.Normal, c.Valor - c.Normal!.Value, c.Previsto))
             .ToList();
@@ -430,7 +430,7 @@ public class CheckUpService
 
         // A categoria que mais passou do normal (pelo menos 30% e R$ 50 a mais): o que a pessoa mais quer saber.
         var acima = praOndeFoi
-            .Where(x => x.CategoriaId is not null && x.VariacaoPercentual >= AcimaPct && x.Normal is { } n && x.Valor - n >= AcimaReais)
+            .Where(x => x.CategoriaId is { } id && !RegrasFinanceiras.EhChaveVirtual(id) && x.VariacaoPercentual >= AcimaPct && x.Normal is { } n && x.Valor - n >= AcimaReais)
             .OrderByDescending(x => x.Valor - x.Normal!.Value)
             .FirstOrDefault();
         if (acima is not null)

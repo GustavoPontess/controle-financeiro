@@ -5,11 +5,11 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { Banknote, Pencil, Trash2 } from "lucide-react"
-import { deleteCartao, getCartoes } from "../services/cartaoCreditoService"
+import { deleteCartao, dispensarSugestaoContaFixa, getCartoes, getSugestoesContaFixa } from "../services/cartaoCreditoService"
 import { getFaturaDetalhe, getFaturasByCartao, getLancamentosFatura } from "../services/faturaService"
 import { ParcelamentoService } from "../services/ParcelamentoService"
 import { mensagemDeErro } from "../api/cliente"
-import type { CartaoCredito } from "../types/CartaoCredito"
+import type { CartaoCredito, SugestaoContaFixa } from "../types/CartaoCredito"
 import type { Fatura, FaturaDetalhe, LancamentoFatura, TipoLancamentoFatura } from "../types/Fatura"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import Botao from "../componentes/Botao"
@@ -133,6 +133,7 @@ export default function Cartao() {
               )}
             </Bloco>
           )}
+          {cartao.temCredito && <SugestoesContaFixa cartaoId={cartao.id} />}
           {/* Cartão da casa: as compras à vista daqui pra frente já nascem divididas. */}
           {cartao.temCredito && <DaCasa tipo="cartao" emBloco familiaId={cartao.familiaId} aoMudar={(fid) => marcarCartaoDaCasa(cartao.id, fid)} />}
           <RodapeFormulario>
@@ -153,6 +154,58 @@ export default function Cartao() {
         onCancelar={() => setExcluindo(false)}
       />
     </div>
+  )
+}
+
+// ─────────────────────────────────────────────────── cobranças que parecem conta fixa
+
+/** Assinaturas do cartão (fatura-a-detalhar.md, passo 5): o app só sugere. "Virar conta fixa" abre Nova conta fixa
+ *  preenchida (a pessoa confere e salva); "Não é" não mostra mais aquele lugar. Sem sugestão, o bloco não aparece. */
+function SugestoesContaFixa({ cartaoId }: { cartaoId: string }) {
+  const navigate = useNavigate()
+  const [itens, setItens] = useState<SugestaoContaFixa[]>([])
+  const [erro, setErro] = useState<string | null>(null)
+  const [ocupado, setOcupado] = useState<string | null>(null)
+
+  useEffect(() => {
+    let vivo = true
+    getSugestoesContaFixa(cartaoId).then((s) => { if (vivo) setItens(s) }).catch(() => { /* fica sem sugestão */ })
+    return () => { vivo = false }
+  }, [cartaoId])
+
+  if (itens.length === 0) return null
+  const dispensar = async (s: SugestaoContaFixa) => {
+    setErro(null); setOcupado(s.chave)
+    try {
+      await dispensarSugestaoContaFixa(cartaoId, s.chave)
+      setItens((v) => v.filter((x) => x.chave !== s.chave))
+    } catch (e) {
+      setErro(mensagemDeErro(e))
+    } finally {
+      setOcupado(null)
+    }
+  }
+  return (
+    <Bloco titulo="Parece conta fixa">
+      {erro && <p className={styles.alerta} role="alert">{erro}</p>}
+      <ul className={styles.sugestoes} aria-label="Sugestões de conta fixa">
+        {itens.map((s) => (
+          <li key={s.chave} className={styles.sugestao}>
+            <div className={styles.sugestaoTexto}>
+              <strong>{s.nome}</strong>
+              <span className={styles.muted}><Dinheiro valor={s.valor} /> · {s.meses} faturas seguidas</span>
+            </div>
+            <div className={styles.sugestaoAcoes}>
+              <Botao variante="texto" disabled={ocupado === s.chave} onClick={() => { void dispensar(s) }}>Não é</Botao>
+              <Botao onClick={() => navigate("/contas-fixas/nova", {
+                state: { voltarPara: `/cartoes/${cartaoId}`, sugestao: { descricao: s.nome, valor: s.valor, cartaoCreditoId: cartaoId,
+                  categoriaId: s.categoriaId ?? undefined, subcategoriaId: s.subcategoriaId ?? undefined, dataInicio: s.proxima } },
+              })}>Virar conta fixa</Botao>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </Bloco>
   )
 }
 
@@ -217,8 +270,18 @@ function Faturas({ cartao, ciclos, mesHoje, hoje }: { cartao: CartaoCredito; cic
               {ativo.valorPago > 0 ? <><Dinheiro valor={ativo.valorPago} /> pagos de <Dinheiro valor={total} /></> : <>total <Dinheiro valor={total} /></>}
               {qtd > 0 && ` · ${qtd} ${qtd === 1 ? "lançamento" : "lançamentos"}`}
             </span>
-            {total > 0 && <BarraProgresso fracao={ativo.valorPago / total} tom="positivo" rotulo={`${Math.round((ativo.valorPago / total) * 100)}% pago`} />}
+            {total > 0 && <BarraProgresso fracao={Math.min(1, ativo.valorPago / total)} tom="positivo" rotulo={`${Math.min(100, Math.round((ativo.valorPago / total) * 100))}% pago`} />}
           </>
+        )}
+        {/* Pagou mais do que as compras que estão no app: o resto é "Cartão (a detalhar)" nos relatórios até a fatura
+            entrar (fatura-a-detalhar.md, passo 4). */}
+        {!!ativo.valorADetalhar && ativo.valorADetalhar > 0 && (
+          <div className={styles.aDetalhar}>
+            <div><span className={styles.muted}>Pago</span><Dinheiro valor={ativo.valorPago} /></div>
+            <div><span className={styles.muted}>Detalhado</span><Dinheiro valor={total} /></div>
+            <div><span className={styles.muted}>Falta detalhar</span><Dinheiro valor={ativo.valorADetalhar} tom="negativo" /></div>
+            <Botao onClick={() => navigate("/importar")}>Importar fatura</Botao>
+          </div>
         )}
         {!ativo.vazia && ativo.valorRestante > 0 && (
           <RodapeFormulario>

@@ -72,7 +72,8 @@ public class OrcamentoService
             .ToList();
 
         var comLimite = vigentes.Where(o => o.CategoriaId.HasValue).Select(o => o.CategoriaId!.Value).ToHashSet();
-        var semLimite = gastos.Where(kv => kv.Value.Gasto > 0 && !comLimite.Contains(kv.Key))
+        // "Cartão (a detalhar)" não se planeja (não é categoria): entra só no "Todos os gastos".
+        var semLimite = gastos.Where(kv => kv.Value.Gasto > 0 && !comLimite.Contains(kv.Key) && kv.Key != RegrasFinanceiras.CartaoADetalhar)
             .Select(kv => new GastoSemLimiteDto(kv.Key == RegrasFinanceiras.SemCategoria ? null : kv.Key, Nome(kv.Key), kv.Value.Gasto))
             .OrderByDescending(s => s.Gasto)
             .ToList();

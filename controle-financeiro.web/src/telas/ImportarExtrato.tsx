@@ -46,10 +46,13 @@ import Formulario, { LinhaCampos, RodapeFormulario } from "../componentes/Formul
 import { CampoDescricao, CampoFixo, CampoMeio, CamposCategoria, TituloLancamento } from "./CamposLancamento"
 import { moneyParaCampo } from "../utils/money"
 import ColunasDoArquivo from "./ColunasDoArquivo"
+import ImportarFatura from "./ImportarFatura"
+import { getCartoes } from "../services/cartaoCreditoService"
+import type { CartaoCredito } from "../types/CartaoCredito"
 import { GrupoFicha, InicialFicha, LinhaFicha, ListaFicha } from "../componentes/ListaFicha"
 import Marcar from "../componentes/Marcar"
 import { rotuloMesFatura } from "../dominio/fatura"
-import { marcaDaConta } from "../dominio/conta"
+import { marcaDaConta, marcaDoCartao } from "../dominio/conta"
 import { nomeLegivel } from "../dominio/lugar"
 import { recarregarPendentes } from "../estado/pendentes"
 import { aceitaTipo, ehOutros, sugestoesDeCategoria } from "../dominio/categoria"
@@ -116,9 +119,14 @@ export default function ImportarExtrato() {
   const [topoAberto, setTopoAberto] = useState(false)
   const [colunasAbertas, setColunasAbertas] = useState(false)
   const [buscaConta, setBuscaConta] = useState("")
+  // A fatura do cartão entra pela mesma lista (passo 3 de docs/features/cartao-credito/fatura-a-detalhar.md):
+  // escolheu um cartão, a área da fatura (telas/ImportarFatura) aparece à direita no lugar da do extrato.
+  const [cartoes, setCartoes] = useState<CartaoCredito[]>([])
+  const [cartaoId, setCartaoId] = useState("")
 
   useEffect(() => {
     let vivo = true
+    getCartoes().then((c) => { if (vivo) setCartoes(c.filter((x) => x.ativo && x.temCredito)) }).catch(() => { /* segue sem */ })
     Promise.all([getContas(), getCategories()])
       .then(([cts, cats]) => { if (!vivo) return; setContas(cts); setCategorias(cats); if (cts.length === 1) setContaId(cts[0].id) })
       .catch(() => { if (vivo) setErroCarga(true) })
@@ -204,6 +212,7 @@ export default function ImportarExtrato() {
   }
   const conta = contas?.find((c) => c.id === contaId)
   const trocarConta = (id: string) => {
+    setCartaoId("")
     setContaId(id)
     setErros((v) => ({ ...v, conta: undefined }))
     if (previa || arquivos.length > 0) void ler(mapaEscolhido ?? undefined, arquivos, id)
@@ -322,7 +331,9 @@ export default function ImportarExtrato() {
         // Dois momentos na mesma tela (Gustavo, 2026-11-22: "saí selecionando os arquivos e não entendi por que não foi
         // pro próximo"): sem conta, só a lista de contas (não há onde soltar arquivo, então não tem como errar a ordem);
         // escolheu, a lista desliza pra esquerda e a área do arquivo aparece ao lado.
-        const semConta = !contaId
+        const cartao = cartoes.find((c) => c.id === cartaoId)
+        const semConta = !contaId && !cartao
+        const cartoesVisiveis = cartoes.filter((c) => !q || c.nome.toLocaleLowerCase("pt-BR").includes(q))
         return (
           <div className={styles.comeco} data-sem-conta={semConta || undefined}>
             <Bloco semRespiro className={`${styles.oficinaFila} ${styles.comecoContas}`}>
@@ -350,10 +361,25 @@ export default function ImportarExtrato() {
                       </li>
                     )
                   })}
-                  {visiveis.length === 0 && <li className={styles.lugaresVazio}>Nenhuma conta com "{buscaConta.trim()}"</li>}
+                  {visiveis.length === 0 && cartoesVisiveis.length === 0 && <li className={styles.lugaresVazio}>Nenhuma conta com "{buscaConta.trim()}"</li>}
+                  {!previa && cartoesVisiveis.map((c, i) => (
+                    <li key={c.id} className={i === 0 ? styles.lugarComSecao : undefined}>
+                      {i === 0 && <span className={styles.lugaresSecao}>Fatura do cartão</span>}
+                      <button type="button" className={styles.lugar} data-conta aria-current={c.id === cartaoId || undefined} disabled={lendo}
+                        onClick={() => { setContaId(""); setResumo(null); setArquivos([]); setErros({}); setErro(null); setCartaoId(c.id) }}>
+                        <LogoMarca {...marcaDoCartao(c)} tamanho={36} />
+                        <span className={styles.lugarTexto}>
+                          <span className={styles.lugarNome}>{c.nome}</span>
+                          <span className={styles.lugarSub}>Cartão de crédito</span>
+                        </span>
+                        <span className={styles.lugarSinal} aria-hidden="true">{c.id === cartaoId ? <Check size={16} strokeWidth={2.5} /> : semConta ? <ChevronRight size={16} strokeWidth={2.25} /> : null}</span>
+                      </button>
+                    </li>
+                  ))}
                 </ul>
               </aside>
             </Bloco>
+            {cartao ? <div className={styles.comecoArquivo}><ImportarFatura key={cartao.id} cartao={cartao} /></div> :
             <div className={styles.comecoArquivo} aria-hidden={semConta || undefined} inert={semConta || undefined}>
             <Bloco>
               <div className={styles.comecoMiolo}>
@@ -391,7 +417,7 @@ export default function ImportarExtrato() {
                 )}
               </div>
             </Bloco>
-            </div>
+            </div>}
           </div>
         )
       })()}

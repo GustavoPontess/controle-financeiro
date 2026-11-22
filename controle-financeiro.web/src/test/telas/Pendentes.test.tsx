@@ -13,8 +13,9 @@ vi.mock("../../services/categoryService", () => ({
 vi.mock("../../services/subcategoryService", () => ({ getSubcategories: vi.fn(async () => []) }))
 vi.mock("../../services/importacaoService", () => ({
   getPendentes: vi.fn(), getQuantidadePendentes: vi.fn(async () => 0), categorizarPendentes: vi.fn(), ensinarNome: vi.fn(),
+  marcarPagamentoDeCartao: vi.fn(),
 }))
-import { categorizarPendentes, ensinarNome, getPendentes } from "../../services/importacaoService"
+import { categorizarPendentes, ensinarNome, getPendentes, marcarPagamentoDeCartao } from "../../services/importacaoService"
 vi.mock("../../services/anexoService", () => ({
   listarAnexos: vi.fn(async () => []), enviarAnexo: vi.fn(async () => ({})), definirLocalizacao: vi.fn(async () => undefined),
   urlDoAnexo: (t: string, a: string) => `/api/v1/transacoes/${t}/anexos/${a}`,
@@ -139,6 +140,23 @@ describe("Pendentes (fila de lançamentos sem categoria)", () => {
     expect(vi.mocked(juntarComoTransferencia).mock.calls.map((c) => [c[0], c[1]])).toEqual([["v1", "c2"], ["v2", "c2"]])
     expect(await screen.findByRole("heading", { name: "Farmacia Exemplo" })).toBeInTheDocument()
     expect(screen.getByText("Falta 1")).toBeInTheDocument()
+  })
+
+  it("foi pagamento de cartão: só em saída da conta; marca os do lugar e ele sai da fila", async () => {
+    vi.mocked(getPendentes).mockResolvedValue({ total: 2, itens: [
+      pendente("t1", "TED BANCO X", 900, { meioPagamento: 4 }),
+      pendente("s1", "SALARIO EXEMPLO", 3000, { tipo: 2, meioPagamento: null }),
+    ] })
+    vi.mocked(marcarPagamentoDeCartao).mockResolvedValue({ categorizados: 1, restam: 1 })
+    renderizar()
+
+    await screen.findByRole("heading", { name: "Ted Banco X" })
+    await userEvent.click(screen.getByRole("button", { name: "Foi pagamento de cartão" }))
+
+    expect(marcarPagamentoDeCartao).toHaveBeenCalledWith(["t1"])
+    // A receita que sobrou não tem o botão (pagamento de cartão é saída).
+    expect(await screen.findByRole("heading", { name: "Salario Exemplo" })).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Foi pagamento de cartão" })).not.toBeInTheDocument()
   })
 
   it("tirar um lançamento do lote categoriza só os marcados e não vira regra do lugar", async () => {

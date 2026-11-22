@@ -243,6 +243,15 @@ public class AdminLgpdService
                     De = i.De, Ate = i.Ate, Quantidade = i.Quantidade, CriadoEm = i.CriadoEm,
                 })
                 .ToListAsync(),
+            SugestoesDeContaFixaDispensadas = await _context.SugestoesContaFixaDispensadas
+                .Where(s => s.UsuarioId == usuarioId)
+                .OrderBy(s => s.CriadoEm)
+                .Select(s => new SugestaoDispensadaExportadaDto
+                {
+                    Cartao = _context.CartoesCredito.Where(c => c.Id == s.CartaoCreditoId).Select(c => c.Nome).FirstOrDefault(),
+                    Lugar = s.Chave, CriadoEm = s.CriadoEm,
+                })
+                .ToListAsync(),
             Anexos = (await _context.AnexosTransacao.AsNoTracking()
                 .Where(a => a.UsuarioId == usuarioId)
                 .OrderBy(a => a.CriadoEm)

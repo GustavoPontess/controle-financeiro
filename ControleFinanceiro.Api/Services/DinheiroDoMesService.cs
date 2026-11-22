@@ -40,7 +40,8 @@ public class DinheiroDoMesService
 
         var ids = gastos.Keys.Concat(previstos.Where(p => p.CategoriaId.HasValue).Select(p => p.CategoriaId!.Value)).Distinct().ToList();
         var nomes = await _context.Categorias.AsNoTracking().Where(c => ids.Contains(c.Id)).ToDictionaryAsync(c => c.Id, c => c.Descricao);
-        string Nome(Guid? id) => id is null || id == RegrasFinanceiras.SemCategoria ? "Sem categoria" : nomes.GetValueOrDefault(id.Value, "Categoria");
+        string Nome(Guid? id) => id is null ? "Sem categoria"
+            : RegrasFinanceiras.NomeDaChaveVirtual(id.Value) ?? nomes.GetValueOrDefault(id.Value, "Categoria");
 
         // Mês em andamento: a base é o maior entre o esperado e o que já caiu (o salário ainda vem). Mês que já acabou: só
         // o que caiu; o esperado que não veio não entra mais, senão o "sobrou" contava dinheiro que nunca entrou

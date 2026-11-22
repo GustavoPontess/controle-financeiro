@@ -191,6 +191,7 @@ public class AppDbContext : DbContext
     public DbSet<ModeloImportacao> ModelosImportacao => Set<ModeloImportacao>();
     public DbSet<PadraoNomeImportacao> PadroesNomeImportacao => Set<PadraoNomeImportacao>();
     public DbSet<ImportacaoExtrato> ImportacoesExtrato => Set<ImportacaoExtrato>();
+    public DbSet<SugestaoContaFixaDispensada> SugestoesContaFixaDispensadas => Set<SugestaoContaFixaDispensada>();
     public DbSet<RegraCategoria> RegrasCategoria => Set<RegraCategoria>();
     public DbSet<RendaPrevista> RendasPrevistas => Set<RendaPrevista>();
     public DbSet<FotoPerfil> FotosPerfil => Set<FotoPerfil>();
@@ -434,6 +435,21 @@ public class AppDbContext : DbContext
             .HasOne<Usuario>()
             .WithMany()
             .HasForeignKey(p => p.UsuarioId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // SugestaoContaFixaDispensada: "não é conta fixa", uma por cartão e lugar; some com o cartão e com a pessoa.
+        modelBuilder.Entity<SugestaoContaFixaDispensada>()
+            .HasIndex(s => new { s.UsuarioId, s.CartaoCreditoId, s.Chave })
+            .IsUnique();
+        modelBuilder.Entity<SugestaoContaFixaDispensada>()
+            .HasOne<CartaoCredito>()
+            .WithMany()
+            .HasForeignKey(s => s.CartaoCreditoId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<SugestaoContaFixaDispensada>()
+            .HasOne<Usuario>()
+            .WithMany()
+            .HasForeignKey(s => s.UsuarioId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // ImportacaoExtrato: o registro de cada importação confirmada; a lista é da pessoa, da mais nova pra mais

@@ -157,3 +157,37 @@ export interface Pendente {
 /** O que a pessoa acertou num lançamento da fila, junto com a categoria. Campo ausente = não mexe. */
 export interface AjustePendente { transacaoId: string; descricao?: string; hora?: string; meioPagamento?: number }
 export interface Pendentes { total: number; itens: Pendente[] }
+
+/** Uma fatura que apareceu nos arquivos do cartão: quando vence, quanto de compra e como fica depois de importar. */
+export interface FaturaLida {
+  vencimento: string
+  lancamentos: number
+  compras: number
+  /** "paga-pela-conta": o pagamento do extrato da conta é dela; "paga": já venceu, conta como paga; "a-pagar". */
+  situacao: "paga-pela-conta" | "paga" | "a-pagar"
+  pagoPelaConta: number
+}
+
+/** A leitura da fatura do cartão (nada é salvo). */
+export interface PreviewFatura {
+  compras: number
+  valorCompras: number
+  parcelamentos: number
+  jaNoApp: number
+  pagamentos: number
+  creditos: number
+  valorCreditos: number
+  semCategoria: number
+  faturas: FaturaLida[]
+  arquivos: ArquivoLido[]
+}
+
+export interface ResultadoFatura {
+  compras: number
+  parcelamentos: number
+  jaNoApp: number
+  pagamentosLigados: number
+  faturasPagas: number
+  semCategoria: number
+  repetido?: boolean
+}

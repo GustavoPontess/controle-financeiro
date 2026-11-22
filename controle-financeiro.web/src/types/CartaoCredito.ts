@@ -25,6 +25,24 @@ export interface CartaoCredito {
   familiaId?: string | null
 }
 
+/** Uma cobrança que se repete no cartão (3+ faturas seguidas, valor parecido) e pode virar conta fixa. */
+export interface SugestaoContaFixa {
+  chave: string
+  /** O nome do lugar ("Claude.ai"). */
+  nome: string
+  /** O texto da última cobrança, como veio. */
+  descricao: string
+  valor: number
+  /** AAAA-MM-DD da última cobrança. */
+  ultima: string
+  /** Um mês depois da última: onde a conta fixa começa (a última já está na fatura). */
+  proxima: string
+  /** Quantas faturas seguidas. */
+  meses: number
+  categoriaId?: string | null
+  subcategoriaId?: string | null
+}
+
 export interface CriarCartaoCredito {
   nome: string
   ultimosDigitos?: string

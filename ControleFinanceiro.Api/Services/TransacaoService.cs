@@ -57,7 +57,9 @@ namespace ControleFinanceiro.Api.Services
 
         // idempotencyKey (opcional): com chave, repetir o pedido (duplo clique, retry de rede) devolve a transação
         // original em vez de lançar outra; a mesma chave com outros dados → 409.
-        public async Task<Transacao> CriarTransacaoAsync(Transacao transacao, Guid usuarioId, string? idempotencyKey = null)
+        // conferirLimite: false SÓ pra compra que veio da fatura do banco (importar fatura de cartão): ela já aconteceu, o
+        // limite do app não decide se entra (fatura antiga somada às novas passaria do limite sem ter passado no banco).
+        public async Task<Transacao> CriarTransacaoAsync(Transacao transacao, Guid usuarioId, string? idempotencyKey = null, bool conferirLimite = true)
         {
             Idempotencia.ExigirTamanho(idempotencyKey);
             if (!string.IsNullOrWhiteSpace(idempotencyKey))
@@ -128,7 +130,7 @@ namespace ControleFinanceiro.Api.Services
                 throw new ArgumentException("A data da transação não pode ser futura.");
 
             // Compra no cartão só entra se o limite disponível cobre (mesma trava da compra parcelada).
-            if (transacao.UsadoComoCredito && transacao.CartaoCreditoId.HasValue
+            if (conferirLimite && transacao.UsadoComoCredito && transacao.CartaoCreditoId.HasValue
                 && transacao.Tipo == TipoTransacao.Despesa && transacao.StatusTransacao == StatusTransacao.Executado)
                 await RegrasFinanceiras.ExigirLimiteDisponivelAsync(_context, transacao.CartaoCreditoId.Value, usuarioId, transacao.Valor);
 

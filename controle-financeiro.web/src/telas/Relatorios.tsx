@@ -38,6 +38,7 @@ import type { AnoDoCheckUp, CheckUp, Sinal } from "../types/Relatorio"
 import type { DinheiroDoMes } from "../types/DinheiroDoMes"
 import type { LimiteDoMes, LimitesDoMes } from "../types/Limite"
 import { seriesDasCategorias } from "../dominio/serieDaCategoria"
+import { linkDaCategoria } from "../dominio/categoria"
 import { dataBR, dataLocalISO } from "../utils/dateTime"
 import Bloco, { Esqueleto } from "../componentes/Bloco"
 import Bullet from "../componentes/Bullet"
@@ -116,7 +117,7 @@ export default function Relatorios() {
   /** "Novembro" (sem o ano), pro título do topo. */
   const soOMes = nomeDoPeriodo(periodo).split(" de ")[0]
   const mesQuery = `${periodo.ano}-${String(periodo.mes).padStart(2, "0")}`
-  const verCategoria = (chave: string) => navigate(`/transacoes?categoriaId=${chave}&mes=${mesQuery}`)
+  const verCategoria = (chave: string) => navigate(linkDaCategoria(chave, mesQuery))
   // Os limites estão nas linhas das categorias, com a etiqueta (Passou, Vai passar): o aviso de limite não se repete.
   const limitesNaTela = !!dados && !!limites
   const lista = dados ? [...dados.sinais, ...avisos.filter((s) => !(limitesNaTela && s.origem === "limite"))].slice(0, MAX_AVISOS) : []
@@ -178,7 +179,7 @@ export default function Relatorios() {
           {!doAno ? <Esqueleto linhas={4} altura={18} /> : (
             <div className={styles.cartao}>
               <ResumoDoAno a={doAno} />
-              <CategoriasDoAno a={doAno} aoEscolher={(chave) => navigate(`/transacoes?categoriaId=${chave}`)} />
+              <CategoriasDoAno a={doAno} aoEscolher={(chave) => navigate(linkDaCategoria(chave))} />
             </div>
           )}
         </Bloco>

@@ -498,6 +498,31 @@ public class ImportacaoService
         };
     }
 
+    /// <summary>
+    /// A categoria que o app sugere pra cada descrição (fatura de cartão importada sem a fila: "jogo os extratos aqui e
+    /// ele se vira"). Mesma ordem do sugestor (regra, histórico, coletivo, conhecido), mas o palpite pelo nome da
+    /// categoria NÃO vale aqui: sem a pessoa conferir, ficar pendente é melhor que errar.
+    /// </summary>
+    public async Task<List<Guid?>> CategoriasSugeridasAsync(Guid usuarioId, IReadOnlyList<(string Descricao, TipoTransacao Tipo)> linhas)
+    {
+        if (linhas.Count == 0) return [];
+        var categorias = await _context.Categorias.AsNoTracking()
+            .Where(c => c.UsuarioId == usuarioId || c.UsuarioId == null)
+            .Select(c => new CategoriaResumo(c.Id, c.Descricao, c.Finalidade))
+            .ToListAsync();
+        var regras = await _context.RegrasCategoria.AsNoTracking()
+            .Where(r => r.UsuarioId == usuarioId)
+            .ToDictionaryAsync(r => r.Chave, r => r.CategoriaId);
+        var padroes = await PadroesAsync(usuarioId);
+        var chaves = linhas.Select(l => Estabelecimento.Chave(l.Descricao, l.Tipo == TipoTransacao.Despesa, padroes)).ToList();
+        var sugerir = await SugestorAsync(usuarioId, categorias, regras, chaves.Distinct().ToList(), padroes);
+        return linhas.Select((l, i) =>
+        {
+            var (c, origem) = sugerir(chaves[i], l.Descricao, l.Tipo);
+            return origem == "nome" ? null : c?.Id;
+        }).ToList();
+    }
+
     private static bool Compativel(CategoriaResumo c, TipoTransacao tipo) => tipo == TipoTransacao.Despesa
         ? c.Finalidade is Finalidade.Despesa or Finalidade.Ambas or Finalidade.Investimento
         : c.Finalidade is Finalidade.Receita or Finalidade.Ambas or Finalidade.Investimento;
@@ -726,7 +751,7 @@ public class ImportacaoService
     // ── Ensinar o nome (2026-11-21) ──────────────────────────────────────────────────────────────────────────
 
     /// <summary>Os padrões de nome que a pessoa ensinou (ver <see cref="Estabelecimento.PadraoNome"/>).</summary>
-    private async Task<List<Estabelecimento.PadraoNome>> PadroesAsync(Guid usuarioId) =>
+    public async Task<List<Estabelecimento.PadraoNome>> PadroesAsync(Guid usuarioId) =>
         (await _context.PadroesNomeImportacao.AsNoTracking()
             .Where(p => p.UsuarioId == usuarioId)
             .Select(p => new { p.Antes, p.Depois })
@@ -891,6 +916,30 @@ public class ImportacaoService
         return new CategorizarPendentesResultadoDto(lancamentos.Count, await PendentesDe(usuarioId).CountAsync());
     }
 
+    /// <summary>
+    /// "Foi pagamento de cartão" (fatura-a-detalhar.md, passo 2): a saída da conta pagou a fatura de um cartão e o
+    /// texto do banco não foi reconhecido. Vira registro de pagamento de fatura (fora do resultado, sem categoria), e o
+    /// valor passa a contar como "Cartão (a detalhar)" até a fatura entrar. Tudo ou nada: só saída de CONTA da pessoa
+    /// que ainda está pendente (de outro, inexistente, já categorizado ou compra de cartão → 404). Saldo não muda.
+    /// </summary>
+    public async Task<CategorizarPendentesResultadoDto> MarcarPagamentoDeCartaoAsync(Guid usuarioId, PagamentoDeCartaoDto dto)
+    {
+        var ids = dto.TransacaoIds.Distinct().ToList();
+        if (ids.Count == 0) throw new ArgumentException("Escolha ao menos um lançamento.");
+        if (ids.Count > 500) throw new ArgumentException("Lançamentos demais de uma vez.");
+        var lancamentos = await PendentesDe(usuarioId)
+            .Where(t => ids.Contains(t.Id) && t.ContaId != null && t.Tipo == TipoTransacao.Despesa)
+            .ToListAsync();
+        if (lancamentos.Count != ids.Count) throw new KeyNotFoundException("Lançamento não encontrado entre os pendentes.");
+        foreach (var t in lancamentos)
+        {
+            t.EhPagamentoFatura = true;
+            t.SubcategoriaId = null;
+        }
+        await _context.SaveChangesAsync();
+        return new CategorizarPendentesResultadoDto(lancamentos.Count, await PendentesDe(usuarioId).CountAsync());
+    }
+
     private record CategoriaResumo(Guid Id, string Descricao, Finalidade Finalidade);
 
     /// <summary>A forma de pagamento que a pessoa conferiu: passa pelo <see cref="MeioPagamentoExtensions.DoCliente"/>
@@ -922,12 +971,31 @@ public class ImportacaoService
 
     // ── Pagamento de fatura no extrato ─────────────────────────────────────────
 
-    /// <summary>"Pagamento de fatura" (Nubank), "Pagto fatura"… — a saída da conta que paga o cartão.</summary>
-    private static bool EhPagamentoDeFatura(string descricao) =>
-        descricao.Contains("fatura", StringComparison.OrdinalIgnoreCase)
-        && (descricao.Contains("pagamento", StringComparison.OrdinalIgnoreCase)
-            || descricao.Contains("pagto", StringComparison.OrdinalIgnoreCase)
-            || descricao.StartsWith("pag ", StringComparison.OrdinalIgnoreCase));
+    // Como cada banco escreve, no extrato da CONTA, a saída que paga o cartão (docs/features/cartao-credito/
+    // fatura-a-detalhar.md, passo 2). É dado, não "se for o banco X": banco novo com outro texto entra numa destas
+    // listas. Precisa de uma palavra de pagamento E uma do cartão, em qualquer ordem ("Pagamento de fatura" no Nubank,
+    // "PAGTO CARTAO CREDITO", "Pgto fatura cartão", "Deb aut fatura"...). Compra no débito ("pagamento com cartão",
+    // "cartão de débito") não é.
+    private static readonly string[] PalavrasDePagamento = ["pagamento", "pagto", "pgto", "pag", "pg", "deb aut", "debito automatico", "liquidacao"];
+    private static readonly string[] PalavrasDoCartao = ["fatura", "cartao de credito", "cartao credito", "cartao", "card"];
+    private static readonly string[] NaoEPagamentoDeFatura = ["com cartao", "cartao de debito", "cartao debito", "no cartao"];
+
+    /// <summary>A saída da conta que paga a fatura do cartão (pelas listas acima; sem acento e sem diferenciar maiúscula).</summary>
+    public static bool EhPagamentoDeFatura(string descricao)
+    {
+        var t = Regex.Replace(SemAcento(descricao.ToLowerInvariant()), @"[^\p{L}\p{N}]+", " ").Trim();
+        static bool Tem(string texto, string p) => Regex.IsMatch(texto, $@"(^| ){p}( |$)");
+        return PalavrasDePagamento.Any(p => Tem(t, p)) && PalavrasDoCartao.Any(p => Tem(t, p))
+            && !NaoEPagamentoDeFatura.Any(p => Tem(t, p));
+    }
+
+    private static string SemAcento(string s)
+    {
+        var sb = new System.Text.StringBuilder(s.Length);
+        foreach (var c in s.Normalize(System.Text.NormalizationForm.FormD))
+            if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.NonSpacingMark) sb.Append(c);
+        return sb.ToString();
+    }
 
     /// <summary>
     /// Qual fatura do APP cada "Pagamento de fatura" do extrato quita (índice da linha → fatura). Linha fora

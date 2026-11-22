@@ -190,7 +190,7 @@ public static class DemoSeeder
             return;
         var svc = sp.GetRequiredService<OrcamentoService>();
         var gastos = await RegrasFinanceiras.GastosPorCategoriaDoMesAsync(context, dev, hoje.Year, hoje.Month);
-        var top = gastos.Where(kv => kv.Key != RegrasFinanceiras.SemCategoria && kv.Value.Gasto > 0)
+        var top = gastos.Where(kv => !RegrasFinanceiras.EhChaveVirtual(kv.Key) && kv.Value.Gasto > 0)
             .OrderByDescending(kv => kv.Value.Gasto).Take(3).ToList();
         static decimal Redondo(decimal v) => Math.Max(10m, Math.Ceiling(v / 10m) * 10m);
         async Task Limite(Guid categoria, decimal valor) =>
