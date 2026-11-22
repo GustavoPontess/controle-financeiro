@@ -291,7 +291,7 @@ Perguntar **uma de cada vez**, quando o item da fila chegar nela.
 ### Lote 5 — estratégico (caro, longo)
 - [ ] **Open Finance / agregação** — gap nº 1, table-stakes. Via Pluggy ou Belvo, começa com 1 banco.
 - [ ] **IA conversacional / categorização automática**.
-- [ ] **App mobile** — estratégia em `docs/features/pwa/estrategia-mobile.md` (PWA polida → Capacitor → nativo; custos de loja). **Beta roda no PC** (2026-08-24) — mobile só depois do beta. PWA base existe (#28) mas mínima.
+- [ ] **App mobile** — estratégia em `docs/features/pwa/estrategia-mobile.md` (PWA polida → Capacitor → nativo; custos de loja). **Beta roda no PC** (2026-08-24) — mobile só depois do beta. PWA base existe (#28) mas mínima. **2026-11-17:** instalável no ar (#424) + modo app no celular (barra de atalhos, App no celular, ícone claro, tema sempre claro). ⬜ **P2** conferir no iPhone instalado (ilha no topo, barra embaixo, teclado sobre a barra).
 
 ---
 

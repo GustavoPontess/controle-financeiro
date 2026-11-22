@@ -1,0 +1,21 @@
+<!doctype html>
+<!-- Imagem que aparece quando alguém compartilha o link do app (WhatsApp, Instagram, LinkedIn...): 1200x630, gravada
+     em public/compartilhar.jpg por `node scripts/compartilhar.mjs`.
+     Feita pra aguentar a miniatura do WhatsApp: ele corta um QUADRADO do meio, reduz pra ~190 px e recomprime em JPEG.
+     Por isso: só a logo, ocupando o quadrado central (630x630); fundo de cor chapada (degradê vira mancha na
+     recompressão); logo ORIGINAL (traço 8/8/8, tabuleiro 5, cabos 2,2; decisão do Gustavo 2026-11-04,
+     a mesma imagem do site pontesdev.com.br). Estilo ícone de app. -->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; }
+  body { width: 1200px; height: 630px; overflow: hidden; background: #ffffff; display: grid; place-items: center; }
+  /* O desenho vai de 8 a 92 (largura) e de 14 a 86 (altura) no viewBox 100: 600px deixa ~505x430 no quadrado. */
+  svg { width: 600px; height: 600px; }
+</style>
+</head>
+<body>
+  <svg viewBox="0 0 100 100" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke="#ff4f00"><path d="M27 26L8 50L27 74" stroke-width="8"/><path d="M73 26L92 50L73 74" stroke-width="8"/><path d="M59 14L41 86" stroke-width="8"/><path d="M18 64H82" stroke-width="5"/><path d="M57 22L24 64M55 30L34 64M58 22L80 64M56 30L70 64" stroke-width="2.2"/></svg>
+</body>
+</html>

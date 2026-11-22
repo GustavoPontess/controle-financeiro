@@ -139,7 +139,7 @@
   /* App no celular: o topo e a gaveta respeitam o entalhe/ilha do iPhone (viewport-fit=cover no index.html). */
   .topo { height: calc(64px + env(safe-area-inset-top, 0px)); padding-top: env(safe-area-inset-top, 0px); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
   .lateral { padding-top: max(22px, env(safe-area-inset-top, 0px)); padding-bottom: max(18px, env(safe-area-inset-bottom, 0px)); }
-  /* Com os atalhos: o menu e a ação principal moram embaixo; o conteúdo termina acima da barra. --v2-atalhos é a altura
+  /* Com os atalhos: o menu e o "Nova transação" moram embaixo; o conteúdo termina acima da barra. --v2-atalhos é a altura
      da barra sem a área da barra de gestos (o Apontar sobe junto). */
   .raiz { --v2-atalhos: 64px; }
   .topo .abrirMenu, .topo .novaTopo { display: none; }

@@ -5,7 +5,7 @@
 //   DEV_EMAIL=dev@controle.test DEV_SENHA=... node scripts/printsMoveis.mjs
 import fs from 'node:fs'
 import path from 'node:path'
-import puppeteer from 'file:///E:/VSCode/pontes/PontesDev/site-pontes-dev/node_modules/puppeteer-core/lib/esm/puppeteer/puppeteer-core.js'
+import puppeteer from 'file:///E:/VSCode/pontes/PontesDev/site-pontes-dev/node_modules/puppeteer-core/lib/puppeteer/puppeteer-core.js'
 
 const BASE = process.env.APP_URL || 'http://localhost:5174'
 const OUT = path.resolve(import.meta.dirname, '..', 'public', 'site', 'telas')

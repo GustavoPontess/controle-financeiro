@@ -1,0 +1,16 @@
+/* Configurações › App no celular. */
+.linha { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.texto { font-size: var(--v2-fs-md); font-weight: 500; line-height: 1.7; }
+.instalado { display: flex; align-items: center; gap: 8px; margin: 0; font-size: var(--v2-fs-md); font-weight: 500; }
+.instalado svg { color: var(--v2-positivo); }
+
+.passos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.passo { display: flex; align-items: flex-start; gap: 12px; }
+.numero { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 26px; height: 26px; margin-top: 1px; border-radius: 999px; background: var(--v2-acento-suave); color: var(--v2-acento); font-size: var(--v2-fs-sm); font-weight: 700; }
+/* O botão do navegador como ele aparece: ícone + nome, numa pílula. */
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; margin: 0 2px; border: 1px solid var(--v2-linha); border-radius: 999px; background: var(--v2-superficie-2); color: var(--v2-texto); font-size: var(--v2-fs-sm); font-weight: 600; white-space: nowrap; vertical-align: middle; }
+
+@media (max-width: 900px) {
+  .linha { flex-direction: column; align-items: stretch; gap: 10px; }
+  .chip { white-space: normal; height: auto; min-height: 28px; }
+}
